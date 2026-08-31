@@ -2,13 +2,15 @@ import { sequence } from '@sveltejs/kit/hooks';
 import { building } from '$app/env';
 import { auth } from '#lib/server/auth';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
-import type { Handle } from '@sveltejs/kit';
+import type { Handle } from '@sveltejs/kit/hooks';
 import { getTextDirection } from '#lib/paraglide/runtime';
 import { paraglideMiddleware } from '#lib/paraglide/server';
 
 const handleParaglide: Handle = ({ event, resolve }) =>
 	paraglideMiddleware(event.request, ({ request, locale }) => {
-		event.request = request;
+		// SvelteKit 3 types `event.request` as readonly; paraglide returns a
+		// request with a de-localised URL that downstream handlers should see.
+		(event as { request: Request }).request = request;
 
 		return resolve(event, {
 			transformPageChunk: ({ html }) =>

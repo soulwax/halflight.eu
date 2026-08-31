@@ -24,7 +24,9 @@ export default defineConfig({
 					async: true
 				}
 			},
-			adapter: adapter(),
+			// Pin the serverless runtime: the local Node version (26) is newer than
+			// anything the adapter can infer a default from.
+			adapter: adapter({ runtime: 'nodejs24.x' }),
 			preprocess: [
 				mdsvex({
 					extensions: ['.svx', '.md']
