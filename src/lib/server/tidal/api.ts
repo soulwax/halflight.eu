@@ -3,7 +3,8 @@
  * around {@link tidalJson}; anything not covered here is still reachable through
  * `tidalJson('/whatever')` or the `/tidal/api/*` proxy route.
  */
-import { tidalJson, type TidalRequestContext } from './client';
+import { tidalFetch, tidalJson, type TidalRequestContext } from './client';
+import { TidalApiError } from './errors';
 import type { Document, Resource } from './jsonapi';
 
 type Ctx = TidalRequestContext;
@@ -136,6 +137,21 @@ export function getMix(
 	);
 }
 
+/**
+ * The user's recommendation hub in one call — discovery mixes, "my mixes" and
+ * new-arrival mixes side-loaded.
+ */
+export function getRecommendations(opts: PageOptions = {}, ctx?: Ctx): Promise<Document<Resource>> {
+	return tidalJson(
+		`/userRecommendations/me${qs({
+			include: ['discoveryMixes', 'myMixes', 'newArrivalMixes', ...(opts.include ?? [])],
+			locale: opts.locale
+		})}`,
+		{},
+		ctx
+	);
+}
+
 export interface SearchOptions extends PageOptions {
 	types?: Array<'tracks' | 'albums' | 'artists' | 'playlists' | 'videos' | 'topHits'>;
 	explicitFilter?: 'INCLUDE' | 'EXCLUDE';
@@ -195,22 +211,42 @@ export function getArtistRelationship(
 	);
 }
 
-/** Add resources to the user's collection. */
-export function addToCollection(
+async function mutate(method: string, path: string, body: unknown, ctx?: Ctx): Promise<unknown> {
+	const response = await tidalFetch(
+		path,
+		{ method, headers: { 'content-type': 'application/vnd.api+json' }, body: JSON.stringify(body) },
+		ctx
+	);
+	const text = await response.text();
+	if (!response.ok) {
+		throw new TidalApiError(response.status, response.statusText, text, `${method} ${path}`);
+	}
+	return text ? JSON.parse(text) : null;
+}
+
+/**
+ * Add or remove items in the user's collection. The dedicated
+ * `userCollection*` resources accept `me`; the item `type` is the plain
+ * resource type (`albums`, `tracks`, …).
+ */
+async function mutateCollection(
+	method: 'POST' | 'DELETE',
 	kind: CollectionKind,
 	ids: string[],
 	ctx?: Ctx
-): Promise<Document<Resource[]>> {
-	const type = `userCollection${kind[0].toUpperCase()}${kind.slice(1)}`;
-	return tidalJson(
-		`/userCollections/me/relationships/${kind}`,
-		{
-			method: 'POST',
-			headers: { 'content-type': 'application/vnd.api+json' },
-			body: JSON.stringify({ data: ids.map((id) => ({ id, type })) })
-		},
+): Promise<void> {
+	const resource = `userCollection${kind[0].toUpperCase()}${kind.slice(1)}`;
+	await mutate(
+		method,
+		`/${resource}/me/relationships/items`,
+		{ data: ids.map((id) => ({ id, type: kind })) },
 		ctx
 	);
+}
+
+/** Add resources to the user's collection (max 50 ids per call). */
+export function addToCollection(kind: CollectionKind, ids: string[], ctx?: Ctx): Promise<void> {
+	return mutateCollection('POST', kind, ids, ctx);
 }
 
 /** Remove resources from the user's collection. */
@@ -218,15 +254,36 @@ export function removeFromCollection(
 	kind: CollectionKind,
 	ids: string[],
 	ctx?: Ctx
-): Promise<Response | Document<Resource[]>> {
-	const type = `userCollection${kind[0].toUpperCase()}${kind.slice(1)}`;
-	return tidalJson(
-		`/userCollections/me/relationships/${kind}`,
-		{
-			method: 'DELETE',
-			headers: { 'content-type': 'application/vnd.api+json' },
-			body: JSON.stringify({ data: ids.map((id) => ({ id, type })) })
-		},
+): Promise<void> {
+	return mutateCollection('DELETE', kind, ids, ctx);
+}
+
+export interface NewPlaylist {
+	name: string;
+	description?: string;
+	accessType?: 'PUBLIC' | 'UNLISTED';
+}
+
+/** Create a playlist. Returns the created playlist document. */
+export function createPlaylist(playlist: NewPlaylist, ctx?: Ctx): Promise<Document<Resource>> {
+	return mutate(
+		'POST',
+		'/playlists',
+		{ data: { type: 'playlists', attributes: playlist } },
 		ctx
-	);
+	) as Promise<Document<Resource>>;
+}
+
+/** Append tracks (or videos) to a playlist (max 50 per call). */
+export function addPlaylistItems(
+	playlistId: string,
+	items: Array<{ id: string; type?: 'tracks' | 'videos' }>,
+	ctx?: Ctx
+): Promise<void> {
+	return mutate(
+		'POST',
+		`/playlists/${encodeURIComponent(playlistId)}/relationships/items`,
+		{ data: items.map((it) => ({ id: it.id, type: it.type ?? 'tracks' })) },
+		ctx
+	).then(() => undefined);
 }
