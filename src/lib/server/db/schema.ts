@@ -1,9 +1,25 @@
-import { pgTable, serial, integer, text } from 'drizzle-orm/pg-core';
+import { pgTable, serial, integer, text, timestamp, check } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 export const task = pgTable('task', {
 	id: serial('id').primaryKey(),
 	title: text('title').notNull(),
 	priority: integer('priority').notNull().default(1)
 });
+
+/**
+ * Single-row store for the personal TIDAL OAuth token record. `secret` holds the
+ * AES-256-GCM ciphertext (base64 of `iv || authTag || ciphertext`) of the JSON
+ * token record; the plaintext never touches the database.
+ */
+export const tidalAuth = pgTable(
+	'tidal_auth',
+	{
+		id: integer('id').primaryKey().notNull().default(1),
+		secret: text('secret').notNull(),
+		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+	},
+	(t) => [check('tidal_auth_singleton', sql`${t.id} = 1`)]
+);
 
 export * from './auth.schema';

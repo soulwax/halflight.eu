@@ -1,9 +1,12 @@
 import { defineEnvVars } from '@sveltejs/kit/env';
 
+/** Pass-through schema that makes a variable optional (`string | undefined`). */
+const optional = (value: string | undefined) => value;
+
 export const variables = defineEnvVars({
 	DATABASE_URL: { description: 'The database connection string.' },
 	ORIGIN: {
-		description: 'The app origin (base URL), e.g. `http://localhost:5173`.'
+		description: 'The app origin (base URL), e.g. `http://localhost:3000`.'
 	},
 	BETTER_AUTH_SECRET: {
 		description:
@@ -16,5 +19,26 @@ export const variables = defineEnvVars({
 	GITHUB_CLIENT_SECRET: {
 		description:
 			'GitHub OAuth client secret. See [Better Auth GitHub provider](https://www.better-auth.com/docs/authentication/github).'
+	},
+	TIDAL_CLIENT_ID: {
+		schema: optional,
+		description: 'TIDAL OAuth client ID from https://developer.tidal.com.'
+	},
+	TIDAL_CLIENT_SECRET: {
+		schema: optional,
+		description: 'TIDAL OAuth client secret. Required only for a confidential app.'
+	},
+	TIDAL_REDIRECT_URI: {
+		schema: optional,
+		description: 'TIDAL OAuth redirect URI. Defaults to `${ORIGIN}/tidal/callback`.'
+	},
+	TIDAL_SCOPES: {
+		schema: optional,
+		description: 'Space-separated TIDAL OAuth scopes. Defaults to a read-only set.'
+	},
+	TIDAL_TOKEN_ENC_KEY: {
+		schema: optional,
+		description:
+			'Base64-encoded 32-byte key used to encrypt the stored TIDAL token record. Generate with `openssl rand -base64 32`.'
 	}
 });

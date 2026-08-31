@@ -1,4 +1,12 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
-	"hello_world": "Hello, {name} from en!"
+	"hello_world": "Hello, {name} from en!",
+	"tidal_title": "TIDAL",
+	"tidal_subtitle": "Personal account connection",
+	"tidal_connected": "Connected",
+	"tidal_not_connected": "Not connected",
+	"tidal_connect": "Connect TIDAL",
+	"tidal_disconnect": "Disconnect",
+	"tidal_reconnect": "Reconnect",
+	"tidal_not_configured": "TIDAL is not configured. Set the TIDAL_* environment variables (see .env.example)."
 }
