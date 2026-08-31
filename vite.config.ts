@@ -1,4 +1,3 @@
-/// <reference types="vitest/config" />
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import { mdsvex } from 'mdsvex';
 import tailwindcss from '@tailwindcss/vite';
