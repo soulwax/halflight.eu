@@ -6,6 +6,7 @@ import type {
 	PlaylistSummary,
 	SearchResult,
 	SearchResultGroups,
+	TrackDetail,
 	TrackSummary
 } from './models';
 
@@ -111,6 +112,18 @@ export function normaliseTrack(
 		artists: relatedResources(resource, 'artists', included).map(normaliseArtistReference),
 		...(album ? { album: normaliseAlbumReference(album) } : {})
 	};
+}
+
+/**
+ * Convert a single-track JSON:API compound document into the safe contract
+ * consumed by the track page. Raw attributes and relationships never leave
+ * this server boundary.
+ */
+export function normaliseTrackDetail(document: unknown): TrackDetail | null {
+	if (!isRecord(document)) return null;
+
+	const track = normaliseTrack(document.data, indexIncluded(document.included));
+	return track;
 }
 
 /** Return a display-ready album, or `null` for malformed/non-album input. */

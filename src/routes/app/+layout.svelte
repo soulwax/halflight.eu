@@ -9,7 +9,8 @@
 
 	const navigation = $derived([
 		{ href: resolve('/app'), label: m.nav_home() },
-		{ href: resolve('/app/search'), label: m.nav_search() }
+		{ href: resolve('/app/search'), label: m.nav_search() },
+		{ href: resolve('/app/settings/tidal'), label: m.nav_settings() }
 	]);
 </script>
 
@@ -20,7 +21,7 @@
 	skipLinkLabel={m.skip_to_content()}
 	navigationLabel={m.nav_primary()}
 	userName={data.user.name}
-	accountHref={resolve('/tidal')}
+	accountHref={resolve('/app/settings/tidal')}
 	accountLabel={m.nav_settings()}
 >
 	{@render children()}

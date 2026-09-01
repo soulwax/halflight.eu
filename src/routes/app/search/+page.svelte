@@ -75,13 +75,13 @@
 					{#each data.results.tracks as track (track.id)}
 						<li>
 							<div class="media-mark" aria-hidden="true">♪</div>
-							<div>
+							<a class="track-link" href={resolve('/app/tracks/[id]', { id: track.id })}>
 								<strong>{track.title}</strong>
 								{#if track.artists.length}
 									<span>{track.artists.map((artist) => artist.name).join(', ')}</span>
 								{/if}
 								{#if track.album}<small>{track.album.title}</small>{/if}
-							</div>
+							</a>
 						</li>
 					{/each}
 				</ul>
@@ -280,6 +280,19 @@
 	.result-group li > div:last-child {
 		display: grid;
 		gap: 0.15rem;
+	}
+
+	.track-link {
+		display: grid;
+		min-width: 0;
+		gap: 0.15rem;
+		color: inherit;
+		text-decoration: none;
+	}
+
+	.track-link:hover strong,
+	.track-link:focus-visible strong {
+		text-decoration: underline;
 	}
 
 	.media-mark {

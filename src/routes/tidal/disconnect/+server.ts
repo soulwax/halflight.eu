@@ -11,5 +11,5 @@ export const POST: RequestHandler = async (event) => {
 	await clearRecord();
 	clearOAuthCookie(event.cookies);
 
-	redirect(303, '/tidal?disconnected=1');
+	redirect(303, '/app/settings/tidal?disconnected=1');
 };

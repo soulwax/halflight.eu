@@ -3,7 +3,8 @@ import { exchangeCode, writeRecord, TidalError } from '#lib/server/tidal';
 import { clearOAuthCookie, readOAuthCookie } from '../oauth-cookie';
 import type { RequestHandler } from './$types';
 
-const fail = (reason: string) => redirect(303, `/tidal?error=${encodeURIComponent(reason)}`);
+const fail = (reason: string) =>
+	redirect(303, `/app/settings/tidal?error=${encodeURIComponent(reason)}`);
 
 export const GET: RequestHandler = async (event) => {
 	if (!event.locals.user) redirect(302, '/sign-in');
@@ -29,5 +30,5 @@ export const GET: RequestHandler = async (event) => {
 		throw err;
 	}
 
-	redirect(303, '/tidal?connected=1');
+	redirect(303, '/app/settings/tidal?connected=1');
 };

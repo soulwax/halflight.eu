@@ -4,7 +4,8 @@ import {
 	normaliseArtist,
 	normalisePlaylist,
 	normaliseSearchResults,
-	normaliseTrack
+	normaliseTrack,
+	normaliseTrackDetail
 } from './normalise';
 
 const artist = { id: 'artist-1', type: 'artists', attributes: { name: 'Artist One' } };
@@ -69,6 +70,33 @@ describe('TIDAL display normalisers', () => {
 		expect(normaliseTrack({ id: 'album-1', type: 'albums' })).toBeNull();
 		expect(normaliseTrack({ id: 1, type: 'tracks' })).toBeNull();
 		expect(normaliseArtist(null)).toBeNull();
+	});
+
+	it('normalises a track detail compound document without exposing raw API fields', () => {
+		expect(
+			normaliseTrackDetail({
+				data: {
+					id: 'track-1',
+					type: 'tracks',
+					attributes: { title: 'Track One', duration: 'not exposed' },
+					relationships: {
+						artists: { data: [{ id: 'artist-1', type: 'artists' }] },
+						albums: { data: [{ id: 'album-1', type: 'albums' }] }
+					}
+				},
+				included: [artist, { id: 'album-1', type: 'albums', attributes: { title: 'Album One' } }]
+			})
+		).toEqual({
+			kind: 'track',
+			id: 'track-1',
+			title: 'Track One',
+			artists: [{ id: 'artist-1', name: 'Artist One' }],
+			album: { id: 'album-1', title: 'Album One' }
+		});
+	});
+
+	it('rejects malformed track detail documents', () => {
+		expect(normaliseTrackDetail({ data: { id: 'album-1', type: 'albums' } })).toBeNull();
 	});
 });
 

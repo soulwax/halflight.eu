@@ -23,6 +23,13 @@ export interface TrackSummary {
 	album?: AlbumReference;
 }
 
+/**
+ * The initial track page deliberately uses the same verified metadata as a
+ * search result. Additional fields belong here only once a page needs them
+ * and their upstream representation has been normalised safely.
+ */
+export type TrackDetail = TrackSummary;
+
 export interface AlbumSummary {
 	kind: 'album';
 	id: string;
