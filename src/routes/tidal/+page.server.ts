@@ -27,7 +27,7 @@ async function settle<T>(label: string, run: () => Promise<T>) {
 }
 
 export const load: PageServerLoad = async (event) => {
-	if (!event.locals.user) redirect(302, '/demo/better-auth/login');
+	if (!event.locals.user) redirect(302, '/sign-in');
 
 	const status = await getConnectionStatus();
 	const messages = {

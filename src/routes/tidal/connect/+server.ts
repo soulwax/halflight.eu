@@ -10,7 +10,7 @@ import { OAUTH_COOKIE, oauthCookieOptions } from '../oauth-cookie';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = (event) => {
-	if (!event.locals.user) redirect(302, '/demo/better-auth/login');
+	if (!event.locals.user) redirect(302, '/sign-in');
 
 	try {
 		getTidalConfig();

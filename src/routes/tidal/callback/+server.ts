@@ -6,7 +6,7 @@ import type { RequestHandler } from './$types';
 const fail = (reason: string) => redirect(303, `/tidal?error=${encodeURIComponent(reason)}`);
 
 export const GET: RequestHandler = async (event) => {
-	if (!event.locals.user) redirect(302, '/demo/better-auth/login');
+	if (!event.locals.user) redirect(302, '/sign-in');
 
 	const params = event.url.searchParams;
 	const saved = readOAuthCookie(event.cookies);
