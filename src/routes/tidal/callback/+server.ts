@@ -7,7 +7,7 @@ const fail = (reason: string) =>
 	redirect(303, `/app/settings/tidal?error=${encodeURIComponent(reason)}`);
 
 export const GET: RequestHandler = async (event) => {
-	if (!event.locals.user) redirect(302, '/sign-in');
+	if (!event.locals.user || !event.locals.isAdministrator) redirect(302, '/sign-in');
 
 	const params = event.url.searchParams;
 	const saved = readOAuthCookie(event.cookies);

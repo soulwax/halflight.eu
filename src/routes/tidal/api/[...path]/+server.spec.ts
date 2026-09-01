@@ -19,13 +19,14 @@ function eventFor(
 	method: string,
 	{
 		user = true,
+		isAdministrator = user,
 		path = 'users/me',
 		query = ''
-	}: { user?: boolean; path?: string; query?: string } = {}
+	}: { user?: boolean; isAdministrator?: boolean; path?: string; query?: string } = {}
 ) {
 	const fetch = vi.fn();
 	return {
-		locals: { user: user ? { id: 'user-1' } : undefined },
+		locals: { user: user ? { id: 'user-1' } : undefined, isAdministrator },
 		params: { path },
 		url: new URL(`https://syn.bluesix.dev/tidal/api/${path}${query}`),
 		request: new Request(`https://syn.bluesix.dev/tidal/api/${path}${query}`, { method }),
@@ -70,6 +71,15 @@ describe('/tidal/api/[...path]', () => {
 		expect(response.status).toBe(401);
 		expect(response.headers.get('cache-control')).toBe('private, no-store, max-age=0');
 		expect(await response.json()).toEqual({ message: 'Not authenticated.' });
+	});
+
+	it('does not call TIDAL for a non-administrator session', async () => {
+		const event = eventFor('GET', { isAdministrator: false });
+
+		const response = await GET(event as unknown as Parameters<typeof GET>[0]);
+
+		expect(tidal.tidalFetch).not.toHaveBeenCalled();
+		expect(response.status).toBe(401);
 	});
 
 	it('returns a safe reconnect response when no TIDAL account is connected', async () => {

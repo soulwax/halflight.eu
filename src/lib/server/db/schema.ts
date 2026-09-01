@@ -22,4 +22,19 @@ export const tidalAuth = pgTable(
 	(t) => [check('tidal_auth_singleton', sql`${t.id} = 1`)]
 );
 
+/**
+ * The one, permanent administrator for this personal installation. This table is
+ * intentionally owned by Syn rather than Better Auth: Better Auth's core schema
+ * predates Drizzle migration tracking in this project.
+ */
+export const administrator = pgTable(
+	'administrator',
+	{
+		id: integer('id').primaryKey().notNull().default(1),
+		userId: text('user_id').notNull().unique(),
+		grantedAt: timestamp('granted_at', { withTimezone: true }).notNull().defaultNow()
+	},
+	(table) => [check('administrator_singleton', sql`${table.id} = 1`)]
+);
+
 export * from './auth.schema';

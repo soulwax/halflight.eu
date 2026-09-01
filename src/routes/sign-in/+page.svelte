@@ -21,10 +21,10 @@
 			<p class="form-error" role="alert">{m.sign_in_error()}</p>
 		{/if}
 
-		<form method="post" action="?/signInEmail" use:enhance class="auth-form">
+		<form method="post" action="?/signInAdministrator" use:enhance class="auth-form">
 			<label>
-				<span>{m.sign_in_email()}</span>
-				<input name="email" type="email" autocomplete="email" required />
+				<span>{m.sign_in_username()}</span>
+				<input name="username" autocomplete="username" required />
 			</label>
 			<label>
 				<span>{m.sign_in_password()}</span>
@@ -32,25 +32,6 @@
 			</label>
 			<button type="submit">{m.sign_in_button()}</button>
 		</form>
-
-		<details class="register">
-			<summary>{m.sign_up_button()}</summary>
-			<form method="post" action="?/signUpEmail" use:enhance class="auth-form">
-				<label>
-					<span>{m.sign_in_name()}</span>
-					<input name="name" autocomplete="name" required />
-				</label>
-				<label>
-					<span>{m.sign_in_email()}</span>
-					<input name="email" type="email" autocomplete="email" required />
-				</label>
-				<label>
-					<span>{m.sign_in_password()}</span>
-					<input name="password" type="password" autocomplete="new-password" required />
-				</label>
-				<button type="submit">{m.sign_up_button()}</button>
-			</form>
-		</details>
 
 		<form method="post" action="?/signInSocial">
 			<button class="secondary" type="submit">{m.sign_in_github()}</button>
@@ -133,20 +114,6 @@
 		border: 1px solid var(--border-strong);
 		background: transparent;
 		color: var(--text-primary);
-	}
-
-	.register {
-		margin-top: 1rem;
-	}
-
-	.register summary {
-		cursor: pointer;
-		color: var(--text-muted);
-		font-weight: 600;
-	}
-
-	.register .auth-form {
-		margin-top: 1rem;
 	}
 
 	.form-error {

@@ -5,6 +5,7 @@ import { svelteKitHandler } from 'better-auth/svelte-kit';
 import type { Handle } from '@sveltejs/kit/hooks';
 import { getTextDirection } from '#lib/paraglide/runtime';
 import { paraglideMiddleware } from '#lib/paraglide/server';
+import { isAdministrator } from '#lib/server/admin';
 
 const handleParaglide: Handle = ({ event, resolve }) =>
 	paraglideMiddleware(event.request, ({ request, locale }) => {
@@ -26,6 +27,7 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
 	if (session) {
 		event.locals.session = session.session;
 		event.locals.user = session.user;
+		event.locals.isAdministrator = await isAdministrator(session.user.id);
 	}
 
 	return svelteKitHandler({ event, resolve, auth, building });

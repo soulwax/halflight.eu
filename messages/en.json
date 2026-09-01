@@ -36,6 +36,7 @@
 	"sign_in_title": "Welcome to Syn",
 	"sign_in_subtitle": "Your private workspace for exploring TIDAL.",
 	"sign_in_email": "Email address",
+	"sign_in_username": "Username",
 	"sign_in_password": "Password",
 	"sign_in_name": "Name",
 	"sign_in_button": "Sign in",

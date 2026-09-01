@@ -20,6 +20,14 @@ export const variables = defineEnvVars({
 		description:
 			'GitHub OAuth client secret. See [Better Auth GitHub provider](https://www.better-auth.com/docs/authentication/github).'
 	},
+	ADMIN_USERNAME: {
+		description:
+			'Permanent Syn administrator username. It must match the intended GitHub login exactly, except for letter case.'
+	},
+	ADMIN_PASSWORD: {
+		description:
+			'Password for the permanent Syn administrator. Stored only as a Better Auth password hash after first use.'
+	},
 	TIDAL_CLIENT_ID: {
 		schema: optional,
 		description: 'TIDAL OAuth client ID from https://developer.tidal.com.'
