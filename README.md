@@ -22,6 +22,32 @@ pnpm test                               # unit + Playwright e2e
 pnpm build && pnpm preview              # production build
 ```
 
+## Screenshots
+
+| Sign in                                                                          | Mobile sign in                                                                 |
+| -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| ![Syn sign-in page on desktop](static/readme-screenshots/01-sign-in-desktop.png) | ![Syn sign-in page on mobile](static/readme-screenshots/02-sign-in-mobile.png) |
+
+| Home                                                                 | Mobile home                                                                   |
+| -------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| ![Syn home dashboard](static/readme-screenshots/03-home-desktop.png) | ![Syn home dashboard on mobile](static/readme-screenshots/04-home-mobile.png) |
+
+| Empty search                                                               | Mobile empty search                                                                         |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| ![TIDAL search empty state](static/readme-screenshots/05-search-empty.png) | ![TIDAL search empty state on mobile](static/readme-screenshots/06-search-empty-mobile.png) |
+
+| Search validation                                                                       | Search results                                                           |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| ![TIDAL search validation state](static/readme-screenshots/07-search-invalid-query.png) | ![TIDAL search results](static/readme-screenshots/08-search-results.png) |
+
+| Track state                                                           | TIDAL settings                                                                |
+| --------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| ![Track detail state](static/readme-screenshots/09-track-invalid.png) | ![TIDAL connection settings](static/readme-screenshots/10-tidal-settings.png) |
+
+| Mobile settings                                                                                | Mobile search results                                                                     |
+| ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| ![TIDAL connection settings on mobile](static/readme-screenshots/11-tidal-settings-mobile.png) | ![TIDAL search results on mobile](static/readme-screenshots/12-search-results-mobile.png) |
+
 ## TIDAL connection
 
 A reusable, server-only wrapper around a personal TIDAL account: OAuth
