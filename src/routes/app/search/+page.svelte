@@ -1,18 +1,59 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { ListPlus, Loader2, Play } from '@lucide/svelte';
+	import { player } from '#lib/player/player.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import type { PageData } from './$types';
+	import type { SearchResultGroups } from '#lib/server/tidal/models';
 
 	let { data }: { data: PageData } = $props();
 
+	let searchQuery = $state(data.query);
+	let liveResults = $state<SearchResultGroups | null>(data.results);
+	let isSearching = $state(false);
+	let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+
+	const currentResults = $derived(liveResults ?? data.results);
+	const activeQuery = $derived(searchQuery.trim());
+
 	const resultCount = $derived(
-		data.results
-			? data.results.tracks.length +
-					data.results.albums.length +
-					data.results.artists.length +
-					data.results.playlists.length
+		currentResults
+			? currentResults.tracks.length +
+					currentResults.albums.length +
+					currentResults.artists.length +
+					currentResults.playlists.length
 			: 0
 	);
+
+	function handleInput(event: Event) {
+		const target = event.target as HTMLInputElement;
+		const query = target.value;
+		searchQuery = query;
+
+		clearTimeout(debounceTimer);
+		if (!query.trim()) {
+			liveResults = { tracks: [], albums: [], artists: [], playlists: [] };
+			isSearching = false;
+			return;
+		}
+
+		isSearching = true;
+		debounceTimer = setTimeout(async () => {
+			try {
+				const res = await fetch(`/api/search?q=${encodeURIComponent(query.trim())}`);
+				if (res.ok) {
+					const body = await res.json();
+					if (body.results) {
+						liveResults = body.results;
+					}
+				}
+			} catch {
+				// retain existing results on network failure
+			} finally {
+				isSearching = false;
+			}
+		}, 280);
+	}
 </script>
 
 <svelte:head>
@@ -27,19 +68,31 @@
 		<p class="intro">{m.search_subtitle()}</p>
 	</header>
 
-	<form class="search-form" method="GET" role="search">
+	<form
+		class="search-form"
+		method="GET"
+		role="search"
+		onsubmit={(e) => isSearching && e.preventDefault()}
+	>
 		<label for="search-query">{m.search_label()}</label>
-		<div>
+		<div class="search-input-wrap">
 			<input
 				id="search-query"
 				name="q"
 				type="search"
-				value={data.query}
-				placeholder={m.search_placeholder()}
+				value={searchQuery}
+				oninput={handleInput}
+				placeholder={m.search_live_placeholder()}
 				maxlength="160"
 				autocomplete="off"
 			/>
-			<button type="submit">{m.search_button()}</button>
+			{#if isSearching}
+				<div class="search-spinner" aria-label={m.search_live_searching()}>
+					<Loader2 class="animate-spin text-[var(--action)]" size={18} />
+				</div>
+			{:else}
+				<button type="submit">{m.search_button()}</button>
+			{/if}
 		</div>
 	</form>
 
@@ -53,28 +106,37 @@
 		<p class="state-error" role="alert">{m.search_invalid_query()}</p>
 	{:else if data.error === 'unavailable'}
 		<p class="state-error" role="alert">{m.search_error()}</p>
-	{:else if !data.query}
+	{:else if !activeQuery}
 		<section class="state-card" aria-labelledby="empty-title">
 			<h2 id="empty-title">{m.search_empty_title()}</h2>
 			<p>{m.search_empty_description()}</p>
 		</section>
-	{:else if resultCount === 0}
+	{:else if resultCount === 0 && !isSearching}
 		<section class="state-card" aria-labelledby="no-results-title">
-			<h2 id="no-results-title">{m.search_no_results_title({ query: data.query })}</h2>
+			<h2 id="no-results-title">{m.search_no_results_title({ query: activeQuery })}</h2>
 			<p>{m.search_no_results_description()}</p>
 		</section>
-	{:else if data.results}
+	{:else if currentResults}
 		<div class="result-summary" role="status">
-			{m.search_results_for({ query: data.query })} · {resultCount}
+			{m.search_results_for({ query: activeQuery })} · {resultCount}
 		</div>
 
-		{#if data.results.tracks.length}
+		{#if currentResults.tracks.length}
 			<section class="result-group" aria-labelledby="tracks-title">
 				<h2 id="tracks-title">{m.search_tracks()}</h2>
 				<ul>
-					{#each data.results.tracks as track (track.id)}
-						<li>
-							<div class="media-mark" aria-hidden="true">♪</div>
+					{#each currentResults.tracks as track (track.id)}
+						<li class="track-row">
+							<button
+								type="button"
+								class="quick-play-btn"
+								onclick={() => player.play(track, currentResults?.tracks)}
+								title={m.player_play_track()}
+								aria-label={m.player_play_track()}
+							>
+								<Play size={14} fill="currentColor" />
+							</button>
+
 							<a class="track-link" href={resolve('/app/tracks/[id]', { id: track.id })}>
 								<strong>{track.title}</strong>
 								{#if track.artists.length}
@@ -82,17 +144,27 @@
 								{/if}
 								{#if track.album}<small>{track.album.title}</small>{/if}
 							</a>
+
+							<button
+								type="button"
+								class="quick-queue-btn"
+								onclick={() => player.addToQueue(track)}
+								title={m.player_add_to_queue()}
+								aria-label={m.player_add_to_queue()}
+							>
+								<ListPlus size={16} />
+							</button>
 						</li>
 					{/each}
 				</ul>
 			</section>
 		{/if}
 
-		{#if data.results.albums.length}
+		{#if currentResults.albums.length}
 			<section class="result-group" aria-labelledby="albums-title">
 				<h2 id="albums-title">{m.search_albums()}</h2>
 				<ul>
-					{#each data.results.albums as album (album.id)}
+					{#each currentResults.albums as album (album.id)}
 						<li>
 							<div class="media-mark" aria-hidden="true">▣</div>
 							<a class="track-link" href={resolve('/app/albums/[id]', { id: album.id })}>
@@ -107,11 +179,11 @@
 			</section>
 		{/if}
 
-		{#if data.results.artists.length}
+		{#if currentResults.artists.length}
 			<section class="result-group" aria-labelledby="artists-title">
 				<h2 id="artists-title">{m.search_artists()}</h2>
 				<ul>
-					{#each data.results.artists as artist (artist.id)}
+					{#each currentResults.artists as artist (artist.id)}
 						<li>
 							<div class="media-mark" aria-hidden="true">●</div>
 							<a class="track-link" href={resolve('/app/artists/[id]', { id: artist.id })}>
@@ -123,11 +195,11 @@
 			</section>
 		{/if}
 
-		{#if data.results.playlists.length}
+		{#if currentResults.playlists.length}
 			<section class="result-group" aria-labelledby="playlists-title">
 				<h2 id="playlists-title">{m.search_playlists()}</h2>
 				<ul>
-					{#each data.results.playlists as playlist (playlist.id)}
+					{#each currentResults.playlists as playlist (playlist.id)}
 						<li>
 							<div class="media-mark" aria-hidden="true">≡</div>
 							<a class="track-link" href={resolve('/app/playlists/[id]', { id: playlist.id })}>
@@ -286,9 +358,59 @@
 		gap: 0.15rem;
 	}
 
+	.search-input-wrap {
+		display: flex;
+		align-items: center;
+		position: relative;
+		gap: 0.5rem;
+		width: 100%;
+	}
+
+	.search-spinner {
+		display: grid;
+		place-items: center;
+		padding: 0 0.75rem;
+	}
+
+	.track-row {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+	}
+
+	.quick-play-btn,
+	.quick-queue-btn {
+		display: grid;
+		place-items: center;
+		width: 2.25rem;
+		height: 2.25rem;
+		min-height: 2.25rem;
+		border: 1px solid var(--border-subtle);
+		border-radius: 0.6rem;
+		background: var(--surface-canvas);
+		color: var(--text-muted);
+		padding: 0;
+		cursor: pointer;
+		flex: 0 0 auto;
+		transition: all 0.15s ease;
+	}
+
+	.quick-play-btn:hover {
+		border-color: var(--action);
+		background: var(--action);
+		color: var(--action-contrast);
+	}
+
+	.quick-queue-btn:hover {
+		border-color: var(--border-strong);
+		background: var(--surface-selected);
+		color: var(--text-primary);
+	}
+
 	.track-link {
 		display: grid;
 		min-width: 0;
+		flex: 1;
 		gap: 0.15rem;
 		color: inherit;
 		text-decoration: none;

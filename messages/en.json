@@ -170,5 +170,21 @@
 	"mixes_empty_title": "No mixes available right now",
 	"mixes_empty_description": "TIDAL builds mixes as you listen to more music.",
 	"mixes_unavailable_title": "Mixes are unavailable",
-	"mixes_unavailable_description": "Please try again in a moment."
+	"mixes_unavailable_description": "Please try again in a moment.",
+	"player_now_playing": "Now playing",
+	"player_queue": "Queue",
+	"player_queue_empty": "Your queue is empty",
+	"player_clear_queue": "Clear queue",
+	"player_next_up": "Next up",
+	"player_play_track": "Play",
+	"player_play_all": "Play all",
+	"player_add_to_queue": "Add to queue",
+	"player_remove_from_queue": "Remove",
+	"player_previous": "Previous track",
+	"player_next": "Next track",
+	"player_expand": "Expand player",
+	"player_collapse": "Collapse player",
+	"player_close": "Close player",
+	"search_live_placeholder": "Quick search tracks, albums, artists...",
+	"search_live_searching": "Searching TIDAL..."
 }

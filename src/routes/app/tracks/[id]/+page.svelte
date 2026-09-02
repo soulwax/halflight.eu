@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { ExternalLink, Music, Play } from '@lucide/svelte';
+	import { ExternalLink, ListPlus, Music, Play } from '@lucide/svelte';
+	import { player } from '#lib/player/player.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import type { PageData } from './$types';
 
@@ -140,6 +141,14 @@
 		</div>
 
 		<div class="actions">
+			<button type="button" class="syn-play-btn" onclick={() => player.play(data.track!)}>
+				<Play size={16} fill="currentColor" />
+				{m.player_play_track()}
+			</button>
+			<button type="button" class="syn-queue-btn" onclick={() => player.addToQueue(data.track!)}>
+				<ListPlus size={16} />
+				{m.player_add_to_queue()}
+			</button>
 			<a class="tidal-link" href={tidalTrackUrl} rel="noreferrer" target="_blank">
 				<Play size={17} fill="currentColor" /> Open in TIDAL <ExternalLink size={15} />
 			</a>
@@ -358,17 +367,64 @@
 		gap: 0.5rem;
 		margin-top: 1.5rem;
 	}
+
+	.syn-play-btn {
+		display: inline-flex;
+		min-height: 2.75rem;
+		align-items: center;
+		gap: 0.45rem;
+		border: 0;
+		border-radius: 0.75rem;
+		background: var(--action);
+		padding: 0.75rem 1.15rem;
+		color: var(--action-contrast);
+		font: inherit;
+		font-weight: 700;
+		cursor: pointer;
+		transition: opacity 0.15s ease;
+	}
+
+	.syn-play-btn:hover {
+		opacity: 0.9;
+	}
+
+	.syn-queue-btn {
+		display: inline-flex;
+		min-height: 2.75rem;
+		align-items: center;
+		gap: 0.45rem;
+		border: 1px solid var(--border-subtle);
+		border-radius: 0.75rem;
+		background: var(--surface-raised);
+		padding: 0.75rem 1rem;
+		color: var(--text-primary);
+		font: inherit;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.15s ease;
+	}
+
+	.syn-queue-btn:hover {
+		border-color: var(--border-strong);
+		background: var(--surface-selected);
+	}
+
 	.tidal-link {
 		display: inline-flex;
 		min-height: 2.75rem;
 		align-items: center;
 		gap: 0.4rem;
 		border-radius: 0.75rem;
-		background: var(--action);
+		background: var(--surface-selected);
+		border: 1px solid var(--border-subtle);
 		padding: 0.75rem 1rem;
-		color: var(--action-contrast);
+		color: var(--text-primary);
 		font-weight: 700;
 		text-decoration: none;
+	}
+
+	.tidal-link:hover {
+		border-color: var(--border-strong);
 	}
 
 	.state-card p {

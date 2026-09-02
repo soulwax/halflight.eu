@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { ListPlus, Play } from '@lucide/svelte';
+	import { player } from '#lib/player/player.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import type { PageData } from './$types';
 
@@ -24,11 +26,30 @@
 						<p class="eyebrow">TIDAL</p>
 						<h2 id="daily-mix-title">{m.home_daily_mix_title()}</h2>
 					</div>
-					<p>{m.home_daily_mix_description()}</p>
+					<div class="mix-header-actions">
+						<button
+							type="button"
+							class="play-mix-btn"
+							onclick={() => player.play(data.dailyMix[0], data.dailyMix)}
+						>
+							<Play size={14} fill="currentColor" />
+							{m.player_play_all()}
+						</button>
+					</div>
 				</div>
 				<ol class="track-list">
 					{#each data.dailyMix as track, index (track.id)}
 						<li>
+							<button
+								type="button"
+								class="track-play-btn"
+								onclick={() => player.play(track, data.dailyMix)}
+								title={m.player_play_track()}
+								aria-label={m.player_play_track()}
+							>
+								<Play size={13} fill="currentColor" />
+							</button>
+
 							<span class="track-number">{String(index + 1).padStart(2, '0')}</span>
 							<a href={resolve('/app/tracks/[id]', { id: track.id })}>
 								<strong>{track.title}</strong>
@@ -40,6 +61,16 @@
 										'0'
 									)}</time
 								>{/if}
+
+							<button
+								type="button"
+								class="track-queue-btn"
+								onclick={() => player.addToQueue(track)}
+								title={m.player_add_to_queue()}
+								aria-label={m.player_add_to_queue()}
+							>
+								<ListPlus size={15} />
+							</button>
 						</li>
 					{/each}
 				</ol>
@@ -48,6 +79,7 @@
 				</a>
 			</section>
 		{/if}
+
 		<article class="action-card">
 			<h2>{m.home_search_title()}</h2>
 			<p>{m.home_search_description()}</p>
@@ -114,7 +146,7 @@
 
 	.section-heading {
 		display: flex;
-		align-items: end;
+		align-items: center;
 		justify-content: space-between;
 		gap: 1rem;
 	}
@@ -125,13 +157,27 @@
 		margin: 0;
 		font-size: 1.25rem;
 	}
-	.section-heading p:last-child {
-		max-width: 22rem;
-		margin: 0;
-		color: var(--text-muted);
-		font-size: 0.9rem;
-		text-align: right;
+
+	.play-mix-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		border: 0;
+		border-radius: 0.5rem;
+		background: var(--action);
+		color: var(--action-contrast);
+		padding: 0.4rem 0.8rem;
+		font: inherit;
+		font-size: 0.85rem;
+		font-weight: 700;
+		cursor: pointer;
+		transition: opacity 0.15s ease;
 	}
+
+	.play-mix-btn:hover {
+		opacity: 0.9;
+	}
+
 	.track-list {
 		margin: 1.5rem 0 1rem;
 		padding: 0;
@@ -139,12 +185,38 @@
 	}
 	.track-list li {
 		display: grid;
-		grid-template-columns: 2rem minmax(0, 1fr) auto;
+		grid-template-columns: 1.8rem 2rem minmax(0, 1fr) auto auto;
 		align-items: center;
-		gap: 0.75rem;
+		gap: 0.5rem;
 		min-height: 4rem;
 		border-top: 1px solid var(--border-subtle);
 	}
+
+	.track-play-btn,
+	.track-queue-btn {
+		display: grid;
+		place-items: center;
+		width: 1.85rem;
+		height: 1.85rem;
+		border: 0;
+		border-radius: 0.4rem;
+		background: transparent;
+		color: var(--text-muted);
+		cursor: pointer;
+		padding: 0;
+		transition: all 0.15s ease;
+	}
+
+	.track-play-btn:hover {
+		color: var(--action);
+		background: var(--surface-selected);
+	}
+
+	.track-queue-btn:hover {
+		color: var(--text-primary);
+		background: var(--surface-selected);
+	}
+
 	.track-list a {
 		display: grid;
 		min-width: 0;

@@ -170,5 +170,21 @@
 	"mixes_empty_title": "Gerade keine Mixe verfügbar",
 	"mixes_empty_description": "TIDAL erstellt Mixe, sobald du mehr Musik hörst.",
 	"mixes_unavailable_title": "Mixe sind nicht verfügbar",
-	"mixes_unavailable_description": "Bitte versuche es gleich noch einmal."
+	"mixes_unavailable_description": "Bitte versuche es gleich noch einmal.",
+	"player_now_playing": "Aktueller Titel",
+	"player_queue": "Warteschlange",
+	"player_queue_empty": "Deine Warteschlange ist leer",
+	"player_clear_queue": "Warteschlange leeren",
+	"player_next_up": "Als Nächstes",
+	"player_play_track": "Abspielen",
+	"player_play_all": "Alle abspielen",
+	"player_add_to_queue": "Zur Warteschlange",
+	"player_remove_from_queue": "Entfernen",
+	"player_previous": "Vorheriger Titel",
+	"player_next": "Nächster Titel",
+	"player_expand": "Player vergrößern",
+	"player_collapse": "Player verkleinern",
+	"player_close": "Player schließen",
+	"search_live_placeholder": "Schnellsuche nach Titeln, Alben, Künstlern...",
+	"search_live_searching": "Suche in TIDAL..."
 }
