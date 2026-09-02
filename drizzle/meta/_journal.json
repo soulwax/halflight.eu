@@ -15,6 +15,13 @@
       "when": 1788301426669,
       "tag": "0001_stale_lady_ursula",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788319655299,
+      "tag": "0002_huge_red_wolf",
+      "breakpoints": true
     }
   ]
 }

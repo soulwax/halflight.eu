@@ -23,9 +23,9 @@ export const tidalAuth = pgTable(
 );
 
 /**
- * The one, permanent administrator for this personal installation. This table is
- * intentionally owned by Syn rather than Better Auth: Better Auth's core schema
- * predates Drizzle migration tracking in this project.
+ * The one, permanent administrator for this personal installation. Owned by Syn
+ * rather than Better Auth: it maps a Better Auth user id to owner status, with no
+ * application path to reassign or delete it.
  */
 export const administrator = pgTable(
 	'administrator',
