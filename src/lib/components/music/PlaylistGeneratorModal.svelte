@@ -1,68 +1,117 @@
 <script lang="ts">
-	import { Disc, Sparkles, X } from '@lucide/svelte';
-	import { customPlaylists } from '#lib/player/customPlaylists.svelte';
+	import { CheckCircle2, Cloud, Disc, Sparkles, X } from '@lucide/svelte';
+	import { customPlaylists, type CustomPlaylist } from '#lib/player/customPlaylists.svelte';
 	import { player } from '#lib/player/player.svelte';
 	import type { TrackSummary } from '#lib/server/tidal/models';
 
-	let selectedVibe = $state('energy');
-	let selectedEra = $state('modern');
-	let selectedFocus = $state('energy');
+	let selectedVibe = $state('kinetic');
+	let selectedEra = $state('contemporary');
+	let selectedTexture = $state('synthesizers');
+	let selectedEnergyArc = $state('steady');
+	let selectedSize = $state(20);
+
 	let isGenerating = $state(false);
 	let statusText = $state('');
 	let errorMessage = $state<string | null>(null);
+	let successAccountSaved = $state(false);
+	let tidalExported = $state(false);
 
 	const VIBES = [
 		{
-			id: 'energy',
+			id: 'kinetic',
 			label: 'HIGH KINETIC',
-			sub: 'Electronic / Synth / Club / Dance',
+			sub: 'Synth / French Touch / Darkwave / Club',
 			color: 'var(--bauhaus-blue)'
 		},
 		{
-			id: 'rock',
-			label: 'RAW FREQUENCY',
-			sub: 'Post-Punk / Alternative / Garage Rock',
+			id: 'postpunk',
+			label: 'POST-PUNK & ART ROCK',
+			sub: 'Coldwave / Krautrock / Bauhaus Gothic',
 			color: 'var(--bauhaus-red)'
 		},
 		{
-			id: 'warm',
-			label: 'ORGANIC GROOVE',
-			sub: 'Soul / Funk / Disco / R&B',
+			id: 'funk',
+			label: 'COSMIC FUNK & SOUL',
+			sub: 'Rare Groove / Space Disco / Neo-Soul',
 			color: 'var(--bauhaus-yellow)'
 		},
 		{
 			id: 'noir',
-			label: 'LATE NOIR',
-			sub: 'Ambient / Downtempo / Dark Jazz',
+			label: 'LATE NOIR & TRIP-HOP',
+			sub: 'Bristol Sound / Dark Jazz / Downtempo',
+			color: 'var(--border-strong)'
+		},
+		{
+			id: 'techno',
+			label: 'DETROIT TECHNO & MINIMAL',
+			sub: 'Dub Techno / Motor City / Berlin Acid',
+			color: 'var(--bauhaus-blue)'
+		},
+		{
+			id: 'shoegaze',
+			label: 'ETHEREAL SHOEGAZE',
+			sub: 'Dream Pop / Lush Reverb / Melodic Fuzz',
+			color: 'var(--bauhaus-red)'
+		},
+		{
+			id: 'jazz',
+			label: 'MODAL JAZZ & FUSION',
+			sub: 'Blue Note 60s / Spiritual Jazz / ECM',
+			color: 'var(--bauhaus-yellow)'
+		},
+		{
+			id: 'ambient',
+			label: 'AVANT-GARDE AMBIENT',
+			sub: 'Modular Synthesis / Drone / Modern Classical',
 			color: 'var(--border-strong)'
 		}
 	];
 
 	const ERAS = [
-		{ id: 'modern', label: 'CONTEMPORARY', sub: '2020s & Fresh Releases' },
+		{ id: 'contemporary', label: 'CONTEMPORARY', sub: '2020s & Fresh Horizons' },
 		{ id: 'golden', label: 'GOLDEN CYCLE', sub: '2000s & 2010s Anthems' },
 		{ id: 'vintage', label: 'ANALOG WAVE', sub: '80s & 90s Vintage Wave' },
-		{ id: 'classics', label: 'FOUNDATION', sub: '60s & 70s Roots' }
+		{ id: 'foundation', label: 'ARCHITECTURAL ROOTS', sub: '60s & 70s Foundation' },
+		{ id: 'timeless', label: 'CONTINUUM', sub: 'All Eras Intertwined' }
 	];
 
-	const FOCUS_MODES = [
-		{ id: 'energy', label: 'DRIVING ENERGY' },
-		{ id: 'focus', label: 'DEEP FOCUS / CHILL' },
-		{ id: 'vocal', label: 'VOCAL ANTHEMS' }
+	const TEXTURES = [
+		{ id: 'synthesizers', label: 'ANALOG SYNTHS' },
+		{ id: 'organic', label: 'ORGANIC & ACOUSTIC' },
+		{ id: 'motorik', label: 'HYPNOTIC MOTORIK' },
+		{ id: 'atmospheric', label: 'DENSE ATMOSPHERE' }
+	];
+
+	const ENERGY_ARCS = [
+		{ id: 'steady', label: 'STEADY DEEP GROOVE' },
+		{ id: 'accelerando', label: 'ACCELERANDO (BUILDING)' },
+		{ id: 'peak', label: 'MAXIMUM VOLTAGE' },
+		{ id: 'chill', label: 'LATE NIGHT REVERIE' }
+	];
+
+	const SIZES = [
+		{ value: 12, label: '12 TRACKS (EP ~45m)' },
+		{ value: 20, label: '20 TRACKS (LP ~75m)' },
+		{ value: 30, label: '30 TRACKS (ODYSSEY ~2h)' }
 	];
 
 	async function handleSynthesize() {
 		isGenerating = true;
 		errorMessage = null;
+		successAccountSaved = false;
+		tidalExported = false;
 		statusText = 'CONNECTING TO TIDAL CORE...';
 
 		try {
 			setTimeout(() => {
-				if (isGenerating) statusText = 'SCANNING CATALOGUE FOR FREQUENCIES...';
+				if (isGenerating) statusText = 'SCANNING FREQUENCIES ACROSS CATALOGUE...';
 			}, 600);
 			setTimeout(() => {
-				if (isGenerating) statusText = 'SYNTHESIZING ON-THE-FLY PLAYLIST...';
-			}, 1400);
+				if (isGenerating) statusText = 'CALCULATING TEMPO & SHAPING ENERGY ARC...';
+			}, 1300);
+			setTimeout(() => {
+				if (isGenerating) statusText = 'PERSISTING PLAYLIST TO ACCOUNT DATABASE...';
+			}, 2100);
 
 			const response = await fetch('/api/generate-playlist', {
 				method: 'POST',
@@ -70,34 +119,51 @@
 				body: JSON.stringify({
 					vibe: selectedVibe,
 					era: selectedEra,
-					focus: selectedFocus
+					texture: selectedTexture,
+					energyArc: selectedEnergyArc,
+					size: selectedSize
 				})
 			});
 
 			if (!response.ok) {
-				throw new Error('Failed to generate playlist');
+				throw new Error('Failed to synthesize playlist');
 			}
 
 			const data = (await response.json()) as {
+				playlist: CustomPlaylist;
 				title: string;
 				description: string;
 				tracks: TrackSummary[];
+				savedToAccount: boolean;
+				tidalPlaylistId?: string | null;
 			};
 
 			if (!data.tracks || data.tracks.length === 0) {
 				throw new Error('No tracks found for this combination.');
 			}
 
-			// Save to user's custom playlists
-			customPlaylists.createPlaylist(data.title, data.description, data.tracks);
+			successAccountSaved = true;
+			if (data.tidalPlaylistId) {
+				tidalExported = true;
+			}
 
-			// Immediately launch playback
+			// Add/sync to client playlists state
+			customPlaylists.createPlaylist(data.title, data.description, data.tracks, data.playlist);
+
+			// Automatically queue and begin playback
 			player.play(data.tracks[0], data.tracks);
 
-			customPlaylists.closeGenerator();
+			statusText = data.tidalPlaylistId
+				? 'SAVED TO SYN ACCOUNT & EXPORTED TO TIDAL!'
+				: 'SAVED PERMANENTLY TO YOUR SYN ACCOUNT!';
+
+			// Wait a brief moment to celebrate success, then close
+			setTimeout(() => {
+				customPlaylists.closeGenerator();
+				isGenerating = false;
+			}, 900);
 		} catch (err: unknown) {
 			errorMessage = err instanceof Error ? err.message : 'Playlist generation failed.';
-		} finally {
 			isGenerating = false;
 		}
 	}
@@ -120,8 +186,8 @@
 					<span class="bar bar-yellow"></span>
 				</div>
 				<div>
-					<p class="eyebrow">SYN // AUTOMATED COMPOSER</p>
-					<h2 id="generator-title">GENERATE INSTANT PLAYLIST</h2>
+					<p class="eyebrow">SYN // AUTOMATED COMPOSER & ACCOUNT ARCHIVIST</p>
+					<h2 id="generator-title">GENERATE & ARCHIVE PLAYLIST</h2>
 				</div>
 			</div>
 			<button
@@ -142,9 +208,9 @@
 				</div>
 			{/if}
 
-			<!-- Question 1: Vibe -->
+			<!-- Question 1: Vibe / Soundscape -->
 			<section class="question-group">
-				<p class="group-label">01 // SELECT SOUNDSCAPE / FREQUENCY</p>
+				<p class="group-label">01 // SELECT SOUNDSCAPE ARCHETYPE</p>
 				<div class="vibe-grid">
 					{#each VIBES as vibe (vibe.id)}
 						<button
@@ -163,9 +229,9 @@
 				</div>
 			</section>
 
-			<!-- Question 2: Era -->
+			<!-- Question 2: Era Horizon -->
 			<section class="question-group">
-				<p class="group-label">02 // SELECT ERA CYCLE</p>
+				<p class="group-label">02 // SELECT ERA HORIZON</p>
 				<div class="era-grid">
 					{#each ERAS as era (era.id)}
 						<button
@@ -181,22 +247,57 @@
 				</div>
 			</section>
 
-			<!-- Question 3: Focus Mode -->
+			<!-- Question 3: Sonic Texture -->
 			<section class="question-group">
-				<p class="group-label">03 // PACING / INTENSITY</p>
-				<div class="focus-row">
-					{#each FOCUS_MODES as focus (focus.id)}
+				<p class="group-label">03 // SONIC TEXTURE & CHARACTER</p>
+				<div class="chip-row">
+					{#each TEXTURES as tex (tex.id)}
 						<button
 							type="button"
-							class="focus-btn"
-							class:focus-selected={selectedFocus === focus.id}
-							onclick={() => (selectedFocus = focus.id)}
+							class="chip-btn"
+							class:chip-selected={selectedTexture === tex.id}
+							onclick={() => (selectedTexture = tex.id)}
 						>
-							{focus.label}
+							{tex.label}
 						</button>
 					{/each}
 				</div>
 			</section>
+
+			<!-- Question 4: Energy Arc & Length -->
+			<div class="dual-row">
+				<section class="question-group flex-1">
+					<p class="group-label">04 // ENERGY FLOW & ARC</p>
+					<div class="chip-row">
+						{#each ENERGY_ARCS as arc (arc.id)}
+							<button
+								type="button"
+								class="chip-btn"
+								class:chip-selected={selectedEnergyArc === arc.id}
+								onclick={() => (selectedEnergyArc = arc.id)}
+							>
+								{arc.label}
+							</button>
+						{/each}
+					</div>
+				</section>
+
+				<section class="question-group">
+					<p class="group-label">05 // SCALE</p>
+					<div class="chip-row">
+						{#each SIZES as s (s.value)}
+							<button
+								type="button"
+								class="chip-btn"
+								class:chip-selected={selectedSize === s.value}
+								onclick={() => (selectedSize = s.value)}
+							>
+								{s.label}
+							</button>
+						{/each}
+					</div>
+				</section>
+			</div>
 		</div>
 
 		<footer class="modal-footer">
@@ -205,8 +306,20 @@
 					<div class="pulse-dot"></div>
 					<span class="font-mono text-xs">{statusText}</span>
 				</div>
+			{:else if successAccountSaved}
+				<div class="success-status">
+					<CheckCircle2 size={16} class="text-[var(--action)]" />
+					<span class="font-mono text-xs">ARCHIVED IN ACCOUNT</span>
+					{#if tidalExported}
+						<Cloud size={14} class="ml-1 text-[var(--bauhaus-blue)]" />
+					{/if}
+				</div>
 			{:else}
-				<p class="footer-hint">Composes 20 tracks & launches audio engine immediately.</p>
+				<div class="footer-info">
+					<Cloud size={14} class="text-[var(--action)]" />
+					<span class="footer-hint">Saves directly to your Syn account & syncs across devices.</span
+					>
+				</div>
 			{/if}
 
 			<button type="button" class="submit-btn" disabled={isGenerating} onclick={handleSynthesize}>
@@ -215,7 +328,7 @@
 					COMPOSING...
 				{:else}
 					<Sparkles size={18} />
-					SYNTHESIZE & PLAY
+					SYNTHESIZE & ARCHIVE
 				{/if}
 			</button>
 		</footer>
@@ -236,15 +349,19 @@
 		top: 50%;
 		left: 50%;
 		transform: translate(-50%, -50%);
-		width: calc(100% - 2rem);
-		max-width: 38rem;
+		width: calc(100% - 2.5rem);
+		max-width: 46rem;
 		background: var(--surface-raised);
 		border: 2px solid var(--border-strong);
-		box-shadow: 8px 8px 0px rgba(0, 0, 0, 0.5);
+		border-radius: var(--radius-xl, 18px);
+		box-shadow:
+			0 24px 56px -8px rgba(0, 0, 0, 0.55),
+			4px 4px 0px var(--border-strong);
 		z-index: 160;
 		display: flex;
 		flex-direction: column;
 		max-height: 90vh;
+		overflow: hidden;
 		animation: scaleUp 0.15s ease;
 	}
 
@@ -252,7 +369,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		padding: 1.25rem 1.5rem;
+		padding: 1.25rem 1.75rem;
 		border-bottom: 2px solid var(--border-subtle);
 		background: var(--surface-canvas);
 	}
@@ -269,6 +386,8 @@
 		gap: 3px;
 		width: 6px;
 		height: 28px;
+		border-radius: var(--radius-full, 9999px);
+		overflow: hidden;
 	}
 
 	.bar {
@@ -308,6 +427,7 @@
 		width: 2.25rem;
 		height: 2.25rem;
 		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-sm, 6px);
 		background: transparent;
 		color: var(--text-muted);
 		cursor: pointer;
@@ -321,7 +441,7 @@
 	}
 
 	.modal-body {
-		padding: 1.5rem;
+		padding: 1.5rem 1.75rem;
 		overflow-y: auto;
 		display: flex;
 		flex-direction: column;
@@ -340,7 +460,7 @@
 
 	.vibe-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+		grid-template-columns: repeat(auto-fit, minmax(14.5rem, 1fr));
 		gap: 0.75rem;
 	}
 
@@ -348,8 +468,9 @@
 		display: flex;
 		align-items: center;
 		gap: 0.75rem;
-		padding: 0.75rem 1rem;
+		padding: 0.85rem 1rem;
 		border: 2px solid var(--border-subtle);
+		border-radius: var(--radius-md, 10px);
 		background: var(--surface-canvas);
 		text-align: left;
 		cursor: pointer;
@@ -358,6 +479,8 @@
 
 	.vibe-btn:hover {
 		border-color: var(--border-strong);
+		box-shadow: 2px 2px 0px var(--border-strong);
+		transform: translate(-1px, -1px);
 	}
 
 	.vibe-selected {
@@ -369,6 +492,7 @@
 	.vibe-color-indicator {
 		width: 0.75rem;
 		height: 0.75rem;
+		border-radius: var(--radius-full, 9999px);
 		flex: 0 0 auto;
 	}
 
@@ -379,28 +503,32 @@
 	}
 
 	.vibe-text strong {
-		font-size: 0.85rem;
+		font-size: 0.8rem;
 		font-weight: 800;
 		letter-spacing: 0.02em;
 	}
 
 	.vibe-text span {
-		font-size: 0.75rem;
+		font-size: 0.7rem;
 		color: var(--text-muted);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 
 	.era-grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
-		gap: 0.5rem;
+		gap: 0.55rem;
 	}
 
 	.era-btn {
 		display: flex;
 		flex-direction: column;
 		gap: 0.2rem;
-		padding: 0.65rem 0.75rem;
+		padding: 0.75rem 0.85rem;
 		border: 2px solid var(--border-subtle);
+		border-radius: var(--radius-md, 8px);
 		background: var(--surface-canvas);
 		text-align: left;
 		cursor: pointer;
@@ -409,6 +537,8 @@
 
 	.era-btn:hover {
 		border-color: var(--border-strong);
+		box-shadow: 2px 2px 0px var(--border-strong);
+		transform: translate(-1px, -1px);
 	}
 
 	.era-selected {
@@ -418,24 +548,31 @@
 	}
 
 	.era-btn strong {
-		font-size: 0.8rem;
+		font-size: 0.75rem;
 		font-weight: 800;
 	}
 
 	.era-btn span {
-		font-size: 0.7rem;
+		font-size: 0.65rem;
 		color: var(--text-muted);
 	}
 
-	.focus-row {
+	.dual-row {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.5rem;
+		gap: 1.5rem;
 	}
 
-	.focus-btn {
-		padding: 0.5rem 0.85rem;
+	.chip-row {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.55rem;
+	}
+
+	.chip-btn {
+		padding: 0.55rem 0.95rem;
 		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-sm, 6px);
 		background: var(--surface-canvas);
 		font-family: ui-monospace, monospace;
 		font-size: 0.75rem;
@@ -444,11 +581,11 @@
 		transition: all 0.12s ease;
 	}
 
-	.focus-btn:hover {
+	.chip-btn:hover {
 		border-color: var(--border-strong);
 	}
 
-	.focus-selected {
+	.chip-selected {
 		border-color: var(--action);
 		background: var(--action);
 		color: var(--action-contrast);
@@ -458,10 +595,16 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		padding: 1.25rem 1.5rem;
+		padding: 1.25rem 1.75rem;
 		border-top: 2px solid var(--border-subtle);
 		background: var(--surface-canvas);
 		gap: 1rem;
+	}
+
+	.footer-info {
+		display: flex;
+		align-items: center;
+		gap: 0.45rem;
 	}
 
 	.footer-hint {
@@ -470,7 +613,8 @@
 		font-size: 0.8rem;
 	}
 
-	.generating-status {
+	.generating-status,
+	.success-status {
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
@@ -489,8 +633,9 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 0.5rem;
-		padding: 0.75rem 1.4rem;
+		padding: 0.85rem 1.5rem;
 		border: 2px solid var(--border-strong);
+		border-radius: var(--radius-md, 8px);
 		background: var(--action);
 		color: var(--action-contrast);
 		font-weight: 800;

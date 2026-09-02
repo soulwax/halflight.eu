@@ -320,8 +320,8 @@
 
 	.song-cards-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
-		gap: 0.75rem;
+		grid-template-columns: repeat(auto-fill, minmax(21rem, 1fr));
+		gap: 1.15rem;
 	}
 
 	.result-list {
@@ -333,11 +333,12 @@
 	.result-row {
 		display: flex;
 		align-items: center;
-		gap: 0.85rem;
-		padding: 0.75rem;
+		gap: 1rem;
+		padding: 0.85rem 1.15rem;
 		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-md, 8px);
 		background: var(--surface-canvas);
-		margin-bottom: 0.5rem;
+		margin-bottom: 0.65rem;
 		transition: all 0.12s ease;
 	}
 
@@ -349,10 +350,11 @@
 	.media-mark {
 		display: grid;
 		place-items: center;
-		width: 2.25rem;
-		height: 2.25rem;
+		width: 2.35rem;
+		height: 2.35rem;
 		flex: 0 0 auto;
 		border: 1px solid var(--border-strong);
+		border-radius: var(--radius-sm, 6px);
 		background: var(--surface-selected);
 		color: var(--text-primary);
 		font-family: ui-monospace, monospace;
@@ -393,7 +395,7 @@
 	}
 
 	.attribution {
-		margin-top: 2.5rem;
+		margin-top: 3rem;
 		color: var(--text-muted);
 		font-family: ui-monospace, monospace;
 		font-size: 0.75rem;
@@ -406,26 +408,27 @@
 
 	/* Custom Playlists Block */
 	.custom-pl-block {
-		margin-bottom: 2.5rem;
+		margin-bottom: 3.5rem;
 		border: 2px solid var(--border-subtle);
+		border-radius: var(--radius-lg, 14px);
 		background: var(--surface-raised);
-		padding: clamp(1.25rem, 3vw, 1.75rem);
+		padding: clamp(1.5rem, 3.5vw, 2rem);
 	}
 
 	.custom-pl-header {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		margin-bottom: 1.25rem;
+		margin-bottom: 1.5rem;
 		border-bottom: 1px solid var(--border-subtle);
-		padding-bottom: 0.75rem;
+		padding-bottom: 0.85rem;
 		flex-wrap: wrap;
-		gap: 0.5rem;
+		gap: 0.75rem;
 	}
 
 	.custom-pl-header h2 {
 		margin: 0;
-		font-size: 1.2rem;
+		font-size: 1.25rem;
 		font-weight: 800;
 		text-transform: uppercase;
 		letter-spacing: 0.02em;
@@ -434,9 +437,10 @@
 	.create-btn {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.4rem;
-		padding: 0.45rem 0.9rem;
+		gap: 0.45rem;
+		padding: 0.5rem 1rem;
 		border: 1px solid var(--action);
+		border-radius: var(--radius-sm, 6px);
 		background: var(--action);
 		color: var(--action-contrast);
 		font-family: ui-monospace, monospace;
@@ -455,17 +459,18 @@
 
 	.custom-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
-		gap: 0.85rem;
+		grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+		gap: 1.15rem;
 	}
 
 	.custom-card {
-		padding: 0.85rem;
+		padding: 1.15rem;
 		border: 2px solid var(--border-subtle);
+		border-radius: var(--radius-md, 10px);
 		background: var(--surface-canvas);
 		display: flex;
 		flex-direction: column;
-		gap: 0.65rem;
+		gap: 0.75rem;
 		transition: all 0.12s ease;
 	}
 
@@ -478,7 +483,7 @@
 	.card-top {
 		display: flex;
 		align-items: center;
-		gap: 0.65rem;
+		gap: 0.75rem;
 	}
 
 	.card-bottom {
@@ -486,7 +491,7 @@
 		align-items: center;
 		justify-content: space-between;
 		margin-top: auto;
-		padding-top: 0.5rem;
+		padding-top: 0.65rem;
 		border-top: 1px solid var(--border-subtle);
 	}
 
@@ -494,8 +499,9 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 0.35rem;
-		padding: 0.35rem 0.75rem;
+		padding: 0.4rem 0.85rem;
 		border: 1px solid var(--action);
+		border-radius: var(--radius-sm, 6px);
 		background: var(--action);
 		color: var(--action-contrast);
 		font-family: ui-monospace, monospace;
@@ -517,9 +523,10 @@
 	.card-del-btn {
 		display: grid;
 		place-items: center;
-		width: 1.85rem;
-		height: 1.85rem;
+		width: 1.95rem;
+		height: 1.95rem;
 		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-sm, 6px);
 		background: transparent;
 		color: var(--text-muted);
 		cursor: pointer;

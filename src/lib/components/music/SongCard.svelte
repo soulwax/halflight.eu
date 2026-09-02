@@ -189,12 +189,13 @@
 	.song-card {
 		display: flex;
 		align-items: center;
-		gap: 0.9rem;
-		padding: 0.75rem 0.9rem;
+		gap: 1.15rem;
+		padding: 0.95rem 1.15rem;
 		border: 2px solid var(--border-subtle);
 		background: var(--surface-raised);
+		border-radius: var(--radius-md, 10px);
 		position: relative;
-		transition: all 120ms cubic-bezier(0.16, 1, 0.3, 1);
+		transition: all 140ms cubic-bezier(0.16, 1, 0.3, 1);
 	}
 
 	.song-card:hover {
@@ -205,11 +206,12 @@
 
 	.artwork-wrap {
 		position: relative;
-		width: clamp(4.25rem, 8.5vw, 5.25rem);
+		width: clamp(4.5rem, 9vw, 5.5rem);
 		aspect-ratio: 1;
 		flex: 0 0 auto;
 		overflow: hidden;
 		border: 1px solid var(--border-strong);
+		border-radius: var(--radius-sm, 6px);
 		background: var(--surface-canvas);
 	}
 
@@ -249,7 +251,7 @@
 	.song-details {
 		display: flex;
 		flex-direction: column;
-		gap: 0.2rem;
+		gap: 0.25rem;
 		min-width: 0;
 		flex: 1 1 auto;
 	}
@@ -359,63 +361,70 @@
 		color: var(--text-muted);
 		font-size: 0.7rem;
 		background: var(--surface-selected);
-		padding: 0.05rem 0.25rem;
+		padding: 0.15rem 0.45rem;
 		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-full, 9999px);
 	}
 
 	.explicit-badge {
 		border: 1px solid var(--border-strong);
-		padding: 0.05rem 0.3rem;
+		padding: 0.1rem 0.4rem;
 		color: var(--text-primary);
 		font-family: ui-monospace, monospace;
 		font-size: 0.65rem;
 		font-weight: 800;
+		border-radius: var(--radius-xs, 4px);
 	}
 
 	.quality-badge {
 		background: var(--surface-selected);
 		border: 1px solid var(--border-subtle);
-		padding: 0.1rem 0.35rem;
+		padding: 0.15rem 0.5rem;
 		color: var(--action);
 		font-family: ui-monospace, monospace;
 		font-size: 0.65rem;
 		font-weight: 800;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
+		border-radius: var(--radius-full, 9999px);
 	}
 
 	.pop-badge {
 		color: var(--text-muted);
 		font-size: 0.68rem;
 		border: 1px solid var(--border-subtle);
-		padding: 0.05rem 0.25rem;
+		padding: 0.15rem 0.45rem;
+		border-radius: var(--radius-full, 9999px);
 	}
 
 	.card-actions {
 		display: flex;
 		align-items: center;
-		gap: 0.35rem;
+		gap: 0.45rem;
 		flex: 0 0 auto;
 	}
 
 	.action-btn {
 		display: grid;
 		place-items: center;
-		width: 2rem;
-		height: 2rem;
+		width: 2.15rem;
+		height: 2.15rem;
 		border: 1px solid var(--border-subtle);
 		background: var(--surface-canvas);
 		color: var(--text-muted);
+		border-radius: var(--radius-sm, 6px);
 		cursor: pointer;
 		padding: 0;
 		text-decoration: none;
-		transition: all 120ms ease;
+		transition: all 120ms cubic-bezier(0.16, 1, 0.3, 1);
 	}
 
 	.action-btn:hover {
-		border-color: var(--border-strong);
 		color: var(--text-primary);
+		border-color: var(--border-strong);
 		background: var(--surface-selected);
+		box-shadow: 2px 2px 0px var(--border-strong);
+		transform: translate(-1px, -1px);
 	}
 
 	.action-btn-active {

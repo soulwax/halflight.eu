@@ -33,6 +33,15 @@
 	"tidal_settings_debug_copy": "Kopieren",
 	"tidal_settings_debug_copied": "Kopiert!",
 	"tidal_settings_debug_warning": "Halte diese Tokens geheim. Sie gewähren direkten Zugriff auf dein TIDAL-Konto.",
+	"tidal_device_auth_title": "Vollständige Song-Wiedergabe & Streaming",
+	"tidal_device_auth_desc": "Autorisiere über TIDAL Link für unterbrechungsfreies Streaming ganzer Songs ohne 30-Sekunden-Vorschau-Beschränkung.",
+	"tidal_device_auth_btn": "Vollständige Wiedergabe über TIDAL Link autorisieren",
+	"tidal_device_auth_waiting": "Warte auf Bestätigung bei TIDAL...",
+	"tidal_device_auth_prompt": "Öffne den folgenden Link und bestätige die Autorisierung bei TIDAL:",
+	"tidal_device_auth_open": "link.tidal.com öffnen",
+	"tidal_device_auth_success": "Vollständige Wiedergabe erfolgreich autorisiert!",
+	"tidal_playback_full_active": "Vollständige Song-Wiedergabe aktiv (Lossless/High)",
+	"tidal_playback_standard_only": "Standard-API-Modus (Vollständige Wiedergabe erfordert TIDAL-Link-Autorisierung)",
 	"nav_home": "Startseite",
 
 	"nav_search": "Suche",
@@ -194,5 +203,14 @@
 	"album_similar_subtitle": "Alben passend zu dieser Veröffentlichung",
 	"artist_radio_title": "Künstler-Radio",
 	"artist_radio_subtitle": "Musik inspiriert von {name} und verwandten Klängen",
-	"footer_text": "{version} - Copyright soulwax@github 2026 - Diese Seite wurde nach den reinen Bauhaus-Prinzipien erstellt."
+	"footer_text": "{version} - Copyright soulwax@github 2026 - Diese Seite wurde nach den reinen Bauhaus-Prinzipien erstellt.",
+	"tidal_device_auth_title": "Direktes Hi-Res Audio Streaming",
+	"tidal_device_auth_desc": "Autorisiere Hi-Res Streaming-Wiedergabe (FLAC / AAC / Lossless) über TIDAL-Geräteautorisierung.",
+	"tidal_playback_full_active": "Vollständiges Streaming aktiv",
+	"tidal_playback_standard_only": "Nur Standard-Web-Vorschau",
+	"tidal_device_auth_prompt": "Um volles Lossless-Streaming zu aktivieren, öffne TIDAL und bestätige den Code:",
+	"tidal_device_auth_open": "link.tidal.com öffnen",
+	"tidal_device_auth_waiting": "Warte auf Bestätigung in TIDAL...",
+	"tidal_device_auth_success": "Geräteautorisierung erfolgreich! Hi-Res-Wiedergabe ist jetzt aktiv.",
+	"tidal_device_auth_btn": "Vollständige Wiedergabe autorisieren"
 }

@@ -33,6 +33,15 @@
 	"tidal_settings_debug_copy": "Copy",
 	"tidal_settings_debug_copied": "Copied!",
 	"tidal_settings_debug_warning": "Keep these tokens secret. They grant direct access to your TIDAL account.",
+	"tidal_device_auth_title": "Full Song Playback & Streaming",
+	"tidal_device_auth_desc": "Authorize with TIDAL Link for native full-track streaming playback without 30-second preview restrictions.",
+	"tidal_device_auth_btn": "Authorize Full Playback via TIDAL Link",
+	"tidal_device_auth_waiting": "Waiting for authorization on TIDAL...",
+	"tidal_device_auth_prompt": "Open the link below and confirm authorization on TIDAL:",
+	"tidal_device_auth_open": "Open link.tidal.com",
+	"tidal_device_auth_success": "Full streaming playback authorized successfully!",
+	"tidal_playback_full_active": "Full Streaming Playback Active (Lossless/High)",
+	"tidal_playback_standard_only": "Standard API Mode (Full song streaming requires TIDAL Link authorization)",
 	"nav_home": "Home",
 
 	"nav_search": "Search",
@@ -194,5 +203,14 @@
 	"album_similar_subtitle": "Albums related to this release",
 	"artist_radio_title": "Artist Radio Station",
 	"artist_radio_subtitle": "Music inspired by {name} and similar sounds",
-	"footer_text": "{version} - Copyright soulwax@github 2026 - Btw this site was built using pure Bauhaus principles"
+	"footer_text": "{version} - Copyright soulwax@github 2026 - Btw this site was built using pure Bauhaus principles",
+	"tidal_device_auth_title": "Direct Hi-Res Audio Streaming",
+	"tidal_device_auth_desc": "Authorize Hi-Res streaming playback (FLAC / AAC / Lossless) using TIDAL Device Authentication.",
+	"tidal_playback_full_active": "Full Streaming Active",
+	"tidal_playback_standard_only": "Standard Web Preview Only",
+	"tidal_device_auth_prompt": "To enable full lossless streaming, open TIDAL and confirm the code:",
+	"tidal_device_auth_open": "Open link.tidal.com",
+	"tidal_device_auth_waiting": "Waiting for authorization on TIDAL...",
+	"tidal_device_auth_success": "Device authorization successful! Full Hi-Res playback is now enabled.",
+	"tidal_device_auth_btn": "Authorize Full Playback"
 }

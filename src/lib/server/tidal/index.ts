@@ -49,3 +49,25 @@ export { seal, open } from './crypto';
 export * as tidalApi from './api';
 export * from './jsonapi';
 export { getConnectionStatus, type TidalConnectionStatus } from './status';
+export {
+	fetchTrackStream,
+	parseTrackStream,
+	parseManifestXml,
+	type TrackAudioQuality,
+	type TrackStreamResponse,
+	type BTSManifest,
+	type ParsedTrackStream,
+	type ResolvedStreamInfo
+} from './stream';
+export {
+	requestDeviceAuthorization,
+	pollDeviceToken,
+	refreshDeviceToken,
+	TIDDL_CLIENT_ID,
+	TIDDL_SCOPE,
+	type DeviceAuthorizationResponse,
+	type DeviceTokenResult,
+	type DeviceTokenSuccess,
+	type DeviceTokenPending,
+	type DeviceTokenExpired
+} from './device-auth';

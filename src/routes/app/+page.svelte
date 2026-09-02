@@ -249,23 +249,24 @@
 		align-items: center;
 		justify-content: space-between;
 		flex-wrap: wrap;
-		gap: 1.5rem;
-		margin-bottom: 2.5rem;
-		padding: 1.5rem 1.75rem;
+		gap: 2rem;
+		margin-bottom: 3.5rem;
+		padding: 2rem 2.25rem;
 		background: var(--surface-raised);
 		border: 2px solid var(--border-strong);
+		border-radius: var(--radius-lg, 14px);
 		box-shadow: var(--shadow-bauhaus);
 	}
 
 	.composer-content {
-		max-width: 36rem;
+		max-width: 38rem;
 	}
 
 	.composer-badge {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.4rem;
-		padding: 0.2rem 0.6rem;
+		gap: 0.45rem;
+		padding: 0.25rem 0.75rem;
 		background: var(--action);
 		color: var(--action-contrast);
 		font-family: ui-monospace, monospace;
@@ -273,12 +274,13 @@
 		font-weight: 800;
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
-		margin-bottom: 0.75rem;
+		border-radius: var(--radius-full, 9999px);
+		margin-bottom: 0.85rem;
 	}
 
 	.composer-hero h2 {
-		margin: 0 0 0.4rem;
-		font-size: 1.35rem;
+		margin: 0 0 0.5rem;
+		font-size: 1.45rem;
 		font-weight: 800;
 		letter-spacing: -0.02em;
 		text-transform: uppercase;
@@ -287,16 +289,17 @@
 	.composer-desc {
 		margin: 0;
 		color: var(--text-muted);
-		font-size: 0.9rem;
-		line-height: 1.45;
+		font-size: 0.95rem;
+		line-height: 1.55;
 	}
 
 	.composer-launch-btn {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.5rem;
-		padding: 0.75rem 1.4rem;
+		gap: 0.55rem;
+		padding: 0.85rem 1.6rem;
 		border: 2px solid var(--border-strong);
+		border-radius: var(--radius-md, 8px);
 		background: var(--action);
 		color: var(--action-contrast);
 		font-weight: 800;
@@ -315,22 +318,23 @@
 
 	/* Custom Playlists */
 	.custom-playlists-section {
-		margin-bottom: 3rem;
+		margin-bottom: 3.5rem;
 	}
 
 	.custom-playlists-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
-		gap: 1rem;
+		grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr));
+		gap: 1.25rem;
 	}
 
 	.custom-playlist-card {
-		padding: 1rem;
+		padding: 1.25rem;
 		border: 2px solid var(--border-subtle);
+		border-radius: var(--radius-lg, 12px);
 		background: var(--surface-canvas);
 		display: flex;
 		flex-direction: column;
-		gap: 0.75rem;
+		gap: 0.85rem;
 		transition: all 0.12s ease;
 	}
 
@@ -343,15 +347,16 @@
 	.pl-card-header {
 		display: flex;
 		align-items: center;
-		gap: 0.75rem;
+		gap: 0.85rem;
 	}
 
 	.pl-icon-wrap {
 		display: grid;
 		place-items: center;
-		width: 2.25rem;
-		height: 2.25rem;
+		width: 2.5rem;
+		height: 2.5rem;
 		border: 1px solid var(--border-strong);
+		border-radius: var(--radius-md, 8px);
 		background: var(--surface-selected);
 	}
 
@@ -390,7 +395,7 @@
 		align-items: center;
 		justify-content: space-between;
 		margin-top: auto;
-		padding-top: 0.5rem;
+		padding-top: 0.75rem;
 		border-top: 1px solid var(--border-subtle);
 	}
 
@@ -398,8 +403,9 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 0.35rem;
-		padding: 0.4rem 0.85rem;
+		padding: 0.45rem 0.95rem;
 		border: 1px solid var(--action);
+		border-radius: var(--radius-sm, 6px);
 		background: var(--action);
 		color: var(--action-contrast);
 		font-family: ui-monospace, monospace;
@@ -421,9 +427,10 @@
 	.pl-delete-btn {
 		display: grid;
 		place-items: center;
-		width: 1.85rem;
-		height: 1.85rem;
+		width: 2rem;
+		height: 2rem;
 		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-sm, 6px);
 		background: transparent;
 		color: var(--text-muted);
 		cursor: pointer;
@@ -439,9 +446,10 @@
 	.create-pl-btn {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.35rem;
-		padding: 0.4rem 0.8rem;
+		gap: 0.4rem;
+		padding: 0.45rem 0.95rem;
 		border: 1px solid var(--border-strong);
+		border-radius: var(--radius-sm, 6px);
 		background: var(--surface-canvas);
 		color: var(--text-primary);
 		font-family: ui-monospace, monospace;
@@ -458,21 +466,21 @@
 
 	/* Mix Section */
 	.mix-section {
-		margin-bottom: 3.5rem;
+		margin-bottom: 4rem;
 	}
 
 	.section-heading {
 		display: flex;
 		align-items: flex-end;
 		justify-content: space-between;
-		margin-bottom: 1.25rem;
+		margin-bottom: 1.5rem;
 		border-bottom: 2px solid var(--border-subtle);
-		padding-bottom: 0.75rem;
+		padding-bottom: 0.85rem;
 	}
 
 	.section-heading h2 {
 		margin: 0;
-		font-size: 1.4rem;
+		font-size: 1.45rem;
 		font-weight: 800;
 		letter-spacing: -0.03em;
 		text-transform: uppercase;
@@ -483,9 +491,10 @@
 		align-items: center;
 		gap: 0.45rem;
 		border: 1px solid var(--action);
+		border-radius: var(--radius-sm, 6px);
 		background: var(--action);
 		color: var(--action-contrast);
-		padding: 0.45rem 0.95rem;
+		padding: 0.5rem 1.15rem;
 		font: inherit;
 		font-size: 0.8rem;
 		font-weight: 800;
@@ -502,12 +511,12 @@
 
 	.song-cards-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
-		gap: 0.85rem;
+		grid-template-columns: repeat(auto-fill, minmax(21rem, 1fr));
+		gap: 1.15rem;
 	}
 
 	.mix-footer {
-		margin-top: 1.25rem;
+		margin-top: 1.5rem;
 		display: flex;
 		justify-content: flex-end;
 	}
@@ -534,15 +543,17 @@
 
 	.actions-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
-		gap: 1.25rem;
+		grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+		gap: 1.5rem;
 	}
 
 	.action-card {
 		position: relative;
 		border: 2px solid var(--border-subtle);
+		border-radius: var(--radius-lg, 14px);
 		background: var(--surface-raised);
-		padding: clamp(1.25rem, 3vw, 1.75rem);
+		padding: clamp(1.5rem, 3.5vw, 2rem);
+		overflow: hidden;
 		transition: all 0.15s ease;
 	}
 
@@ -591,13 +602,15 @@
 		align-items: center;
 		justify-content: center;
 		border: 2px solid var(--border-strong);
+		border-radius: var(--radius-sm, 6px);
 		background: var(--action);
-		padding: 0.55rem 1.15rem;
+		padding: 0.6rem 1.25rem;
 		color: var(--action-contrast);
 		font-weight: 800;
 		font-size: 0.85rem;
 		letter-spacing: 0.04em;
 		text-transform: uppercase;
+
 		text-decoration: none;
 		transition: all 0.12s ease;
 	}

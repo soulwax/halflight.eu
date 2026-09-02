@@ -36,7 +36,7 @@ async function refreshAndPersist(
 ): Promise<TidalTokenRecord> {
 	if (!inFlightRefresh) {
 		inFlightRefresh = (async () => {
-			const next = await refreshTokens(record.refreshToken, ctx.fetch ?? fetch);
+			const next = await refreshTokens(record.refreshToken, ctx.fetch ?? fetch, record.scope);
 			await writeRecord(next, ctx.store);
 			return next;
 		})().finally(() => {

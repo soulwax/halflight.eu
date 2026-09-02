@@ -276,6 +276,8 @@
 	.player {
 		margin-top: 2rem;
 		border: 2px solid var(--border-strong);
+		border-radius: var(--radius-lg, 14px);
+		overflow: hidden;
 		background: var(--surface-raised);
 		box-shadow: var(--shadow-bauhaus);
 	}
@@ -288,7 +290,7 @@
 	}
 
 	.header-playback {
-		margin-top: 1.25rem;
+		margin-top: 1.5rem;
 	}
 
 	.play-playlist-btn {
@@ -296,9 +298,10 @@
 		align-items: center;
 		gap: 0.45rem;
 		border: 2px solid var(--border-strong);
+		border-radius: var(--radius-sm, 6px);
 		background: var(--action);
 		color: var(--action-contrast);
-		padding: 0.6rem 1.25rem;
+		padding: 0.65rem 1.35rem;
 		font: inherit;
 		font-weight: 800;
 		font-size: 0.85rem;
@@ -316,8 +319,9 @@
 	.tracklist-section {
 		margin-top: 2rem;
 		border: 2px solid var(--border-subtle);
+		border-radius: var(--radius-lg, 14px);
 		background: var(--surface-raised);
-		padding: clamp(1.25rem, 3vw, 1.75rem);
+		padding: clamp(1.5rem, 3.5vw, 2rem);
 	}
 
 	.track-list {
@@ -330,19 +334,20 @@
 		display: grid;
 		grid-template-columns: 2rem 2.2rem minmax(0, 1.5fr) minmax(0, 1fr) auto auto auto;
 		align-items: center;
-		gap: 0.5rem;
-		min-height: 3.25rem;
+		gap: 0.75rem;
+		min-height: 3.5rem;
 		border-top: 1px solid var(--border-subtle);
-		padding: 0.4rem 0;
+		padding: 0.5rem 0;
 	}
 
 	.track-play-btn,
 	.track-queue-btn {
 		display: grid;
 		place-items: center;
-		width: 1.85rem;
-		height: 1.85rem;
+		width: 2rem;
+		height: 2rem;
 		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-sm, 6px);
 		background: var(--surface-canvas);
 		color: var(--text-muted);
 		cursor: pointer;

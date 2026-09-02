@@ -261,7 +261,8 @@
 	.popularity-badge {
 		background: var(--surface-selected);
 		border: 1px solid var(--border-subtle);
-		padding: 0.2rem 0.55rem;
+		border-radius: var(--radius-full, 9999px);
+		padding: 0.2rem 0.65rem;
 		color: var(--action);
 		font-family: ui-monospace, monospace;
 		font-size: 0.75rem;
@@ -271,15 +272,16 @@
 	}
 
 	.section-block {
-		margin-top: 2rem;
+		margin-top: 2.5rem;
 		border: 2px solid var(--border-subtle);
+		border-radius: var(--radius-lg, 14px);
 		background: var(--surface-raised);
-		padding: clamp(1.25rem, 3vw, 1.75rem);
+		padding: clamp(1.5rem, 3.5vw, 2rem);
 	}
 
 	.section-block h2 {
 		margin: 0;
-		font-size: 1.25rem;
+		font-size: 1.35rem;
 		font-weight: 800;
 		text-transform: uppercase;
 	}
@@ -288,19 +290,20 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		margin-bottom: 1.25rem;
+		margin-bottom: 1.5rem;
 		border-bottom: 1px solid var(--border-subtle);
-		padding-bottom: 0.75rem;
+		padding-bottom: 0.85rem;
 	}
 
 	.play-all-btn {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.4rem;
+		gap: 0.45rem;
 		border: 1px solid var(--action);
+		border-radius: var(--radius-sm, 6px);
 		background: var(--action);
 		color: var(--action-contrast);
-		padding: 0.45rem 0.9rem;
+		padding: 0.5rem 1rem;
 		font: inherit;
 		font-size: 0.85rem;
 		font-weight: 800;
@@ -345,22 +348,23 @@
 
 	.song-cards-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
-		gap: 0.75rem;
+		grid-template-columns: repeat(auto-fill, minmax(21rem, 1fr));
+		gap: 1.15rem;
 	}
 
 	.grid-albums {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
-		gap: 1rem;
+		grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+		gap: 1.25rem;
 	}
 
 	.album-card {
 		display: flex;
 		flex-direction: column;
-		gap: 0.5rem;
-		padding: 0.75rem;
+		gap: 0.65rem;
+		padding: 0.95rem;
 		border: 2px solid var(--border-subtle);
+		border-radius: var(--radius-md, 10px);
 		background: var(--surface-canvas);
 		color: inherit;
 		text-decoration: none;
@@ -378,6 +382,7 @@
 		aspect-ratio: 1;
 		object-fit: cover;
 		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-sm, 6px);
 		background: var(--surface-raised);
 	}
 

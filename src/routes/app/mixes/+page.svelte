@@ -227,8 +227,9 @@
 
 	.mix-showcase {
 		border: 2px solid var(--border-subtle);
+		border-radius: var(--radius-lg, 14px);
 		background: var(--surface-raised);
-		padding: clamp(1.25rem, 3vw, 1.75rem);
+		padding: clamp(1.5rem, 3.5vw, 2rem);
 	}
 
 	.mix-header {
@@ -266,9 +267,10 @@
 		align-items: center;
 		gap: 0.45rem;
 		border: 1px solid var(--action);
+		border-radius: var(--radius-sm, 6px);
 		background: var(--action);
 		color: var(--action-contrast);
-		padding: 0.5rem 1rem;
+		padding: 0.55rem 1.15rem;
 		font: inherit;
 		font-size: 0.85rem;
 		font-weight: 800;
@@ -287,9 +289,10 @@
 		align-items: center;
 		gap: 0.35rem;
 		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-sm, 6px);
 		background: var(--surface-canvas);
 		color: var(--text-primary);
-		padding: 0.5rem 0.85rem;
+		padding: 0.55rem 0.95rem;
 		font-size: 0.8rem;
 		font-weight: 700;
 		text-transform: uppercase;
@@ -299,19 +302,21 @@
 
 	.tidal-mix-btn:hover {
 		border-color: var(--border-strong);
+		background: var(--surface-selected);
 	}
 
 	.song-cards-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
-		gap: 0.75rem;
+		grid-template-columns: repeat(auto-fill, minmax(21rem, 1fr));
+		gap: 1.15rem;
 	}
 
 	.state-card {
-		margin-top: 1.5rem;
+		margin-top: 2rem;
 		border: 2px solid var(--border-subtle);
+		border-radius: var(--radius-lg, 14px);
 		background: var(--surface-raised);
-		padding: clamp(1.25rem, 3vw, 1.75rem);
+		padding: clamp(1.5rem, 3.5vw, 2rem);
 	}
 
 	.state-card h2 {
@@ -328,18 +333,19 @@
 
 	.state-card a {
 		display: inline-flex;
-		margin-top: 1rem;
-		padding: 0.6rem 1.2rem;
+		margin-top: 1.25rem;
+		padding: 0.65rem 1.35rem;
 		background: var(--action);
 		color: var(--action-contrast);
 		border: 1px solid var(--border-strong);
+		border-radius: var(--radius-sm, 6px);
 		font-weight: 700;
 		text-transform: uppercase;
 		text-decoration: none;
 	}
 
 	.attribution {
-		margin-top: 2.5rem;
+		margin-top: 3rem;
 		color: var(--text-muted);
 		font-family: ui-monospace, monospace;
 		font-size: 0.75rem;

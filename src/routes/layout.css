@@ -5,55 +5,63 @@
 :root {
 	color-scheme: dark;
 
-	/* Bauhaus Primary Color Palette */
-	--bauhaus-blue: oklch(0.58 0.22 258);
-	--bauhaus-red: oklch(0.62 0.24 25);
-	--bauhaus-yellow: oklch(0.86 0.18 88);
+	/* Dimmed Bauhaus Architectural Palette */
+	--bauhaus-blue: oklch(0.55 0.14 250);
+	--bauhaus-red: oklch(0.58 0.16 28);
+	--bauhaus-yellow: oklch(0.78 0.13 80);
 
-	--surface-canvas: oklch(0.13 0.01 260);
-	--surface-raised: oklch(0.17 0.012 260);
-	--surface-selected: oklch(0.24 0.025 258);
-	--border-subtle: oklch(0.28 0.015 260);
-	--border-strong: oklch(0.5 0.02 260);
-	--text-primary: oklch(0.97 0.005 260);
-	--text-muted: oklch(0.72 0.015 260);
+	--surface-canvas: oklch(0.15 0.008 260);
+	--surface-raised: oklch(0.19 0.012 260);
+	--surface-selected: oklch(0.25 0.02 250);
+	--border-subtle: oklch(0.28 0.012 260);
+	--border-strong: oklch(0.44 0.018 260);
+	--text-primary: oklch(0.95 0.005 260);
+	--text-muted: oklch(0.7 0.012 260);
 
 	--action: var(--bauhaus-blue);
 	--action-contrast: #ffffff;
 	--danger: var(--bauhaus-red);
-	--danger-subtle: oklch(0.25 0.08 25);
+	--danger-subtle: oklch(0.26 0.06 28);
 	--focus-ring: var(--bauhaus-yellow);
 
-	--shadow-raised: 4px 4px 0px oklch(0 0 0 / 60%);
+	/* Tasteful Rounded Bauhaus Geometry */
+	--radius-xs: 4px;
+	--radius-sm: 6px;
+	--radius-md: 10px;
+	--radius-lg: 14px;
+	--radius-xl: 18px;
+	--radius-full: 9999px;
+
+	--shadow-raised: 0 8px 24px -4px rgba(0, 0, 0, 0.35), 3px 3px 0px var(--border-strong);
 	--shadow-bauhaus: 3px 3px 0px var(--border-strong);
-	--shadow-bauhaus-hover: 5px 5px 0px var(--action);
+	--shadow-bauhaus-hover: 4px 4px 0px var(--action);
 }
 
 @media (prefers-color-scheme: light) {
 	:root {
 		color-scheme: light;
 
-		--bauhaus-blue: oklch(0.48 0.22 258);
-		--bauhaus-red: oklch(0.54 0.23 25);
-		--bauhaus-yellow: oklch(0.82 0.17 85);
+		--bauhaus-blue: oklch(0.48 0.13 250);
+		--bauhaus-red: oklch(0.52 0.15 28);
+		--bauhaus-yellow: oklch(0.74 0.12 80);
 
-		--surface-canvas: #f8f8f5;
+		--surface-canvas: #f5f4ef;
 		--surface-raised: #ffffff;
-		--surface-selected: #ebeffc;
-		--border-subtle: #deded6;
-		--border-strong: #1a1a1e;
-		--text-primary: #121215;
-		--text-muted: #56565e;
+		--surface-selected: #eaeff5;
+		--border-subtle: #dbd9d0;
+		--border-strong: #28292d;
+		--text-primary: #1c1d21;
+		--text-muted: #5e6068;
 
 		--action: var(--bauhaus-blue);
 		--action-contrast: #ffffff;
 		--danger: var(--bauhaus-red);
-		--danger-subtle: #fde8e8;
+		--danger-subtle: #fbeae8;
 		--focus-ring: var(--bauhaus-yellow);
 
-		--shadow-raised: 4px 4px 0px rgba(0, 0, 0, 0.15);
-		--shadow-bauhaus: 3px 3px 0px #1a1a1e;
-		--shadow-bauhaus-hover: 5px 5px 0px var(--action);
+		--shadow-raised: 0 8px 20px -4px rgba(0, 0, 0, 0.1), 3px 3px 0px #28292d;
+		--shadow-bauhaus: 3px 3px 0px #28292d;
+		--shadow-bauhaus-hover: 4px 4px 0px var(--action);
 	}
 }
 
@@ -84,6 +92,7 @@
 	:focus-visible {
 		outline: 3px solid var(--focus-ring);
 		outline-offset: 2px;
+		border-radius: var(--radius-xs);
 	}
 }
 
@@ -101,6 +110,7 @@
 		font-weight: 700;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
+		border-radius: var(--radius-sm);
 		box-shadow: 3px 3px 0px var(--text-primary);
 	}
 
@@ -114,16 +124,17 @@
 		display: flex;
 		color: var(--text-muted);
 		text-decoration: none;
+		border-radius: var(--radius-md);
 		transition: all 120ms cubic-bezier(0.16, 1, 0.3, 1);
 	}
 
 	.app-nav-link {
 		min-height: 2.85rem;
 		align-items: center;
-		padding: 0.625rem 1rem;
+		padding: 0.65rem 1.15rem;
 		font-weight: 600;
 		letter-spacing: 0.02em;
-		border-left: 3px solid transparent;
+		margin-bottom: 0.25rem;
 	}
 
 	.app-nav-link:hover,
@@ -131,14 +142,13 @@
 	.app-account-link:hover {
 		background: var(--surface-selected);
 		color: var(--text-primary);
-		border-left-color: var(--border-strong);
 	}
 
 	.app-nav-link-current {
 		background: var(--surface-selected);
 		color: var(--text-primary);
-		border-left-color: var(--action);
 		font-weight: 700;
+		box-shadow: inset 3px 0 0 var(--action);
 	}
 
 	.app-mobile-nav-link-current {
@@ -152,7 +162,7 @@
 		min-height: 2.85rem;
 		flex-direction: column;
 		justify-content: center;
-		padding: 0.5rem 0.85rem;
+		padding: 0.65rem 1rem;
 		border: 1px solid var(--border-subtle);
 		background: var(--surface-canvas);
 	}
@@ -165,7 +175,7 @@
 		min-height: 3rem;
 		align-items: center;
 		justify-content: center;
-		padding: 0.5rem;
+		padding: 0.6rem;
 		font-size: 0.75rem;
 		font-weight: 700;
 		text-transform: uppercase;

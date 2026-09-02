@@ -273,6 +273,7 @@
 		aspect-ratio: 1;
 		flex: 0 0 auto;
 		border: 2px solid var(--border-strong);
+		border-radius: var(--radius-md, 10px);
 		background: var(--surface-canvas);
 		object-fit: cover;
 		box-shadow: var(--shadow-bauhaus);
@@ -341,6 +342,8 @@
 	.player {
 		margin-top: 2rem;
 		border: 2px solid var(--border-strong);
+		border-radius: var(--radius-lg, 14px);
+		overflow: hidden;
 		background: var(--surface-raised);
 		box-shadow: var(--shadow-bauhaus);
 	}
@@ -455,7 +458,7 @@
 		flex-wrap: wrap;
 		align-items: center;
 		gap: 0.75rem;
-		margin-top: 1.5rem;
+		margin-top: 1.75rem;
 	}
 
 	.syn-play-btn {
@@ -464,6 +467,7 @@
 		align-items: center;
 		gap: 0.45rem;
 		border: 2px solid var(--border-strong);
+		border-radius: var(--radius-sm, 6px);
 		background: var(--action);
 		padding: 0.6rem 1.25rem;
 		color: var(--action-contrast);
@@ -487,6 +491,7 @@
 		align-items: center;
 		gap: 0.45rem;
 		border: 2px solid var(--border-strong);
+		border-radius: var(--radius-sm, 6px);
 		background: var(--surface-raised);
 		padding: 0.6rem 1.15rem;
 		color: var(--text-primary);
@@ -511,6 +516,7 @@
 		gap: 0.4rem;
 		background: var(--surface-canvas);
 		border: 2px solid var(--border-strong);
+		border-radius: var(--radius-sm, 6px);
 		padding: 0.6rem 1.15rem;
 		color: var(--text-primary);
 		font-size: 0.85rem;
@@ -527,10 +533,11 @@
 	}
 
 	.state-card {
-		margin-top: 1.5rem;
+		margin-top: 2rem;
 		border: 2px solid var(--border-subtle);
+		border-radius: var(--radius-lg, 14px);
 		background: var(--surface-raised);
-		padding: clamp(1.25rem, 3vw, 1.75rem);
+		padding: clamp(1.5rem, 3.5vw, 2rem);
 	}
 
 	.state-card p {
@@ -545,6 +552,7 @@
 		align-items: center;
 		justify-content: center;
 		border: 2px solid var(--border-strong);
+		border-radius: var(--radius-sm, 6px);
 		padding: 0.6rem 1.15rem;
 		font-weight: 800;
 		font-size: 0.85rem;
@@ -568,7 +576,7 @@
 	}
 
 	.relation-section {
-		margin-top: 2.5rem;
+		margin-top: 3.5rem;
 		border-top: 2px solid var(--border-subtle);
 		padding-top: 2rem;
 	}
@@ -603,9 +611,10 @@
 		align-items: center;
 		gap: 0.4rem;
 		border: 1px solid var(--action);
+		border-radius: var(--radius-sm, 6px);
 		background: var(--action);
 		color: var(--action-contrast);
-		padding: 0.45rem 0.9rem;
+		padding: 0.45rem 0.95rem;
 		font: inherit;
 		font-size: 0.85rem;
 		font-weight: 800;
@@ -621,12 +630,12 @@
 
 	.song-cards-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
-		gap: 0.75rem;
+		grid-template-columns: repeat(auto-fill, minmax(21rem, 1fr));
+		gap: 1.15rem;
 	}
 
 	.attribution {
-		margin-top: 2.5rem;
+		margin-top: 3rem;
 		color: var(--text-muted);
 		font-family: ui-monospace, monospace;
 		font-size: 0.75rem;

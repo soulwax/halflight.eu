@@ -12,3 +12,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release of Syn music application with TIDAL integration.
 - Responsive app shell with side navigation, mobile navigation, mini player, and queue drawer.
 - Global 10-pixel footer with version number, copyright notice, and legal attribution.
+- Full song native playback engine translating core streaming manifest parser and TIDAL API resolution from `oskvr37/tiddl`.
+- TIDAL Device Authorization flow (`https://link.tidal.com`) with `r_usr` streaming playback scopes.
+- High-fidelity stream metadata and telemetry badges (`FLAC LOSSLESS`, `AAC 320k`) in the audio player.

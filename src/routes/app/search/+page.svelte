@@ -254,12 +254,12 @@
 
 	.search-form {
 		max-width: 48rem;
-		margin-bottom: 2rem;
+		margin-bottom: 2.5rem;
 	}
 
 	.search-form label {
 		display: block;
-		margin-bottom: 0.5rem;
+		margin-bottom: 0.65rem;
 		font-size: 0.85rem;
 		font-weight: 800;
 		text-transform: uppercase;
@@ -269,7 +269,7 @@
 	.search-input-wrap {
 		display: flex;
 		align-items: stretch;
-		gap: 0.5rem;
+		gap: 0.65rem;
 		width: 100%;
 	}
 
@@ -279,12 +279,14 @@
 		flex: 1;
 		position: relative;
 		border: 2px solid var(--border-strong);
+		border-radius: var(--radius-sm, 6px);
 		background: var(--surface-raised);
+		transition: all 0.12s ease;
 	}
 
 	.search-icon {
 		position: absolute;
-		left: 0.9rem;
+		left: 0.95rem;
 		color: var(--text-muted);
 		pointer-events: none;
 	}
@@ -293,7 +295,7 @@
 		width: 100%;
 		border: 0;
 		background: transparent;
-		padding: 0.85rem 1rem 0.85rem 2.75rem;
+		padding: 0.95rem 1.15rem 0.95rem 2.85rem;
 		color: var(--text-primary);
 		font: inherit;
 		font-size: 1rem;
@@ -314,8 +316,9 @@
 		align-items: center;
 		justify-content: center;
 		border: 2px solid var(--border-strong);
+		border-radius: var(--radius-sm, 6px);
 		background: var(--action);
-		padding: 0 1.5rem;
+		padding: 0 1.75rem;
 		color: var(--action-contrast);
 		font: inherit;
 		font-weight: 800;
@@ -333,15 +336,16 @@
 	.search-spinner {
 		display: grid;
 		place-items: center;
-		padding: 0 1.25rem;
+		padding: 0 1.5rem;
 	}
 
 	.state-card,
 	.result-group {
-		margin-top: 1.5rem;
+		margin-top: 2rem;
 		border: 2px solid var(--border-subtle);
+		border-radius: var(--radius-lg, 14px);
 		background: var(--surface-raised);
-		padding: clamp(1.25rem, 3vw, 1.75rem);
+		padding: clamp(1.5rem, 3.5vw, 2rem);
 	}
 
 	.state-card h2 {
@@ -358,21 +362,23 @@
 
 	.state-card a {
 		display: inline-flex;
-		margin-top: 1rem;
-		padding: 0.6rem 1.2rem;
+		margin-top: 1.25rem;
+		padding: 0.65rem 1.35rem;
 		background: var(--action);
 		color: var(--action-contrast);
 		border: 1px solid var(--border-strong);
+		border-radius: var(--radius-sm, 6px);
 		font-weight: 700;
 		text-transform: uppercase;
 		text-decoration: none;
 	}
 
 	.state-error {
-		margin-top: 1.5rem;
+		margin-top: 2rem;
 		border: 2px solid var(--danger);
+		border-radius: var(--radius-sm, 6px);
 		background: var(--danger-subtle);
-		padding: 0.85rem 1rem;
+		padding: 1rem 1.25rem;
 		color: var(--danger);
 		font-weight: 700;
 	}
@@ -381,7 +387,7 @@
 		display: flex;
 		align-items: center;
 		gap: 1rem;
-		margin-top: 1.5rem;
+		margin-top: 2rem;
 		font-family: ui-monospace, monospace;
 		font-size: 0.85rem;
 		font-weight: 800;
@@ -395,15 +401,15 @@
 	.group-header {
 		display: flex;
 		align-items: center;
-		gap: 0.65rem;
-		margin-bottom: 1.25rem;
+		gap: 0.75rem;
+		margin-bottom: 1.5rem;
 		border-bottom: 1px solid var(--border-subtle);
-		padding-bottom: 0.75rem;
+		padding-bottom: 0.85rem;
 	}
 
 	.group-header h2 {
 		margin: 0;
-		font-size: 1.2rem;
+		font-size: 1.25rem;
 		font-weight: 800;
 		text-transform: uppercase;
 		letter-spacing: 0.02em;
@@ -438,8 +444,8 @@
 
 	.song-cards-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
-		gap: 0.75rem;
+		grid-template-columns: repeat(auto-fill, minmax(21rem, 1fr));
+		gap: 1.15rem;
 	}
 
 	.result-list {
@@ -451,11 +457,12 @@
 	.result-row {
 		display: flex;
 		align-items: center;
-		gap: 0.85rem;
-		padding: 0.75rem;
+		gap: 1rem;
+		padding: 0.85rem 1.15rem;
 		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-md, 8px);
 		background: var(--surface-canvas);
-		margin-bottom: 0.5rem;
+		margin-bottom: 0.65rem;
 		transition: all 0.12s ease;
 	}
 
@@ -467,10 +474,11 @@
 	.media-mark {
 		display: grid;
 		place-items: center;
-		width: 2.25rem;
-		height: 2.25rem;
+		width: 2.35rem;
+		height: 2.35rem;
 		flex: 0 0 auto;
 		border: 1px solid var(--border-strong);
+		border-radius: var(--radius-sm, 6px);
 		background: var(--surface-selected);
 		color: var(--text-primary);
 		font-family: ui-monospace, monospace;

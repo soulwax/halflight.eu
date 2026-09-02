@@ -1,5 +1,6 @@
 import { pgTable, serial, integer, text, timestamp, check } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
+import { user } from './auth.schema';
 
 export const task = pgTable('task', {
 	id: serial('id').primaryKey(),
@@ -36,5 +37,21 @@ export const administrator = pgTable(
 	},
 	(table) => [check('administrator_singleton', sql`${table.id} = 1`)]
 );
+
+/**
+ * Custom and generated playlists saved directly in the user's account.
+ */
+export const userPlaylist = pgTable('user_playlist', {
+	id: text('id').primaryKey(),
+	userId: text('user_id')
+		.notNull()
+		.references(() => user.id, { onDelete: 'cascade' }),
+	title: text('title').notNull(),
+	description: text('description'),
+	itemsJson: text('items_json').notNull().default('[]'),
+	tidalPlaylistId: text('tidal_playlist_id'),
+	createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+});
 
 export * from './auth.schema';

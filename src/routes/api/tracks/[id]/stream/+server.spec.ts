@@ -3,17 +3,22 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => {
 	return {
 		getConnectionStatus: vi.fn(),
-		tidalFetch: vi.fn()
+		fetchTrackStream: vi.fn()
 	};
 });
 
-vi.mock('#lib/server/tidal', () => ({
-	getConnectionStatus: mocks.getConnectionStatus,
-	tidalFetch: mocks.tidalFetch
-}));
+vi.mock('#lib/server/tidal', async (importOriginal) => {
+	const actual = (await importOriginal()) as object;
+	return {
+		...actual,
+		getConnectionStatus: mocks.getConnectionStatus,
+		fetchTrackStream: mocks.fetchTrackStream
+	};
+});
 
 import type { Cookies } from '@sveltejs/kit';
 import { GET } from './+server';
+import { TidalApiError } from '#lib/server/tidal';
 
 const fetchMock = vi.fn();
 
@@ -21,6 +26,7 @@ function makeEvent(trackId = 'trk-1', user: { id: string } | null = { id: 'u1' }
 	return {
 		locals: { user },
 		params: { id: trackId },
+		url: new URL(`http://localhost:3000/api/tracks/${trackId}/stream`),
 		fetch: fetchMock,
 		cookies: {} as unknown as Cookies
 	} as unknown as Parameters<typeof GET>[0];
@@ -29,7 +35,7 @@ function makeEvent(trackId = 'trk-1', user: { id: string } | null = { id: 'u1' }
 describe('GET /api/tracks/[id]/stream', () => {
 	beforeEach(() => {
 		mocks.getConnectionStatus.mockReset();
-		mocks.tidalFetch.mockReset();
+		mocks.fetchTrackStream.mockReset();
 		fetchMock.mockReset();
 	});
 
@@ -50,23 +56,17 @@ describe('GET /api/tracks/[id]/stream', () => {
 	it('extracts direct stream URL from playbackinfopostpaywall base64 manifest', async () => {
 		mocks.getConnectionStatus.mockResolvedValue({ connected: true });
 
-		const manifestObj = {
+		mocks.fetchTrackStream.mockResolvedValueOnce({
+			trackId: 123,
+			streamUrl: 'https://sp-pr-cf.audio.tidal.com/stream-123.mp4',
+			urls: ['https://sp-pr-cf.audio.tidal.com/stream-123.mp4'],
+			fileExtension: '.m4a',
 			mimeType: 'audio/mp4',
 			codecs: 'mp4a.40.2',
-			encryptionType: 'NONE',
-			urls: ['https://sp-pr-cf.audio.tidal.com/stream-123.mp4']
-		};
-		const encodedManifest = Buffer.from(JSON.stringify(manifestObj)).toString('base64');
-
-		mocks.tidalFetch.mockResolvedValueOnce({
-			ok: true,
-			json: async () => ({
-				manifestMimeType: 'application/vnd.tidal.bts',
-				manifest: encodedManifest,
-				audioMode: 'STEREO',
-				bitDepth: 16,
-				sampleRate: 44100
-			})
+			audioMode: 'STEREO',
+			audioQuality: 'HIGH',
+			bitDepth: 16,
+			sampleRate: 44100
 		});
 
 		const res = await GET(makeEvent('trk-123'));
@@ -75,5 +75,26 @@ describe('GET /api/tracks/[id]/stream', () => {
 		expect(data.streamUrl).toBe('https://sp-pr-cf.audio.tidal.com/stream-123.mp4');
 		expect(data.mimeType).toBe('audio/mp4');
 		expect(data.audioMode).toBe('STEREO');
+	});
+
+	it('returns 403 with requiresFullAuth when playback permission is missing', async () => {
+		mocks.getConnectionStatus.mockResolvedValue({ connected: true });
+		mocks.fetchTrackStream.mockRejectedValue(
+			new TidalApiError(
+				401,
+				'Token is missing required scope',
+				{
+					status: 401,
+					subStatus: 11004
+				},
+				'playbackinfopostpaywall'
+			)
+		);
+
+		const res = await GET(makeEvent('trk-123'));
+		expect(res.status).toBe(403);
+		const data = await res.json();
+		expect(data.requiresFullAuth).toBe(true);
+		expect(data.error).toBe('playback_unauthorized');
 	});
 });

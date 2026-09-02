@@ -124,17 +124,36 @@ export async function exchangeCode(
 	return toRecord(res);
 }
 
+import { refreshDeviceToken } from './device-auth';
+
 /**
  * Redeem a refresh token for a fresh access token. Carries the previous refresh
  * token forward when TIDAL does not return a rotated one.
+ * Automatically handles device-authorization tokens when scope contains `r_usr`.
  */
 export async function refreshTokens(
 	refreshToken: string,
-	fetchImpl: FetchLike = fetch
+	fetchImpl: FetchLike = fetch,
+	scope?: string[]
 ): Promise<TidalTokenRecord> {
-	const res = await tokenRequest(
-		{ grant_type: 'refresh_token', refresh_token: refreshToken },
-		fetchImpl
-	);
-	return toRecord(res, refreshToken);
+	if (scope?.includes('r_usr')) {
+		return refreshDeviceToken(refreshToken, fetchImpl);
+	}
+
+	try {
+		const res = await tokenRequest(
+			{ grant_type: 'refresh_token', refresh_token: refreshToken },
+			fetchImpl
+		);
+		return toRecord(res, refreshToken);
+	} catch (err) {
+		if (err instanceof TidalAuthError) {
+			try {
+				return await refreshDeviceToken(refreshToken, fetchImpl);
+			} catch {
+				throw err;
+			}
+		}
+		throw err;
+	}
 }

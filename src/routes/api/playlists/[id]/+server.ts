@@ -1,0 +1,66 @@
+import { error, json } from '@sveltejs/kit';
+import { updateUserPlaylist, deleteUserPlaylist } from '#lib/server/playlists';
+import type { TrackSummary } from '#lib/server/tidal/models';
+import type { RequestHandler } from './$types';
+
+interface UpdatePlaylistPayload {
+	title?: string;
+	description?: string;
+	items?: TrackSummary[];
+	tidalPlaylistId?: string;
+}
+
+export const PATCH: RequestHandler = async (event) => {
+	if (!event.locals.user) {
+		error(401, 'Unauthorized');
+	}
+
+	const playlistId = event.params.id;
+	if (!playlistId) {
+		error(400, 'Missing playlist ID');
+	}
+
+	let body: UpdatePlaylistPayload;
+	try {
+		body = (await event.request.json()) as UpdatePlaylistPayload;
+	} catch {
+		error(400, 'Invalid JSON body');
+	}
+
+	try {
+		const updated = await updateUserPlaylist(event.locals.user.id, playlistId, {
+			title: body.title,
+			description: body.description,
+			items: body.items,
+			tidalPlaylistId: body.tidalPlaylistId
+		});
+
+		if (!updated) {
+			error(404, 'Playlist not found');
+		}
+
+		return json({ playlist: updated });
+	} catch (err) {
+		console.error(`Failed to update playlist ${playlistId}:`, err);
+		return json({ error: 'failed_to_update_playlist' }, { status: 500 });
+	}
+};
+
+export const DELETE: RequestHandler = async (event) => {
+	if (!event.locals.user) {
+		error(401, 'Unauthorized');
+	}
+
+	const playlistId = event.params.id;
+	if (!playlistId) {
+		error(400, 'Missing playlist ID');
+	}
+
+	try {
+		await deleteUserPlaylist(event.locals.user.id, playlistId);
+		return json({ success: true, id: playlistId });
+	} catch (err) {
+		console.error(`Failed to delete playlist ${playlistId}:`, err);
+		return json({ error: 'failed_to_delete_playlist' }, { status: 500 });
+	}
+};

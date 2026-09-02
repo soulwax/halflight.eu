@@ -1,4 +1,4 @@
-import { SvelteDate } from 'svelte/reactivity';
+import { SvelteDate, SvelteMap, SvelteSet } from 'svelte/reactivity';
 import type { TrackSummary } from '#lib/server/tidal/models';
 import { player } from './player.svelte';
 
@@ -7,10 +7,11 @@ const isBrowser = typeof window !== 'undefined';
 export interface CustomPlaylist {
 	id: string;
 	title: string;
-	description?: string;
+	description?: string | null;
 	createdAt: string;
 	updatedAt: string;
 	items: TrackSummary[];
+	tidalPlaylistId?: string | null;
 }
 
 const STORAGE_KEY = 'syn_custom_playlists';
@@ -19,10 +20,13 @@ export class CustomPlaylistsManager {
 	playlists = $state<CustomPlaylist[]>([]);
 	isGeneratorOpen = $state(false);
 	selectedTrackForPlaylist = $state<TrackSummary | null>(null);
+	isSyncing = $state(false);
 
 	constructor() {
 		if (isBrowser) {
 			this.load();
+			// Background sync with user's account
+			this.syncWithServer().catch(() => {});
 		}
 	}
 
@@ -36,7 +40,7 @@ export class CustomPlaylistsManager {
 				}
 			}
 		} catch {
-			// localStorage error or disabled
+			// localStorage disabled or error
 		}
 	}
 
@@ -49,22 +53,105 @@ export class CustomPlaylistsManager {
 		}
 	}
 
+	async syncWithServer(): Promise<void> {
+		if (!isBrowser) return;
+		this.isSyncing = true;
+		try {
+			const res = await fetch('/api/playlists');
+			if (res.ok) {
+				const data = (await res.json()) as { playlists: CustomPlaylist[] };
+				if (Array.isArray(data.playlists)) {
+					// Index existing local playlists by ID
+					const localMap = new SvelteMap(this.playlists.map((p) => [p.id, p]));
+
+					// Merge: server playlists take priority
+					for (const serverPl of data.playlists) {
+						localMap.set(serverPl.id, serverPl);
+					}
+
+					// If there are unsaved local playlists, push them to the server
+					const serverIds = new SvelteSet(data.playlists.map((p) => p.id));
+					for (const [id, pl] of localMap.entries()) {
+						if (!serverIds.has(id)) {
+							// Push local playlist to server
+							fetch('/api/playlists', {
+								method: 'POST',
+								headers: { 'Content-Type': 'application/json' },
+								body: JSON.stringify({
+									id: pl.id,
+									title: pl.title,
+									description: pl.description,
+									items: pl.items
+								})
+							}).catch(() => {});
+						}
+					}
+
+					this.playlists = Array.from(localMap.values()).sort(
+						(a, b) => new SvelteDate(b.updatedAt).getTime() - new SvelteDate(a.updatedAt).getTime()
+					);
+					this.save();
+				}
+			}
+		} catch {
+			// Offline or unauthenticated
+		} finally {
+			this.isSyncing = false;
+		}
+	}
+
 	createPlaylist(
 		title: string,
-		description?: string,
-		initialTracks: TrackSummary[] = []
+		description?: string | null,
+		initialTracks: TrackSummary[] = [],
+		serverRecord?: CustomPlaylist
 	): CustomPlaylist {
-		const newPlaylist: CustomPlaylist = {
+		const newPlaylist: CustomPlaylist = serverRecord ?? {
 			id: `pl_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
 			title: title.trim() || 'Untitled Playlist',
-			description: description?.trim(),
+			description: description?.trim() || null,
 			createdAt: new SvelteDate().toISOString(),
 			updatedAt: new SvelteDate().toISOString(),
-			items: [...initialTracks]
+			items: [...initialTracks],
+			tidalPlaylistId: null
 		};
 
-		this.playlists.unshift(newPlaylist);
+		// Avoid duplicate if server already returned it
+		const existingIdx = this.playlists.findIndex((p) => p.id === newPlaylist.id);
+		if (existingIdx >= 0) {
+			this.playlists[existingIdx] = newPlaylist;
+		} else {
+			this.playlists.unshift(newPlaylist);
+		}
 		this.save();
+
+		// If created client-side, persist to server account
+		if (!serverRecord && isBrowser) {
+			fetch('/api/playlists', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					id: newPlaylist.id,
+					title: newPlaylist.title,
+					description: newPlaylist.description,
+					items: newPlaylist.items
+				})
+			})
+				.then(async (res) => {
+					if (res.ok) {
+						const json = (await res.json()) as { playlist: CustomPlaylist };
+						if (json.playlist) {
+							const idx = this.playlists.findIndex((p) => p.id === newPlaylist.id);
+							if (idx >= 0) {
+								this.playlists[idx] = json.playlist;
+								this.save();
+							}
+						}
+					}
+				})
+				.catch(() => {});
+		}
+
 		return newPlaylist;
 	}
 
@@ -77,6 +164,15 @@ export class CustomPlaylistsManager {
 			playlist.items.push(track);
 			playlist.updatedAt = new SvelteDate().toISOString();
 			this.save();
+
+			// Sync update to server
+			if (isBrowser) {
+				fetch(`/api/playlists/${encodeURIComponent(playlistId)}`, {
+					method: 'PATCH',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ items: playlist.items })
+				}).catch(() => {});
+			}
 			return true;
 		}
 		return false;
@@ -89,11 +185,27 @@ export class CustomPlaylistsManager {
 		playlist.items = playlist.items.filter((t) => t.id !== trackId);
 		playlist.updatedAt = new SvelteDate().toISOString();
 		this.save();
+
+		// Sync update to server
+		if (isBrowser) {
+			fetch(`/api/playlists/${encodeURIComponent(playlistId)}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ items: playlist.items })
+			}).catch(() => {});
+		}
 	}
 
 	deletePlaylist(playlistId: string): void {
 		this.playlists = this.playlists.filter((p) => p.id !== playlistId);
 		this.save();
+
+		// Sync delete to server
+		if (isBrowser) {
+			fetch(`/api/playlists/${encodeURIComponent(playlistId)}`, {
+				method: 'DELETE'
+			}).catch(() => {});
+		}
 	}
 
 	playPlaylist(playlistId: string): void {

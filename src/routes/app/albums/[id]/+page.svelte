@@ -266,6 +266,7 @@
 		aspect-ratio: 1;
 		flex: 0 0 auto;
 		border: 2px solid var(--border-strong);
+		border-radius: var(--radius-md, 10px);
 		background: var(--surface-canvas);
 		object-fit: cover;
 		box-shadow: var(--shadow-bauhaus);
@@ -330,7 +331,8 @@
 	.quality-badge {
 		background: var(--surface-selected);
 		border: 1px solid var(--border-subtle);
-		padding: 0.15rem 0.45rem;
+		border-radius: var(--radius-full, 9999px);
+		padding: 0.15rem 0.55rem;
 		color: var(--action);
 		font-family: ui-monospace, monospace;
 		font-size: 0.7rem;
@@ -340,7 +342,7 @@
 	}
 
 	.header-playback {
-		margin-top: 1.25rem;
+		margin-top: 1.5rem;
 	}
 
 	.play-album-btn {
@@ -348,9 +350,10 @@
 		align-items: center;
 		gap: 0.45rem;
 		border: 2px solid var(--border-strong);
+		border-radius: var(--radius-sm, 6px);
 		background: var(--action);
 		color: var(--action-contrast);
-		padding: 0.6rem 1.25rem;
+		padding: 0.65rem 1.35rem;
 		font: inherit;
 		font-size: 0.85rem;
 		font-weight: 800;
@@ -368,6 +371,8 @@
 	.player {
 		margin-top: 2rem;
 		border: 2px solid var(--border-strong);
+		border-radius: var(--radius-lg, 14px);
+		overflow: hidden;
 		background: var(--surface-raised);
 		box-shadow: var(--shadow-bauhaus);
 	}
@@ -382,22 +387,23 @@
 	.tracklist-section {
 		margin-top: 2rem;
 		border: 2px solid var(--border-subtle);
+		border-radius: var(--radius-lg, 14px);
 		background: var(--surface-raised);
-		padding: clamp(1.25rem, 3vw, 1.75rem);
+		padding: clamp(1.5rem, 3.5vw, 2rem);
 	}
 
 	.section-header {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		margin-bottom: 1.25rem;
+		margin-bottom: 1.5rem;
 		border-bottom: 1px solid var(--border-subtle);
-		padding-bottom: 0.75rem;
+		padding-bottom: 0.85rem;
 	}
 
 	.section-header h2 {
 		margin: 0;
-		font-size: 1.2rem;
+		font-size: 1.25rem;
 		font-weight: 800;
 		text-transform: uppercase;
 	}
@@ -419,19 +425,20 @@
 		display: grid;
 		grid-template-columns: 2rem 2.2rem minmax(0, 1fr) auto auto auto;
 		align-items: center;
-		gap: 0.5rem;
-		min-height: 3.25rem;
+		gap: 0.75rem;
+		min-height: 3.5rem;
 		border-top: 1px solid var(--border-subtle);
-		padding: 0.4rem 0;
+		padding: 0.5rem 0;
 	}
 
 	.track-play-btn,
 	.track-queue-btn {
 		display: grid;
 		place-items: center;
-		width: 1.85rem;
-		height: 1.85rem;
+		width: 2rem;
+		height: 2rem;
 		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-sm, 6px);
 		background: var(--surface-canvas);
 		color: var(--text-muted);
 		cursor: pointer;

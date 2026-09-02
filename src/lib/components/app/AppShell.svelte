@@ -51,7 +51,7 @@
 
 		<main
 			id="main-content"
-			class="min-w-0 flex-1 px-4 py-6 pb-28 sm:px-6 lg:px-10 lg:py-10 lg:pb-10"
+			class="min-w-0 flex-1 px-6 py-8 pb-36 sm:px-10 sm:py-12 lg:px-14 lg:py-12 lg:pb-36"
 			tabindex="-1"
 		>
 			{@render children()}

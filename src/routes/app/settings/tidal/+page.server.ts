@@ -27,8 +27,11 @@ export const load: PageServerLoad = async (event) => {
 		}
 	}
 
+	const hasFullPlayback = status.scopes?.some((s) => s === 'r_usr' || s.includes('r_usr')) ?? false;
+
 	return {
 		status,
+		hasFullPlayback,
 		debugTokens,
 		notice: {
 			connected: event.url.searchParams.has('connected'),

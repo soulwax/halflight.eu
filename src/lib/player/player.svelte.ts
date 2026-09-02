@@ -20,6 +20,11 @@ export class PlayerState {
 	streamUrl = $state<string | null>(null);
 	playbackMode = $state<'direct' | 'embed'>('direct');
 	audioQuality = $state<string | null>(null);
+	codecs = $state<string | null>(null);
+	fileExtension = $state<string | null>(null);
+	bitDepth = $state<number | null>(null);
+	sampleRate = $state<number | null>(null);
+	requiresFullAuth = $state(false);
 
 	private audio: HTMLAudioElement | null = null;
 
@@ -71,6 +76,22 @@ export class PlayerState {
 	hasNext = $derived(this.queue.length > 0);
 	hasPrevious = $derived(this.history.length > 0);
 	queueCount = $derived(this.queue.length);
+	qualityLabel = $derived.by(() => {
+		if (!this.audioQuality) return null;
+		if (this.audioQuality === 'LOSSLESS' || this.audioQuality === 'HI_RES_LOSSLESS') {
+			if (this.bitDepth && this.sampleRate) {
+				return `FLAC ${this.bitDepth}bit/${(this.sampleRate / 1000).toFixed(1)}kHz`;
+			}
+			return 'FLAC LOSSLESS';
+		}
+		if (this.audioQuality === 'HIGH') {
+			return 'AAC 320k';
+		}
+		if (this.audioQuality === 'LOW') {
+			return 'AAC 96k';
+		}
+		return this.audioQuality;
+	});
 
 	play(track: TrackSummary, contextTracks?: TrackSummary[]): void {
 		if (this.currentTrack && this.currentTrack.id !== track.id) {
@@ -105,12 +126,22 @@ export class PlayerState {
 			if (res && res.ok) {
 				const data = (await res.json().catch(() => null)) as {
 					streamUrl?: string;
+					audioQuality?: string;
 					audioMode?: string;
+					codecs?: string;
+					fileExtension?: string;
+					bitDepth?: number | null;
+					sampleRate?: number | null;
 				} | null;
 
 				if (data?.streamUrl && this.audio) {
 					this.streamUrl = data.streamUrl;
-					this.audioQuality = data.audioMode || 'HIGH';
+					this.audioQuality = data.audioQuality || data.audioMode || 'HIGH';
+					this.codecs = data.codecs || null;
+					this.fileExtension = data.fileExtension || null;
+					this.bitDepth = data.bitDepth ?? null;
+					this.sampleRate = data.sampleRate ?? null;
+					this.requiresFullAuth = false;
 					this.playbackMode = 'direct';
 					this.audio.src = data.streamUrl;
 					this.audio.volume = this.isMuted ? 0 : this.volume;
@@ -118,6 +149,11 @@ export class PlayerState {
 					this.isPlaying = true;
 					this.isLoading = false;
 					return;
+				}
+			} else if (res && res.status === 403) {
+				const errData = (await res.json().catch(() => ({}))) as { requiresFullAuth?: boolean };
+				if (errData.requiresFullAuth) {
+					this.requiresFullAuth = true;
 				}
 			}
 		} catch {
