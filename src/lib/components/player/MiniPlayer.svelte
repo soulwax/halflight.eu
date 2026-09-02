@@ -6,10 +6,18 @@
 		Disc,
 		ExternalLink,
 		ListMusic,
+		Loader2,
+		Maximize2,
+		Minimize2,
+		Pause,
+		Play,
+		Plus,
 		Search,
 		SkipBack,
 		SkipForward,
 		Sparkles,
+		Volume2,
+		VolumeX,
 		X
 	} from '@lucide/svelte';
 	import { player } from '#lib/player/player.svelte.js';
@@ -27,6 +35,23 @@
 			? `https://tidal.com/browse/track/${encodeURIComponent(player.currentTrack.id)}`
 			: ''
 	);
+
+	function formatDuration(seconds: number): string {
+		if (!seconds || isNaN(seconds) || seconds < 0) return '0:00';
+		const mins = Math.floor(seconds / 60);
+		const secs = Math.floor(seconds % 60);
+		return `${mins}:${String(secs).padStart(2, '0')}`;
+	}
+
+	function handleSeek(event: Event) {
+		const target = event.target as HTMLInputElement;
+		player.seek(parseFloat(target.value));
+	}
+
+	function handleVolume(event: Event) {
+		const target = event.target as HTMLInputElement;
+		player.setVolume(parseFloat(target.value));
+	}
 </script>
 
 <aside
@@ -37,15 +62,58 @@
 	role="region"
 >
 	{#if player.currentTrack}
+		<!-- Main Player Bar -->
 		<div class="player-bar">
+			<!-- Section 1: Track Info with Small Expandable Cover as Play/Pause Button -->
 			<div class="track-meta">
-				{#if player.currentTrack.imageUrl}
-					<img class="cover" src={player.currentTrack.imageUrl} alt="" aria-hidden="true" />
-				{:else if player.currentTrack.album?.imageUrl}
-					<img class="cover" src={player.currentTrack.album.imageUrl} alt="" aria-hidden="true" />
-				{:else}
-					<div class="cover cover-placeholder" aria-hidden="true"><Disc size={18} /></div>
-				{/if}
+				<div class="cover-container" class:cover-playing={player.isPlaying}>
+					<button
+						type="button"
+						class="cover-btn"
+						onclick={() => player.togglePlayPause()}
+						title={player.isPlaying ? 'Pause' : 'Play'}
+						aria-label={player.isPlaying ? 'Pause' : 'Play'}
+					>
+						{#if player.currentTrack.imageUrl}
+							<img class="cover-img" src={player.currentTrack.imageUrl} alt="" aria-hidden="true" />
+						{:else if player.currentTrack.album?.imageUrl}
+							<img
+								class="cover-img"
+								src={player.currentTrack.album.imageUrl}
+								alt=""
+								aria-hidden="true"
+							/>
+						{:else}
+							<div class="cover-placeholder" aria-hidden="true"><Disc size={18} /></div>
+						{/if}
+
+						<!-- Play/Pause Overlay on the Album Cover -->
+						<div class="cover-overlay" class:force-visible={!player.isPlaying || player.isLoading}>
+							{#if player.isLoading}
+								<Loader2 size={16} class="animate-spin text-white" />
+							{:else if player.isPlaying}
+								<Pause size={16} class="text-white" fill="currentColor" />
+							{:else}
+								<Play size={16} class="ml-0.5 text-white" fill="currentColor" />
+							{/if}
+						</div>
+					</button>
+
+					<!-- Expand Cover Button -->
+					<button
+						type="button"
+						class="cover-expand-badge"
+						onclick={() => player.toggleCoverExpanded()}
+						title={player.isCoverExpanded ? 'Minimize artwork' : 'Enlarge artwork'}
+						aria-label={player.isCoverExpanded ? 'Minimize artwork' : 'Enlarge artwork'}
+					>
+						{#if player.isCoverExpanded}
+							<Minimize2 size={9} />
+						{:else}
+							<Maximize2 size={9} />
+						{/if}
+					</button>
+				</div>
 
 				<div class="info">
 					<a class="track-title" href={resolve('/app/tracks/[id]', { id: player.currentTrack.id })}>
@@ -68,82 +136,211 @@
 				</div>
 			</div>
 
-			<div class="playback-controls">
+			<!-- Section 2: Important Transport Controls (SkipBack, Play/Pause, SkipForward) & Scrubber -->
+			<div class="center-playback">
+				<div class="transport-controls">
+					<button
+						type="button"
+						class="transport-btn"
+						disabled={!player.hasPrevious && player.currentTime < 3}
+						onclick={() => player.previous()}
+						title={m.player_previous()}
+						aria-label={m.player_previous()}
+					>
+						<SkipBack size={15} />
+					</button>
+
+					<button
+						type="button"
+						class="transport-btn play-pause-btn"
+						onclick={() => player.togglePlayPause()}
+						title={player.isPlaying ? 'Pause' : 'Play'}
+						aria-label={player.isPlaying ? 'Pause' : 'Play'}
+					>
+						{#if player.isLoading}
+							<Loader2 size={16} class="animate-spin" />
+						{:else if player.isPlaying}
+							<Pause size={16} fill="currentColor" />
+						{:else}
+							<Play size={16} fill="currentColor" class="ml-0.5" />
+						{/if}
+					</button>
+
+					<button
+						type="button"
+						class="transport-btn"
+						disabled={!player.hasNext}
+						onclick={() => player.next()}
+						title={m.player_next()}
+						aria-label={m.player_next()}
+					>
+						<SkipForward size={15} />
+					</button>
+				</div>
+
+				<!-- Scrubber Bar -->
+				<div class="scrubber-wrap">
+					<span class="time-readout font-mono">{formatDuration(player.currentTime)}</span>
+					<div class="progress-bar-container">
+						<input
+							type="range"
+							min="0"
+							max={player.duration || 100}
+							step="0.5"
+							value={player.currentTime}
+							oninput={handleSeek}
+							class="scrubber-range"
+							aria-label="Seek track"
+						/>
+						<div
+							class="progress-fill"
+							style="width: {player.duration > 0
+								? (player.currentTime / player.duration) * 100
+								: 0}%"
+						></div>
+					</div>
+					<span class="time-readout font-mono">{formatDuration(player.duration)}</span>
+				</div>
+			</div>
+
+			<!-- Section 3: Important Actions (Volume, Add to Playlist, Queue, External, Expand, Close) -->
+			<div class="player-actions">
+				<!-- Volume Control -->
+				<div class="volume-group">
+					<button
+						type="button"
+						class="action-btn"
+						onclick={() => player.toggleMute()}
+						title={player.isMuted ? 'Unmute' : 'Mute'}
+						aria-label={player.isMuted ? 'Unmute' : 'Mute'}
+					>
+						{#if player.isMuted || player.volume === 0}
+							<VolumeX size={15} />
+						{:else}
+							<Volume2 size={15} />
+						{/if}
+					</button>
+					<input
+						type="range"
+						min="0"
+						max="1"
+						step="0.05"
+						value={player.isMuted ? 0 : player.volume}
+						oninput={handleVolume}
+						class="volume-slider"
+						aria-label="Volume"
+					/>
+				</div>
+
+				<!-- Add to Playlist (+) -->
 				<button
 					type="button"
-					class="control-btn"
-					disabled={!player.hasPrevious}
-					onclick={() => player.previous()}
-					title={m.player_previous()}
-					aria-label={m.player_previous()}
+					class="action-btn add-btn"
+					onclick={() => customPlaylists.promptAddToPlaylist(player.currentTrack!)}
+					title="Add to Custom Playlist"
+					aria-label="Add to Custom Playlist"
 				>
-					<SkipBack size={16} />
+					<Plus size={15} />
 				</button>
 
+				<!-- Queue Toggle -->
 				<button
 					type="button"
-					class="control-btn"
-					disabled={!player.hasNext}
-					onclick={() => player.next()}
-					title={m.player_next()}
-					aria-label={m.player_next()}
+					class="action-btn queue-btn"
+					class:active={player.isQueueOpen}
+					onclick={() => player.toggleQueue()}
+					title={m.player_queue()}
+					aria-label={m.player_queue()}
 				>
-					<SkipForward size={16} />
+					<ListMusic size={15} />
+					{#if player.queue.length > 0}
+						<span class="queue-counter">{player.queue.length}</span>
+					{/if}
 				</button>
 
+				<!-- Open in TIDAL Link -->
 				<a
-					class="control-btn tidal-link"
+					class="action-btn tidal-link"
 					href={tidalTrackUrl}
 					target="_blank"
 					rel="noreferrer"
 					title="Open in TIDAL"
 					aria-label="Open in TIDAL"
 				>
-					<ExternalLink size={14} />
+					<ExternalLink size={13} />
 				</a>
-			</div>
 
-			<div class="player-actions">
+				<!-- Expand/Collapse Drawer -->
 				<button
 					type="button"
-					class="control-btn queue-btn"
-					class:active={player.isQueueOpen}
-					onclick={() => player.toggleQueue()}
-					title={m.player_queue()}
-					aria-label={m.player_queue()}
-				>
-					<ListMusic size={16} />
-					{#if player.queue.length > 0}
-						<span class="queue-counter">{player.queue.length}</span>
-					{/if}
-				</button>
-
-				<button
-					type="button"
-					class="control-btn expand-btn"
+					class="action-btn expand-btn"
 					onclick={() => (player.isExpanded = !player.isExpanded)}
 					title={player.isExpanded ? m.player_collapse() : m.player_expand()}
 					aria-label={player.isExpanded ? m.player_collapse() : m.player_expand()}
 				>
 					{#if player.isExpanded}
-						<ChevronDown size={18} />
+						<ChevronDown size={16} />
 					{:else}
-						<ChevronUp size={18} />
+						<ChevronUp size={16} />
 					{/if}
 				</button>
 
+				<!-- Dismiss Player -->
 				<button
 					type="button"
-					class="control-btn close-btn"
+					class="action-btn close-btn"
 					onclick={() => player.close()}
 					title={m.player_close()}
 					aria-label={m.player_close()}
 				>
-					<X size={16} />
+					<X size={15} />
 				</button>
 			</div>
 		</div>
 
+		<!-- Expanded Artwork Popover -->
+		{#if player.isCoverExpanded}
+			<div class="expanded-cover-card">
+				<div class="expanded-cover-header">
+					<span class="font-mono text-[0.65rem] font-bold tracking-wider text-[var(--action)]">
+						SYN // ARTWORK & TELEMETRY
+					</span>
+					<button
+						type="button"
+						class="close-expanded-cover"
+						onclick={() => player.toggleCoverExpanded()}
+						aria-label="Close artwork"
+					>
+						<X size={14} />
+					</button>
+				</div>
+				<div class="expanded-artwork-wrap">
+					{#if player.currentTrack.imageUrl}
+						<img class="large-cover" src={player.currentTrack.imageUrl} alt="" />
+					{:else if player.currentTrack.album?.imageUrl}
+						<img class="large-cover" src={player.currentTrack.album.imageUrl} alt="" />
+					{:else}
+						<div class="large-cover placeholder-large"><Disc size={48} /></div>
+					{/if}
+				</div>
+				<div class="expanded-meta">
+					<strong class="block truncate text-sm font-bold">{player.currentTrack.title}</strong>
+					<span class="block truncate text-xs text-[var(--text-muted)]">
+						{player.currentTrack.artists.map((a) => a.name).join(', ')}
+					</span>
+					<div
+						class="telemetry-row mt-1.5 flex gap-2 font-mono text-[0.68rem] text-[var(--text-muted)]"
+					>
+						<span class="telemetry-pill">{player.audioQuality || 'HIGH AAC'}</span>
+						<span class="telemetry-pill"
+							>{player.playbackMode === 'direct' ? 'NATIVE STREAM' : 'TIDAL EMBED'}</span
+						>
+					</div>
+				</div>
+			</div>
+		{/if}
+
+		<!-- Expanded Embed Drawer -->
 		{#if player.isExpanded}
 			<div class="embed-container">
 				<iframe
@@ -154,7 +351,7 @@
 			</div>
 		{/if}
 	{:else}
-		<!-- Persistent Idle Dock: Visible to all users / empty accounts -->
+		<!-- Persistent Idle Dock: Always visible on empty account or before playing -->
 		<div class="idle-bar">
 			<div class="idle-engine-status">
 				<span class="idle-indicator-dot"></span>
@@ -181,7 +378,7 @@
 
 				<button
 					type="button"
-					class="control-btn queue-btn"
+					class="action-btn queue-btn"
 					class:active={player.isQueueOpen}
 					onclick={() => player.toggleQueue()}
 					title={m.player_queue()}
@@ -202,27 +399,379 @@
 		transform: translateX(-50%);
 		z-index: 80;
 		width: calc(100% - 2rem);
-		max-width: 48rem;
+		max-width: 58rem;
 		background: var(--surface-raised);
 		border: 2px solid var(--border-strong);
 		box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.45);
-		overflow: hidden;
 		animation: slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 		transition: all 0.15s ease;
 	}
 
 	.idle-dock {
 		background: var(--surface-canvas);
+		max-width: 48rem;
 	}
 
 	.player-bar {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		padding: 0.6rem 0.9rem;
-		gap: 0.75rem;
+		padding: 0.55rem 0.85rem;
+		gap: 0.85rem;
 	}
 
+	/* Section 1: Track Meta & Expandable Cover */
+	.track-meta {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		min-width: 11rem;
+		max-width: 17rem;
+		flex: 0 1 auto;
+	}
+
+	.cover-container {
+		position: relative;
+		width: 2.75rem;
+		height: 2.75rem;
+		flex: 0 0 auto;
+	}
+
+	.cover-btn {
+		position: relative;
+		width: 100%;
+		height: 100%;
+		padding: 0;
+		border: 1px solid var(--border-strong);
+		background: var(--surface-canvas);
+		cursor: pointer;
+		overflow: hidden;
+		display: block;
+	}
+
+	.cover-img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		display: block;
+		transition: filter 0.15s ease;
+	}
+
+	.cover-btn:hover .cover-img {
+		filter: brightness(0.65);
+	}
+
+	.cover-placeholder {
+		display: grid;
+		place-items: center;
+		width: 100%;
+		height: 100%;
+		color: var(--text-muted);
+	}
+
+	/* Play/Pause Overlay directly on cover */
+	.cover-overlay {
+		position: absolute;
+		inset: 0;
+		display: grid;
+		place-items: center;
+		background: rgba(0, 0, 0, 0.45);
+		opacity: 0;
+		transition: opacity 0.15s ease;
+	}
+
+	.cover-btn:hover .cover-overlay,
+	.cover-overlay.force-visible {
+		opacity: 1;
+	}
+
+	.cover-expand-badge {
+		position: absolute;
+		bottom: -2px;
+		right: -2px;
+		width: 14px;
+		height: 14px;
+		display: grid;
+		place-items: center;
+		background: var(--action);
+		color: var(--action-contrast);
+		border: 1px solid var(--border-strong);
+		cursor: pointer;
+		z-index: 2;
+		transition: transform 0.1s ease;
+	}
+
+	.cover-expand-badge:hover {
+		transform: scale(1.2);
+	}
+
+	.info {
+		display: grid;
+		gap: 0.1rem;
+		min-width: 0;
+	}
+
+	.track-title {
+		color: var(--text-primary);
+		text-decoration: none;
+		font-size: 0.85rem;
+		font-weight: 700;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.track-title:hover {
+		color: var(--action);
+		text-decoration: underline;
+	}
+
+	.track-artist {
+		margin: 0;
+		color: var(--text-muted);
+		font-size: 0.72rem;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.track-artist a {
+		color: inherit;
+		text-decoration: none;
+	}
+
+	.track-artist a:hover {
+		color: var(--text-primary);
+		text-decoration: underline;
+	}
+
+	/* Section 2: Center Controls & Scrubber */
+	.center-playback {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.35rem;
+		flex: 1 1 auto;
+		min-width: 14rem;
+		max-width: 26rem;
+	}
+
+	.transport-controls {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+	}
+
+	.transport-btn {
+		display: grid;
+		place-items: center;
+		width: 2rem;
+		height: 2rem;
+		border: 1px solid var(--border-subtle);
+		background: var(--surface-canvas);
+		color: var(--text-primary);
+		cursor: pointer;
+		transition: all 0.12s ease;
+	}
+
+	.transport-btn:hover:not(:disabled) {
+		border-color: var(--border-strong);
+		background: var(--surface-selected);
+		color: var(--action);
+	}
+
+	.transport-btn:disabled {
+		opacity: 0.35;
+		cursor: not-allowed;
+	}
+
+	.play-pause-btn {
+		width: 2.25rem;
+		height: 2.25rem;
+		border: 2px solid var(--border-strong);
+		background: var(--action);
+		color: var(--action-contrast);
+	}
+
+	.play-pause-btn:hover {
+		box-shadow: 2px 2px 0px var(--border-strong);
+		transform: translate(-1px, -1px);
+		color: var(--action-contrast);
+	}
+
+	.scrubber-wrap {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		width: 100%;
+	}
+
+	.time-readout {
+		font-size: 0.65rem;
+		color: var(--text-muted);
+		flex: 0 0 2.2rem;
+		text-align: center;
+	}
+
+	.progress-bar-container {
+		position: relative;
+		flex: 1;
+		height: 6px;
+		background: var(--surface-canvas);
+		border: 1px solid var(--border-subtle);
+		display: flex;
+		align-items: center;
+	}
+
+	.scrubber-range {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		opacity: 0;
+		cursor: pointer;
+		z-index: 2;
+		margin: 0;
+	}
+
+	.progress-fill {
+		height: 100%;
+		background: var(--action);
+		pointer-events: none;
+		transition: width 0.1s linear;
+	}
+
+	/* Section 3: Actions & Volume */
+	.player-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+		flex: 0 0 auto;
+	}
+
+	.volume-group {
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+	}
+
+	.volume-slider {
+		width: 4rem;
+		height: 4px;
+		accent-color: var(--action);
+		cursor: pointer;
+	}
+
+	.action-btn {
+		display: grid;
+		place-items: center;
+		width: 2rem;
+		height: 2rem;
+		border: 1px solid var(--border-subtle);
+		background: var(--surface-canvas);
+		color: var(--text-muted);
+		cursor: pointer;
+		text-decoration: none;
+		transition: all 0.12s ease;
+	}
+
+	.action-btn:hover:not(:disabled) {
+		color: var(--text-primary);
+		border-color: var(--border-strong);
+		background: var(--surface-selected);
+	}
+
+	.queue-btn {
+		position: relative;
+	}
+
+	.queue-btn.active {
+		border-color: var(--action);
+		background: var(--action);
+		color: var(--action-contrast);
+	}
+
+	.queue-counter {
+		position: absolute;
+		top: -0.25rem;
+		right: -0.25rem;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 0.9rem;
+		height: 0.9rem;
+		padding: 0 0.15rem;
+		background: var(--danger);
+		color: #ffffff;
+		font-family: ui-monospace, monospace;
+		font-size: 0.6rem;
+		font-weight: 800;
+		border: 1px solid var(--border-strong);
+	}
+
+	/* Expanded Artwork Card */
+	.expanded-cover-card {
+		position: absolute;
+		bottom: calc(100% + 0.75rem);
+		left: 1rem;
+		width: 16rem;
+		padding: 0.85rem;
+		background: var(--surface-raised);
+		border: 2px solid var(--border-strong);
+		box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.45);
+		animation: slideUp 0.15s ease-out;
+		z-index: 90;
+	}
+
+	.expanded-cover-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 0.5rem;
+	}
+
+	.close-expanded-cover {
+		border: none;
+		background: transparent;
+		color: var(--text-muted);
+		cursor: pointer;
+		padding: 0.2rem;
+	}
+
+	.close-expanded-cover:hover {
+		color: var(--text-primary);
+	}
+
+	.expanded-artwork-wrap {
+		width: 100%;
+		aspect-ratio: 1 / 1;
+		border: 1px solid var(--border-strong);
+		overflow: hidden;
+		margin-bottom: 0.65rem;
+	}
+
+	.large-cover {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		display: block;
+	}
+
+	.placeholder-large {
+		display: grid;
+		place-items: center;
+		background: var(--surface-canvas);
+		color: var(--text-muted);
+	}
+
+	.telemetry-pill {
+		padding: 0.15rem 0.35rem;
+		background: var(--surface-canvas);
+		border: 1px solid var(--border-subtle);
+		font-weight: 700;
+	}
+
+	/* Idle Bar */
 	.idle-bar {
 		display: flex;
 		align-items: center;
@@ -293,135 +842,6 @@
 		background: var(--surface-selected);
 	}
 
-	.track-meta {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		min-width: 0;
-		flex: 1;
-	}
-
-	.cover {
-		width: 2.5rem;
-		height: 2.5rem;
-		border: 1px solid var(--border-subtle);
-		object-fit: cover;
-		background: var(--surface-canvas);
-		flex: 0 0 auto;
-	}
-
-	.cover-placeholder {
-		display: grid;
-		place-items: center;
-		color: var(--text-muted);
-	}
-
-	.info {
-		display: grid;
-		gap: 0.1rem;
-		min-width: 0;
-	}
-
-	.track-title {
-		color: var(--text-primary);
-		text-decoration: none;
-		font-size: 0.9rem;
-		font-weight: 700;
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
-
-	.track-title:hover {
-		color: var(--action);
-		text-decoration: underline;
-	}
-
-	.track-artist {
-		margin: 0;
-		color: var(--text-muted);
-		font-size: 0.75rem;
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
-
-	.track-artist a {
-		color: inherit;
-		text-decoration: none;
-	}
-
-	.track-artist a:hover {
-		color: var(--text-primary);
-		text-decoration: underline;
-	}
-
-	.playback-controls {
-		display: flex;
-		align-items: center;
-		gap: 0.35rem;
-		flex: 0 0 auto;
-	}
-
-	.control-btn {
-		display: grid;
-		place-items: center;
-		width: 2.1rem;
-		height: 2.1rem;
-		border: 1px solid var(--border-subtle);
-		background: var(--surface-canvas);
-		color: var(--text-muted);
-		cursor: pointer;
-		text-decoration: none;
-		transition: all 0.12s ease;
-	}
-
-	.control-btn:hover:not(:disabled) {
-		color: var(--text-primary);
-		border-color: var(--border-strong);
-		background: var(--surface-selected);
-	}
-
-	.control-btn:disabled {
-		opacity: 0.3;
-		cursor: not-allowed;
-	}
-
-	.player-actions {
-		display: flex;
-		align-items: center;
-		gap: 0.35rem;
-		flex: 0 0 auto;
-	}
-
-	.queue-btn {
-		position: relative;
-	}
-
-	.queue-btn.active {
-		border-color: var(--action);
-		background: var(--action);
-		color: var(--action-contrast);
-	}
-
-	.queue-counter {
-		position: absolute;
-		top: -0.25rem;
-		right: -0.25rem;
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		min-width: 0.9rem;
-		height: 0.9rem;
-		padding: 0 0.15rem;
-		background: var(--danger);
-		color: #ffffff;
-		font-family: ui-monospace, monospace;
-		font-size: 0.6rem;
-		font-weight: 800;
-		border: 1px solid var(--border-strong);
-	}
-
 	.embed-container {
 		border-top: 2px solid var(--border-strong);
 		background: var(--surface-canvas);
@@ -445,16 +865,29 @@
 		}
 	}
 
-	@media (max-width: 40rem) {
+	@media (max-width: 48rem) {
 		.mini-player {
 			bottom: 4.5rem;
 			width: calc(100% - 1rem);
 		}
-		.playback-controls .tidal-link {
+		.scrubber-wrap {
 			display: none;
 		}
+		.volume-group {
+			display: none;
+		}
+		.action-btn.tidal-link {
+			display: none;
+		}
+	}
+
+	@media (max-width: 32rem) {
 		.idle-engine-status {
 			display: none;
+		}
+		.track-meta {
+			min-width: 0;
+			max-width: 9rem;
 		}
 	}
 </style>
