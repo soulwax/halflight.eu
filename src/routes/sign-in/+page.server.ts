@@ -45,15 +45,19 @@ export const actions: Actions = {
 		redirect(302, '/app');
 	},
 	signInSocial: async () => {
+		let authorizeUrl: string | undefined;
 		try {
 			const result = await auth.api.signInSocial({
-				body: { provider: 'github', callbackURL: '/app' }
+				body: { provider: 'github', callbackURL: '/app', errorCallbackURL: '/sign-in' }
 			});
-
-			if (result.url) redirect(302, result.url);
-			return fail(400, { signInFailed: true });
+			authorizeUrl = result.url;
 		} catch {
 			return fail(400, { signInFailed: true });
 		}
+
+		// `redirect` throws — it must live outside the try/catch above, or it is
+		// swallowed and wrongly reported as a sign-in failure.
+		if (!authorizeUrl) return fail(400, { signInFailed: true });
+		redirect(302, authorizeUrl);
 	}
 };
