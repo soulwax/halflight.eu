@@ -59,10 +59,49 @@ export interface ArtistSummary {
 	name: string;
 }
 
+export interface AlbumDetail extends AlbumSummary {
+	items: TrackSummary[];
+	duration?: number;
+	numberOfItems?: number;
+	numberOfVolumes?: number;
+	audioQuality?: string;
+}
+
+export interface ArtistDetail extends ArtistSummary {
+	imageUrl?: string;
+	popularity?: number;
+	topTracks: TrackSummary[];
+	albums: AlbumSummary[];
+	similarArtists: ArtistSummary[];
+}
+
+export interface PlaylistDetail extends PlaylistSummary {
+	description?: string;
+	creator?: { id?: string; name?: string };
+	imageUrl?: string;
+	numberOfItems?: number;
+	duration?: number;
+	items: TrackSummary[];
+	accessType?: string;
+}
+
+export interface MixDetail {
+	kind: 'mix';
+	id: string;
+	title: string;
+	subtitle?: string;
+	mixType: 'daily' | 'discovery' | 'newRelease' | string;
+	imageUrl?: string;
+	items: TrackSummary[];
+}
+
 export interface PlaylistSummary {
 	kind: 'playlist';
 	id: string;
 	title: string;
+	description?: string;
+	imageUrl?: string;
+	numberOfItems?: number;
 }
 
 export type SearchResult = TrackSummary | AlbumSummary | ArtistSummary | PlaylistSummary;

@@ -47,9 +47,21 @@
 				<p class="eyebrow">{m.track_label()}</p>
 				<h1 id="track-title">{data.track.title}</h1>
 				{#if data.track.artists.length}
-					<p class="artist-line">{data.track.artists.map((artist) => artist.name).join(', ')}</p>
+					<p class="artist-line">
+						{#each data.track.artists as artist, i (artist.id)}
+							<a href={resolve('/app/artists/[id]', { id: artist.id })}>{artist.name}</a
+							>{#if i < data.track.artists.length - 1},
+							{/if}
+						{/each}
+					</p>
 				{/if}
-				{#if data.track.album}<p class="album-line">{data.track.album.title}</p>{/if}
+				{#if data.track.album}
+					<p class="album-line">
+						<a href={resolve('/app/albums/[id]', { id: data.track.album.id })}
+							>{data.track.album.title}</a
+						>
+					</p>
+				{/if}
 			</div>
 		</header>
 
@@ -68,15 +80,28 @@
 					{#if data.track.artists.length}
 						<div>
 							<dt>{m.track_artists()}</dt>
-							<dd>{data.track.artists.map((artist) => artist.name).join(', ')}</dd>
+							<dd>
+								{#each data.track.artists as artist, i (artist.id)}
+									<a class="meta-link" href={resolve('/app/artists/[id]', { id: artist.id })}
+										>{artist.name}</a
+									>{#if i < data.track.artists.length - 1},
+									{/if}
+								{/each}
+							</dd>
 						</div>
 					{/if}
+
 					{#if data.track.album}
 						<div>
 							<dt>{m.track_album()}</dt>
-							<dd>{data.track.album.title}</dd>
+							<dd>
+								<a class="meta-link" href={resolve('/app/albums/[id]', { id: data.track.album.id })}
+									>{data.track.album.title}</a
+								>
+							</dd>
 						</div>
 					{/if}
+
 					{#if data.track.copyright}
 						<div>
 							<dt>Copyright</dt>
@@ -210,9 +235,24 @@
 		font-size: 1.1rem;
 		font-weight: 700;
 	}
+	.artist-line a,
+	.album-line a,
+	.meta-link {
+		color: inherit;
+		text-decoration: none;
+	}
+	.artist-line a:hover,
+	.artist-line a:focus-visible,
+	.album-line a:hover,
+	.album-line a:focus-visible,
+	.meta-link:hover,
+	.meta-link:focus-visible {
+		text-decoration: underline;
+	}
 	.album-line {
 		color: var(--text-muted);
 	}
+
 	.player {
 		margin-top: 2rem;
 		overflow: hidden;

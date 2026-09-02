@@ -95,12 +95,12 @@
 					{#each data.results.albums as album (album.id)}
 						<li>
 							<div class="media-mark" aria-hidden="true">▣</div>
-							<div>
+							<a class="track-link" href={resolve('/app/albums/[id]', { id: album.id })}>
 								<strong>{album.title}</strong>
 								{#if album.artists.length}
 									<span>{album.artists.map((artist) => artist.name).join(', ')}</span>
 								{/if}
-							</div>
+							</a>
 						</li>
 					{/each}
 				</ul>
@@ -114,7 +114,9 @@
 					{#each data.results.artists as artist (artist.id)}
 						<li>
 							<div class="media-mark" aria-hidden="true">●</div>
-							<strong>{artist.name}</strong>
+							<a class="track-link" href={resolve('/app/artists/[id]', { id: artist.id })}>
+								<strong>{artist.name}</strong>
+							</a>
 						</li>
 					{/each}
 				</ul>
@@ -128,7 +130,9 @@
 					{#each data.results.playlists as playlist (playlist.id)}
 						<li>
 							<div class="media-mark" aria-hidden="true">≡</div>
-							<strong>{playlist.title}</strong>
+							<a class="track-link" href={resolve('/app/playlists/[id]', { id: playlist.id })}>
+								<strong>{playlist.title}</strong>
+							</a>
 						</li>
 					{/each}
 				</ul>

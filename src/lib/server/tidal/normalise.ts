@@ -1,8 +1,12 @@
 import type {
+	AlbumDetail,
 	AlbumReference,
 	AlbumSummary,
+	ArtistDetail,
 	ArtistReference,
 	ArtistSummary,
+	MixDetail,
+	PlaylistDetail,
 	PlaylistSummary,
 	SearchResult,
 	SearchResultGroups,
@@ -219,7 +223,272 @@ export function normaliseArtist(value: unknown): ArtistSummary | null {
 export function normalisePlaylist(value: unknown): PlaylistSummary | null {
 	const resource = readResource(value);
 	if (!resource || resource.type !== 'playlists') return null;
-	return { kind: 'playlist', id: resource.id, title: resourceTitle(resource) };
+	const image = imageUrl(resource);
+	const description = readAttribute(resource, ['description']);
+	const numberOfItems = readNumberAttribute(resource, ['numberOfItems', 'numberOfTracks']);
+	return {
+		kind: 'playlist',
+		id: resource.id,
+		title: resourceTitle(resource),
+		...(description ? { description } : {}),
+		...(image ? { imageUrl: image } : {}),
+		...(numberOfItems !== undefined ? { numberOfItems } : {})
+	};
+}
+
+/**
+ * Convert an album compound document into a display-ready AlbumDetail model,
+ * resolving album artists and ordered track items from linkages or included resources.
+ */
+export function normaliseAlbumDetail(document: unknown): AlbumDetail | null {
+	if (!isRecord(document)) return null;
+	const resource = readResource(document.data);
+	if (!resource || resource.type !== 'albums') return null;
+
+	const included = indexIncluded(document.included);
+	const base = normaliseAlbum(resource, included);
+	if (!base) return null;
+
+	const tracks: TrackSummary[] = [];
+	const seen = new Set<string>();
+
+	const itemRel = resource.relationships.items ?? resource.relationships.tracks;
+	if (isRecord(itemRel)) {
+		const linkages = Array.isArray(itemRel.data) ? itemRel.data : [itemRel.data];
+		for (const linkage of linkages) {
+			const ident = readResource(linkage);
+			if (!ident) continue;
+			const resolved = readResource(included.get(includedKey(ident))) ?? ident;
+			const track = normaliseTrack(resolved, included);
+			if (track && !seen.has(track.id)) {
+				seen.add(track.id);
+				if (!track.album) {
+					track.album = {
+						id: base.id,
+						title: base.title,
+						...(base.imageUrl ? { imageUrl: base.imageUrl } : {}),
+						...(base.releaseDate ? { releaseDate: base.releaseDate } : {})
+					};
+				}
+				tracks.push(track);
+			}
+		}
+	}
+
+	if (!tracks.length) {
+		for (const item of included.values()) {
+			const ident = readResource(item);
+			if (ident && ident.type === 'tracks') {
+				const track = normaliseTrack(ident, included);
+				if (track && !seen.has(track.id)) {
+					seen.add(track.id);
+					if (!track.album) {
+						track.album = {
+							id: base.id,
+							title: base.title,
+							...(base.imageUrl ? { imageUrl: base.imageUrl } : {}),
+							...(base.releaseDate ? { releaseDate: base.releaseDate } : {})
+						};
+					}
+					tracks.push(track);
+				}
+			}
+		}
+	}
+
+	tracks.sort((a, b) => {
+		const volA = a.volumeNumber ?? 1;
+		const volB = b.volumeNumber ?? 1;
+		if (volA !== volB) return volA - volB;
+		return (a.trackNumber ?? 0) - (b.trackNumber ?? 0);
+	});
+
+	const duration =
+		readNumberAttribute(resource, ['duration', 'durationSeconds']) ??
+		(tracks.length ? tracks.reduce((acc, t) => acc + (t.duration ?? 0), 0) : undefined);
+	const numberOfItems =
+		readNumberAttribute(resource, ['numberOfItems', 'numberOfTracks', 'totalTracks']) ??
+		(tracks.length ? tracks.length : undefined);
+	const numberOfVolumes = readNumberAttribute(resource, [
+		'numberOfVolumes',
+		'numberOfDiscs',
+		'totalVolumes'
+	]);
+	const audioQuality = readAttribute(resource, ['audioQuality', 'audio_quality']);
+
+	return {
+		...base,
+		items: tracks,
+		...(duration ? { duration } : {}),
+		...(numberOfItems !== undefined ? { numberOfItems } : {}),
+		...(numberOfVolumes !== undefined ? { numberOfVolumes } : {}),
+		...(audioQuality ? { audioQuality } : {})
+	};
+}
+
+/**
+ * Normalise an artist document combined with optional side-loaded tracks, albums,
+ * and similar artists documents.
+ */
+export function normaliseArtistDetail(
+	document: unknown,
+	tracksDoc?: unknown,
+	albumsDoc?: unknown,
+	similarDoc?: unknown
+): ArtistDetail | null {
+	if (!isRecord(document)) return null;
+	const resource = readResource(document.data);
+	if (!resource || resource.type !== 'artists') return null;
+
+	const base = normaliseArtist(resource);
+	if (!base) return null;
+
+	const image = imageUrl(resource);
+	const popularity = readNumberAttribute(resource, ['popularity']);
+
+	const topTracks = tracksDoc ? normaliseSearchResults(tracksDoc).tracks : [];
+	const albums = albumsDoc ? normaliseSearchResults(albumsDoc).albums : [];
+	const similarArtists = similarDoc ? normaliseSearchResults(similarDoc).artists : [];
+
+	return {
+		...base,
+		...(image ? { imageUrl: image } : {}),
+		...(popularity !== undefined ? { popularity } : {}),
+		topTracks,
+		albums,
+		similarArtists
+	};
+}
+
+/**
+ * Normalise a playlist compound document with ordered items and metadata.
+ */
+export function normalisePlaylistDetail(document: unknown): PlaylistDetail | null {
+	if (!isRecord(document)) return null;
+	const resource = readResource(document.data);
+	if (!resource || resource.type !== 'playlists') return null;
+
+	const included = indexIncluded(document.included);
+	const base = normalisePlaylist(resource);
+	if (!base) return null;
+
+	const image = imageUrl(resource);
+	const description = readAttribute(resource, ['description']);
+	const accessType = readAttribute(resource, ['accessType', 'access_type']);
+
+	const tracks: TrackSummary[] = [];
+	const seen = new Set<string>();
+
+	const itemRel = resource.relationships.items ?? resource.relationships.tracks;
+	if (isRecord(itemRel)) {
+		const linkages = Array.isArray(itemRel.data) ? itemRel.data : [itemRel.data];
+		for (const linkage of linkages) {
+			const ident = readResource(linkage);
+			if (!ident) continue;
+			const resolved = readResource(included.get(includedKey(ident))) ?? ident;
+			const track = normaliseTrack(resolved, included);
+			if (track && !seen.has(track.id)) {
+				seen.add(track.id);
+				tracks.push(track);
+			}
+		}
+	}
+
+	if (!tracks.length) {
+		for (const item of included.values()) {
+			const ident = readResource(item);
+			if (ident && ident.type === 'tracks') {
+				const track = normaliseTrack(ident, included);
+				if (track && !seen.has(track.id)) {
+					seen.add(track.id);
+					tracks.push(track);
+				}
+			}
+		}
+	}
+
+	const duration =
+		readNumberAttribute(resource, ['duration', 'durationSeconds']) ??
+		(tracks.length ? tracks.reduce((acc, t) => acc + (t.duration ?? 0), 0) : undefined);
+	const numberOfItems =
+		readNumberAttribute(resource, ['numberOfItems', 'numberOfTracks']) ??
+		(tracks.length ? tracks.length : undefined);
+
+	let creator: { id?: string; name?: string } | undefined;
+	const creatorRel = resource.relationships.creator ?? resource.relationships.owner;
+	if (isRecord(creatorRel)) {
+		const ident = readResource(creatorRel.data);
+		if (ident) {
+			const resolved = readResource(included.get(includedKey(ident))) ?? ident;
+			creator = { id: resolved.id, name: resourceTitle(resolved) };
+		}
+	}
+
+	return {
+		...base,
+		...(description ? { description } : {}),
+		...(image ? { imageUrl: image } : {}),
+		...(creator ? { creator } : {}),
+		...(duration ? { duration } : {}),
+		...(numberOfItems !== undefined ? { numberOfItems } : {}),
+		...(accessType ? { accessType } : {}),
+		items: tracks
+	};
+}
+
+/**
+ * Normalise a personalised mix (e.g. Daily, Discovery, New Arrivals) with its tracks.
+ */
+export function normaliseMixDetail(document: unknown, mixType: string = 'daily'): MixDetail | null {
+	if (!isRecord(document)) return null;
+	const resource = readResource(document.data);
+	if (!resource) return null;
+
+	const included = indexIncluded(document.included);
+	const title = resourceTitle(resource);
+	const subtitle = readAttribute(resource, ['subTitle', 'subtitle', 'description']);
+	const image = imageUrl(resource);
+
+	const tracks: TrackSummary[] = [];
+	const seen = new Set<string>();
+
+	const itemRel = resource.relationships.items ?? resource.relationships.tracks;
+	if (isRecord(itemRel)) {
+		const linkages = Array.isArray(itemRel.data) ? itemRel.data : [itemRel.data];
+		for (const linkage of linkages) {
+			const ident = readResource(linkage);
+			if (!ident) continue;
+			const resolved = readResource(included.get(includedKey(ident))) ?? ident;
+			const track = normaliseTrack(resolved, included);
+			if (track && !seen.has(track.id)) {
+				seen.add(track.id);
+				tracks.push(track);
+			}
+		}
+	}
+
+	if (!tracks.length) {
+		for (const item of included.values()) {
+			const ident = readResource(item);
+			if (ident && ident.type === 'tracks') {
+				const track = normaliseTrack(ident, included);
+				if (track && !seen.has(track.id)) {
+					seen.add(track.id);
+					tracks.push(track);
+				}
+			}
+		}
+	}
+
+	return {
+		kind: 'mix',
+		id: resource.id,
+		title,
+		...(subtitle ? { subtitle } : {}),
+		mixType,
+		...(image ? { imageUrl: image } : {}),
+		items: tracks
+	};
 }
 
 /** Normalise one supported media resource without exposing its JSON:API shape. */

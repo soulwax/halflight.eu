@@ -11,6 +11,7 @@
 		{ href: resolve('/app'), label: m.nav_home() },
 		{ href: resolve('/app/search'), label: m.nav_search() },
 		{ href: resolve('/app/library'), label: m.nav_library() },
+		{ href: resolve('/app/mixes'), label: m.nav_mixes() },
 		{ href: resolve('/app/settings/tidal'), label: m.nav_settings() }
 	]);
 </script>

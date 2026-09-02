@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
 	normaliseAlbum,
+	normaliseAlbumDetail,
 	normaliseArtist,
+	normaliseArtistDetail,
 	normaliseCollectionPage,
+	normaliseMixDetail,
 	normalisePlaylist,
+	normalisePlaylistDetail,
 	normaliseSearchResults,
 	normaliseTrack,
 	normaliseTrackDetail
@@ -251,5 +255,175 @@ describe('normaliseCollectionPage', () => {
 			playlists: [],
 			hasMore: false
 		});
+	});
+});
+
+describe('normaliseAlbumDetail', () => {
+	it('normalises an album compound document and orders tracks correctly', () => {
+		const doc = {
+			data: {
+				id: 'alb-1',
+				type: 'albums',
+				attributes: {
+					title: 'Greatest Hits',
+					releaseDate: '2023-01-01',
+					audioQuality: 'HI_RES',
+					copyright: '2023 Label Inc'
+				},
+				relationships: {
+					artists: { data: [{ id: 'art-1', type: 'artists' }] },
+					items: {
+						data: [
+							{ id: 'trk-2', type: 'tracks' },
+							{ id: 'trk-1', type: 'tracks' }
+						]
+					}
+				}
+			},
+			included: [
+				{ id: 'art-1', type: 'artists', attributes: { name: 'Super Artist' } },
+				{
+					id: 'trk-1',
+					type: 'tracks',
+					attributes: { title: 'First Song', trackNumber: 1, duration: 180 }
+				},
+				{
+					id: 'trk-2',
+					type: 'tracks',
+					attributes: { title: 'Second Song', trackNumber: 2, duration: 200 }
+				}
+			]
+		};
+
+		const detail = normaliseAlbumDetail(doc);
+		expect(detail).not.toBeNull();
+		expect(detail?.title).toBe('Greatest Hits');
+		expect(detail?.audioQuality).toBe('HI_RES');
+		expect(detail?.copyright).toBe('2023 Label Inc');
+		expect(detail?.items).toHaveLength(2);
+		expect(detail?.items[0].id).toBe('trk-1');
+		expect(detail?.items[0].album?.id).toBe('alb-1');
+		expect(detail?.items[1].id).toBe('trk-2');
+		expect(detail?.duration).toBe(380);
+		expect(detail?.numberOfItems).toBe(2);
+	});
+
+	it('returns null for non-album documents', () => {
+		expect(normaliseAlbumDetail({ data: { id: 'trk-1', type: 'tracks' } })).toBeNull();
+		expect(normaliseAlbumDetail(null)).toBeNull();
+	});
+});
+
+describe('normaliseArtistDetail', () => {
+	it('combines artist data with top tracks, albums, and similar artists', () => {
+		const artistDoc = {
+			data: {
+				id: 'art-1',
+				type: 'artists',
+				attributes: { name: 'Main Artist', popularity: 95 }
+			}
+		};
+		const tracksDoc = {
+			data: [
+				{
+					id: 'trk-1',
+					type: 'tracks',
+					attributes: { title: 'Hit Track' }
+				}
+			]
+		};
+		const albumsDoc = {
+			data: [
+				{
+					id: 'alb-1',
+					type: 'albums',
+					attributes: { title: 'Hit Album' }
+				}
+			]
+		};
+		const similarDoc = {
+			data: [
+				{
+					id: 'art-2',
+					type: 'artists',
+					attributes: { name: 'Similar Band' }
+				}
+			]
+		};
+
+		const detail = normaliseArtistDetail(artistDoc, tracksDoc, albumsDoc, similarDoc);
+		expect(detail).not.toBeNull();
+		expect(detail?.name).toBe('Main Artist');
+		expect(detail?.popularity).toBe(95);
+		expect(detail?.topTracks).toHaveLength(1);
+		expect(detail?.topTracks[0].title).toBe('Hit Track');
+		expect(detail?.albums).toHaveLength(1);
+		expect(detail?.albums[0].title).toBe('Hit Album');
+		expect(detail?.similarArtists).toHaveLength(1);
+		expect(detail?.similarArtists[0].name).toBe('Similar Band');
+	});
+
+	it('returns null for non-artist documents', () => {
+		expect(normaliseArtistDetail(null)).toBeNull();
+		expect(normaliseArtistDetail({ data: { id: 'alb-1', type: 'albums' } })).toBeNull();
+	});
+});
+
+describe('normalisePlaylistDetail', () => {
+	it('normalises playlist with items, creator, and description', () => {
+		const doc = {
+			data: {
+				id: 'pl-1',
+				type: 'playlists',
+				attributes: {
+					title: 'Chill Vibes',
+					description: 'Relax and unwind'
+				},
+				relationships: {
+					creator: { data: { id: 'usr-1', type: 'users' } },
+					items: { data: [{ id: 'trk-1', type: 'tracks' }] }
+				}
+			},
+			included: [
+				{ id: 'usr-1', type: 'users', attributes: { name: 'Curator John' } },
+				{ id: 'trk-1', type: 'tracks', attributes: { title: 'Chill Song', duration: 210 } }
+			]
+		};
+
+		const detail = normalisePlaylistDetail(doc);
+		expect(detail).not.toBeNull();
+		expect(detail?.title).toBe('Chill Vibes');
+		expect(detail?.description).toBe('Relax and unwind');
+		expect(detail?.creator?.name).toBe('Curator John');
+		expect(detail?.items).toHaveLength(1);
+		expect(detail?.items[0].title).toBe('Chill Song');
+		expect(detail?.duration).toBe(210);
+		expect(detail?.numberOfItems).toBe(1);
+	});
+});
+
+describe('normaliseMixDetail', () => {
+	it('normalises a mix document with tracks', () => {
+		const doc = {
+			data: {
+				id: 'mix-1',
+				type: 'userDailyMixes',
+				attributes: {
+					title: 'Daily Mix 1',
+					subtitle: 'Pop, Indie'
+				},
+				relationships: {
+					items: { data: [{ id: 'trk-1', type: 'tracks' }] }
+				}
+			},
+			included: [{ id: 'trk-1', type: 'tracks', attributes: { title: 'Mix Track' } }]
+		};
+
+		const detail = normaliseMixDetail(doc, 'daily');
+		expect(detail).not.toBeNull();
+		expect(detail?.title).toBe('Daily Mix 1');
+		expect(detail?.subtitle).toBe('Pop, Indie');
+		expect(detail?.mixType).toBe('daily');
+		expect(detail?.items).toHaveLength(1);
 	});
 });

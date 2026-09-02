@@ -43,9 +43,9 @@
 						</li>
 					{/each}
 				</ol>
-				<a class="mix-link" href="https://tidal.com/browse/mixes" rel="noreferrer" target="_blank"
-					>{m.home_daily_mix_more()}</a
-				>
+				<a class="mix-link" href={resolve('/app/mixes')}>
+					{m.home_daily_mix_more()} →
+				</a>
 			</section>
 		{/if}
 		<article class="action-card">
@@ -57,6 +57,11 @@
 			<h2>{m.home_library_title()}</h2>
 			<p>{m.home_library_description()}</p>
 			<a href={resolve('/app/library')}>{m.home_library_button()}</a>
+		</article>
+		<article class="action-card">
+			<h2>{m.mixes_title()}</h2>
+			<p>{m.mixes_subtitle()}</p>
+			<a href={resolve('/app/mixes')}>{m.nav_mixes()}</a>
 		</article>
 	{:else}
 		<article class="action-card">

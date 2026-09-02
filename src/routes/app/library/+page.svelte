@@ -76,6 +76,19 @@
 										<strong>{titleOf(item)}</strong>
 										{#if subtitleOf(item)}<span>{subtitleOf(item)}</span>{/if}
 									</a>
+								{:else if item.kind === 'album'}
+									<a class="item-link" href={resolve('/app/albums/[id]', { id: item.id })}>
+										<strong>{titleOf(item)}</strong>
+										{#if subtitleOf(item)}<span>{subtitleOf(item)}</span>{/if}
+									</a>
+								{:else if item.kind === 'artist'}
+									<a class="item-link" href={resolve('/app/artists/[id]', { id: item.id })}>
+										<strong>{titleOf(item)}</strong>
+									</a>
+								{:else if item.kind === 'playlist'}
+									<a class="item-link" href={resolve('/app/playlists/[id]', { id: item.id })}>
+										<strong>{titleOf(item)}</strong>
+									</a>
 								{:else}
 									<div class="item-link">
 										<strong>{titleOf(item)}</strong>
