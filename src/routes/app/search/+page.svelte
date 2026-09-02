@@ -1,17 +1,22 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { ListPlus, Loader2, Play } from '@lucide/svelte';
-	import { player } from '#lib/player/player.svelte.js';
+	import { Loader2 } from '@lucide/svelte';
+	import SongCard from '#lib/components/music/SongCard.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import type { PageData } from './$types';
 	import type { SearchResultGroups } from '#lib/server/tidal/models';
 
 	let { data }: { data: PageData } = $props();
 
-	let searchQuery = $state(data.query);
-	let liveResults = $state<SearchResultGroups | null>(data.results);
+	let searchQuery = $state('');
+	let liveResults = $state<SearchResultGroups | null>(null);
 	let isSearching = $state(false);
 	let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+
+	$effect(() => {
+		searchQuery = data.query;
+		liveResults = data.results;
+	});
 
 	const currentResults = $derived(liveResults ?? data.results);
 	const activeQuery = $derived(searchQuery.trim());
@@ -124,39 +129,11 @@
 		{#if currentResults.tracks.length}
 			<section class="result-group" aria-labelledby="tracks-title">
 				<h2 id="tracks-title">{m.search_tracks()}</h2>
-				<ul>
-					{#each currentResults.tracks as track (track.id)}
-						<li class="track-row">
-							<button
-								type="button"
-								class="quick-play-btn"
-								onclick={() => player.play(track, currentResults?.tracks)}
-								title={m.player_play_track()}
-								aria-label={m.player_play_track()}
-							>
-								<Play size={14} fill="currentColor" />
-							</button>
-
-							<a class="track-link" href={resolve('/app/tracks/[id]', { id: track.id })}>
-								<strong>{track.title}</strong>
-								{#if track.artists.length}
-									<span>{track.artists.map((artist) => artist.name).join(', ')}</span>
-								{/if}
-								{#if track.album}<small>{track.album.title}</small>{/if}
-							</a>
-
-							<button
-								type="button"
-								class="quick-queue-btn"
-								onclick={() => player.addToQueue(track)}
-								title={m.player_add_to_queue()}
-								aria-label={m.player_add_to_queue()}
-							>
-								<ListPlus size={16} />
-							</button>
-						</li>
+				<div class="song-cards-grid">
+					{#each currentResults.tracks as track, index (track.id)}
+						<SongCard {track} contextTracks={currentResults?.tracks} {index} />
 					{/each}
-				</ul>
+				</div>
 			</section>
 		{/if}
 
@@ -332,6 +309,13 @@
 
 	.result-group {
 		margin-top: 1rem;
+	}
+
+	.song-cards-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr));
+		gap: 0.75rem;
+		margin-top: 0.5rem;
 	}
 
 	.result-group ul {

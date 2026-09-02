@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { Compass, ExternalLink, Flame, ListPlus, Play, Sparkles } from '@lucide/svelte';
+	import { Compass, ExternalLink, Flame, Play, Sparkles } from '@lucide/svelte';
+	import SongCard from '#lib/components/music/SongCard.svelte';
 	import { player } from '#lib/player/player.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import type { PageData } from './$types';
@@ -22,12 +23,6 @@
 			? `https://tidal.com/browse/mix/${encodeURIComponent(currentMix.id)}`
 			: 'https://tidal.com/browse/mixes'
 	);
-
-	function formatDuration(seconds: number): string {
-		const minutes = Math.floor(seconds / 60);
-		const secs = seconds % 60;
-		return `${minutes}:${String(secs).padStart(2, '0')}`;
-	}
 </script>
 
 <svelte:head>
@@ -113,60 +108,11 @@
 					</div>
 				</div>
 
-				<ol class="track-list">
+				<div class="song-cards-grid">
 					{#each currentMix.items as track, index (track.id)}
-						<li>
-							<button
-								type="button"
-								class="track-play-btn"
-								onclick={() => player.play(track, currentMix?.items)}
-								title={m.player_play_track()}
-								aria-label={m.player_play_track()}
-							>
-								<Play size={13} fill="currentColor" />
-							</button>
-
-							<span class="track-num">{index + 1}</span>
-							<div class="track-main">
-								<a class="track-link" href={resolve('/app/tracks/[id]', { id: track.id })}>
-									<strong>{track.title}</strong>
-								</a>
-								{#if track.artists.length}
-									<span class="track-artists">
-										{#each track.artists as artist, i (artist.id)}
-											<a href={resolve('/app/artists/[id]', { id: artist.id })}>{artist.name}</a
-											>{#if i < track.artists.length - 1},
-											{/if}
-										{/each}
-									</span>
-								{/if}
-							</div>
-							{#if track.album}
-								<span class="track-album">
-									<a href={resolve('/app/albums/[id]', { id: track.album.id })}
-										>{track.album.title}</a
-									>
-								</span>
-							{/if}
-							{#if track.explicit}
-								<span class="explicit-badge" title="Explicit">E</span>
-							{/if}
-							{#if track.duration}
-								<time class="track-time">{formatDuration(track.duration)}</time>
-							{/if}
-
-							<button
-								type="button"
-								class="track-queue-btn"
-								onclick={() => player.addToQueue(track)}
-								title={m.player_add_to_queue()}
-								aria-label={m.player_add_to_queue()}
-							>
-								<ListPlus size={15} />
-							</button>
-						</li>
+						<SongCard {track} contextTracks={currentMix.items} {index} />
 					{/each}
-				</ol>
+				</div>
 			</article>
 		{:else}
 			<section class="state-card" aria-labelledby="empty-mix-title">
@@ -321,6 +267,13 @@
 
 	.tidal-mix-btn:hover {
 		border-color: var(--border-strong);
+	}
+
+	.song-cards-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr));
+		gap: 0.75rem;
+		margin-top: 1rem;
 	}
 
 	.track-list {

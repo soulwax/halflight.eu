@@ -12,6 +12,7 @@ vi.mock('#lib/server/tidal', () => ({
 	tidalApi: { search: mocks.search }
 }));
 
+import type { Cookies } from '@sveltejs/kit';
 import { GET } from './+server';
 
 const fetchMock = vi.fn();
@@ -21,7 +22,7 @@ function event(urlStr: string, user: { id: string } | null = { id: 'u1' }) {
 		locals: { user },
 		url: new URL(urlStr),
 		fetch: fetchMock,
-		cookies: {} as any
+		cookies: {} as unknown as Cookies
 	} as unknown as Parameters<typeof GET>[0];
 }
 

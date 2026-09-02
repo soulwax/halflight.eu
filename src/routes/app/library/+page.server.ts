@@ -20,12 +20,13 @@ export const load: PageServerLoad = async (event) => {
 			try {
 				const document = await tidalApi.getCollectionPage(
 					kind,
-					{},
+					{ include: ['artists', 'albums'] },
 					{
 						fetch: event.fetch,
 						cookies: event.cookies
 					}
 				);
+
 				const page = normaliseCollectionPage(document);
 				return { kind, ok: true as const, page };
 			} catch {

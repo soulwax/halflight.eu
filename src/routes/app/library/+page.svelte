@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import SongCard from '#lib/components/music/SongCard.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import type { PageData } from './$types';
+	import type { TrackSummary } from '#lib/server/tidal/models';
 
 	let { data }: { data: PageData } = $props();
 
@@ -66,17 +68,22 @@
 					<p class="group-empty" role="alert">{m.library_section_error()}</p>
 				{:else if section.items.length === 0}
 					<p class="group-empty">{m.library_section_empty()}</p>
+				{:else if section.kind === 'tracks'}
+					<div class="song-cards-grid">
+						{#each section.items as track, index (track.id)}
+							<SongCard
+								track={track as TrackSummary}
+								contextTracks={section.items as TrackSummary[]}
+								{index}
+							/>
+						{/each}
+					</div>
 				{:else}
 					<ul>
 						{#each section.items as item (item.id)}
 							<li>
 								<div class="media-mark" aria-hidden="true">{mark[section.kind]}</div>
-								{#if item.kind === 'track'}
-									<a class="item-link" href={resolve('/app/tracks/[id]', { id: item.id })}>
-										<strong>{titleOf(item)}</strong>
-										{#if subtitleOf(item)}<span>{subtitleOf(item)}</span>{/if}
-									</a>
-								{:else if item.kind === 'album'}
+								{#if item.kind === 'album'}
 									<a class="item-link" href={resolve('/app/albums/[id]', { id: item.id })}>
 										<strong>{titleOf(item)}</strong>
 										{#if subtitleOf(item)}<span>{subtitleOf(item)}</span>{/if}
@@ -186,6 +193,13 @@
 		color: var(--action-contrast);
 		font-weight: 700;
 		text-decoration: none;
+	}
+
+	.song-cards-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr));
+		gap: 0.75rem;
+		margin-top: 0.5rem;
 	}
 
 	.result-group ul {
