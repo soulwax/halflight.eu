@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { ExternalLink, ListPlus, Music, Play } from '@lucide/svelte';
+	import { ExternalLink, ListPlus, Music, Play, Sparkles } from '@lucide/svelte';
+	import SongCard from '#lib/components/music/SongCard.svelte';
 	import { player } from '#lib/player/player.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import type { PageData } from './$types';
@@ -154,6 +155,59 @@
 			</a>
 			<a class="back-link" href={resolve('/app/search')}>{m.track_back_to_search()}</a>
 		</div>
+
+		{#if data.track.radioTracks && data.track.radioTracks.length}
+			<section class="relation-section" aria-labelledby="radio-title">
+				<div class="section-header">
+					<div>
+						<h2 id="radio-title" class="relation-title">
+							<Sparkles size={20} class="text-[var(--action)]" />
+							{m.track_radio_title()}
+						</h2>
+						<p class="relation-subtitle">{m.track_radio_subtitle()}</p>
+					</div>
+					<button
+						type="button"
+						class="play-all-btn"
+						onclick={() => player.play(data.track!.radioTracks![0], data.track!.radioTracks)}
+					>
+						<Play size={14} fill="currentColor" />
+						{m.player_play_all()}
+					</button>
+				</div>
+				<div class="song-cards-grid">
+					{#each data.track.radioTracks as track, index (track.id)}
+						<SongCard {track} contextTracks={data.track.radioTracks} {index} />
+					{/each}
+				</div>
+			</section>
+		{/if}
+
+		{#if data.track.artistTopTracks && data.track.artistTopTracks.length && data.track.artists.length}
+			<section class="relation-section" aria-labelledby="artist-tracks-title">
+				<div class="section-header">
+					<div>
+						<h2 id="artist-tracks-title" class="relation-title">
+							{m.track_more_by_artist({ name: data.track.artists[0].name })}
+						</h2>
+					</div>
+					<button
+						type="button"
+						class="play-all-btn"
+						onclick={() =>
+							player.play(data.track!.artistTopTracks![0], data.track!.artistTopTracks)}
+					>
+						<Play size={14} fill="currentColor" />
+						{m.player_play_all()}
+					</button>
+				</div>
+				<div class="song-cards-grid">
+					{#each data.track.artistTopTracks as track, index (track.id)}
+						<SongCard {track} contextTracks={data.track.artistTopTracks} {index} />
+					{/each}
+				</div>
+			</section>
+		{/if}
 	{:else if data.state === 'not_connected'}
 		<section class="state-card" aria-labelledby="track-title">
 			<h1 id="track-title">{m.track_not_connected_title()}</h1>
@@ -451,6 +505,61 @@
 
 	.back-link {
 		color: var(--text-primary);
+	}
+
+	.relation-section {
+		margin-top: 2.5rem;
+		border-top: 1px solid var(--border-subtle);
+		padding-top: 1.5rem;
+	}
+
+	.section-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		margin-bottom: 1rem;
+		flex-wrap: wrap;
+	}
+
+	.relation-title {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		margin: 0;
+		font-size: 1.3rem;
+	}
+
+	.relation-subtitle {
+		margin: 0.25rem 0 0;
+		color: var(--text-muted);
+		font-size: 0.85rem;
+	}
+
+	.play-all-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		border: 0;
+		border-radius: 0.6rem;
+		background: var(--action);
+		color: var(--action-contrast);
+		padding: 0.45rem 0.85rem;
+		font: inherit;
+		font-size: 0.85rem;
+		font-weight: 700;
+		cursor: pointer;
+		transition: opacity 0.15s ease;
+	}
+
+	.play-all-btn:hover {
+		opacity: 0.9;
+	}
+
+	.song-cards-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr));
+		gap: 0.75rem;
 	}
 
 	.attribution {

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { Disc, ExternalLink, ListPlus, Play, User } from '@lucide/svelte';
+	import { Disc, ExternalLink, Play, Sparkles, User } from '@lucide/svelte';
+	import SongCard from '#lib/components/music/SongCard.svelte';
 	import { player } from '#lib/player/player.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import type { PageData } from './$types';
@@ -13,12 +14,6 @@
 	const tidalArtistUrl = $derived(
 		data.artist ? `https://tidal.com/browse/artist/${encodeURIComponent(data.artist.id)}` : ''
 	);
-
-	function formatDuration(seconds: number): string {
-		const minutes = Math.floor(seconds / 60);
-		const secs = seconds % 60;
-		return `${minutes}:${String(secs).padStart(2, '0')}`;
-	}
 </script>
 
 <svelte:head>
@@ -63,51 +58,40 @@
 						{m.player_play_all()}
 					</button>
 				</div>
-				<ol class="track-list">
+				<div class="song-cards-grid">
 					{#each data.artist.topTracks as track, index (track.id)}
-						<li>
-							<button
-								type="button"
-								class="track-play-btn"
-								onclick={() => player.play(track, data.artist?.topTracks)}
-								title={m.player_play_track()}
-								aria-label={m.player_play_track()}
-							>
-								<Play size={13} fill="currentColor" />
-							</button>
-
-							<span class="track-num">{index + 1}</span>
-							<div class="track-main">
-								<a class="track-link" href={resolve('/app/tracks/[id]', { id: track.id })}>
-									<strong>{track.title}</strong>
-								</a>
-								{#if track.album}
-									<span class="track-sub">
-										<a href={resolve('/app/albums/[id]', { id: track.album.id })}
-											>{track.album.title}</a
-										>
-									</span>
-								{/if}
-							</div>
-							{#if track.explicit}
-								<span class="explicit-badge" title="Explicit">E</span>
-							{/if}
-							{#if track.duration}
-								<time class="track-time">{formatDuration(track.duration)}</time>
-							{/if}
-
-							<button
-								type="button"
-								class="track-queue-btn"
-								onclick={() => player.addToQueue(track)}
-								title={m.player_add_to_queue()}
-								aria-label={m.player_add_to_queue()}
-							>
-								<ListPlus size={15} />
-							</button>
-						</li>
+						<SongCard {track} contextTracks={data.artist?.topTracks} {index} />
 					{/each}
-				</ol>
+				</div>
+			</section>
+		{/if}
+
+		{#if data.artist.radioTracks && data.artist.radioTracks.length}
+			<section class="section-block" aria-labelledby="artist-radio-title">
+				<div class="tracks-header">
+					<div>
+						<h2 id="artist-radio-title" class="flex items-center gap-2">
+							<Sparkles size={20} class="text-[var(--action)]" />
+							{m.artist_radio_title()}
+						</h2>
+						<p class="section-subtitle">
+							{m.artist_radio_subtitle({ name: data.artist.name })}
+						</p>
+					</div>
+					<button
+						type="button"
+						class="play-all-btn"
+						onclick={() => player.play(data.artist!.radioTracks![0], data.artist!.radioTracks)}
+					>
+						<Play size={14} fill="currentColor" />
+						{m.player_play_all()}
+					</button>
+				</div>
+				<div class="song-cards-grid">
+					{#each data.artist.radioTracks as track, index (track.id)}
+						<SongCard {track} contextTracks={data.artist.radioTracks} {index} />
+					{/each}
+				</div>
 			</section>
 		{/if}
 
@@ -313,103 +297,16 @@
 		opacity: 0.9;
 	}
 
-	.track-list {
-		margin: 0;
-		padding: 0;
-		list-style: none;
-	}
-
-	.track-list li {
-		display: grid;
-		grid-template-columns: 2rem 1.8rem minmax(0, 1fr) auto auto auto;
-		align-items: center;
-		gap: 0.5rem;
-		min-height: 3.25rem;
-		border-top: 1px solid var(--border-subtle);
-		padding: 0.4rem 0;
-	}
-
-	.track-play-btn,
-	.track-queue-btn {
-		display: grid;
-		place-items: center;
-		width: 1.85rem;
-		height: 1.85rem;
-		border: 0;
-		border-radius: 0.4rem;
-		background: transparent;
-		color: var(--text-muted);
-		cursor: pointer;
-		padding: 0;
-		transition: all 0.15s ease;
-	}
-
-	.track-play-btn:hover {
-		color: var(--action);
-		background: var(--surface-selected);
-	}
-
-	.track-queue-btn:hover {
-		color: var(--text-primary);
-		background: var(--surface-selected);
-	}
-
-	.track-list li:first-child {
-		border-top: 0;
-	}
-
-	.track-num {
-		color: var(--text-muted);
-		font-size: 0.85rem;
-		font-variant-numeric: tabular-nums;
-		text-align: right;
-		padding-right: 0.25rem;
-	}
-
-	.track-main {
-		display: grid;
-		min-width: 0;
-		gap: 0.15rem;
-	}
-
-	.track-link {
-		color: inherit;
-		text-decoration: none;
-	}
-
-	.track-link:hover strong,
-	.track-link:focus-visible strong {
-		text-decoration: underline;
-	}
-
-	.track-sub {
+	.section-subtitle {
+		margin: 0.25rem 0 0;
 		color: var(--text-muted);
 		font-size: 0.85rem;
 	}
 
-	.track-sub a {
-		color: inherit;
-		text-decoration: none;
-	}
-
-	.track-sub a:hover,
-	.track-sub a:focus-visible {
-		text-decoration: underline;
-	}
-
-	.explicit-badge {
-		border-radius: 0.25rem;
-		background: var(--surface-selected);
-		padding: 0.1rem 0.35rem;
-		color: var(--text-muted);
-		font-size: 0.7rem;
-		font-weight: 700;
-	}
-
-	.track-time {
-		color: var(--text-muted);
-		font-size: 0.85rem;
-		font-variant-numeric: tabular-nums;
+	.song-cards-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr));
+		gap: 0.75rem;
 	}
 
 	.grid-albums {

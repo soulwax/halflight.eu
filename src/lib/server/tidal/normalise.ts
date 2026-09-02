@@ -175,11 +175,28 @@ export function normaliseTrack(
  * consumed by the track page. Raw attributes and relationships never leave
  * this server boundary.
  */
-export function normaliseTrackDetail(document: unknown): TrackDetail | null {
+export function normaliseTrackDetail(
+	document: unknown,
+	radioDoc?: unknown,
+	artistTracksDoc?: unknown
+): TrackDetail | null {
 	if (!isRecord(document)) return null;
 
 	const track = normaliseTrack(document.data, indexIncluded(document.included));
-	return track;
+	if (!track) return null;
+
+	const radioTracks = radioDoc
+		? normaliseSearchResults(radioDoc).tracks.filter((t) => t.id !== track.id)
+		: [];
+	const artistTopTracks = artistTracksDoc
+		? normaliseSearchResults(artistTracksDoc).tracks.filter((t) => t.id !== track.id)
+		: [];
+
+	return {
+		...track,
+		...(radioTracks.length ? { radioTracks } : {}),
+		...(artistTopTracks.length ? { artistTopTracks } : {})
+	};
 }
 
 /** Return a display-ready album, or `null` for malformed/non-album input. */
@@ -240,7 +257,10 @@ export function normalisePlaylist(value: unknown): PlaylistSummary | null {
  * Convert an album compound document into a display-ready AlbumDetail model,
  * resolving album artists and ordered track items from linkages or included resources.
  */
-export function normaliseAlbumDetail(document: unknown): AlbumDetail | null {
+export function normaliseAlbumDetail(
+	document: unknown,
+	similarAlbumsDoc?: unknown
+): AlbumDetail | null {
 	if (!isRecord(document)) return null;
 	const resource = readResource(document.data);
 	if (!resource || resource.type !== 'albums') return null;
@@ -300,7 +320,9 @@ export function normaliseAlbumDetail(document: unknown): AlbumDetail | null {
 		const volA = a.volumeNumber ?? 1;
 		const volB = b.volumeNumber ?? 1;
 		if (volA !== volB) return volA - volB;
-		return (a.trackNumber ?? 0) - (b.trackNumber ?? 0);
+		const numA = a.trackNumber ?? 0;
+		const numB = b.trackNumber ?? 0;
+		return numA - numB;
 	});
 
 	const duration =
@@ -315,6 +337,9 @@ export function normaliseAlbumDetail(document: unknown): AlbumDetail | null {
 		'totalVolumes'
 	]);
 	const audioQuality = readAttribute(resource, ['audioQuality', 'audio_quality']);
+	const similarAlbums = similarAlbumsDoc
+		? normaliseSearchResults(similarAlbumsDoc).albums.filter((a) => a.id !== base.id)
+		: [];
 
 	return {
 		...base,
@@ -322,19 +347,21 @@ export function normaliseAlbumDetail(document: unknown): AlbumDetail | null {
 		...(duration ? { duration } : {}),
 		...(numberOfItems !== undefined ? { numberOfItems } : {}),
 		...(numberOfVolumes !== undefined ? { numberOfVolumes } : {}),
-		...(audioQuality ? { audioQuality } : {})
+		...(audioQuality ? { audioQuality } : {}),
+		...(similarAlbums.length ? { similarAlbums } : {})
 	};
 }
 
 /**
  * Normalise an artist document combined with optional side-loaded tracks, albums,
- * and similar artists documents.
+ * similar artists, and radio tracks documents.
  */
 export function normaliseArtistDetail(
 	document: unknown,
 	tracksDoc?: unknown,
 	albumsDoc?: unknown,
-	similarDoc?: unknown
+	similarDoc?: unknown,
+	radioDoc?: unknown
 ): ArtistDetail | null {
 	if (!isRecord(document)) return null;
 	const resource = readResource(document.data);
@@ -349,6 +376,7 @@ export function normaliseArtistDetail(
 	const topTracks = tracksDoc ? normaliseSearchResults(tracksDoc).tracks : [];
 	const albums = albumsDoc ? normaliseSearchResults(albumsDoc).albums : [];
 	const similarArtists = similarDoc ? normaliseSearchResults(similarDoc).artists : [];
+	const radioTracks = radioDoc ? normaliseSearchResults(radioDoc).tracks : [];
 
 	return {
 		...base,
@@ -356,7 +384,8 @@ export function normaliseArtistDetail(
 		...(popularity !== undefined ? { popularity } : {}),
 		topTracks,
 		albums,
-		similarArtists
+		similarArtists,
+		...(radioTracks.length ? { radioTracks } : {})
 	};
 }
 

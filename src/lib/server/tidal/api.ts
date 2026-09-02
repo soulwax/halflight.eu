@@ -211,6 +211,42 @@ export function getArtistRelationship(
 	);
 }
 
+/** A named relationship of a track (`radio`, `similarTracks`, `albums`, `artists`, …). */
+export function getTrackRelationship(
+	id: string,
+	relationship: string,
+	opts: PageOptions = {},
+	ctx?: Ctx
+): Promise<Document<Resource[]>> {
+	return tidalJson(
+		`/tracks/${encodeURIComponent(id)}/relationships/${relationship}${qs({
+			include: opts.include,
+			countryCode: opts.countryCode,
+			'page[cursor]': opts.cursor
+		})}`,
+		{},
+		ctx
+	);
+}
+
+/** A named relationship of an album (`similarAlbums`, `items`, `tracks`, `artists`, …). */
+export function getAlbumRelationship(
+	id: string,
+	relationship: string,
+	opts: PageOptions = {},
+	ctx?: Ctx
+): Promise<Document<Resource[]>> {
+	return tidalJson(
+		`/albums/${encodeURIComponent(id)}/relationships/${relationship}${qs({
+			include: opts.include,
+			countryCode: opts.countryCode,
+			'page[cursor]': opts.cursor
+		})}`,
+		{},
+		ctx
+	);
+}
+
 async function mutate(method: string, path: string, body: unknown, ctx?: Ctx): Promise<unknown> {
 	const response = await tidalFetch(
 		path,

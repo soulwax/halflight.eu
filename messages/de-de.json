@@ -186,5 +186,12 @@
 	"player_collapse": "Player verkleinern",
 	"player_close": "Player schließen",
 	"search_live_placeholder": "Schnellsuche nach Titeln, Alben, Künstlern...",
-	"search_live_searching": "Suche in TIDAL..."
+	"search_live_searching": "Suche in TIDAL...",
+	"track_radio_title": "Titel-Radio & Ähnliche Titel",
+	"track_radio_subtitle": "Empfehlungen basierend auf diesem Titel",
+	"track_more_by_artist": "Mehr von {name}",
+	"album_similar_title": "Ähnliche Alben",
+	"album_similar_subtitle": "Alben passend zu dieser Veröffentlichung",
+	"artist_radio_title": "Künstler-Radio",
+	"artist_radio_subtitle": "Musik inspiriert von {name} und verwandten Klängen"
 }

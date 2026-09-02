@@ -39,7 +39,10 @@ export interface TrackSummary {
  * search result. Additional fields belong here only once a page needs them
  * and their upstream representation has been normalised safely.
  */
-export type TrackDetail = TrackSummary;
+export interface TrackDetail extends TrackSummary {
+	radioTracks?: TrackSummary[];
+	artistTopTracks?: TrackSummary[];
+}
 
 export interface AlbumSummary {
 	kind: 'album';
@@ -65,6 +68,7 @@ export interface AlbumDetail extends AlbumSummary {
 	numberOfItems?: number;
 	numberOfVolumes?: number;
 	audioQuality?: string;
+	similarAlbums?: AlbumSummary[];
 }
 
 export interface ArtistDetail extends ArtistSummary {
@@ -73,6 +77,7 @@ export interface ArtistDetail extends ArtistSummary {
 	topTracks: TrackSummary[];
 	albums: AlbumSummary[];
 	similarArtists: ArtistSummary[];
+	radioTracks?: TrackSummary[];
 }
 
 export interface PlaylistDetail extends PlaylistSummary {

@@ -33,13 +33,16 @@ export const load: PageServerLoad = async (event) => {
 
 	if (!connection.connected) return failure('not_connected', connection.configured, id);
 
+	const ctx = { fetch: event.fetch, cookies: event.cookies };
+
 	try {
-		const document = await tidalApi.getAlbum(
-			id,
-			{ include: ['artists', 'items'] },
-			{ fetch: event.fetch, cookies: event.cookies }
-		);
-		const album = normaliseAlbumDetail(document);
+		const document = await tidalApi.getAlbum(id, { include: ['artists', 'items'] }, ctx);
+
+		const similarDoc = await tidalApi
+			.getAlbumRelationship(id, 'similarAlbums', { include: ['artists'] }, ctx)
+			.catch(() => null);
+
+		const album = normaliseAlbumDetail(document, similarDoc);
 
 		if (!album) return failure('not_found', connection.configured, id);
 		return { album, state: null, configured: connection.configured, id };

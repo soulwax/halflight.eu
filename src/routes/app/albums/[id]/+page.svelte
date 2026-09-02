@@ -166,6 +166,37 @@
 			<p class="copyright">{data.album.copyright}</p>
 		{/if}
 
+		{#if data.album.similarAlbums && data.album.similarAlbums.length}
+			<section class="similar-albums-section" aria-labelledby="similar-albums-title">
+				<h2 id="similar-albums-title">{m.album_similar_title()}</h2>
+				<p class="similar-subtitle">{m.album_similar_subtitle()}</p>
+				<div class="grid-albums">
+					{#each data.album.similarAlbums as similar (similar.id)}
+						<a class="album-card" href={resolve('/app/albums/[id]', { id: similar.id })}>
+							{#if similar.imageUrl}
+								<img
+									class="card-cover"
+									src={similar.imageUrl}
+									alt={`Cover for ${similar.title}`}
+									loading="lazy"
+								/>
+							{:else}
+								<div class="card-cover cover-placeholder" aria-hidden="true">
+									<Disc size={28} />
+								</div>
+							{/if}
+							<div class="card-info">
+								<strong>{similar.title}</strong>
+								{#if similar.artists.length}
+									<span class="card-artist">{similar.artists.map((a) => a.name).join(', ')}</span>
+								{/if}
+							</div>
+						</a>
+					{/each}
+				</div>
+			</section>
+		{/if}
+
 		<div class="actions">
 			<a class="tidal-link" href={tidalAlbumUrl} rel="noreferrer" target="_blank">
 				<Play size={17} fill="currentColor" />
@@ -465,6 +496,83 @@
 		margin-top: 1rem;
 		color: var(--text-muted);
 		font-size: 0.75rem;
+	}
+
+	.similar-albums-section {
+		margin-top: 2.5rem;
+		border-top: 1px solid var(--border-subtle);
+		padding-top: 1.5rem;
+	}
+
+	.similar-albums-section h2 {
+		margin: 0;
+		font-size: 1.3rem;
+	}
+
+	.similar-subtitle {
+		margin: 0.25rem 0 1rem;
+		color: var(--text-muted);
+		font-size: 0.85rem;
+	}
+
+	.grid-albums {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
+		gap: 1rem;
+	}
+
+	.album-card {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		padding: 0.65rem;
+		border-radius: 0.85rem;
+		background: var(--surface-canvas);
+		border: 1px solid var(--border-subtle);
+		color: inherit;
+		text-decoration: none;
+		transition: all 0.15s ease;
+	}
+
+	.album-card:hover {
+		border-color: var(--border-strong);
+		background: var(--surface-raised);
+		transform: translateY(-2px);
+	}
+
+	.card-cover {
+		width: 100%;
+		aspect-ratio: 1;
+		object-fit: cover;
+		border-radius: 0.5rem;
+		background: var(--surface-selected);
+	}
+
+	.cover-placeholder {
+		display: grid;
+		place-items: center;
+		color: var(--text-muted);
+	}
+
+	.card-info {
+		display: flex;
+		flex-direction: column;
+		gap: 0.15rem;
+	}
+
+	.card-info strong {
+		font-size: 0.9rem;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.card-artist {
+		color: var(--text-muted);
+		font-size: 0.8rem;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 
 	.actions {

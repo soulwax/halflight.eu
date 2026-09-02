@@ -38,15 +38,18 @@ export const load: PageServerLoad = async (event) => {
 	try {
 		const artistDoc = await tidalApi.getArtist(id, {}, ctx);
 
-		const [tracksDoc, albumsDoc, similarDoc] = await Promise.all([
+		const [tracksDoc, albumsDoc, similarDoc, radioDoc] = await Promise.all([
 			tidalApi
 				.getArtistRelationship(id, 'tracks', { include: ['albums', 'artists'] }, ctx)
 				.catch(() => null),
 			tidalApi.getArtistRelationship(id, 'albums', { include: ['artists'] }, ctx).catch(() => null),
-			tidalApi.getArtistRelationship(id, 'similarArtists', {}, ctx).catch(() => null)
+			tidalApi.getArtistRelationship(id, 'similarArtists', {}, ctx).catch(() => null),
+			tidalApi
+				.getArtistRelationship(id, 'radio', { include: ['albums', 'artists'] }, ctx)
+				.catch(() => null)
 		]);
 
-		const artist = normaliseArtistDetail(artistDoc, tracksDoc, albumsDoc, similarDoc);
+		const artist = normaliseArtistDetail(artistDoc, tracksDoc, albumsDoc, similarDoc, radioDoc);
 
 		if (!artist) return failure('not_found', connection.configured, id);
 		return { artist, state: null, configured: connection.configured, id };

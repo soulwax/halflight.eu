@@ -2,7 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { Loader2 } from '@lucide/svelte';
 	import SongCard from '#lib/components/music/SongCard.svelte';
-	import { m } from '#lib/paraglide/messages.js';
+	import { m } from '#lib/paraglide/messages';
 	import type { PageData } from './$types';
 	import type { SearchResultGroups } from '#lib/server/tidal/models';
 
@@ -354,41 +354,6 @@
 		display: grid;
 		place-items: center;
 		padding: 0 0.75rem;
-	}
-
-	.track-row {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-	}
-
-	.quick-play-btn,
-	.quick-queue-btn {
-		display: grid;
-		place-items: center;
-		width: 2.25rem;
-		height: 2.25rem;
-		min-height: 2.25rem;
-		border: 1px solid var(--border-subtle);
-		border-radius: 0.6rem;
-		background: var(--surface-canvas);
-		color: var(--text-muted);
-		padding: 0;
-		cursor: pointer;
-		flex: 0 0 auto;
-		transition: all 0.15s ease;
-	}
-
-	.quick-play-btn:hover {
-		border-color: var(--action);
-		background: var(--action);
-		color: var(--action-contrast);
-	}
-
-	.quick-queue-btn:hover {
-		border-color: var(--border-strong);
-		background: var(--surface-selected);
-		color: var(--text-primary);
 	}
 
 	.track-link {

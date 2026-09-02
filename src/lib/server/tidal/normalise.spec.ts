@@ -427,3 +427,38 @@ describe('normaliseMixDetail', () => {
 		expect(detail?.items).toHaveLength(1);
 	});
 });
+
+describe('rich relationship normalisation', () => {
+	it('normalises track detail with radio and artist top tracks', () => {
+		const trackDoc = {
+			data: { id: 'trk-1', type: 'tracks', attributes: { title: 'Main Track' } }
+		};
+		const radioDoc = {
+			data: [{ id: 'trk-2', type: 'tracks', attributes: { title: 'Radio Track' } }]
+		};
+		const artistDoc = {
+			data: [{ id: 'trk-3', type: 'tracks', attributes: { title: 'Artist Other Track' } }]
+		};
+
+		const detail = normaliseTrackDetail(trackDoc, radioDoc, artistDoc);
+		expect(detail?.id).toBe('trk-1');
+		expect(detail?.radioTracks).toHaveLength(1);
+		expect(detail?.radioTracks?.[0].title).toBe('Radio Track');
+		expect(detail?.artistTopTracks).toHaveLength(1);
+		expect(detail?.artistTopTracks?.[0].title).toBe('Artist Other Track');
+	});
+
+	it('normalises album detail with similar albums', () => {
+		const albumDoc = {
+			data: { id: 'alb-1', type: 'albums', attributes: { title: 'Main Album' } }
+		};
+		const similarDoc = {
+			data: [{ id: 'alb-2', type: 'albums', attributes: { title: 'Similar Album' } }]
+		};
+
+		const detail = normaliseAlbumDetail(albumDoc, similarDoc);
+		expect(detail?.id).toBe('alb-1');
+		expect(detail?.similarAlbums).toHaveLength(1);
+		expect(detail?.similarAlbums?.[0].title).toBe('Similar Album');
+	});
+});

@@ -186,5 +186,12 @@
 	"player_collapse": "Collapse player",
 	"player_close": "Close player",
 	"search_live_placeholder": "Quick search tracks, albums, artists...",
-	"search_live_searching": "Searching TIDAL..."
+	"search_live_searching": "Searching TIDAL...",
+	"track_radio_title": "Track Radio & Similar Tracks",
+	"track_radio_subtitle": "Recommendations based on this track",
+	"track_more_by_artist": "More by {name}",
+	"album_similar_title": "Similar Albums",
+	"album_similar_subtitle": "Albums related to this release",
+	"artist_radio_title": "Artist Radio Station",
+	"artist_radio_subtitle": "Music inspired by {name} and similar sounds"
 }

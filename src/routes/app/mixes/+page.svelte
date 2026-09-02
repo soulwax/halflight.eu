@@ -276,112 +276,6 @@
 		margin-top: 1rem;
 	}
 
-	.track-list {
-		margin: 0;
-		padding: 0;
-		list-style: none;
-	}
-
-	.track-list li {
-		display: grid;
-		grid-template-columns: 2rem 1.8rem minmax(0, 1.5fr) minmax(0, 1fr) auto auto auto;
-		align-items: center;
-		gap: 0.5rem;
-		min-height: 3.25rem;
-		border-top: 1px solid var(--border-subtle);
-		padding: 0.4rem 0;
-	}
-
-	.track-play-btn,
-	.track-queue-btn {
-		display: grid;
-		place-items: center;
-		width: 1.85rem;
-		height: 1.85rem;
-		border: 0;
-		border-radius: 0.4rem;
-		background: transparent;
-		color: var(--text-muted);
-		cursor: pointer;
-		padding: 0;
-		transition: all 0.15s ease;
-	}
-
-	.track-play-btn:hover {
-		color: var(--action);
-		background: var(--surface-selected);
-	}
-
-	.track-queue-btn:hover {
-		color: var(--text-primary);
-		background: var(--surface-selected);
-	}
-
-	.track-list li:first-child {
-		border-top: 0;
-	}
-
-	.track-num {
-		color: var(--text-muted);
-		font-size: 0.85rem;
-		font-variant-numeric: tabular-nums;
-		text-align: right;
-		padding-right: 0.25rem;
-	}
-
-	.track-main {
-		display: grid;
-		min-width: 0;
-		gap: 0.15rem;
-	}
-
-	.track-link {
-		color: inherit;
-		text-decoration: none;
-	}
-
-	.track-link:hover strong,
-	.track-link:focus-visible strong {
-		text-decoration: underline;
-	}
-
-	.track-artists,
-	.track-album {
-		color: var(--text-muted);
-		font-size: 0.85rem;
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
-
-	.track-artists a,
-	.track-album a {
-		color: inherit;
-		text-decoration: none;
-	}
-
-	.track-artists a:hover,
-	.track-artists a:focus-visible,
-	.track-album a:hover,
-	.track-album a:focus-visible {
-		text-decoration: underline;
-	}
-
-	.explicit-badge {
-		border-radius: 0.25rem;
-		background: var(--surface-selected);
-		padding: 0.1rem 0.35rem;
-		color: var(--text-muted);
-		font-size: 0.7rem;
-		font-weight: 700;
-	}
-
-	.track-time {
-		color: var(--text-muted);
-		font-size: 0.85rem;
-		font-variant-numeric: tabular-nums;
-	}
-
 	.state-card {
 		margin-top: 1.5rem;
 		border: 1px solid var(--border-subtle);
@@ -416,14 +310,5 @@
 
 	.attribution a {
 		color: inherit;
-	}
-
-	@media (max-width: 42rem) {
-		.track-list li {
-			grid-template-columns: 2rem minmax(0, 1fr) auto auto;
-		}
-		.track-album {
-			display: none;
-		}
 	}
 </style>

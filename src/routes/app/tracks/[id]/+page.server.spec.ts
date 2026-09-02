@@ -13,6 +13,8 @@ const mocks = vi.hoisted(() => {
 	return {
 		getConnectionStatus: vi.fn(),
 		getTrack: vi.fn(),
+		getTrackRelationship: vi.fn().mockResolvedValue(null),
+		getArtistRelationship: vi.fn().mockResolvedValue(null),
 		MockTidalApiError,
 		MockTidalAuthError,
 		MockTidalNotConnectedError
@@ -21,7 +23,11 @@ const mocks = vi.hoisted(() => {
 
 vi.mock('#lib/server/tidal', () => ({
 	getConnectionStatus: mocks.getConnectionStatus,
-	tidalApi: { getTrack: mocks.getTrack },
+	tidalApi: {
+		getTrack: mocks.getTrack,
+		getTrackRelationship: mocks.getTrackRelationship,
+		getArtistRelationship: mocks.getArtistRelationship
+	},
 	TidalApiError: mocks.MockTidalApiError,
 	TidalAuthError: mocks.MockTidalAuthError,
 	TidalNotConnectedError: mocks.MockTidalNotConnectedError
