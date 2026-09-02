@@ -1,0 +1,3 @@
+[submodule "external/tiddl"]
+	path = external/tiddl
+	url = https://github.com/oskvr37/tiddl

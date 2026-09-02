@@ -1,5 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import {
+	fetchTrackLyrics,
 	getConnectionStatus,
 	tidalApi,
 	TidalApiError,
@@ -48,7 +49,7 @@ export const load: PageServerLoad = async (event) => {
 			dataObj?.relationships?.artists?.data ?? dataObj?.relationships?.contributors?.data;
 		const firstArtistId = Array.isArray(artistRel) ? artistRel[0]?.id : artistRel?.id;
 
-		const [radioDoc, artistTracksDoc] = await Promise.all([
+		const [radioDoc, artistTracksDoc, lyrics] = await Promise.all([
 			tidalApi
 				.getTrackRelationship(id, 'radio', { include: ['albums', 'artists'] }, ctx)
 				.catch(() =>
@@ -64,13 +65,14 @@ export const load: PageServerLoad = async (event) => {
 				? tidalApi
 						.getArtistRelationship(firstArtistId, 'tracks', { include: ['albums', 'artists'] }, ctx)
 						.catch(() => null)
-				: null
+				: null,
+			fetchTrackLyrics(id, { ctx }).catch(() => null)
 		]);
 
 		const track = normaliseTrackDetail(document, radioDoc, artistTracksDoc);
 
 		if (!track) return failure('not_found', connection.configured, id);
-		return { track, state: null, configured: connection.configured, id };
+		return { track, lyrics, state: null, configured: connection.configured, id };
 	} catch (error) {
 		if (error instanceof TidalNotConnectedError)
 			return failure('not_connected', connection.configured, id);

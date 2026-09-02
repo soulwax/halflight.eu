@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => {
 		getTrack: vi.fn(),
 		getTrackRelationship: vi.fn().mockResolvedValue(null),
 		getArtistRelationship: vi.fn().mockResolvedValue(null),
+		fetchTrackLyrics: vi.fn().mockResolvedValue(null),
 		MockTidalApiError,
 		MockTidalAuthError,
 		MockTidalNotConnectedError
@@ -23,6 +24,7 @@ const mocks = vi.hoisted(() => {
 
 vi.mock('#lib/server/tidal', () => ({
 	getConnectionStatus: mocks.getConnectionStatus,
+	fetchTrackLyrics: mocks.fetchTrackLyrics,
 	tidalApi: {
 		getTrack: mocks.getTrack,
 		getTrackRelationship: mocks.getTrackRelationship,
@@ -49,6 +51,8 @@ describe('/app/tracks/[id] load', () => {
 	beforeEach(() => {
 		mocks.getConnectionStatus.mockReset();
 		mocks.getTrack.mockReset();
+		mocks.fetchTrackLyrics.mockReset();
+		mocks.fetchTrackLyrics.mockResolvedValue(null);
 		fetchMock.mockReset();
 	});
 
@@ -74,6 +78,7 @@ describe('/app/tracks/[id] load', () => {
 			id: 'track-1',
 			configured: true,
 			state: null,
+			lyrics: null,
 			track: {
 				kind: 'track',
 				id: 'track-1',

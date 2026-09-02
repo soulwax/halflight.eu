@@ -15,3 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Full song native playback engine translating core streaming manifest parser and TIDAL API resolution from `oskvr37/tiddl`.
 - TIDAL Device Authorization flow (`https://link.tidal.com`) with `r_usr` streaming playback scopes.
 - High-fidelity stream metadata and telemetry badges (`FLAC LOSSLESS`, `AAC 320k`) in the audio player.
+- Real-time synchronized lyrics engine (`parseLrc`) with karaoke-style line tracking, auto-scrolling, and interactive seeking in the player and track view.
+- Official editorial album reviews and critiques with legacy WiMP link sanitization on album pages.
+- Standard Extended M3U8 playlist exporter (`#EXTM3U` format) for custom playlists, TIDAL playlists, albums, and tracks.
+- Loudness normalization (ReplayGain telemetry) integration in the audio engine.

@@ -8,6 +8,7 @@
 		ListMusic,
 		Loader2,
 		Maximize2,
+		Mic2,
 		Minimize2,
 		Pause,
 		Play,
@@ -52,6 +53,15 @@
 		const target = event.target as HTMLInputElement;
 		player.setVolume(parseFloat(target.value));
 	}
+
+	$effect(() => {
+		if (player.isLyricsOpen && player.activeLyricIndex >= 0) {
+			const activeEl = document.querySelector('.lyric-line-btn.active');
+			if (activeEl) {
+				activeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+			}
+		}
+	});
 </script>
 
 <aside
@@ -266,6 +276,18 @@
 					{/if}
 				</button>
 
+				<!-- Synchronized Lyrics Toggle -->
+				<button
+					type="button"
+					class="action-btn lyrics-btn"
+					class:active={player.isLyricsOpen}
+					onclick={() => player.toggleLyrics()}
+					title="Synchronized Lyrics"
+					aria-label="Synchronized Lyrics"
+				>
+					<Mic2 size={15} />
+				</button>
+
 				<!-- Open in TIDAL Link -->
 				<a
 					class="action-btn tidal-link"
@@ -344,6 +366,61 @@
 							>{player.playbackMode === 'direct' ? 'NATIVE STREAM' : 'TIDAL EMBED'}</span
 						>
 					</div>
+				</div>
+			</div>
+		{/if}
+
+		<!-- Live Synchronized Lyrics Drawer -->
+		{#if player.isLyricsOpen}
+			<div class="lyrics-drawer">
+				<div class="lyrics-header">
+					<div class="flex items-center gap-2">
+						<Mic2 size={16} class="text-[var(--action)]" />
+						<span class="text-xs font-bold tracking-wider text-[var(--text-primary)] uppercase">
+							Synchronized Lyrics
+						</span>
+					</div>
+					<button
+						type="button"
+						class="close-expanded-cover"
+						onclick={() => player.closeLyrics()}
+						aria-label="Close lyrics"
+					>
+						<X size={14} />
+					</button>
+				</div>
+
+				<div class="lyrics-body" id="lyrics-scroll-box">
+					{#if player.isLyricsLoading}
+						<div class="lyrics-status">
+							<Loader2 size={22} class="mb-2 animate-spin text-[var(--action)]" />
+							<p>Loading synchronized lyrics...</p>
+						</div>
+					{:else if player.lyricsCues.length > 0}
+						<div class="lyrics-cues-list">
+							{#each player.lyricsCues as cue, idx (cue.time + '-' + idx)}
+								<button
+									type="button"
+									class="lyric-line-btn"
+									class:active={player.activeLyricIndex === idx}
+									onclick={() => player.seek(cue.time)}
+								>
+									<span class="cue-time font-mono">{formatDuration(cue.time)}</span>
+									<span class="cue-text">{cue.text}</span>
+								</button>
+							{/each}
+						</div>
+					{:else if player.lyrics}
+						<div class="plain-lyrics-view">
+							{#each player.lyrics.split('\n') as line, idx (idx)}
+								<p class="plain-line">{line}</p>
+							{/each}
+						</div>
+					{:else}
+						<div class="lyrics-status">
+							<p>No lyrics found for this track.</p>
+						</div>
+					{/if}
 				</div>
 			</div>
 		{/if}
@@ -723,10 +800,120 @@
 		position: relative;
 	}
 
-	.queue-btn.active {
+	.queue-btn.active,
+	.lyrics-btn.active {
 		border-color: var(--action);
 		background: var(--action);
 		color: var(--action-contrast);
+	}
+
+	.lyrics-drawer {
+		position: absolute;
+		bottom: calc(100% + 0.85rem);
+		right: 1rem;
+		width: clamp(18rem, 30vw, 24rem);
+		max-height: 26rem;
+		display: flex;
+		flex-direction: column;
+		background: var(--surface-raised);
+		border: 2px solid var(--border-strong);
+		border-radius: var(--radius-lg, 14px);
+		box-shadow:
+			0 16px 36px -6px rgba(0, 0, 0, 0.45),
+			3px 3px 0px var(--border-strong);
+		animation: slideUp 0.15s ease-out;
+		z-index: 90;
+		overflow: hidden;
+	}
+
+	.lyrics-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 0.85rem 1rem;
+		border-bottom: 1px solid var(--border-subtle);
+		background: var(--surface-canvas);
+	}
+
+	.lyrics-body {
+		flex: 1;
+		overflow-y: auto;
+		padding: 0.85rem 1rem;
+		scroll-behavior: smooth;
+	}
+
+	.lyrics-status {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		padding: 2.5rem 1rem;
+		text-align: center;
+		color: var(--text-muted);
+		font-size: 0.85rem;
+	}
+
+	.lyrics-cues-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.4rem;
+	}
+
+	.lyric-line-btn {
+		display: flex;
+		align-items: baseline;
+		gap: 0.75rem;
+		width: 100%;
+		padding: 0.45rem 0.6rem;
+		border: 1px solid transparent;
+		border-radius: var(--radius-sm, 6px);
+		background: transparent;
+		text-align: left;
+		cursor: pointer;
+		color: var(--text-muted);
+		font: inherit;
+		transition: all 0.15s ease;
+	}
+
+	.lyric-line-btn:hover {
+		background: var(--surface-selected);
+		color: var(--text-primary);
+	}
+
+	.lyric-line-btn.active {
+		background: var(--surface-sunken);
+		border-color: var(--action);
+		color: var(--text-primary);
+		font-weight: 700;
+		transform: scale(1.02);
+		transform-origin: left center;
+	}
+
+	.lyric-line-btn.active .cue-text {
+		color: var(--action);
+	}
+
+	.cue-time {
+		font-size: 0.68rem;
+		color: var(--text-muted);
+		opacity: 0.7;
+		flex-shrink: 0;
+	}
+
+	.cue-text {
+		font-size: 0.88rem;
+		line-height: 1.35;
+	}
+
+	.plain-lyrics-view {
+		color: var(--text-muted);
+		font-size: 0.88rem;
+		line-height: 1.6;
+		white-space: pre-wrap;
+	}
+
+	.plain-line {
+		margin-bottom: 0.25rem;
 	}
 
 	.queue-counter {

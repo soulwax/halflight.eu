@@ -1,5 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import {
+	fetchAlbumReview,
 	getConnectionStatus,
 	tidalApi,
 	TidalApiError,
@@ -36,16 +37,18 @@ export const load: PageServerLoad = async (event) => {
 	const ctx = { fetch: event.fetch, cookies: event.cookies };
 
 	try {
-		const document = await tidalApi.getAlbum(id, { include: ['artists', 'items'] }, ctx);
-
-		const similarDoc = await tidalApi
-			.getAlbumRelationship(id, 'similarAlbums', { include: ['artists'] }, ctx)
-			.catch(() => null);
+		const [document, similarDoc, review] = await Promise.all([
+			tidalApi.getAlbum(id, { include: ['artists', 'items'] }, ctx),
+			tidalApi
+				.getAlbumRelationship(id, 'similarAlbums', { include: ['artists'] }, ctx)
+				.catch(() => null),
+			fetchAlbumReview(id, { ctx }).catch(() => null)
+		]);
 
 		const album = normaliseAlbumDetail(document, similarDoc);
 
 		if (!album) return failure('not_found', connection.configured, id);
-		return { album, state: null, configured: connection.configured, id };
+		return { album, review, state: null, configured: connection.configured, id };
 	} catch (error) {
 		if (error instanceof TidalNotConnectedError)
 			return failure('not_connected', connection.configured, id);

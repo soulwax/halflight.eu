@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { ExternalLink, ListPlus, Music, Play, Sparkles } from '@lucide/svelte';
+	import { Download, ExternalLink, ListPlus, Mic2, Music, Play, Sparkles } from '@lucide/svelte';
 	import SongCard from '#lib/components/music/SongCard.svelte';
 	import { player } from '#lib/player/player.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
+	import { downloadM3u8File, generateM3u8 } from '#lib/utils/m3u';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -156,11 +157,72 @@
 				<ListPlus size={16} />
 				{m.player_add_to_queue()}
 			</button>
+			<button
+				type="button"
+				class="syn-queue-btn"
+				onclick={() => {
+					if (!data.track) return;
+					const m3uContent = generateM3u8(data.track.title, [data.track]);
+					downloadM3u8File(`${data.track.title}.m3u8`, m3uContent);
+				}}
+				title="Export Track as M3U8"
+				aria-label="Export Track as M3U8"
+			>
+				<Download size={15} />
+				M3U8
+			</button>
 			<a class="tidal-link" href={tidalTrackUrl} rel="noreferrer" target="_blank">
 				<Play size={15} fill="currentColor" /> Open in TIDAL <ExternalLink size={13} />
 			</a>
 			<a class="back-link" href={resolve('/app/search')}>{m.track_back_to_search()}</a>
 		</div>
+
+		{#if data.lyrics}
+			<section class="relation-section lyrics-page-section" aria-labelledby="track-lyrics-title">
+				<div class="section-header">
+					<div class="flex items-center gap-2">
+						<Mic2 size={20} class="text-[var(--action)]" />
+						<h2 id="track-lyrics-title" class="relation-title">Track Lyrics</h2>
+					</div>
+					{#if data.lyrics.lyricsProvider}
+						<span class="font-mono text-xs text-[var(--text-muted)] uppercase">
+							Source: {data.lyrics.lyricsProvider}
+						</span>
+					{/if}
+				</div>
+
+				{#if data.lyrics.cues && data.lyrics.cues.length > 0}
+					<div class="lyrics-cues-grid">
+						{#each data.lyrics.cues as cue (cue.time + cue.text)}
+							<button
+								type="button"
+								class="page-lyric-cue"
+								class:active={player.currentTrack?.id === data.track?.id &&
+									player.activeLyricIndex >= 0 &&
+									data.lyrics.cues[player.activeLyricIndex]?.time === cue.time}
+								onclick={() => {
+									if (player.currentTrack?.id !== data.track?.id) {
+										player.play(data.track!);
+									}
+									player.seek(cue.time);
+								}}
+							>
+								<span class="shrink-0 font-mono text-xs text-[var(--text-muted)] opacity-70">
+									{formatDuration(cue.time)}
+								</span>
+								<span class="cue-lyric-text">{cue.text}</span>
+							</button>
+						{/each}
+					</div>
+				{:else if data.lyrics.lyrics}
+					<div class="plain-lyrics-container">
+						{#each data.lyrics.lyrics.split('\n') as line, idx (idx)}
+							<p>{line}</p>
+						{/each}
+					</div>
+				{/if}
+			</section>
+		{/if}
 
 		{#if data.track.radioTracks && data.track.radioTracks.length}
 			<section class="relation-section" aria-labelledby="radio-title">
@@ -507,6 +569,64 @@
 	.syn-queue-btn:hover {
 		box-shadow: var(--shadow-bauhaus);
 		transform: translate(-1px, -1px);
+	}
+
+	.lyrics-page-section {
+		margin-top: 2rem;
+	}
+
+	.lyrics-cues-grid {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		max-height: 28rem;
+		overflow-y: auto;
+		padding-right: 0.5rem;
+	}
+
+	.page-lyric-cue {
+		display: flex;
+		align-items: baseline;
+		gap: 0.85rem;
+		width: 100%;
+		padding: 0.6rem 0.85rem;
+		border: 1px solid transparent;
+		border-radius: var(--radius-sm, 6px);
+		background: var(--surface-canvas);
+		text-align: left;
+		cursor: pointer;
+		color: var(--text-muted);
+		font: inherit;
+		transition: all 0.12s ease;
+	}
+
+	.page-lyric-cue:hover {
+		background: var(--surface-selected);
+		color: var(--text-primary);
+		transform: translateX(4px);
+	}
+
+	.page-lyric-cue.active {
+		background: var(--surface-sunken);
+		border-color: var(--action);
+		color: var(--text-primary);
+		font-weight: 700;
+	}
+
+	.page-lyric-cue.active .cue-lyric-text {
+		color: var(--action);
+	}
+
+	.cue-lyric-text {
+		font-size: 0.95rem;
+		line-height: 1.4;
+	}
+
+	.plain-lyrics-container {
+		color: var(--text-muted);
+		font-size: 0.95rem;
+		line-height: 1.6;
+		white-space: pre-wrap;
 	}
 
 	.tidal-link {

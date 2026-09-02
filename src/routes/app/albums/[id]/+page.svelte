@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { Disc, ExternalLink, ListPlus, Play } from '@lucide/svelte';
+	import { BookOpen, Disc, Download, ExternalLink, ListPlus, Play } from '@lucide/svelte';
 	import { player } from '#lib/player/player.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
+	import { downloadM3u8File, generateM3u8 } from '#lib/utils/m3u';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -93,6 +94,21 @@
 							<Play size={15} fill="currentColor" />
 							{m.player_play_all()}
 						</button>
+
+						<button
+							type="button"
+							class="export-m3u8-btn"
+							onclick={() => {
+								if (!data.album) return;
+								const m3uContent = generateM3u8(data.album.title, data.album.items);
+								downloadM3u8File(`${data.album.title}.m3u8`, m3uContent);
+							}}
+							title="Export as M3U8 Playlist"
+							aria-label="Export as M3U8 Playlist"
+						>
+							<Download size={14} class="mr-1 inline" />
+							M3U8
+						</button>
 					</div>
 				{/if}
 			</div>
@@ -166,6 +182,36 @@
 
 		{#if data.album.copyright}
 			<p class="copyright">{data.album.copyright}</p>
+		{/if}
+
+		{#if data.review}
+			<section class="review-section" aria-labelledby="album-review-title">
+				<div class="section-header">
+					<div class="flex items-center gap-2">
+						<BookOpen size={18} class="text-[var(--action)]" />
+						<h2 id="album-review-title">Album Review</h2>
+					</div>
+					{#if data.review.source}
+						<span class="review-source">Source: {data.review.source}</span>
+					{/if}
+				</div>
+
+				{#if data.review.summary}
+					<blockquote class="review-summary">
+						"{data.review.summary}"
+					</blockquote>
+				{/if}
+
+				{#if data.review.normalizedText}
+					<div class="review-body">
+						{#each data.review.normalizedText.split('\n\n') as paragraph, idx (idx)}
+							{#if paragraph.trim()}
+								<p>{paragraph.trim()}</p>
+							{/if}
+						{/each}
+					</div>
+				{/if}
+			</section>
 		{/if}
 
 		{#if data.album.similarAlbums && data.album.similarAlbums.length}
@@ -342,7 +388,11 @@
 	}
 
 	.header-playback {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
 		margin-top: 1.5rem;
+		flex-wrap: wrap;
 	}
 
 	.play-album-btn {
@@ -366,6 +416,66 @@
 	.play-album-btn:hover {
 		box-shadow: var(--shadow-bauhaus);
 		transform: translate(-1px, -1px);
+	}
+
+	.export-m3u8-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		border: 2px solid var(--border-strong);
+		border-radius: var(--radius-sm, 6px);
+		background: var(--surface-canvas);
+		color: var(--text-primary);
+		padding: 0.65rem 1.15rem;
+		font: inherit;
+		font-size: 0.85rem;
+		font-weight: 800;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		cursor: pointer;
+		transition: all 0.12s ease;
+	}
+
+	.export-m3u8-btn:hover {
+		background: var(--surface-selected);
+		box-shadow: var(--shadow-bauhaus);
+		transform: translate(-1px, -1px);
+	}
+
+	.review-section {
+		margin-top: 2rem;
+		border: 2px solid var(--border-subtle);
+		border-radius: var(--radius-lg, 14px);
+		background: var(--surface-raised);
+		padding: clamp(1.5rem, 3.5vw, 2rem);
+	}
+
+	.review-source {
+		font-family: var(--font-mono, monospace);
+		font-size: 0.75rem;
+		color: var(--text-muted);
+		text-transform: uppercase;
+	}
+
+	.review-summary {
+		margin: 1.25rem 0;
+		padding: 0.85rem 1.25rem;
+		border-left: 3px solid var(--action);
+		background: var(--surface-sunken);
+		border-radius: 0 var(--radius-sm, 6px) var(--radius-sm, 6px) 0;
+		font-size: 0.95rem;
+		font-weight: 600;
+		line-height: 1.5;
+		color: var(--text-primary);
+	}
+
+	.review-body {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+		color: var(--text-muted);
+		font-size: 0.9rem;
+		line-height: 1.65;
 	}
 
 	.player {

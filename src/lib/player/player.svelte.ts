@@ -24,7 +24,15 @@ export class PlayerState {
 	fileExtension = $state<string | null>(null);
 	bitDepth = $state<number | null>(null);
 	sampleRate = $state<number | null>(null);
+	trackReplayGain = $state<number | null>(null);
+	isNormalizationEnabled = $state(true);
 	requiresFullAuth = $state(false);
+
+	// Synchronized Lyrics state
+	lyrics = $state<string | null>(null);
+	lyricsCues = $state<Array<{ time: number; text: string }>>([]);
+	isLyricsOpen = $state(false);
+	isLyricsLoading = $state(false);
 
 	private audio: HTMLAudioElement | null = null;
 
@@ -93,6 +101,15 @@ export class PlayerState {
 		return this.audioQuality;
 	});
 
+	activeLyricIndex = $derived.by(() => {
+		if (!this.lyricsCues.length) return -1;
+		const time = this.currentTime;
+		for (let i = this.lyricsCues.length - 1; i >= 0; i--) {
+			if (time >= this.lyricsCues[i].time) return i;
+		}
+		return 0;
+	});
+
 	play(track: TrackSummary, contextTracks?: TrackSummary[]): void {
 		if (this.currentTrack && this.currentTrack.id !== track.id) {
 			this.history.push(this.currentTrack);
@@ -100,6 +117,8 @@ export class PlayerState {
 		this.currentTrack = track;
 		this.currentTime = 0;
 		this.duration = track.duration || 0;
+		this.lyrics = null;
+		this.lyricsCues = [];
 
 		if (contextTracks && contextTracks.length > 0) {
 			const trackIndex = contextTracks.findIndex((t) => t.id === track.id);
@@ -112,7 +131,67 @@ export class PlayerState {
 
 		if (isBrowser) {
 			this.loadAndPlayStream(track.id);
+			this.loadLyrics(track.id);
 		}
+	}
+
+	async loadLyrics(trackId: string): Promise<void> {
+		this.isLyricsLoading = true;
+		try {
+			const res = await fetch(`/api/tracks/${encodeURIComponent(trackId)}/lyrics`).catch(
+				() => null
+			);
+			if (res && res.ok) {
+				const data = (await res.json().catch(() => null)) as {
+					lyrics?: string;
+					cues?: Array<{ time: number; text: string }>;
+				} | null;
+
+				if (data) {
+					this.lyrics = data.lyrics || null;
+					this.lyricsCues = data.cues || [];
+				}
+			}
+		} catch {
+			// Lyrics unavailable
+		} finally {
+			this.isLyricsLoading = false;
+		}
+	}
+
+	toggleLyrics(): void {
+		this.isLyricsOpen = !this.isLyricsOpen;
+		if (this.isLyricsOpen && !this.lyrics && this.currentTrack) {
+			this.loadLyrics(this.currentTrack.id);
+		}
+	}
+
+	closeLyrics(): void {
+		this.isLyricsOpen = false;
+	}
+
+	toggleNormalization(): void {
+		this.isNormalizationEnabled = !this.isNormalizationEnabled;
+		this.applyVolume();
+	}
+
+	private applyVolume(): void {
+		if (!this.audio) return;
+		if (this.isMuted) {
+			this.audio.volume = 0;
+			this.audio.muted = true;
+			return;
+		}
+
+		let effVol = this.volume;
+		if (this.isNormalizationEnabled && this.trackReplayGain != null) {
+			// Convert ReplayGain dB to linear multiplier: 10^(dB/20)
+			const multiplier = Math.pow(10, this.trackReplayGain / 20);
+			effVol = Math.max(0, Math.min(1, this.volume * multiplier));
+		}
+
+		this.audio.volume = effVol;
+		this.audio.muted = false;
 	}
 
 	private async loadAndPlayStream(trackId: string): Promise<void> {
@@ -132,6 +211,7 @@ export class PlayerState {
 					fileExtension?: string;
 					bitDepth?: number | null;
 					sampleRate?: number | null;
+					trackReplayGain?: number | null;
 				} | null;
 
 				if (data?.streamUrl && this.audio) {
@@ -141,10 +221,11 @@ export class PlayerState {
 					this.fileExtension = data.fileExtension || null;
 					this.bitDepth = data.bitDepth ?? null;
 					this.sampleRate = data.sampleRate ?? null;
+					this.trackReplayGain = data.trackReplayGain ?? null;
 					this.requiresFullAuth = false;
 					this.playbackMode = 'direct';
 					this.audio.src = data.streamUrl;
-					this.audio.volume = this.isMuted ? 0 : this.volume;
+					this.applyVolume();
 					await this.audio.play().catch(() => {});
 					this.isPlaying = true;
 					this.isLoading = false;
@@ -193,17 +274,12 @@ export class PlayerState {
 		const clamped = Math.max(0, Math.min(vol, 1));
 		this.volume = clamped;
 		this.isMuted = clamped === 0;
-		if (this.audio) {
-			this.audio.volume = clamped;
-			this.audio.muted = this.isMuted;
-		}
+		this.applyVolume();
 	}
 
 	toggleMute(): void {
 		this.isMuted = !this.isMuted;
-		if (this.audio) {
-			this.audio.muted = this.isMuted;
-		}
+		this.applyVolume();
 	}
 
 	toggleCoverExpanded(): void {

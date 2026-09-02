@@ -71,3 +71,16 @@ export {
 	type DeviceTokenPending,
 	type DeviceTokenExpired
 } from './device-auth';
+export {
+	fetchTrackLyrics,
+	parseLrc,
+	type LyricCue,
+	type TrackLyricsResponse,
+	type ParsedTrackLyrics
+} from './lyrics';
+export {
+	fetchAlbumReview,
+	normalizeReviewText,
+	type AlbumReview,
+	type AlbumReviewRaw
+} from './review';

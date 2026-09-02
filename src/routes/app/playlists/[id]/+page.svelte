@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { ExternalLink, ListMusic, ListPlus, Play } from '@lucide/svelte';
+	import { Download, ExternalLink, ListMusic, ListPlus, Play } from '@lucide/svelte';
 	import { player } from '#lib/player/player.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
+	import { downloadM3u8File, generateM3u8 } from '#lib/utils/m3u';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -83,6 +84,21 @@
 						>
 							<Play size={15} fill="currentColor" />
 							{m.player_play_all()}
+						</button>
+
+						<button
+							type="button"
+							class="export-m3u8-btn"
+							onclick={() => {
+								if (!data.playlist) return;
+								const m3uContent = generateM3u8(data.playlist.title, data.playlist.items);
+								downloadM3u8File(`${data.playlist.title}.m3u8`, m3uContent);
+							}}
+							title="Export as M3U8 Playlist"
+							aria-label="Export as M3U8 Playlist"
+						>
+							<Download size={14} class="mr-1 inline" />
+							M3U8
 						</button>
 					</div>
 				{/if}
@@ -290,7 +306,11 @@
 	}
 
 	.header-playback {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
 		margin-top: 1.5rem;
+		flex-wrap: wrap;
 	}
 
 	.play-playlist-btn {
@@ -303,8 +323,8 @@
 		color: var(--action-contrast);
 		padding: 0.65rem 1.35rem;
 		font: inherit;
-		font-weight: 800;
 		font-size: 0.85rem;
+		font-weight: 800;
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
 		cursor: pointer;
@@ -312,6 +332,30 @@
 	}
 
 	.play-playlist-btn:hover {
+		box-shadow: var(--shadow-bauhaus);
+		transform: translate(-1px, -1px);
+	}
+
+	.export-m3u8-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		border: 2px solid var(--border-strong);
+		border-radius: var(--radius-sm, 6px);
+		background: var(--surface-canvas);
+		color: var(--text-primary);
+		padding: 0.65rem 1.15rem;
+		font: inherit;
+		font-size: 0.85rem;
+		font-weight: 800;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		cursor: pointer;
+		transition: all 0.12s ease;
+	}
+
+	.export-m3u8-btn:hover {
+		background: var(--surface-selected);
 		box-shadow: var(--shadow-bauhaus);
 		transform: translate(-1px, -1px);
 	}
