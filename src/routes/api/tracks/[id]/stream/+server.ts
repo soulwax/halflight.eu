@@ -2,6 +2,7 @@ import { error, json, type RequestHandler } from '@sveltejs/kit';
 import {
 	fetchTrackStream,
 	getConnectionStatus,
+	tidalFetch,
 	TidalApiError,
 	type TrackAudioQuality
 } from '#lib/server/tidal';
@@ -29,6 +30,7 @@ export const GET: RequestHandler = async (event) => {
 
 	let lastError: unknown = null;
 
+	// 1. Attempt full native track stream with r_usr credentials
 	for (const quality of qualityTiers) {
 		try {
 			const streamInfo = await fetchTrackStream(trackId, {
@@ -39,14 +41,46 @@ export const GET: RequestHandler = async (event) => {
 				}
 			});
 
-			return json(streamInfo);
+			return json({
+				...streamInfo,
+				isPreview: false,
+				requiresFullAuth: false
+			});
 		} catch (err) {
 			lastError = err;
-			// If it's a 401 or 403 (scope missing or subscription issue), trying other qualities won't change the token status
 			if (err instanceof TidalApiError && (err.status === 401 || err.status === 403)) {
 				break;
 			}
 		}
+	}
+
+	// 2. Fallback to 30s preview URL so audio never fails to play while prompting user to link
+	try {
+		const previewRes = await tidalFetch(
+			`https://api.tidal.com/v1/tracks/${encodeURIComponent(trackId)}/previewUrl`,
+			{ headers: { accept: 'application/json' } },
+			{ fetch: event.fetch, cookies: event.cookies }
+		);
+
+		if (previewRes.ok) {
+			const previewData = (await previewRes.json()) as { url?: string };
+			if (previewData.url) {
+				return json({
+					trackId: Number(trackId),
+					streamUrl: previewData.url,
+					urls: [previewData.url],
+					fileExtension: '.m4a',
+					mimeType: 'audio/mp4',
+					codecs: 'mp4a.40.2',
+					audioMode: 'STEREO',
+					audioQuality: 'PREVIEW',
+					isPreview: true,
+					requiresFullAuth: true
+				});
+			}
+		}
+	} catch {
+		// ignore preview fallback errors
 	}
 
 	if (

@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => {
 		getAlbum: vi.fn(),
 		getAlbumRelationship: vi.fn().mockResolvedValue(null),
 		fetchAlbumReview: vi.fn().mockResolvedValue(null),
+		fetchAlbumCredits: vi.fn().mockResolvedValue(null),
 		MockTidalApiError,
 		MockTidalAuthError,
 		MockTidalNotConnectedError
@@ -24,6 +25,7 @@ const mocks = vi.hoisted(() => {
 vi.mock('#lib/server/tidal', () => ({
 	getConnectionStatus: mocks.getConnectionStatus,
 	fetchAlbumReview: mocks.fetchAlbumReview,
+	fetchAlbumCredits: mocks.fetchAlbumCredits,
 	tidalApi: {
 		getAlbum: mocks.getAlbum,
 		getAlbumRelationship: mocks.getAlbumRelationship
@@ -51,6 +53,8 @@ describe('/app/albums/[id] load', () => {
 		mocks.getAlbum.mockReset();
 		mocks.fetchAlbumReview.mockReset();
 		mocks.fetchAlbumReview.mockResolvedValue(null);
+		mocks.fetchAlbumCredits.mockReset();
+		mocks.fetchAlbumCredits.mockResolvedValue(null);
 		fetchMock.mockReset();
 	});
 
@@ -81,6 +85,7 @@ describe('/app/albums/[id] load', () => {
 			configured: true,
 			state: null,
 			review: null,
+			credits: null,
 			album: {
 				kind: 'album',
 				id: 'album-1',

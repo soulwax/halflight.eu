@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { ListMusic, Play, Sparkles, Trash2 } from '@lucide/svelte';
+	import { Download, ListMusic, Play, Sparkles, Trash2 } from '@lucide/svelte';
 
 	import SongCard from '#lib/components/music/SongCard.svelte';
 	import { customPlaylists } from '#lib/player/customPlaylists.svelte';
@@ -9,6 +9,16 @@
 	import type { TrackSummary } from '#lib/server/tidal/models';
 
 	let { data }: { data: PageData } = $props();
+
+	function downloadPlaylist(playlistId: string, format: 'm3u8' | 'json' = 'm3u8') {
+		const url = `/api/playlists/${encodeURIComponent(playlistId)}/export?format=${format}`;
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = '';
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+	}
 
 	const sectionLabel: Record<string, () => string> = {
 		albums: m.search_albums,
@@ -94,6 +104,16 @@
 							>
 								<Play size={12} fill="currentColor" />
 								PLAY
+							</button>
+							<button
+								type="button"
+								class="card-export-btn"
+								disabled={playlist.items.length === 0}
+								title="Download as M3U8"
+								onclick={() => downloadPlaylist(playlist.id, 'm3u8')}
+							>
+								<Download size={12} />
+								M3U8
 							</button>
 							<button
 								type="button"

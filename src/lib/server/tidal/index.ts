@@ -84,3 +84,18 @@ export {
 	type AlbumReview,
 	type AlbumReviewRaw
 } from './review';
+export { generateM3u, sanitizeFileName, type GenerateM3uOptions } from './m3u';
+export {
+	parseTidalResource,
+	VALID_RESOURCE_TYPES,
+	type TidalResourceType,
+	type ParsedTidalResource
+} from './resource';
+export { fetchUserFavorites, type UserFavorites, type UserFavoritesRaw } from './favorites';
+export {
+	fetchAlbumCredits,
+	type AlbumCreditsResponse,
+	type TrackCreditItem,
+	type CreditEntry,
+	type Contributor
+} from './credits';

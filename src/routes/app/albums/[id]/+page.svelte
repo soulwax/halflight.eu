@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { BookOpen, Disc, Download, ExternalLink, ListPlus, Play } from '@lucide/svelte';
+	import { BookOpen, Disc, Download, ExternalLink, ListPlus, Play, Users } from '@lucide/svelte';
 	import { player } from '#lib/player/player.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import { downloadM3u8File, generateM3u8 } from '#lib/utils/m3u';
@@ -211,6 +211,38 @@
 						{/each}
 					</div>
 				{/if}
+			</section>
+		{/if}
+
+		{#if data.credits && data.credits.length}
+			<section class="credits-section" aria-labelledby="album-credits-title">
+				<div class="section-header">
+					<div class="flex items-center gap-2">
+						<Users size={18} class="text-[var(--action)]" />
+						<h2 id="album-credits-title">Album & Track Credits</h2>
+					</div>
+					<span class="track-count">[{data.credits.length} tracks credited]</span>
+				</div>
+
+				<div class="credits-grid">
+					{#each data.credits as trackCredit, idx (trackCredit.item.id || idx)}
+						{#if trackCredit.credits && trackCredit.credits.length}
+							<div class="credit-card">
+								<h3 class="credit-track-title">{trackCredit.item.title || `Track ${idx + 1}`}</h3>
+								<div class="credit-roles">
+									{#each trackCredit.credits as creditRole (creditRole.type)}
+										<div class="credit-role-row">
+											<span class="role-type">{creditRole.type}</span>
+											<span class="role-names"
+												>{creditRole.contributors.map((c) => c.name).join(', ')}</span
+											>
+										</div>
+									{/each}
+								</div>
+							</div>
+						{/if}
+					{/each}
+				</div>
 			</section>
 		{/if}
 
@@ -635,6 +667,65 @@
 		color: var(--text-muted);
 		font-family: ui-monospace, monospace;
 		font-size: 0.75rem;
+	}
+
+	.credits-section {
+		margin-top: 2.5rem;
+		border-top: 2px solid var(--border-subtle);
+		padding-top: 2rem;
+	}
+
+	.credits-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+		gap: 1rem;
+		margin-top: 1.25rem;
+	}
+
+	.credit-card {
+		padding: 1rem;
+		background: var(--surface-raised);
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-md);
+		display: flex;
+		flex-direction: column;
+		gap: 0.6rem;
+	}
+
+	.credit-track-title {
+		margin: 0;
+		font-size: 0.88rem;
+		font-weight: 700;
+		color: var(--text-primary);
+		border-bottom: 1px dashed var(--border-subtle);
+		padding-bottom: 0.4rem;
+	}
+
+	.credit-roles {
+		display: flex;
+		flex-direction: column;
+		gap: 0.4rem;
+	}
+
+	.credit-role-row {
+		display: flex;
+		flex-direction: column;
+		gap: 0.1rem;
+		font-size: 0.78rem;
+	}
+
+	.role-type {
+		font-family: ui-monospace, monospace;
+		font-size: 0.68rem;
+		font-weight: 700;
+		color: var(--action);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+
+	.role-names {
+		color: var(--text-muted);
+		line-height: 1.3;
 	}
 
 	.similar-albums-section {

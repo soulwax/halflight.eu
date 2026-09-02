@@ -198,6 +198,7 @@ export class PlayerState {
 		this.initAudio();
 		this.isLoading = true;
 
+		// Fetch metadata from /stream endpoint
 		try {
 			const res = await fetch(`/api/tracks/${encodeURIComponent(trackId)}/stream`).catch(
 				() => null
@@ -212,22 +213,32 @@ export class PlayerState {
 					bitDepth?: number | null;
 					sampleRate?: number | null;
 					trackReplayGain?: number | null;
+					isPreview?: boolean;
+					requiresFullAuth?: boolean;
 				} | null;
 
-				if (data?.streamUrl && this.audio) {
-					this.streamUrl = data.streamUrl;
+				if (data && this.audio) {
+					// Store metadata
+					this.streamUrl = data.streamUrl || null;
 					this.audioQuality = data.audioQuality || data.audioMode || 'HIGH';
 					this.codecs = data.codecs || null;
 					this.fileExtension = data.fileExtension || null;
 					this.bitDepth = data.bitDepth ?? null;
 					this.sampleRate = data.sampleRate ?? null;
 					this.trackReplayGain = data.trackReplayGain ?? null;
-					this.requiresFullAuth = false;
+					this.requiresFullAuth = data.requiresFullAuth ?? false;
 					this.playbackMode = 'direct';
-					this.audio.src = data.streamUrl;
+
+					// Use the server-side audio proxy to avoid TIDAL CDN CORS restrictions.
+					// The proxy at /api/tracks/[id]/audio fetches the CDN URL server-to-server
+					// and pipes it back, so the browser <audio> element never hits the CDN directly.
+					const proxyUrl = `/api/tracks/${encodeURIComponent(trackId)}/audio`;
+					this.audio.src = proxyUrl;
 					this.applyVolume();
-					await this.audio.play().catch(() => {});
-					this.isPlaying = true;
+					await this.audio.play().catch(() => {
+						this.playbackMode = 'embed';
+					});
+					this.isPlaying = !this.audio.paused;
 					this.isLoading = false;
 					return;
 				}
@@ -238,7 +249,7 @@ export class PlayerState {
 				}
 			}
 		} catch {
-			// Network error or playback rejected
+			// Network error
 		}
 
 		// Fallback to embed

@@ -1,16 +1,19 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { Loader2, Search } from '@lucide/svelte';
 	import SongCard from '#lib/components/music/SongCard.svelte';
 	import { m } from '#lib/paraglide/messages';
 	import type { PageData } from './$types';
 	import type { SearchResultGroups } from '#lib/server/tidal/models';
+	import { parseTidalResource } from '#lib/tidal/resource';
 
 	let { data }: { data: PageData } = $props();
 
 	let searchQuery = $state('');
 	let liveResults = $state<SearchResultGroups | null>(null);
 	let isSearching = $state(false);
+	let urlDetected = $state<string | null>(null);
 	let debounceTimer: ReturnType<typeof setTimeout> | undefined;
 
 	$effect(() => {
@@ -35,9 +38,23 @@
 		const query = target.value;
 		searchQuery = query;
 
+		// Check if user pasted a TIDAL URL or shorthand
+		const parsed = parseTidalResource(query.trim());
+		if (parsed) {
+			urlDetected = parsed.appPath;
+		} else {
+			urlDetected = null;
+		}
+
 		clearTimeout(debounceTimer);
 		if (!query.trim()) {
 			liveResults = { tracks: [], albums: [], artists: [], playlists: [] };
+			isSearching = false;
+			return;
+		}
+
+		if (parsed) {
+			// Don't fire a regular search for valid TIDAL URLs
 			isSearching = false;
 			return;
 		}
@@ -58,6 +75,12 @@
 				isSearching = false;
 			}
 		}, 280);
+	}
+
+	function navigateToResource() {
+		if (urlDetected) {
+			goto(urlDetected);
+		}
 	}
 </script>
 
@@ -103,6 +126,15 @@
 			{/if}
 		</div>
 	</form>
+
+	{#if urlDetected}
+		<div class="url-detected-banner" role="alert">
+			<span class="url-label">TIDAL LINK DETECTED</span>
+			<button type="button" class="url-navigate-btn" onclick={navigateToResource}>
+				OPEN RESOURCE →
+			</button>
+		</div>
+	{/if}
 
 	{#if !data.connected}
 		<section class="state-card" aria-labelledby="connect-title">
@@ -538,5 +570,44 @@
 		.search-submit-btn {
 			min-height: 2.85rem;
 		}
+	}
+
+	.url-detected-banner {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		padding: 0.85rem 1.25rem;
+		border: 2px solid var(--bauhaus-blue);
+		border-radius: var(--radius-md);
+		background: color-mix(in oklch, var(--bauhaus-blue) 12%, var(--surface-canvas));
+		margin-top: 0.75rem;
+	}
+
+	.url-label {
+		font-family: ui-monospace, monospace;
+		font-size: 0.75rem;
+		font-weight: 800;
+		letter-spacing: 0.1em;
+		color: var(--bauhaus-blue);
+	}
+
+	.url-navigate-btn {
+		padding: 0.5rem 1rem;
+		border: 2px solid var(--bauhaus-blue);
+		border-radius: var(--radius-sm);
+		background: var(--bauhaus-blue);
+		color: var(--action-contrast);
+		font-family: ui-monospace, monospace;
+		font-size: 0.75rem;
+		font-weight: 800;
+		cursor: pointer;
+		transition: all 0.12s ease;
+		box-shadow: 2px 2px 0px var(--border-strong);
+	}
+
+	.url-navigate-btn:hover {
+		transform: translate(-1px, -1px);
+		box-shadow: 3px 3px 0px var(--border-strong);
 	}
 </style>

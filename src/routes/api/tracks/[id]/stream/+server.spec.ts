@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => {
 	return {
 		getConnectionStatus: vi.fn(),
-		fetchTrackStream: vi.fn()
+		fetchTrackStream: vi.fn(),
+		tidalFetch: vi.fn()
 	};
 });
 
@@ -12,7 +13,8 @@ vi.mock('#lib/server/tidal', async (importOriginal) => {
 	return {
 		...actual,
 		getConnectionStatus: mocks.getConnectionStatus,
-		fetchTrackStream: mocks.fetchTrackStream
+		fetchTrackStream: mocks.fetchTrackStream,
+		tidalFetch: mocks.tidalFetch
 	};
 });
 
@@ -36,6 +38,8 @@ describe('GET /api/tracks/[id]/stream', () => {
 	beforeEach(() => {
 		mocks.getConnectionStatus.mockReset();
 		mocks.fetchTrackStream.mockReset();
+		mocks.tidalFetch.mockReset();
+		mocks.tidalFetch.mockResolvedValue({ ok: false });
 		fetchMock.mockReset();
 	});
 
@@ -77,7 +81,7 @@ describe('GET /api/tracks/[id]/stream', () => {
 		expect(data.audioMode).toBe('STEREO');
 	});
 
-	it('returns 403 with requiresFullAuth when playback permission is missing', async () => {
+	it('falls back to previewUrl if full stream authorization is missing', async () => {
 		mocks.getConnectionStatus.mockResolvedValue({ connected: true });
 		mocks.fetchTrackStream.mockRejectedValue(
 			new TidalApiError(
@@ -90,6 +94,34 @@ describe('GET /api/tracks/[id]/stream', () => {
 				'playbackinfopostpaywall'
 			)
 		);
+
+		mocks.tidalFetch.mockResolvedValueOnce({
+			ok: true,
+			json: async () => ({ url: 'https://preview.tidal.com/track-123.mp4' })
+		});
+
+		const res = await GET(makeEvent('123'));
+		expect(res.status).toBe(200);
+		const data = await res.json();
+		expect(data.streamUrl).toBe('https://preview.tidal.com/track-123.mp4');
+		expect(data.isPreview).toBe(true);
+		expect(data.requiresFullAuth).toBe(true);
+	});
+
+	it('returns 403 when both full stream and preview are unavailable', async () => {
+		mocks.getConnectionStatus.mockResolvedValue({ connected: true });
+		mocks.fetchTrackStream.mockRejectedValue(
+			new TidalApiError(
+				401,
+				'Token is missing required scope',
+				{
+					status: 401,
+					subStatus: 11004
+				},
+				'playbackinfopostpaywall'
+			)
+		);
+		mocks.tidalFetch.mockResolvedValueOnce({ ok: false });
 
 		const res = await GET(makeEvent('trk-123'));
 		expect(res.status).toBe(403);
