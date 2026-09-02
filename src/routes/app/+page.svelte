@@ -22,6 +22,11 @@
 			<p>{m.home_search_description()}</p>
 			<a href={resolve('/app/search')}>{m.home_search_button()}</a>
 		</article>
+		<article class="action-card">
+			<h2>{m.home_library_title()}</h2>
+			<p>{m.home_library_description()}</p>
+			<a href={resolve('/app/library')}>{m.home_library_button()}</a>
+		</article>
 	{:else}
 		<article class="action-card">
 			<h2>{m.home_connect_title()}</h2>
@@ -61,6 +66,10 @@
 		border-radius: 1.25rem;
 		background: var(--surface-raised);
 		padding: clamp(1.25rem, 4vw, 2rem);
+	}
+
+	.action-card + .action-card {
+		margin-top: 1rem;
 	}
 
 	.action-card h2 {

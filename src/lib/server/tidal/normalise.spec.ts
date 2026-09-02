@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	normaliseAlbum,
 	normaliseArtist,
+	normaliseCollectionPage,
 	normalisePlaylist,
 	normaliseSearchResults,
 	normaliseTrack,
@@ -161,6 +162,62 @@ describe('normaliseSearchResults', () => {
 			albums: [],
 			artists: [],
 			playlists: []
+		});
+	});
+});
+
+describe('normaliseCollectionPage', () => {
+	it('resolves data linkages against included resources and reports more pages', () => {
+		const page = normaliseCollectionPage({
+			data: [
+				{ id: 'album-1', type: 'albums' },
+				{ id: 'artist-1', type: 'artists' }
+			],
+			included: [
+				{
+					id: 'album-1',
+					type: 'albums',
+					attributes: { title: 'Album One' },
+					relationships: { artist: { data: [{ id: 'artist-1', type: 'artists' }] } }
+				},
+				artist
+			],
+			links: { next: '/userCollectionAlbums/me/relationships/items?page%5Bcursor%5D=abc' }
+		});
+
+		expect(page).toEqual({
+			tracks: [],
+			albums: [
+				{
+					kind: 'album',
+					id: 'album-1',
+					title: 'Album One',
+					artists: [{ id: 'artist-1', name: 'Artist One' }]
+				}
+			],
+			artists: [{ kind: 'artist', id: 'artist-1', name: 'Artist One' }],
+			playlists: [],
+			hasMore: true
+		});
+	});
+
+	it('falls back to included resources and defaults hasMore to false', () => {
+		const page = normaliseCollectionPage({
+			data: [],
+			included: [{ id: 'playlist-9', type: 'playlists', attributes: { name: 'Focus' } }]
+		});
+
+		expect(page.playlists).toEqual([{ kind: 'playlist', id: 'playlist-9', title: 'Focus' }]);
+		expect(page.hasMore).toBe(false);
+	});
+
+	it('returns empty groups for a malformed document', () => {
+		expect(normaliseCollectionPage(null)).toEqual({
+			tracks: [],
+			albums: [],
+			artists: [],
+			playlists: [],
+			hasMore: false
 		});
 	});
 });

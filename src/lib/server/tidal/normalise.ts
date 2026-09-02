@@ -178,6 +178,51 @@ export function normaliseSearchResult(
 	}
 }
 
+/** Display-ready collection page: grouped items plus a "more pages exist" flag. */
+export interface CollectionPage extends SearchResultGroups {
+	hasMore: boolean;
+}
+
+/**
+ * Convert a `userCollection*` relationship page (`data` linkages + side-loaded
+ * `included` resources) into display-ready groups. Unresolved linkages are kept
+ * where they still carry a usable id/type.
+ */
+export function normaliseCollectionPage(document: unknown): CollectionPage {
+	const groups: CollectionPage = {
+		tracks: [],
+		albums: [],
+		artists: [],
+		playlists: [],
+		hasMore: false
+	};
+	if (!isRecord(document)) return groups;
+
+	const included = indexIncluded(document.included);
+	const linkages = Array.isArray(document.data)
+		? document.data
+		: document.data !== undefined
+			? [document.data]
+			: [];
+	const seen = new Set<string>();
+
+	for (const linkage of linkages) {
+		const identifier = readResource(linkage);
+		if (!identifier) continue;
+		const resolved = included.get(includedKey(identifier)) ?? linkage;
+		addResource(groups, resolved, included, seen);
+	}
+
+	if (!seen.size) {
+		for (const resource of included.values()) addResource(groups, resource, included, seen);
+	}
+
+	const next = isRecord(document.links) ? document.links.next : undefined;
+	groups.hasMore = typeof next === 'string' && next.length > 0;
+
+	return groups;
+}
+
 function indexIncluded(value: unknown): Map<string, unknown> {
 	const index = new Map<string, unknown>();
 	if (!Array.isArray(value)) return index;
