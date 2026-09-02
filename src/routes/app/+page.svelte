@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { ArrowRight, Disc, Play, Sparkles } from '@lucide/svelte';
+	import { ArrowRight, Play, Sparkles } from '@lucide/svelte';
+
 	import SongCard from '#lib/components/music/SongCard.svelte';
 	import { player } from '#lib/player/player.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
