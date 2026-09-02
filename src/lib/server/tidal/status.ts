@@ -47,8 +47,12 @@ export async function getConnectionStatus(store?: TokenRowStore): Promise<TidalC
 	let playback: Awaited<ReturnType<typeof readPlaybackRecord>> = null;
 	try {
 		playback = await readPlaybackRecord(store);
-	} catch {
-		// An unreadable playback blob just means "no full playback".
+	} catch (err) {
+		// An unreadable playback blob just means "no full playback" — but a schema
+		// error (e.g. migration 0003 not applied) is worth surfacing in the log.
+		console.error(
+			`[tidal] could not read playback token: ${err instanceof Error ? err.message : err}`
+		);
 	}
 
 	try {

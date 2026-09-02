@@ -425,9 +425,20 @@
 			</div>
 		{/if}
 
-		<!-- Expanded Embed Drawer -->
-		{#if player.isExpanded}
+		<!-- Embed Drawer: the TIDAL player. Always shown in embed mode (direct
+		     playback unavailable); also shown when the drawer is expanded. -->
+		{#if player.isExpanded || player.playbackMode === 'embed'}
 			<div class="embed-container">
+				{#if player.playbackMode === 'embed'}
+					<p class="embed-note">
+						{#if player.requiresFullAuth}
+							Playing via TIDAL. <a href={resolve('/app/settings/tidal')}>Link your account</a> for full-length,
+							in-app playback.
+						{:else}
+							Playing via TIDAL.
+						{/if}
+					</p>
+				{/if}
 				<iframe
 					title={`TIDAL player: ${player.currentTrack.title}`}
 					src={tidalEmbedUrl}
@@ -1089,6 +1100,19 @@
 		width: 100%;
 		height: 9.5rem;
 		border: 0;
+	}
+
+	.embed-note {
+		margin: 0;
+		padding: 0.5rem 0.85rem;
+		font-size: 0.72rem;
+		color: var(--text-muted);
+		border-bottom: 1px solid var(--border-subtle);
+	}
+
+	.embed-note a {
+		color: var(--action);
+		font-weight: 700;
 	}
 
 	@keyframes slideUp {

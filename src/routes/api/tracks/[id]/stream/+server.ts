@@ -16,6 +16,19 @@ function isAuthProblem(err: unknown): boolean {
 	);
 }
 
+/** A short, loggable reason for a playback failure. */
+function describe(err: unknown): string {
+	if (err instanceof TidalPlaybackNotLinkedError) return 'not_linked';
+	if (err instanceof TidalAuthError) return 'device_refresh_rejected';
+	if (err instanceof TidalApiError) {
+		const body = err.body as { subStatus?: number; userMessage?: string } | null;
+		return `tidal_${err.status}${body?.subStatus ? `_${body.subStatus}` : ''}: ${
+			body?.userMessage ?? err.statusText
+		}`;
+	}
+	return err instanceof Error ? err.message : 'unknown';
+}
+
 /**
  * GET /api/tracks/[id]/stream
  *
@@ -68,10 +81,14 @@ export const GET: RequestHandler = async (event) => {
 		}
 	}
 
+	const reason = describe(lastError);
+	console.error(`[tidal] stream ${trackId} failed: ${reason}`);
+
 	if (isAuthProblem(lastError)) {
 		return json(
 			{
 				error: 'playback_unauthorized',
+				reason,
 				message:
 					lastError instanceof Error ? lastError.message : 'Full playback authorization required.',
 				requiresFullAuth: true
@@ -80,5 +97,5 @@ export const GET: RequestHandler = async (event) => {
 		);
 	}
 
-	return json({ error: 'stream_unavailable' }, { status: 404 });
+	return json({ error: 'stream_unavailable', reason }, { status: 404 });
 };

@@ -27,6 +27,8 @@ export class PlayerState {
 	trackReplayGain = $state<number | null>(null);
 	isNormalizationEnabled = $state(true);
 	requiresFullAuth = $state(false);
+	/** Diagnostic for the last failed direct-stream attempt (e.g. `not_linked`). */
+	playbackReason = $state<string | null>(null);
 
 	// Synchronized Lyrics state
 	lyrics = $state<string | null>(null);
@@ -119,6 +121,9 @@ export class PlayerState {
 		this.duration = track.duration || 0;
 		this.lyrics = null;
 		this.lyricsCues = [];
+		this.playbackMode = 'direct';
+		this.playbackReason = null;
+		this.requiresFullAuth = false;
 
 		if (contextTracks && contextTracks.length > 0) {
 			const trackIndex = contextTracks.findIndex((t) => t.id === track.id);
@@ -242,23 +247,36 @@ export class PlayerState {
 					this.isLoading = false;
 					return;
 				}
-			} else if (res && res.status === 403) {
-				const errData = (await res.json().catch(() => ({}))) as { requiresFullAuth?: boolean };
-				if (errData.requiresFullAuth) {
-					this.requiresFullAuth = true;
-				}
+			} else if (res) {
+				const errData = (await res.json().catch(() => ({}))) as {
+					requiresFullAuth?: boolean;
+					reason?: string;
+				};
+				this.requiresFullAuth = errData.requiresFullAuth ?? res.status === 403;
+				this.playbackReason = errData.reason ?? `http_${res.status}`;
 			}
 		} catch {
-			// Network error
+			this.playbackReason = 'network_error';
 		}
 
-		// Fallback to embed
+		// Direct playback unavailable — hand off to the TIDAL embed player, which
+		// works for previews (and full tracks when the viewer is signed in to
+		// TIDAL). Surface it immediately instead of silently doing nothing.
 		this.playbackMode = 'embed';
+		this.isPlaying = false;
 		this.isLoading = false;
+		this.isExpanded = true;
 	}
 
 	togglePlayPause(): void {
 		this.initAudio();
+
+		if (this.playbackMode === 'embed') {
+			// The TIDAL embed iframe owns its own transport; just make sure it is
+			// visible so the viewer can use it.
+			this.isExpanded = true;
+			return;
+		}
 
 		if (this.audio && this.streamUrl) {
 			if (this.isPlaying) {
@@ -266,6 +284,7 @@ export class PlayerState {
 			} else {
 				this.audio.play().catch(() => {
 					this.playbackMode = 'embed';
+					this.isExpanded = true;
 				});
 			}
 		} else {

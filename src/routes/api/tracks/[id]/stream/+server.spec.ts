@@ -118,6 +118,6 @@ describe('GET /api/tracks/[id]/stream', () => {
 
 		const res = await GET(makeEvent('trk-123'));
 		expect(res.status).toBe(404);
-		expect(await res.json()).toEqual({ error: 'stream_unavailable' });
+		expect((await res.json()).error).toBe('stream_unavailable');
 	});
 });
