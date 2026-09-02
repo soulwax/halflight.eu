@@ -18,7 +18,14 @@ export const load: PageServerLoad = async (event) => {
 	const results = await Promise.all(
 		KINDS.map(async (kind) => {
 			try {
-				const document = await tidalApi.getCollectionPage(kind, {}, { fetch: event.fetch });
+				const document = await tidalApi.getCollectionPage(
+					kind,
+					{},
+					{
+						fetch: event.fetch,
+						cookies: event.cookies
+					}
+				);
 				const page = normaliseCollectionPage(document);
 				return { kind, ok: true as const, page };
 			} catch {

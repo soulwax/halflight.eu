@@ -1,5 +1,5 @@
 import { redirect } from '@sveltejs/kit';
-import { exchangeCode, writeRecord, TidalError } from '#lib/server/tidal';
+import { exchangeCode, writeRecord, writeTokenCookie, TidalError } from '#lib/server/tidal';
 import { clearOAuthCookie, readOAuthCookie } from '../oauth-cookie';
 import type { RequestHandler } from './$types';
 
@@ -25,6 +25,7 @@ export const GET: RequestHandler = async (event) => {
 	try {
 		const record = await exchangeCode({ code: code!, verifier: saved!.verifier }, event.fetch);
 		await writeRecord(record);
+		writeTokenCookie(event.cookies, record);
 	} catch (err) {
 		if (err instanceof TidalError) fail(err.message);
 		throw err;

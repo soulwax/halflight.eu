@@ -44,6 +44,7 @@ export {
 	type TidalTokenRecord,
 	type TokenRowStore
 } from './store';
+export { clearTokenCookie, readTokenCookie, writeTokenCookie, TIDAL_TOKEN_COOKIE } from './cookie';
 export { seal, open } from './crypto';
 export * as tidalApi from './api';
 export * from './jsonapi';

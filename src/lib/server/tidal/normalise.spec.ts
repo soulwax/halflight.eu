@@ -36,6 +36,38 @@ describe('TIDAL display normalisers', () => {
 		});
 	});
 
+	it('keeps safe rich track and album metadata when supplied by TIDAL', () => {
+		expect(
+			normaliseTrack({
+				id: 'track-rich',
+				type: 'tracks',
+				attributes: {
+					title: 'Rich Track',
+					duration: 245,
+					trackNumber: 3,
+					volumeNumber: 2,
+					explicit: false,
+					audioQuality: 'HI_RES',
+					isrc: 'USABC1234567',
+					popularity: 82,
+					copyright: 'Example Records',
+					imageUrl: 'https://resources.tidal.com/images/example/640x640.jpg'
+				}
+			})
+		).toMatchObject({
+			id: 'track-rich',
+			duration: 245,
+			trackNumber: 3,
+			volumeNumber: 2,
+			explicit: false,
+			audioQuality: 'HI_RES',
+			isrc: 'USABC1234567',
+			popularity: 82,
+			copyright: 'Example Records',
+			imageUrl: 'https://resources.tidal.com/images/example/640x640.jpg'
+		});
+	});
+
 	it('preserves title and name metadata exactly, with an id fallback for missing attributes', () => {
 		expect(
 			normaliseArtist({ id: 'artist-2', type: 'artists', attributes: { title: 'MiXeD Case' } })

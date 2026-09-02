@@ -41,7 +41,7 @@ const handler: RequestHandler = async (event) => {
 		const response = await tidalFetch(
 			`/${path}${event.url.search}`,
 			{ method },
-			{ fetch: event.fetch }
+			{ fetch: event.fetch, cookies: event.cookies }
 		);
 		const body = method === 'HEAD' ? null : await response.text();
 		return new Response(body, {

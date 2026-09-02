@@ -45,6 +45,27 @@ function readAttribute(resource: ResourceLike, names: string[]): string | undefi
 	}
 }
 
+function readNumberAttribute(resource: ResourceLike, names: string[]): number | undefined {
+	for (const name of names) {
+		const value = resource.attributes[name];
+		if (typeof value === 'number' && Number.isFinite(value)) return value;
+	}
+}
+
+function readBooleanAttribute(resource: ResourceLike, names: string[]): boolean | undefined {
+	for (const name of names) {
+		const value = resource.attributes[name];
+		if (typeof value === 'boolean') return value;
+	}
+}
+
+function imageUrl(resource: ResourceLike): string | undefined {
+	return (
+		readAttribute(resource, ['imageUrl', 'coverUrl', 'image', 'cover']) ??
+		readAttribute(resource, ['image'])
+	);
+}
+
 function resourceTitle(resource: ResourceLike): string {
 	return readAttribute(resource, ['title', 'name']) ?? resource.id;
 }
@@ -93,7 +114,14 @@ function normaliseArtistReference(resource: ResourceLike): ArtistReference {
 }
 
 function normaliseAlbumReference(resource: ResourceLike): AlbumReference {
-	return { id: resource.id, title: resourceTitle(resource) };
+	return {
+		id: resource.id,
+		title: resourceTitle(resource),
+		...(imageUrl(resource) ? { imageUrl: imageUrl(resource) } : {}),
+		...(readAttribute(resource, ['releaseDate', 'release_date'])
+			? { releaseDate: readAttribute(resource, ['releaseDate', 'release_date']) }
+			: {})
+	};
 }
 
 /** Return a display-ready track, or `null` for malformed/non-track input. */
@@ -105,12 +133,36 @@ export function normaliseTrack(
 	if (!resource || resource.type !== 'tracks') return null;
 	const album = relatedResources(resource, 'albums', included)[0];
 
+	const image = imageUrl(resource) ?? (album ? imageUrl(album) : undefined);
 	return {
 		kind: 'track',
 		id: resource.id,
 		title: resourceTitle(resource),
 		artists: relatedResources(resource, 'artists', included).map(normaliseArtistReference),
-		...(album ? { album: normaliseAlbumReference(album) } : {})
+		...(album ? { album: normaliseAlbumReference(album) } : {}),
+		...(readNumberAttribute(resource, ['duration', 'durationSeconds'])
+			? { duration: readNumberAttribute(resource, ['duration', 'durationSeconds']) }
+			: {}),
+		...(readNumberAttribute(resource, ['trackNumber', 'track_number'])
+			? { trackNumber: readNumberAttribute(resource, ['trackNumber', 'track_number']) }
+			: {}),
+		...(readNumberAttribute(resource, ['volumeNumber', 'volume_number'])
+			? { volumeNumber: readNumberAttribute(resource, ['volumeNumber', 'volume_number']) }
+			: {}),
+		...(readBooleanAttribute(resource, ['explicit']) !== undefined
+			? { explicit: readBooleanAttribute(resource, ['explicit']) }
+			: {}),
+		...(readAttribute(resource, ['audioQuality', 'audio_quality'])
+			? { audioQuality: readAttribute(resource, ['audioQuality', 'audio_quality']) }
+			: {}),
+		...(readAttribute(resource, ['isrc']) ? { isrc: readAttribute(resource, ['isrc']) } : {}),
+		...(readNumberAttribute(resource, ['popularity']) !== undefined
+			? { popularity: readNumberAttribute(resource, ['popularity']) }
+			: {}),
+		...(readAttribute(resource, ['copyright'])
+			? { copyright: readAttribute(resource, ['copyright']) }
+			: {}),
+		...(image ? { imageUrl: image } : {})
 	};
 }
 
@@ -134,11 +186,25 @@ export function normaliseAlbum(
 	const resource = readResource(value);
 	if (!resource || resource.type !== 'albums') return null;
 
+	const image = imageUrl(resource);
 	return {
 		kind: 'album',
 		id: resource.id,
 		title: resourceTitle(resource),
-		artists: relatedResources(resource, 'artists', included).map(normaliseArtistReference)
+		artists: relatedResources(resource, 'artists', included).map(normaliseArtistReference),
+		...(image ? { imageUrl: image } : {}),
+		...(readAttribute(resource, ['releaseDate', 'release_date'])
+			? { releaseDate: readAttribute(resource, ['releaseDate', 'release_date']) }
+			: {}),
+		...(readBooleanAttribute(resource, ['explicit']) !== undefined
+			? { explicit: readBooleanAttribute(resource, ['explicit']) }
+			: {}),
+		...(readNumberAttribute(resource, ['popularity']) !== undefined
+			? { popularity: readNumberAttribute(resource, ['popularity']) }
+			: {}),
+		...(readAttribute(resource, ['copyright'])
+			? { copyright: readAttribute(resource, ['copyright']) }
+			: {})
 	};
 }
 

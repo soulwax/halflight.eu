@@ -37,7 +37,7 @@ export const load: PageServerLoad = async (event) => {
 		const document = await tidalApi.getTrack(
 			id,
 			{ include: ['albums', 'artists'] },
-			{ fetch: event.fetch }
+			{ fetch: event.fetch, cookies: event.cookies }
 		);
 		const track = normaliseTrackDetail(document);
 

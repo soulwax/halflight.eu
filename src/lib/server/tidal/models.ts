@@ -13,6 +13,8 @@ export interface ArtistReference {
 export interface AlbumReference {
 	id: string;
 	title: string;
+	imageUrl?: string;
+	releaseDate?: string;
 }
 
 export interface TrackSummary {
@@ -21,6 +23,15 @@ export interface TrackSummary {
 	title: string;
 	artists: ArtistReference[];
 	album?: AlbumReference;
+	duration?: number;
+	trackNumber?: number;
+	volumeNumber?: number;
+	explicit?: boolean;
+	audioQuality?: string;
+	isrc?: string;
+	popularity?: number;
+	copyright?: string;
+	imageUrl?: string;
 }
 
 /**
@@ -35,6 +46,11 @@ export interface AlbumSummary {
 	id: string;
 	title: string;
 	artists: ArtistReference[];
+	imageUrl?: string;
+	releaseDate?: string;
+	explicit?: boolean;
+	popularity?: number;
+	copyright?: string;
 }
 
 export interface ArtistSummary {

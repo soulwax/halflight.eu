@@ -23,7 +23,7 @@ export const load: PageServerLoad = async (event) => {
 		const document = await tidalApi.search(
 			query,
 			{ types: ['tracks', 'albums', 'artists', 'playlists'] },
-			{ fetch: event.fetch }
+			{ fetch: event.fetch, cookies: event.cookies }
 		);
 		return {
 			query,

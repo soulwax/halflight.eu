@@ -121,6 +121,10 @@ network; inject or mock `fetch` for HTTP paths.
   them.
 - Tokens never reach the client: no `localStorage`, `sessionStorage`, URL params, or
   client-side Svelte state holding token material.
+- **TIDAL OAuth cookie exception:** the single user's encrypted TIDAL access and refresh
+  tokens may be stored only in `HttpOnly`, `Secure`, `SameSite=Strict` cookies with a
+  narrow `Path` and explicit expiry. Never expose, decode, or copy their values into
+  client-side JavaScript, URLs, logs, or application state.
 - Any file that would hold secrets or persisted tokens must be gitignored.
 
 ## Svelte MCP server

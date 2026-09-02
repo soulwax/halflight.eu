@@ -23,7 +23,10 @@ export const auth = betterAuth({
 	emailAndPassword: { enabled: true },
 	account: {
 		accountLinking: {
-			trustedProviders: ['github']
+			trustedProviders: ['github'],
+			// The synthetic admin email is never verified by any real email flow, so
+			// requiring local verification would permanently block GitHub linking.
+			requireLocalEmailVerified: false
 		}
 	},
 	databaseHooks: {
