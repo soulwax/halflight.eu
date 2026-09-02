@@ -29,6 +29,19 @@ export class TidalAuthError extends TidalError {
 	}
 }
 
+/**
+ * Full-quality playback needs a TIDAL Link (device-authorization) token with the
+ * `r_usr` scope, and none is stored. The account may still be connected for
+ * browsing via the developer OAuth token.
+ */
+export class TidalPlaybackNotLinkedError extends TidalError {
+	constructor(
+		message = 'Full playback is not linked. Authorize playback via TIDAL Link in settings.'
+	) {
+		super(message);
+	}
+}
+
 /** A TIDAL API request failed with a non-2xx status that is not a handled auth error. */
 export class TidalApiError extends TidalError {
 	constructor(

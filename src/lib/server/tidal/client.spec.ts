@@ -1,17 +1,23 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getAccessToken, tidalFetch, resetRefreshGuard } from './client';
-import { writeRecord, type TidalTokenRecord, type TokenRowStore } from './store';
-import { TidalAuthError, TidalNotConnectedError } from './errors';
+import { getAccessToken, getPlaybackToken, tidalFetch, resetRefreshGuard } from './client';
+import {
+	writePlaybackRecord,
+	writeRecord,
+	type TidalTokenRecord,
+	type TokenRowStore,
+	type TokenSlot
+} from './store';
+import { TidalAuthError, TidalNotConnectedError, TidalPlaybackNotLinkedError } from './errors';
 
 function memoryStore() {
-	let secret: string | null = null;
+	const blobs: Record<TokenSlot, string | null> = { primary: null, playback: null };
 	const store: TokenRowStore = {
-		read: async () => secret,
-		write: async (value) => {
-			secret = value;
+		read: async (slot = 'primary') => blobs[slot],
+		write: async (value, slot = 'primary') => {
+			blobs[slot] = value;
 		},
-		clear: async () => {
-			secret = null;
+		clear: async (slot = 'primary') => {
+			blobs[slot] = null;
 		}
 	};
 	return store;
@@ -120,5 +126,50 @@ describe('tidalFetch 401 handling', () => {
 		await expect(
 			tidalFetch('/users/me', {}, { store, fetch: fetchMock as never })
 		).rejects.toBeInstanceOf(TidalAuthError);
+	});
+});
+
+describe('getPlaybackToken', () => {
+	it('throws TidalPlaybackNotLinkedError when no device token is stored', async () => {
+		await expect(getPlaybackToken({ store: memoryStore() })).rejects.toBeInstanceOf(
+			TidalPlaybackNotLinkedError
+		);
+	});
+
+	it('returns the stored device token when fresh, ignoring the primary token', async () => {
+		const store = memoryStore();
+		await writeRecord(record({ accessToken: 'browse-token' }), store);
+		await writePlaybackRecord(record({ accessToken: 'device-token', scope: ['r_usr'] }), store);
+
+		const fetchMock = vi.fn();
+		expect(await getPlaybackToken({ store, fetch: fetchMock as never })).toBe('device-token');
+		expect(fetchMock).not.toHaveBeenCalled();
+	});
+
+	it('refreshes an expired device token with the device credentials and persists it', async () => {
+		const store = memoryStore();
+		await writePlaybackRecord(
+			record({
+				accessToken: 'old-device',
+				refreshToken: 'device-refresh',
+				expiresAt: Date.now() - 1
+			}),
+			store
+		);
+
+		const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+			expect(url).toBe('https://auth.tidal.com/v1/oauth2/token');
+			expect(String(init?.body)).toContain('grant_type=refresh_token');
+			expect(String(init?.body)).toContain('4N3n6Q1x95LL5K7p'); // TIDDL_CLIENT_ID
+			return new Response(
+				JSON.stringify({ access_token: 'new-device', expires_in: 3600, token_type: 'Bearer' }),
+				{ status: 200, headers: { 'content-type': 'application/json' } }
+			);
+		});
+
+		expect(await getPlaybackToken({ store, fetch: fetchMock as never })).toBe('new-device');
+		// second call uses the freshly persisted token, no extra refresh
+		expect(await getPlaybackToken({ store, fetch: fetchMock as never })).toBe('new-device');
+		expect(fetchMock).toHaveBeenCalledTimes(1);
 	});
 });

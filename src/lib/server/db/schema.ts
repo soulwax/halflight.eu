@@ -9,15 +9,21 @@ export const task = pgTable('task', {
 });
 
 /**
- * Single-row store for the personal TIDAL OAuth token record. `secret` holds the
- * AES-256-GCM ciphertext (base64 of `iv || authTag || ciphertext`) of the JSON
- * token record; the plaintext never touches the database.
+ * Single-row store for the personal TIDAL tokens. Both columns hold AES-256-GCM
+ * ciphertext (base64 of `iv || authTag || ciphertext`) of a JSON token record;
+ * plaintext never touches the database.
+ *
+ * - `secret` — the developer OAuth (authorization-code) token used for the
+ *   JSON:API v2 browse surface (`openapi.tidal.com/v2`).
+ * - `playbackSecret` — the TIDAL Link (device-authorization, `r_usr`) token used
+ *   for the legacy `api.tidal.com/v1` playback/lyrics/credits surface.
  */
 export const tidalAuth = pgTable(
 	'tidal_auth',
 	{
 		id: integer('id').primaryKey().notNull().default(1),
-		secret: text('secret').notNull(),
+		secret: text('secret'),
+		playbackSecret: text('playback_secret'),
 		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 	},
 	(t) => [check('tidal_auth_singleton', sql`${t.id} = 1`)]

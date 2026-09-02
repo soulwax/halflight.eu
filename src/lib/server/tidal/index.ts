@@ -23,6 +23,7 @@ export {
 } from './config';
 export {
 	getAccessToken,
+	getPlaybackToken,
 	tidalFetch,
 	tidalJson,
 	resetRefreshGuard,
@@ -40,9 +41,13 @@ export {
 	readRecord,
 	writeRecord,
 	clearRecord,
+	readPlaybackRecord,
+	writePlaybackRecord,
+	clearPlaybackRecord,
 	dbTokenRowStore,
 	type TidalTokenRecord,
-	type TokenRowStore
+	type TokenRowStore,
+	type TokenSlot
 } from './store';
 export { clearTokenCookie, readTokenCookie, writeTokenCookie, TIDAL_TOKEN_COOKIE } from './cookie';
 export { seal, open } from './crypto';

@@ -1,7 +1,20 @@
 import { TIDAL_API_BASE } from './config';
-import { TidalApiError, TidalAuthError, TidalNotConnectedError } from './errors';
+import {
+	TidalApiError,
+	TidalAuthError,
+	TidalNotConnectedError,
+	TidalPlaybackNotLinkedError
+} from './errors';
 import { refreshTokens } from './oauth';
-import { readRecord, writeRecord, type TidalTokenRecord, type TokenRowStore } from './store';
+import { refreshDeviceToken } from './device-auth';
+import {
+	readPlaybackRecord,
+	readRecord,
+	writePlaybackRecord,
+	writeRecord,
+	type TidalTokenRecord,
+	type TokenRowStore
+} from './store';
 import { readTokenCookie, writeTokenCookie } from './cookie';
 import type { Cookies } from '@sveltejs/kit';
 
@@ -68,6 +81,34 @@ export async function getAccessToken(ctx: TidalRequestContext = {}): Promise<str
 	return record.accessToken;
 }
 
+/** Single-flight guard for the device (playback) token refresh. */
+let inFlightPlaybackRefresh: Promise<TidalTokenRecord> | null = null;
+
+/**
+ * Return a valid TIDAL Link (device-authorization) access token for the legacy
+ * `api.tidal.com/v1` playback surface, refreshing with the device credentials
+ * first if the stored one is near expiry.
+ *
+ * @throws {TidalPlaybackNotLinkedError} when no device token is stored
+ * @throws {TidalAuthError} when the device refresh token is rejected
+ */
+export async function getPlaybackToken(ctx: TidalRequestContext = {}): Promise<string> {
+	const record = await readPlaybackRecord(ctx.store);
+	if (!record) throw new TidalPlaybackNotLinkedError();
+	if (!isExpired(record)) return record.accessToken;
+
+	if (!inFlightPlaybackRefresh) {
+		inFlightPlaybackRefresh = (async () => {
+			const next = await refreshDeviceToken(record.refreshToken, ctx.fetch ?? fetch);
+			await writePlaybackRecord(next, ctx.store);
+			return next;
+		})().finally(() => {
+			inFlightPlaybackRefresh = null;
+		});
+	}
+	return (await inFlightPlaybackRefresh).accessToken;
+}
+
 function resolveUrl(path: string): string {
 	if (/^https?:\/\//.test(path)) return path;
 	return `${TIDAL_API_BASE}${path.startsWith('/') ? '' : '/'}${path}`;
@@ -129,7 +170,8 @@ export async function tidalJson<T = unknown>(
 	return body as T;
 }
 
-/** Test-only: clear the single-flight refresh guard between cases. */
+/** Test-only: clear the single-flight refresh guards between cases. */
 export function resetRefreshGuard(): void {
 	inFlightRefresh = null;
+	inFlightPlaybackRefresh = null;
 }

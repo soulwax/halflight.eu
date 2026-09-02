@@ -1,5 +1,5 @@
 import { error, json, type RequestHandler } from '@sveltejs/kit';
-import { pollDeviceToken, writeRecord, writeTokenCookie } from '#lib/server/tidal';
+import { pollDeviceToken, writePlaybackRecord } from '#lib/server/tidal';
 
 export const POST: RequestHandler = async (event) => {
 	if (!event.locals.user || !event.locals.isAdministrator) {
@@ -21,8 +21,9 @@ export const POST: RequestHandler = async (event) => {
 		const result = await pollDeviceToken(body.deviceCode, event.fetch);
 
 		if (result.status === 'success') {
-			await writeRecord(result.record);
-			writeTokenCookie(event.cookies, result.record);
+			// The device token is the playback credential (r_usr). It is stored in
+			// its own slot so it never clobbers the developer OAuth browse token.
+			await writePlaybackRecord(result.record);
 			return json({ status: 'success' });
 		}
 

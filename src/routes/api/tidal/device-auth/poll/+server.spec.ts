@@ -3,8 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => {
 	return {
 		pollDeviceToken: vi.fn(),
-		writeRecord: vi.fn(),
-		writeTokenCookie: vi.fn()
+		writePlaybackRecord: vi.fn()
 	};
 });
 
@@ -13,8 +12,7 @@ vi.mock('#lib/server/tidal', async (importOriginal) => {
 	return {
 		...actual,
 		pollDeviceToken: mocks.pollDeviceToken,
-		writeRecord: mocks.writeRecord,
-		writeTokenCookie: mocks.writeTokenCookie
+		writePlaybackRecord: mocks.writePlaybackRecord
 	};
 });
 
@@ -36,8 +34,7 @@ function makeEvent(body: object, user: { id: string } | null = { id: 'admin-1' }
 describe('POST /api/tidal/device-auth/poll', () => {
 	beforeEach(() => {
 		mocks.pollDeviceToken.mockReset();
-		mocks.writeRecord.mockReset();
-		mocks.writeTokenCookie.mockReset();
+		mocks.writePlaybackRecord.mockReset();
 	});
 
 	it('returns pending while waiting', async () => {
@@ -47,7 +44,7 @@ describe('POST /api/tidal/device-auth/poll', () => {
 		expect(res.status).toBe(200);
 		const data = await res.json();
 		expect(data.status).toBe('pending');
-		expect(mocks.writeRecord).not.toHaveBeenCalled();
+		expect(mocks.writePlaybackRecord).not.toHaveBeenCalled();
 	});
 
 	it('saves token on success', async () => {
@@ -69,7 +66,6 @@ describe('POST /api/tidal/device-auth/poll', () => {
 		expect(res.status).toBe(200);
 		const data = await res.json();
 		expect(data.status).toBe('success');
-		expect(mocks.writeRecord).toHaveBeenCalledWith(mockRecord);
-		expect(mocks.writeTokenCookie).toHaveBeenCalled();
+		expect(mocks.writePlaybackRecord).toHaveBeenCalledWith(mockRecord);
 	});
 });

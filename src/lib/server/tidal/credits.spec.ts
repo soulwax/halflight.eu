@@ -4,21 +4,21 @@ import { TidalApiError } from './errors';
 
 const mocks = vi.hoisted(() => {
 	return {
-		getAccessToken: vi.fn()
+		getPlaybackToken: vi.fn()
 	};
 });
 
 vi.mock('./client', () => ({
-	getAccessToken: mocks.getAccessToken
+	getPlaybackToken: mocks.getPlaybackToken
 }));
 
 describe('credits module (translated from tiddl)', () => {
 	beforeEach(() => {
-		mocks.getAccessToken.mockReset();
+		mocks.getPlaybackToken.mockReset();
 	});
 
 	it('fetches album credits from TIDAL API', async () => {
-		mocks.getAccessToken.mockResolvedValue('test-access-token');
+		mocks.getPlaybackToken.mockResolvedValue('test-access-token');
 
 		const mockData = {
 			limit: 20,
@@ -70,7 +70,7 @@ describe('credits module (translated from tiddl)', () => {
 	});
 
 	it('returns empty array when album is 404', async () => {
-		mocks.getAccessToken.mockResolvedValue('test-access-token');
+		mocks.getPlaybackToken.mockResolvedValue('test-access-token');
 
 		const fetchMock = vi.fn().mockResolvedValue({
 			ok: false,
@@ -85,7 +85,7 @@ describe('credits module (translated from tiddl)', () => {
 	});
 
 	it('throws TidalApiError when request fails with 500', async () => {
-		mocks.getAccessToken.mockResolvedValue('test-access-token');
+		mocks.getPlaybackToken.mockResolvedValue('test-access-token');
 
 		const fetchMock = vi.fn().mockResolvedValue({
 			ok: false,

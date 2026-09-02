@@ -1,4 +1,4 @@
-import { getAccessToken, type TidalRequestContext } from './client';
+import { getPlaybackToken, type TidalRequestContext } from './client';
 import { TidalApiError } from './errors';
 
 export interface UserFavoritesRaw {
@@ -30,7 +30,7 @@ export async function fetchUserFavorites(
 		countryCode?: string;
 	} = {}
 ): Promise<UserFavorites> {
-	const token = options.accessToken ?? (await getAccessToken(options.ctx));
+	const token = options.accessToken ?? (await getPlaybackToken(options.ctx));
 	const f = options.ctx?.fetch ?? fetch;
 
 	const query = options.countryCode

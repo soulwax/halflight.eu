@@ -53,15 +53,21 @@ describe('GET /api/tracks/[id]/audio', () => {
 		});
 	});
 
-	it('rejects disconnected state with 503', async () => {
-		mocks.getConnectionStatus.mockResolvedValue({ connected: false });
+	it('rejects an unconfigured install with 503', async () => {
+		mocks.getConnectionStatus.mockResolvedValue({ configured: false, hasPlayback: false });
 		await expect(GET(makeEvent('trk-1'))).rejects.toMatchObject({
 			status: 503
 		});
 	});
 
+	it('rejects with 403 when playback is not linked', async () => {
+		mocks.getConnectionStatus.mockResolvedValue({ configured: true, hasPlayback: false });
+		await expect(GET(makeEvent('trk-1'))).rejects.toMatchObject({ status: 403 });
+		expect(mocks.fetchTrackStream).not.toHaveBeenCalled();
+	});
+
 	it('proxies CDN stream with audio content headers and forward range headers', async () => {
-		mocks.getConnectionStatus.mockResolvedValue({ connected: true });
+		mocks.getConnectionStatus.mockResolvedValue({ configured: true, hasPlayback: true });
 		mocks.fetchTrackStream.mockResolvedValue({
 			trackId: 101,
 			streamUrl: 'https://sp-pr-cf.audio.tidal.com/test-audio.mp4',
@@ -94,8 +100,8 @@ describe('GET /api/tracks/[id]/audio', () => {
 		});
 	});
 
-	it('throws 403 if playback permission is missing', async () => {
-		mocks.getConnectionStatus.mockResolvedValue({ connected: true });
+	it('throws 403 if the device token is rejected upstream', async () => {
+		mocks.getConnectionStatus.mockResolvedValue({ configured: true, hasPlayback: true });
 		mocks.fetchTrackStream.mockRejectedValue(
 			new TidalApiError(403, 'Forbidden', null, 'playbackinfopostpaywall')
 		);

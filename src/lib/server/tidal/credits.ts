@@ -1,4 +1,4 @@
-import { getAccessToken, type TidalRequestContext } from './client';
+import { getPlaybackToken, type TidalRequestContext } from './client';
 import { TidalApiError } from './errors';
 
 export interface Contributor {
@@ -41,7 +41,7 @@ export async function fetchAlbumCredits(
 		offset?: number;
 	} = {}
 ): Promise<TrackCreditItem[]> {
-	const token = options.accessToken ?? (await getAccessToken(options.ctx));
+	const token = options.accessToken ?? (await getPlaybackToken(options.ctx));
 	const f = options.ctx?.fetch ?? fetch;
 
 	const params = new URLSearchParams();

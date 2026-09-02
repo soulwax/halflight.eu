@@ -1,5 +1,5 @@
 import { TidalApiError, TidalError } from './errors';
-import { getAccessToken, type TidalRequestContext } from './client';
+import { getPlaybackToken, type TidalRequestContext } from './client';
 
 export type TrackAudioQuality = 'LOW' | 'HIGH' | 'LOSSLESS' | 'HI_RES_LOSSLESS';
 
@@ -147,7 +147,7 @@ export async function fetchTrackStream(
 	} = {}
 ): Promise<ResolvedStreamInfo> {
 	const targetQuality = options.quality ?? 'HIGH';
-	const token = options.accessToken ?? (await getAccessToken(options.ctx));
+	const token = options.accessToken ?? (await getPlaybackToken(options.ctx));
 	const f = options.ctx?.fetch ?? fetch;
 
 	// Query TIDAL API v1 playbackinfopostpaywall for FULL audio stream

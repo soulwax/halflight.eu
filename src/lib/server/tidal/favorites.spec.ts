@@ -4,21 +4,21 @@ import { TidalApiError } from './errors';
 
 const mocks = vi.hoisted(() => {
 	return {
-		getAccessToken: vi.fn()
+		getPlaybackToken: vi.fn()
 	};
 });
 
 vi.mock('./client', () => ({
-	getAccessToken: mocks.getAccessToken
+	getPlaybackToken: mocks.getPlaybackToken
 }));
 
 describe('favorites module (translated from tiddl)', () => {
 	beforeEach(() => {
-		mocks.getAccessToken.mockReset();
+		mocks.getPlaybackToken.mockReset();
 	});
 
 	it('fetches and normalizes favorites IDs', async () => {
-		mocks.getAccessToken.mockResolvedValue('test-access-token');
+		mocks.getPlaybackToken.mockResolvedValue('test-access-token');
 
 		const mockData = {
 			TRACK: [123, 456],
@@ -60,7 +60,7 @@ describe('favorites module (translated from tiddl)', () => {
 	});
 
 	it('throws TidalApiError when API fails', async () => {
-		mocks.getAccessToken.mockResolvedValue('test-access-token');
+		mocks.getPlaybackToken.mockResolvedValue('test-access-token');
 
 		const fetchMock = vi.fn().mockResolvedValue({
 			ok: false,

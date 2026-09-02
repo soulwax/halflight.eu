@@ -3,6 +3,8 @@ import {
 	fetchTrackStream,
 	getConnectionStatus,
 	TidalApiError,
+	TidalAuthError,
+	TidalPlaybackNotLinkedError,
 	type TrackAudioQuality
 } from '#lib/server/tidal';
 
@@ -22,9 +24,12 @@ export const GET: RequestHandler = async (event) => {
 		error(401, 'Unauthorized');
 	}
 
-	const connection = await getConnectionStatus();
-	if (!connection.connected) {
+	const status = await getConnectionStatus();
+	if (!status.configured) {
 		error(503, 'TIDAL not connected');
+	}
+	if (!status.hasPlayback) {
+		error(403, 'Full playback is not linked. Authorize playback via TIDAL Link in settings.');
 	}
 
 	const trackId = event.params.id;
@@ -50,7 +55,11 @@ export const GET: RequestHandler = async (event) => {
 			break;
 		} catch (err) {
 			lastError = err;
-			if (err instanceof TidalApiError && (err.status === 401 || err.status === 403)) {
+			if (
+				err instanceof TidalPlaybackNotLinkedError ||
+				err instanceof TidalAuthError ||
+				(err instanceof TidalApiError && (err.status === 401 || err.status === 403))
+			) {
 				break;
 			}
 		}
@@ -58,10 +67,11 @@ export const GET: RequestHandler = async (event) => {
 
 	if (!streamInfo) {
 		if (
-			lastError instanceof TidalApiError &&
-			(lastError.status === 401 || lastError.status === 403)
+			lastError instanceof TidalPlaybackNotLinkedError ||
+			lastError instanceof TidalAuthError ||
+			(lastError instanceof TidalApiError && (lastError.status === 401 || lastError.status === 403))
 		) {
-			error(403, 'Playback scope missing – reconnect with r_usr scope via Device Auth');
+			error(403, 'Full playback is not linked. Authorize playback via TIDAL Link in settings.');
 		}
 		error(404, 'Stream unavailable');
 	}

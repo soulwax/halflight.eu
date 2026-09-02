@@ -1,5 +1,5 @@
 import { TidalApiError } from './errors';
-import { getAccessToken, type TidalRequestContext } from './client';
+import { getPlaybackToken, type TidalRequestContext } from './client';
 
 export interface LyricCue {
 	time: number;
@@ -77,7 +77,7 @@ export async function fetchTrackLyrics(
 		countryCode?: string;
 	} = {}
 ): Promise<ParsedTrackLyrics> {
-	const token = options.accessToken ?? (await getAccessToken(options.ctx));
+	const token = options.accessToken ?? (await getPlaybackToken(options.ctx));
 	const f = options.ctx?.fetch ?? fetch;
 
 	const query = options.countryCode

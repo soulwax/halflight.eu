@@ -2,19 +2,46 @@ import { error, json, type RequestHandler } from '@sveltejs/kit';
 import {
 	fetchTrackStream,
 	getConnectionStatus,
-	tidalFetch,
 	TidalApiError,
+	TidalAuthError,
+	TidalPlaybackNotLinkedError,
 	type TrackAudioQuality
 } from '#lib/server/tidal';
 
+function isAuthProblem(err: unknown): boolean {
+	return (
+		err instanceof TidalPlaybackNotLinkedError ||
+		err instanceof TidalAuthError ||
+		(err instanceof TidalApiError && (err.status === 401 || err.status === 403))
+	);
+}
+
+/**
+ * GET /api/tracks/[id]/stream
+ *
+ * Returns full playback metadata (stream URL, quality, codecs, ReplayGain) for a
+ * track. Full playback needs the TIDAL Link (device) token; when it is missing
+ * or rejected the response is a 403 with `requiresFullAuth: true` so the player
+ * can prompt the user to link.
+ */
 export const GET: RequestHandler = async (event) => {
 	if (!event.locals.user) {
 		error(401, 'Unauthorized');
 	}
 
-	const connection = await getConnectionStatus();
-	if (!connection.connected) {
+	const status = await getConnectionStatus();
+	if (!status.configured) {
 		return json({ error: 'not_connected' }, { status: 503 });
+	}
+	if (!status.hasPlayback) {
+		return json(
+			{
+				error: 'playback_unauthorized',
+				message: 'Full playback is not linked. Authorize playback via TIDAL Link in settings.',
+				requiresFullAuth: true
+			},
+			{ status: 403 }
+		);
 	}
 
 	const trackId = event.params.id;
@@ -25,72 +52,28 @@ export const GET: RequestHandler = async (event) => {
 	const requestedQuality = (event.url.searchParams.get('quality')?.toUpperCase() ||
 		'HIGH') as TrackAudioQuality;
 	const qualityTiers: TrackAudioQuality[] = Array.from(
-		new Set([requestedQuality, 'HIGH', 'LOW', 'LOSSLESS'])
+		new Set<TrackAudioQuality>([requestedQuality, 'LOSSLESS', 'HIGH', 'LOW'])
 	);
 
+	const ctx = { fetch: event.fetch, cookies: event.cookies };
 	let lastError: unknown = null;
 
-	// 1. Attempt full native track stream with r_usr credentials
 	for (const quality of qualityTiers) {
 		try {
-			const streamInfo = await fetchTrackStream(trackId, {
-				quality,
-				ctx: {
-					fetch: event.fetch,
-					cookies: event.cookies
-				}
-			});
-
-			return json({
-				...streamInfo,
-				isPreview: false,
-				requiresFullAuth: false
-			});
+			const streamInfo = await fetchTrackStream(trackId, { quality, ctx });
+			return json({ ...streamInfo, isPreview: false, requiresFullAuth: false });
 		} catch (err) {
 			lastError = err;
-			if (err instanceof TidalApiError && (err.status === 401 || err.status === 403)) {
-				break;
-			}
+			if (isAuthProblem(err)) break;
 		}
 	}
 
-	// 2. Fallback to 30s preview URL so audio never fails to play while prompting user to link
-	try {
-		const previewRes = await tidalFetch(
-			`https://api.tidal.com/v1/tracks/${encodeURIComponent(trackId)}/previewUrl`,
-			{ headers: { accept: 'application/json' } },
-			{ fetch: event.fetch, cookies: event.cookies }
-		);
-
-		if (previewRes.ok) {
-			const previewData = (await previewRes.json()) as { url?: string };
-			if (previewData.url) {
-				return json({
-					trackId: Number(trackId),
-					streamUrl: previewData.url,
-					urls: [previewData.url],
-					fileExtension: '.m4a',
-					mimeType: 'audio/mp4',
-					codecs: 'mp4a.40.2',
-					audioMode: 'STEREO',
-					audioQuality: 'PREVIEW',
-					isPreview: true,
-					requiresFullAuth: true
-				});
-			}
-		}
-	} catch {
-		// ignore preview fallback errors
-	}
-
-	if (
-		lastError instanceof TidalApiError &&
-		(lastError.status === 401 || lastError.status === 403)
-	) {
+	if (isAuthProblem(lastError)) {
 		return json(
 			{
 				error: 'playback_unauthorized',
-				message: lastError.message,
+				message:
+					lastError instanceof Error ? lastError.message : 'Full playback authorization required.',
 				requiresFullAuth: true
 			},
 			{ status: 403 }

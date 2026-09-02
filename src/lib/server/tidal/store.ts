@@ -16,13 +16,20 @@ export interface TidalTokenRecord {
 }
 
 /**
- * Persistence primitive for the single encrypted row. Swappable so tests can run
- * without a database.
+ * Which stored token a store operation targets.
+ * - `primary`   — developer OAuth token (JSON:API v2 browse surface)
+ * - `playback`  — TIDAL Link device token (`api.tidal.com/v1` playback surface)
+ */
+export type TokenSlot = 'primary' | 'playback';
+
+/**
+ * Persistence primitive for the encrypted token blobs. Swappable so tests can
+ * run without a database.
  */
 export interface TokenRowStore {
-	read(): Promise<string | null>;
-	write(secret: string): Promise<void>;
-	clear(): Promise<void>;
+	read(slot?: TokenSlot): Promise<string | null>;
+	write(secret: string, slot?: TokenSlot): Promise<void>;
+	clear(slot?: TokenSlot): Promise<void>;
 }
 
 /**
@@ -31,36 +38,48 @@ export interface TokenRowStore {
  * test with an injected store) does not require `DATABASE_URL`.
  */
 export const dbTokenRowStore: TokenRowStore = {
-	async read() {
+	async read(slot = 'primary') {
 		const [{ db }, { tidalAuth }, { eq }] = await Promise.all([
 			import('#lib/server/db'),
 			import('#lib/server/db/schema'),
 			import('drizzle-orm')
 		]);
+		const column = slot === 'playback' ? tidalAuth.playbackSecret : tidalAuth.secret;
 		const rows = await db
-			.select({ secret: tidalAuth.secret })
+			.select({ secret: column })
 			.from(tidalAuth)
 			.where(eq(tidalAuth.id, 1))
 			.limit(1);
 		return rows[0]?.secret ?? null;
 	},
-	async write(secret) {
+	async write(secret, slot = 'primary') {
 		const [{ db }, { tidalAuth }] = await Promise.all([
 			import('#lib/server/db'),
 			import('#lib/server/db/schema')
 		]);
+		const now = new Date();
+		const insert =
+			slot === 'playback'
+				? { id: 1, playbackSecret: secret, updatedAt: now }
+				: { id: 1, secret, updatedAt: now };
+		const update =
+			slot === 'playback' ? { playbackSecret: secret, updatedAt: now } : { secret, updatedAt: now };
 		await db
 			.insert(tidalAuth)
-			.values({ id: 1, secret })
-			.onConflictDoUpdate({ target: tidalAuth.id, set: { secret, updatedAt: new Date() } });
+			.values(insert)
+			.onConflictDoUpdate({ target: tidalAuth.id, set: update });
 	},
-	async clear() {
+	async clear(slot = 'primary') {
 		const [{ db }, { tidalAuth }, { eq }] = await Promise.all([
 			import('#lib/server/db'),
 			import('#lib/server/db/schema'),
 			import('drizzle-orm')
 		]);
-		await db.delete(tidalAuth).where(eq(tidalAuth.id, 1));
+		const set =
+			slot === 'playback'
+				? { playbackSecret: null, updatedAt: new Date() }
+				: { secret: null, updatedAt: new Date() };
+		await db.update(tidalAuth).set(set).where(eq(tidalAuth.id, 1));
 	}
 };
 
@@ -76,14 +95,8 @@ function isRecord(value: unknown): value is TidalTokenRecord {
 	);
 }
 
-/**
- * Load and decrypt the stored token record. Returns `null` when nothing is
- * stored; throws {@link TidalStoreError} when a row exists but cannot be read.
- */
-export async function readRecord(
-	store: TokenRowStore = dbTokenRowStore
-): Promise<TidalTokenRecord | null> {
-	const secret = await store.read();
+async function readSlot(slot: TokenSlot, store: TokenRowStore): Promise<TidalTokenRecord | null> {
+	const secret = await store.read(slot);
 	if (!secret) return null;
 
 	const plaintext = open(secret, getTidalConfig().encryptionKey);
@@ -99,15 +112,54 @@ export async function readRecord(
 	return parsed;
 }
 
-/** Encrypt and atomically upsert the token record. */
-export async function writeRecord(
+async function writeSlot(
+	slot: TokenSlot,
+	record: TidalTokenRecord,
+	store: TokenRowStore
+): Promise<void> {
+	await store.write(seal(JSON.stringify(record), getTidalConfig().encryptionKey), slot);
+}
+
+/**
+ * Load and decrypt the primary (developer OAuth) token record. Returns `null`
+ * when nothing is stored; throws {@link TidalStoreError} when a blob exists but
+ * cannot be read.
+ */
+export function readRecord(
+	store: TokenRowStore = dbTokenRowStore
+): Promise<TidalTokenRecord | null> {
+	return readSlot('primary', store);
+}
+
+/** Encrypt and atomically upsert the primary token record. */
+export function writeRecord(
 	record: TidalTokenRecord,
 	store: TokenRowStore = dbTokenRowStore
 ): Promise<void> {
-	await store.write(seal(JSON.stringify(record), getTidalConfig().encryptionKey));
+	return writeSlot('primary', record, store);
 }
 
-/** Permanently remove the stored token record. */
-export async function clearRecord(store: TokenRowStore = dbTokenRowStore): Promise<void> {
-	await store.clear();
+/** Remove the stored primary token record. */
+export function clearRecord(store: TokenRowStore = dbTokenRowStore): Promise<void> {
+	return store.clear('primary');
+}
+
+/** Load and decrypt the TIDAL Link (device) playback token record. */
+export function readPlaybackRecord(
+	store: TokenRowStore = dbTokenRowStore
+): Promise<TidalTokenRecord | null> {
+	return readSlot('playback', store);
+}
+
+/** Encrypt and atomically upsert the playback token record. */
+export function writePlaybackRecord(
+	record: TidalTokenRecord,
+	store: TokenRowStore = dbTokenRowStore
+): Promise<void> {
+	return writeSlot('playback', record, store);
+}
+
+/** Remove the stored playback token record. */
+export function clearPlaybackRecord(store: TokenRowStore = dbTokenRowStore): Promise<void> {
+	return store.clear('playback');
 }

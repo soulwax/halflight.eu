@@ -3,27 +3,31 @@ import {
 	readRecord,
 	writeRecord,
 	clearRecord,
+	readPlaybackRecord,
+	writePlaybackRecord,
+	clearPlaybackRecord,
 	type TidalTokenRecord,
-	type TokenRowStore
+	type TokenRowStore,
+	type TokenSlot
 } from './store';
 import { TidalStoreError } from './errors';
 
 function memoryStore() {
-	let secret: string | null = null;
+	const blobs: Record<TokenSlot, string | null> = { primary: null, playback: null };
 	const store: TokenRowStore = {
-		read: async () => secret,
-		write: async (value) => {
-			secret = value;
+		read: async (slot = 'primary') => blobs[slot],
+		write: async (value, slot = 'primary') => {
+			blobs[slot] = value;
 		},
-		clear: async () => {
-			secret = null;
+		clear: async (slot = 'primary') => {
+			blobs[slot] = null;
 		}
 	};
 	return {
 		store,
-		raw: () => secret,
+		raw: () => blobs.primary,
 		set: (value: string | null) => {
-			secret = value;
+			blobs.primary = value;
 		}
 	};
 }
@@ -74,5 +78,24 @@ describe('tidal token store', () => {
 		flipped[flipped.length - 1] ^= 0x01;
 		mem.set(flipped.toString('base64'));
 		await expect(readRecord(mem.store)).rejects.toBeInstanceOf(TidalStoreError);
+	});
+
+	it('keeps the primary and playback tokens in separate slots', async () => {
+		const { store } = memoryStore();
+		const playback: TidalTokenRecord = { ...sample, accessToken: 'device-xyz', scope: ['r_usr'] };
+
+		await writeRecord(sample, store);
+		await writePlaybackRecord(playback, store);
+
+		expect(await readRecord(store)).toEqual(sample);
+		expect(await readPlaybackRecord(store)).toEqual(playback);
+
+		// Clearing one slot leaves the other intact.
+		await clearRecord(store);
+		expect(await readRecord(store)).toBeNull();
+		expect(await readPlaybackRecord(store)).toEqual(playback);
+
+		await clearPlaybackRecord(store);
+		expect(await readPlaybackRecord(store)).toBeNull();
 	});
 });

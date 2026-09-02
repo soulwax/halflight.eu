@@ -1,6 +1,6 @@
 import { getTidalConfig } from './config';
 import { TidalConfigError } from './errors';
-import { readRecord } from './store';
+import { readPlaybackRecord, readRecord } from './store';
 import type { TokenRowStore } from './store';
 
 export interface TidalConnectionStatus {
@@ -16,6 +16,10 @@ export interface TidalConnectionStatus {
 	/** `true` when the stored access token is within the refresh window. */
 	stale?: boolean;
 	tidalUserId?: string;
+	/** `true` when a TIDAL Link (device) token is stored — full playback is available. */
+	hasPlayback: boolean;
+	/** Scopes on the stored playback token, when linked. */
+	playbackScopes?: string[];
 	/** Present only when the stored record is unreadable (e.g. key changed). */
 	error?: string;
 }
@@ -38,11 +42,25 @@ export async function getConnectionStatus(store?: TokenRowStore): Promise<TidalC
 		}
 	}
 
-	if (!configured) return { connected: false, configured, configError };
+	if (!configured) return { connected: false, configured, configError, hasPlayback: false };
+
+	let playback: Awaited<ReturnType<typeof readPlaybackRecord>> = null;
+	try {
+		playback = await readPlaybackRecord(store);
+	} catch {
+		// An unreadable playback blob just means "no full playback".
+	}
 
 	try {
 		const record = await readRecord(store);
-		if (!record) return { connected: false, configured };
+		if (!record) {
+			return {
+				connected: false,
+				configured,
+				hasPlayback: Boolean(playback),
+				playbackScopes: playback?.scope
+			};
+		}
 		return {
 			connected: true,
 			configured,
@@ -50,12 +68,16 @@ export async function getConnectionStatus(store?: TokenRowStore): Promise<TidalC
 			expiresAt: new Date(record.expiresAt).toISOString(),
 			obtainedAt: new Date(record.obtainedAt).toISOString(),
 			stale: Date.now() >= record.expiresAt - 60_000,
-			tidalUserId: record.userId
+			tidalUserId: record.userId,
+			hasPlayback: Boolean(playback),
+			playbackScopes: playback?.scope
 		};
 	} catch (err) {
 		return {
 			connected: false,
 			configured,
+			hasPlayback: Boolean(playback),
+			playbackScopes: playback?.scope,
 			error: err instanceof Error ? err.message : 'Unknown error reading the token record.'
 		};
 	}
