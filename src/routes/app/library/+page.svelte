@@ -17,7 +17,7 @@
 	const mark: Record<string, string> = {
 		albums: '▣',
 		artists: '●',
-		tracks: '♪',
+		tracks: '■',
 		playlists: '≡'
 	};
 
@@ -44,8 +44,8 @@
 </svelte:head>
 
 <section class="library" aria-labelledby="library-title">
-	<header>
-		<p class="eyebrow">TIDAL</p>
+	<header class="library-header">
+		<p class="eyebrow">SYN // PERSONAL CATALOGUE</p>
 		<h1 id="library-title">{m.library_title()}</h1>
 		<p class="intro">{m.library_subtitle()}</p>
 	</header>
@@ -59,10 +59,17 @@
 	{:else if data.sections}
 		{#each data.sections as section (section.kind)}
 			<section class="result-group" aria-labelledby="{section.kind}-title">
-				<h2 id="{section.kind}-title">
-					{sectionLabel[section.kind]()}
-					{#if section.ok && section.hasMore}<span class="more">· {m.library_has_more()}</span>{/if}
-				</h2>
+				<div class="group-header">
+					<span class="geo-mark geo-{section.kind}"></span>
+					<h2 id="{section.kind}-title">
+						{sectionLabel[section.kind]()}
+						{#if section.ok && section.hasMore}<span class="more">· {m.library_has_more()}</span
+							>{/if}
+					</h2>
+					{#if section.ok && section.items}
+						<span class="group-count">({section.items.length})</span>
+					{/if}
+				</div>
 
 				{#if !section.ok}
 					<p class="group-empty" role="alert">{m.library_section_error()}</p>
@@ -79,14 +86,20 @@
 						{/each}
 					</div>
 				{:else}
-					<ul>
+					<ul class="result-list">
 						{#each section.items as item (item.id)}
-							<li>
-								<div class="media-mark" aria-hidden="true">{mark[section.kind]}</div>
+							<li class="result-row">
+								<div
+									class="media-mark"
+									class:circle-mark={section.kind === 'artists'}
+									aria-hidden="true"
+								>
+									{mark[section.kind]}
+								</div>
 								{#if item.kind === 'album'}
 									<a class="item-link" href={resolve('/app/albums/[id]', { id: item.id })}>
 										<strong>{titleOf(item)}</strong>
-										{#if subtitleOf(item)}<span>{subtitleOf(item)}</span>{/if}
+										{#if subtitleOf(item)}<span class="item-subtitle">{subtitleOf(item)}</span>{/if}
 									</a>
 								{:else if item.kind === 'artist'}
 									<a class="item-link" href={resolve('/app/artists/[id]', { id: item.id })}>
@@ -99,7 +112,7 @@
 								{:else}
 									<div class="item-link">
 										<strong>{titleOf(item)}</strong>
-										{#if subtitleOf(item)}<span>{subtitleOf(item)}</span>{/if}
+										{#if subtitleOf(item)}<span class="item-subtitle">{subtitleOf(item)}</span>{/if}
 									</div>
 								{/if}
 							</li>
@@ -120,136 +133,210 @@
 		max-width: 64rem;
 	}
 
-	.eyebrow {
-		margin: 0 0 0.75rem;
-		color: var(--text-muted);
-		font-size: 0.75rem;
-		font-weight: 700;
-		letter-spacing: 0.18em;
+	.library-header {
+		margin-bottom: 2rem;
+		border-bottom: 2px solid var(--border-subtle);
+		padding-bottom: 1.5rem;
 	}
 
-	h1,
-	h2,
-	p {
-		margin-top: 0;
+	.eyebrow {
+		margin: 0 0 0.5rem;
+		color: var(--text-muted);
+		font-family: ui-monospace, monospace;
+		font-size: 0.75rem;
+		font-weight: 800;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
 	}
 
 	h1 {
-		margin-bottom: 0;
-		font-size: clamp(2rem, 5vw, 3.25rem);
-		letter-spacing: -0.055em;
+		margin: 0;
+		font-size: clamp(2.2rem, 5vw, 3.5rem);
+		font-weight: 800;
+		letter-spacing: -0.04em;
+		line-height: 1.05;
+		text-transform: uppercase;
 	}
 
 	.intro {
-		margin: 0.75rem 0 2rem;
+		margin: 0.75rem 0 0;
 		color: var(--text-muted);
-		font-size: 1.1rem;
+		font-size: 1.05rem;
 	}
 
 	.state-card,
 	.result-group {
-		margin-top: 1rem;
-		border: 1px solid var(--border-subtle);
-		border-radius: 1.25rem;
+		margin-top: 1.5rem;
+		border: 2px solid var(--border-subtle);
 		background: var(--surface-raised);
-		padding: clamp(1.1rem, 3vw, 1.5rem);
+		padding: clamp(1.25rem, 3vw, 1.75rem);
 	}
 
-	.state-card h2,
-	.result-group h2 {
-		margin-bottom: 0.5rem;
-		font-size: 1.15rem;
+	.state-card h2 {
+		margin: 0 0 0.5rem;
+		font-size: 1.25rem;
+		font-weight: 800;
+		text-transform: uppercase;
+	}
+
+	.group-header {
+		display: flex;
+		align-items: center;
+		gap: 0.65rem;
+		margin-bottom: 1.25rem;
+		border-bottom: 1px solid var(--border-subtle);
+		padding-bottom: 0.75rem;
+	}
+
+	.group-header h2 {
+		margin: 0;
+		font-size: 1.2rem;
+		font-weight: 800;
+		text-transform: uppercase;
+		letter-spacing: 0.02em;
+	}
+
+	.group-count {
+		font-family: ui-monospace, monospace;
+		color: var(--text-muted);
+		font-size: 0.85rem;
+	}
+
+	.geo-mark {
+		display: inline-block;
+		width: 0.75rem;
+		height: 0.75rem;
+	}
+
+	.geo-tracks {
+		background: var(--bauhaus-blue);
+	}
+
+	.geo-albums {
+		background: var(--bauhaus-yellow);
+		transform: rotate(45deg);
+	}
+
+	.geo-artists {
+		background: var(--bauhaus-red);
+		border-radius: 50%;
+	}
+
+	.geo-playlists {
+		background: var(--text-primary);
 	}
 
 	.more {
 		color: var(--text-muted);
 		font-size: 0.85rem;
-		font-weight: 400;
-	}
-
-	.group-empty,
-	.result-group span {
-		color: var(--text-muted);
+		font-weight: 600;
+		text-transform: none;
 	}
 
 	.group-empty {
 		margin: 0;
+		color: var(--text-muted);
 		font-size: 0.9rem;
+		font-style: italic;
 	}
 
 	.state-card p {
-		margin-bottom: 1rem;
+		margin: 0;
 		color: var(--text-muted);
 	}
 
 	.state-card a {
 		display: inline-flex;
-		min-height: 2.75rem;
-		align-items: center;
-		justify-content: center;
-		border-radius: 0.75rem;
+		margin-top: 1rem;
+		padding: 0.6rem 1.2rem;
 		background: var(--action);
-		padding: 0.75rem 1rem;
 		color: var(--action-contrast);
+		border: 1px solid var(--border-strong);
 		font-weight: 700;
+		text-transform: uppercase;
 		text-decoration: none;
 	}
 
 	.song-cards-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr));
+		grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
 		gap: 0.75rem;
-		margin-top: 0.5rem;
 	}
 
-	.result-group ul {
+	.result-list {
 		margin: 0;
 		padding: 0;
 		list-style: none;
 	}
 
-	.result-group li {
+	.result-row {
 		display: flex;
-		min-height: 3.5rem;
 		align-items: center;
-		gap: 0.75rem;
-		border-top: 1px solid var(--border-subtle);
-		padding: 0.7rem 0;
+		gap: 0.85rem;
+		padding: 0.75rem;
+		border: 1px solid var(--border-subtle);
+		background: var(--surface-canvas);
+		margin-bottom: 0.5rem;
+		transition: all 0.12s ease;
 	}
 
-	.result-group li:first-child {
-		border-top: 0;
+	.result-row:hover {
+		border-color: var(--border-strong);
+		box-shadow: 2px 2px 0px var(--border-strong);
+	}
+
+	.media-mark {
+		display: grid;
+		place-items: center;
+		width: 2.25rem;
+		height: 2.25rem;
+		flex: 0 0 auto;
+		border: 1px solid var(--border-strong);
+		background: var(--surface-selected);
+		color: var(--text-primary);
+		font-family: ui-monospace, monospace;
+		font-weight: 800;
+	}
+
+	.circle-mark {
+		border-radius: 50%;
 	}
 
 	.item-link {
 		display: grid;
 		min-width: 0;
+		flex: 1;
 		gap: 0.15rem;
 		color: inherit;
 		text-decoration: none;
 	}
 
-	a.item-link:hover strong,
-	a.item-link:focus-visible strong {
+	.item-link strong {
+		font-size: 0.95rem;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	a.item-link:hover strong {
+		color: var(--action);
 		text-decoration: underline;
 	}
 
-	.media-mark {
-		display: grid;
-		width: 2.5rem;
-		height: 2.5rem;
-		flex: 0 0 auto;
-		place-items: center;
-		border-radius: 0.65rem;
-		background: var(--surface-selected);
-		color: var(--text-primary);
-		font-weight: 700;
+	.item-subtitle {
+		color: var(--text-muted);
+		font-size: 0.8rem;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 
 	.attribution {
-		margin-top: 2rem;
+		margin-top: 2.5rem;
 		color: var(--text-muted);
+		font-family: ui-monospace, monospace;
 		font-size: 0.75rem;
+		text-transform: uppercase;
 	}
 
 	.attribution a {

@@ -40,7 +40,7 @@
 				{:else if player.currentTrack.album?.imageUrl}
 					<img class="cover" src={player.currentTrack.album.imageUrl} alt="" aria-hidden="true" />
 				{:else}
-					<div class="cover cover-placeholder" aria-hidden="true"><Disc size={20} /></div>
+					<div class="cover cover-placeholder" aria-hidden="true"><Disc size={18} /></div>
 				{/if}
 
 				<div class="info">
@@ -66,7 +66,7 @@
 					title={m.player_previous()}
 					aria-label={m.player_previous()}
 				>
-					<SkipBack size={18} />
+					<SkipBack size={16} />
 				</button>
 
 				<button
@@ -77,40 +77,40 @@
 					title={m.player_next()}
 					aria-label={m.player_next()}
 				>
-					<SkipForward size={18} />
+					<SkipForward size={16} />
 				</button>
 
 				<a
-					class="tidal-link"
+					class="control-btn tidal-link"
 					href={tidalTrackUrl}
 					target="_blank"
 					rel="noreferrer"
 					title="Open in TIDAL"
 					aria-label="Open in TIDAL"
 				>
-					<ExternalLink size={15} />
+					<ExternalLink size={14} />
 				</a>
 			</div>
 
 			<div class="player-actions">
 				<button
 					type="button"
-					class="queue-btn"
+					class="control-btn queue-btn"
 					class:active={player.isQueueOpen}
 					onclick={() => player.toggleQueue()}
 					title={m.player_queue()}
 					aria-label={m.player_queue()}
 				>
-					<ListMusic size={18} />
-					{#if player.queueCount > 0}
-						<span class="queue-counter">{player.queueCount}</span>
+					<ListMusic size={16} />
+					{#if player.queue.length > 0}
+						<span class="queue-counter">{player.queue.length}</span>
 					{/if}
 				</button>
 
 				<button
 					type="button"
-					class="expand-btn"
-					onclick={() => player.toggleExpanded()}
+					class="control-btn expand-btn"
+					onclick={() => (player.isExpanded = !player.isExpanded)}
 					title={player.isExpanded ? m.player_collapse() : m.player_expand()}
 					aria-label={player.isExpanded ? m.player_collapse() : m.player_expand()}
 				>
@@ -123,12 +123,12 @@
 
 				<button
 					type="button"
-					class="close-btn"
+					class="control-btn close-btn"
 					onclick={() => player.close()}
 					title={m.player_close()}
 					aria-label={m.player_close()}
 				>
-					<X size={18} />
+					<X size={16} />
 				</button>
 			</div>
 		</div>
@@ -155,20 +155,18 @@
 		width: calc(100% - 2rem);
 		max-width: 48rem;
 		background: var(--surface-raised);
-		border: 1px solid var(--border-subtle);
-		border-radius: 1rem;
-		box-shadow: 0 10px 35px rgba(0, 0, 0, 0.45);
-		backdrop-filter: blur(12px);
+		border: 2px solid var(--border-strong);
+		box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.45);
 		overflow: hidden;
-		animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-		transition: all 0.2s ease;
+		animation: slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+		transition: all 0.15s ease;
 	}
 
 	.player-bar {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		padding: 0.65rem 1rem;
+		padding: 0.6rem 0.9rem;
 		gap: 0.75rem;
 	}
 
@@ -181,11 +179,11 @@
 	}
 
 	.cover {
-		width: 2.75rem;
-		height: 2.75rem;
-		border-radius: 0.45rem;
+		width: 2.5rem;
+		height: 2.5rem;
+		border: 1px solid var(--border-subtle);
 		object-fit: cover;
-		background: var(--surface-selected);
+		background: var(--surface-canvas);
 		flex: 0 0 auto;
 	}
 
@@ -197,7 +195,7 @@
 
 	.info {
 		display: grid;
-		gap: 0.15rem;
+		gap: 0.1rem;
 		min-width: 0;
 	}
 
@@ -205,19 +203,21 @@
 		color: var(--text-primary);
 		text-decoration: none;
 		font-size: 0.9rem;
+		font-weight: 700;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}
 
 	.track-title:hover {
+		color: var(--action);
 		text-decoration: underline;
 	}
 
 	.track-artist {
 		margin: 0;
 		color: var(--text-muted);
-		font-size: 0.8rem;
+		font-size: 0.75rem;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -229,45 +229,38 @@
 	}
 
 	.track-artist a:hover {
+		color: var(--text-primary);
 		text-decoration: underline;
 	}
 
 	.playback-controls {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: 0.35rem;
 		flex: 0 0 auto;
 	}
 
-	.control-btn,
-	.tidal-link,
-	.queue-btn,
-	.expand-btn,
-	.close-btn {
+	.control-btn {
 		display: grid;
 		place-items: center;
-		width: 2.25rem;
-		height: 2.25rem;
-		border: 0;
-		border-radius: 0.5rem;
-		background: transparent;
+		width: 2.1rem;
+		height: 2.1rem;
+		border: 1px solid var(--border-subtle);
+		background: var(--surface-canvas);
 		color: var(--text-muted);
 		cursor: pointer;
 		text-decoration: none;
-		transition: all 0.15s ease;
+		transition: all 0.12s ease;
 	}
 
-	.control-btn:hover:not(:disabled),
-	.tidal-link:hover,
-	.queue-btn:hover,
-	.expand-btn:hover,
-	.close-btn:hover {
+	.control-btn:hover:not(:disabled) {
 		color: var(--text-primary);
+		border-color: var(--border-strong);
 		background: var(--surface-selected);
 	}
 
 	.control-btn:disabled {
-		opacity: 0.35;
+		opacity: 0.3;
 		cursor: not-allowed;
 	}
 
@@ -283,29 +276,31 @@
 	}
 
 	.queue-btn.active {
-		color: var(--action);
-		background: var(--surface-selected);
+		border-color: var(--action);
+		background: var(--action);
+		color: var(--action-contrast);
 	}
 
 	.queue-counter {
 		position: absolute;
-		top: 0.15rem;
-		right: 0.15rem;
+		top: -0.25rem;
+		right: -0.25rem;
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		min-width: 1rem;
-		height: 1rem;
-		padding: 0 0.2rem;
-		border-radius: 9999px;
-		background: var(--action);
-		color: var(--action-contrast);
-		font-size: 0.65rem;
-		font-weight: 700;
+		min-width: 0.9rem;
+		height: 0.9rem;
+		padding: 0 0.15rem;
+		background: var(--danger);
+		color: #ffffff;
+		font-family: ui-monospace, monospace;
+		font-size: 0.6rem;
+		font-weight: 800;
+		border: 1px solid var(--border-strong);
 	}
 
 	.embed-container {
-		border-top: 1px solid var(--border-subtle);
+		border-top: 2px solid var(--border-strong);
 		background: var(--surface-canvas);
 	}
 

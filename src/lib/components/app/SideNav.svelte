@@ -28,13 +28,22 @@
 </script>
 
 <aside
-	class="hidden w-64 shrink-0 border-r border-[var(--border-subtle)] bg-[var(--surface-raised)] md:flex md:flex-col"
+	class="hidden w-64 shrink-0 border-r-2 border-[var(--border-subtle)] bg-[var(--surface-raised)] md:flex md:flex-col"
 >
-	<a class="flex min-h-16 items-center px-6 text-xl font-semibold tracking-tight" href={brand.href}>
-		{brand.label}
-	</a>
+	<div
+		class="flex min-h-18 items-center justify-between border-b-2 border-[var(--border-subtle)] px-6"
+	>
+		<a
+			class="flex items-center gap-2 text-xl font-extrabold tracking-tighter uppercase"
+			href={brand.href}
+		>
+			<span class="inline-block h-3 w-3 bg-[var(--action)]"></span>
+			{brand.label}
+		</a>
+		<span class="font-mono text-xs font-bold tracking-widest text-[var(--text-muted)]">01</span>
+	</div>
 
-	<nav class="px-3 py-4" aria-label={navigationLabel}>
+	<nav class="p-3" aria-label={navigationLabel}>
 		<ul class="space-y-1">
 			{#each navigation as item (item.href)}
 				{@const current = isCurrentNavigationItem(item, currentPath)}
@@ -53,19 +62,24 @@
 	</nav>
 
 	{#if userName || (accountHref && accountLabel)}
-		<div class="mt-auto border-t border-[var(--border-subtle)] p-4">
+		<div class="mt-auto border-t-2 border-[var(--border-subtle)] bg-[var(--surface-canvas)] p-4">
 			{#if accountHref && accountLabel}
 				<a class="app-account-link" href={accountHref}>
-					{#if userName}<span class="truncate">{userName}</span>{/if}
-					<span class="text-sm text-[var(--text-muted)]">{accountLabel}</span>
+					{#if userName}<span class="truncate font-bold">{userName}</span>{/if}
+					<span class="text-xs tracking-wider text-[var(--text-muted)] uppercase"
+						>{accountLabel}</span
+					>
 				</a>
 			{:else if userName}
-				<p class="truncate text-sm text-[var(--text-muted)]">{userName}</p>
+				<p class="truncate text-xs tracking-wider text-[var(--text-muted)] uppercase">{userName}</p>
 			{/if}
 			{#if signOutAction && signOutLabel}
-				<form method="POST" action={signOutAction} class="mt-3">
-					<button class="app-account-link w-full cursor-pointer text-left" type="submit">
-						<span class="text-sm text-[var(--text-muted)]">{signOutLabel}</span>
+				<form method="POST" action={signOutAction} class="mt-2">
+					<button
+						class="app-account-link w-full cursor-pointer text-left hover:border-[var(--danger)] hover:text-[var(--danger)]"
+						type="submit"
+					>
+						<span class="text-xs font-bold tracking-wider uppercase">{signOutLabel}</span>
 					</button>
 				</form>
 			{/if}

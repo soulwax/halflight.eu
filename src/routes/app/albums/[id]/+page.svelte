@@ -54,7 +54,7 @@
 				<div class="cover cover-placeholder" aria-hidden="true"><Disc size={48} /></div>
 			{/if}
 			<div class="heading">
-				<p class="eyebrow">{m.album_label()}</p>
+				<p class="eyebrow">SYN // ALBUM RELEASE</p>
 				<h1 id="album-title">{data.album.title}</h1>
 				{#if data.album.artists.length}
 					<p class="artist-line">
@@ -68,15 +68,15 @@
 
 				<div class="meta-line">
 					{#if data.album.releaseDate}
-						<span>{data.album.releaseDate.slice(0, 4)}</span>
+						<span class="font-mono">{data.album.releaseDate.slice(0, 4)}</span>
 					{/if}
 					{#if data.album.numberOfItems}
 						<span>·</span>
-						<span>{data.album.numberOfItems} {m.album_tracks_count()}</span>
+						<span class="font-mono">{data.album.numberOfItems} {m.album_tracks_count()}</span>
 					{/if}
 					{#if data.album.duration}
 						<span>·</span>
-						<span>{formatTotalDuration(data.album.duration)}</span>
+						<span class="font-mono">{formatTotalDuration(data.album.duration)}</span>
 					{/if}
 					{#if data.album.audioQuality}
 						<span class="quality-badge">{formatQuality(data.album.audioQuality)}</span>
@@ -90,7 +90,7 @@
 							class="play-album-btn"
 							onclick={() => player.play(data.album!.items[0], data.album!.items)}
 						>
-							<Play size={16} fill="currentColor" />
+							<Play size={15} fill="currentColor" />
 							{m.player_play_all()}
 						</button>
 					</div>
@@ -110,7 +110,7 @@
 			<section class="tracklist-section" aria-labelledby="tracklist-title">
 				<div class="section-header">
 					<h2 id="tracklist-title">{m.album_tracklist()}</h2>
-					<span class="track-count">{data.album.items.length} {m.album_tracks_count()}</span>
+					<span class="track-count">[{data.album.items.length} {m.album_tracks_count()}]</span>
 				</div>
 				<ol class="track-list">
 					{#each data.album.items as track, index (track.id)}
@@ -125,7 +125,9 @@
 								<Play size={13} fill="currentColor" />
 							</button>
 
-							<span class="track-num">{track.trackNumber ?? index + 1}</span>
+							<span class="track-num"
+								>{String(track.trackNumber ?? index + 1).padStart(2, '0')}</span
+							>
 							<div class="track-main">
 								<a class="track-link" href={resolve('/app/tracks/[id]', { id: track.id })}>
 									<strong>{track.title}</strong>
@@ -199,9 +201,9 @@
 
 		<div class="actions">
 			<a class="tidal-link" href={tidalAlbumUrl} rel="noreferrer" target="_blank">
-				<Play size={17} fill="currentColor" />
+				<Play size={15} fill="currentColor" />
 				{m.album_open_in_tidal()}
-				<ExternalLink size={15} />
+				<ExternalLink size={13} />
 			</a>
 			<a class="back-link" href={resolve('/app/search')}>{m.track_back_to_search()}</a>
 		</div>
@@ -254,17 +256,19 @@
 	.album-header {
 		display: flex;
 		align-items: end;
-		gap: clamp(1rem, 3vw, 2rem);
+		gap: clamp(1.25rem, 3vw, 2.5rem);
+		border-bottom: 2px solid var(--border-subtle);
+		padding-bottom: 2rem;
 	}
 
 	.cover {
 		width: clamp(8rem, 19vw, 14rem);
 		aspect-ratio: 1;
 		flex: 0 0 auto;
-		border-radius: 0.75rem;
-		background: var(--surface-selected);
+		border: 2px solid var(--border-strong);
+		background: var(--surface-canvas);
 		object-fit: cover;
-		box-shadow: var(--shadow-raised);
+		box-shadow: var(--shadow-bauhaus);
 	}
 
 	.cover-placeholder {
@@ -280,23 +284,27 @@
 	.eyebrow {
 		margin: 0 0 0.5rem;
 		color: var(--text-muted);
+		font-family: ui-monospace, monospace;
 		font-size: 0.75rem;
-		font-weight: 700;
-		letter-spacing: 0.18em;
+		font-weight: 800;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
 	}
 
 	h1 {
 		margin-bottom: 0.35rem;
 		overflow-wrap: anywhere;
-		font-size: clamp(1.8rem, 4.5vw, 3rem);
-		letter-spacing: -0.05em;
-		line-height: 1.15;
+		font-size: clamp(2rem, 4.5vw, 3.25rem);
+		font-weight: 800;
+		letter-spacing: -0.04em;
+		line-height: 1.05;
+		text-transform: uppercase;
 	}
 
 	.artist-line {
 		margin: 0.25rem 0 0.5rem;
 		font-size: 1.15rem;
-		font-weight: 600;
+		font-weight: 700;
 	}
 
 	.artist-line a {
@@ -306,6 +314,7 @@
 
 	.artist-line a:hover,
 	.artist-line a:focus-visible {
+		color: var(--action);
 		text-decoration: underline;
 	}
 
@@ -313,28 +322,54 @@
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 0.4rem;
+		gap: 0.5rem;
 		color: var(--text-muted);
-		font-size: 0.9rem;
+		font-size: 0.85rem;
 	}
 
 	.quality-badge {
-		border-radius: 0.35rem;
 		background: var(--surface-selected);
+		border: 1px solid var(--border-subtle);
 		padding: 0.15rem 0.45rem;
-		color: var(--text-primary);
+		color: var(--action);
+		font-family: ui-monospace, monospace;
 		font-size: 0.7rem;
-		font-weight: 700;
+		font-weight: 800;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
 	}
 
+	.header-playback {
+		margin-top: 1.25rem;
+	}
+
+	.play-album-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.45rem;
+		border: 2px solid var(--border-strong);
+		background: var(--action);
+		color: var(--action-contrast);
+		padding: 0.6rem 1.25rem;
+		font: inherit;
+		font-size: 0.85rem;
+		font-weight: 800;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		cursor: pointer;
+		transition: all 0.12s ease;
+	}
+
+	.play-album-btn:hover {
+		box-shadow: var(--shadow-bauhaus);
+		transform: translate(-1px, -1px);
+	}
+
 	.player {
-		margin-top: 1.75rem;
-		overflow: hidden;
-		border: 1px solid var(--border-subtle);
-		border-radius: 0.75rem;
+		margin-top: 2rem;
+		border: 2px solid var(--border-strong);
 		background: var(--surface-raised);
+		box-shadow: var(--shadow-bauhaus);
 	}
 
 	.player iframe {
@@ -345,52 +380,33 @@
 	}
 
 	.tracklist-section {
-		margin-top: 1.5rem;
-		border: 1px solid var(--border-subtle);
-		border-radius: 0.75rem;
+		margin-top: 2rem;
+		border: 2px solid var(--border-subtle);
 		background: var(--surface-raised);
-		padding: clamp(1rem, 3vw, 1.5rem);
-	}
-
-	.header-playback {
-		margin-top: 1rem;
-	}
-
-	.play-album-btn {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.5rem;
-		border: 0;
-		border-radius: 0.65rem;
-		background: var(--action);
-		color: var(--action-contrast);
-		padding: 0.6rem 1rem;
-		font: inherit;
-		font-weight: 700;
-		font-size: 0.9rem;
-		cursor: pointer;
-		transition: opacity 0.15s ease;
-	}
-
-	.play-album-btn:hover {
-		opacity: 0.9;
+		padding: clamp(1.25rem, 3vw, 1.75rem);
 	}
 
 	.section-header {
 		display: flex;
-		align-items: baseline;
+		align-items: center;
 		justify-content: space-between;
-		margin-bottom: 0.75rem;
+		margin-bottom: 1.25rem;
+		border-bottom: 1px solid var(--border-subtle);
+		padding-bottom: 0.75rem;
 	}
 
 	.section-header h2 {
 		margin: 0;
-		font-size: 1.15rem;
+		font-size: 1.2rem;
+		font-weight: 800;
+		text-transform: uppercase;
 	}
 
 	.track-count {
+		font-family: ui-monospace, monospace;
 		color: var(--text-muted);
 		font-size: 0.85rem;
+		font-weight: 700;
 	}
 
 	.track-list {
@@ -401,7 +417,7 @@
 
 	.track-list li {
 		display: grid;
-		grid-template-columns: 2rem 1.8rem minmax(0, 1fr) auto auto auto;
+		grid-template-columns: 2rem 2.2rem minmax(0, 1fr) auto auto auto;
 		align-items: center;
 		gap: 0.5rem;
 		min-height: 3.25rem;
@@ -415,22 +431,23 @@
 		place-items: center;
 		width: 1.85rem;
 		height: 1.85rem;
-		border: 0;
-		border-radius: 0.4rem;
-		background: transparent;
+		border: 1px solid var(--border-subtle);
+		background: var(--surface-canvas);
 		color: var(--text-muted);
 		cursor: pointer;
 		padding: 0;
-		transition: all 0.15s ease;
+		transition: all 0.12s ease;
 	}
 
 	.track-play-btn:hover {
-		color: var(--action);
-		background: var(--surface-selected);
+		color: var(--action-contrast);
+		border-color: var(--action);
+		background: var(--action);
 	}
 
 	.track-queue-btn:hover {
 		color: var(--text-primary);
+		border-color: var(--border-strong);
 		background: var(--surface-selected);
 	}
 
@@ -440,8 +457,9 @@
 
 	.track-num {
 		color: var(--text-muted);
-		font-size: 0.85rem;
-		font-variant-numeric: tabular-nums;
+		font-family: ui-monospace, monospace;
+		font-size: 0.8rem;
+		font-weight: 700;
 		text-align: right;
 		padding-right: 0.25rem;
 	}
@@ -459,12 +477,13 @@
 
 	.track-link:hover strong,
 	.track-link:focus-visible strong {
+		color: var(--action);
 		text-decoration: underline;
 	}
 
 	.track-artists {
 		color: var(--text-muted);
-		font-size: 0.85rem;
+		font-size: 0.8rem;
 	}
 
 	.track-artists a {
@@ -474,50 +493,55 @@
 
 	.track-artists a:hover,
 	.track-artists a:focus-visible {
+		color: var(--text-primary);
 		text-decoration: underline;
 	}
 
 	.explicit-badge {
-		border-radius: 0.25rem;
-		background: var(--surface-selected);
-		padding: 0.1rem 0.35rem;
-		color: var(--text-muted);
-		font-size: 0.7rem;
-		font-weight: 700;
+		border: 1px solid var(--border-strong);
+		padding: 0.1rem 0.3rem;
+		color: var(--text-primary);
+		font-family: ui-monospace, monospace;
+		font-size: 0.65rem;
+		font-weight: 800;
 	}
 
 	.track-time {
 		color: var(--text-muted);
-		font-size: 0.85rem;
-		font-variant-numeric: tabular-nums;
+		font-family: ui-monospace, monospace;
+		font-size: 0.75rem;
+		font-weight: 600;
 	}
 
 	.copyright {
-		margin-top: 1rem;
+		margin-top: 1.5rem;
 		color: var(--text-muted);
+		font-family: ui-monospace, monospace;
 		font-size: 0.75rem;
 	}
 
 	.similar-albums-section {
 		margin-top: 2.5rem;
-		border-top: 1px solid var(--border-subtle);
-		padding-top: 1.5rem;
+		border-top: 2px solid var(--border-subtle);
+		padding-top: 2rem;
 	}
 
 	.similar-albums-section h2 {
 		margin: 0;
-		font-size: 1.3rem;
+		font-size: 1.35rem;
+		font-weight: 800;
+		text-transform: uppercase;
 	}
 
 	.similar-subtitle {
-		margin: 0.25rem 0 1rem;
+		margin: 0.25rem 0 1.25rem;
 		color: var(--text-muted);
 		font-size: 0.85rem;
 	}
 
 	.grid-albums {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
+		grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
 		gap: 1rem;
 	}
 
@@ -525,33 +549,26 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.5rem;
-		padding: 0.65rem;
-		border-radius: 0.85rem;
-		background: var(--surface-canvas);
-		border: 1px solid var(--border-subtle);
+		padding: 0.75rem;
+		border: 2px solid var(--border-subtle);
+		background: var(--surface-raised);
 		color: inherit;
 		text-decoration: none;
-		transition: all 0.15s ease;
+		transition: all 0.12s ease;
 	}
 
 	.album-card:hover {
 		border-color: var(--border-strong);
-		background: var(--surface-raised);
-		transform: translateY(-2px);
+		box-shadow: var(--shadow-bauhaus);
+		transform: translate(-1px, -1px);
 	}
 
 	.card-cover {
 		width: 100%;
 		aspect-ratio: 1;
 		object-fit: cover;
-		border-radius: 0.5rem;
-		background: var(--surface-selected);
-	}
-
-	.cover-placeholder {
-		display: grid;
-		place-items: center;
-		color: var(--text-muted);
+		border: 1px solid var(--border-subtle);
+		background: var(--surface-canvas);
 	}
 
 	.card-info {
@@ -562,6 +579,7 @@
 
 	.card-info strong {
 		font-size: 0.9rem;
+		font-weight: 700;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -579,29 +597,37 @@
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 0.5rem;
-		margin-top: 1.5rem;
+		gap: 0.75rem;
+		margin-top: 2rem;
 	}
 
 	.tidal-link {
 		display: inline-flex;
-		min-height: 2.75rem;
+		min-height: 2.85rem;
 		align-items: center;
 		gap: 0.4rem;
-		border-radius: 0.75rem;
 		background: var(--action);
-		padding: 0.75rem 1rem;
+		border: 2px solid var(--border-strong);
+		padding: 0.6rem 1.15rem;
 		color: var(--action-contrast);
-		font-weight: 700;
+		font-weight: 800;
+		font-size: 0.85rem;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
 		text-decoration: none;
+		transition: all 0.12s ease;
+	}
+
+	.tidal-link:hover {
+		box-shadow: var(--shadow-bauhaus);
+		transform: translate(-1px, -1px);
 	}
 
 	.state-card {
-		margin-top: 2rem;
-		border: 1px solid var(--border-subtle);
-		border-radius: 1.25rem;
+		margin-top: 1.5rem;
+		border: 2px solid var(--border-subtle);
 		background: var(--surface-raised);
-		padding: clamp(1.1rem, 3vw, 1.5rem);
+		padding: clamp(1.25rem, 3vw, 1.75rem);
 	}
 
 	.state-card p {
@@ -612,12 +638,15 @@
 	.state-card a,
 	.back-link {
 		display: inline-flex;
-		min-height: 2.75rem;
+		min-height: 2.85rem;
 		align-items: center;
 		justify-content: center;
-		border-radius: 0.75rem;
-		padding: 0.75rem 1rem;
-		font-weight: 700;
+		border: 2px solid var(--border-strong);
+		padding: 0.6rem 1.15rem;
+		font-weight: 800;
+		font-size: 0.85rem;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
 		text-decoration: none;
 	}
 
@@ -628,12 +657,19 @@
 
 	.back-link {
 		color: var(--text-primary);
+		background: transparent;
+	}
+
+	.back-link:hover {
+		background: var(--surface-selected);
 	}
 
 	.attribution {
-		margin-top: 2rem;
+		margin-top: 2.5rem;
 		color: var(--text-muted);
+		font-family: ui-monospace, monospace;
 		font-size: 0.75rem;
+		text-transform: uppercase;
 	}
 
 	.attribution a {
@@ -643,9 +679,6 @@
 	@media (max-width: 42rem) {
 		.album-header {
 			align-items: start;
-		}
-		.player iframe {
-			height: 10.75rem;
 		}
 	}
 </style>

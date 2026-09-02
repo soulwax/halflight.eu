@@ -37,8 +37,8 @@
 </svelte:head>
 
 <section class="tidal-settings" aria-labelledby="tidal-settings-title">
-	<header>
-		<p class="eyebrow">TIDAL</p>
+	<header class="settings-header">
+		<p class="eyebrow">SYN // SYSTEM CONFIGURATION</p>
 		<h1 id="tidal-settings-title">{m.tidal_settings_title()}</h1>
 		<p class="intro">{m.tidal_settings_subtitle()}</p>
 	</header>
@@ -53,6 +53,7 @@
 
 	{#if !status.configured}
 		<section class="connection-card" aria-labelledby="configuration-title">
+			<div class="card-indicator indicator-red"></div>
 			<p class="status-label status-problem">{m.tidal_settings_attention()}</p>
 			<h2 id="configuration-title">{m.tidal_settings_configuration_title()}</h2>
 			<p>{m.tidal_settings_configuration_description()}</p>
@@ -62,6 +63,7 @@
 		</section>
 	{:else if status.error}
 		<section class="connection-card" aria-labelledby="connection-error-title">
+			<div class="card-indicator indicator-red"></div>
 			<p class="status-label status-problem">{m.tidal_settings_attention()}</p>
 			<h2 id="connection-error-title">{m.tidal_settings_saved_connection_title()}</h2>
 			<p>{m.tidal_settings_saved_connection_description()}</p>
@@ -69,6 +71,7 @@
 		</section>
 	{:else if status.connected}
 		<section class="connection-card" aria-labelledby="connected-title">
+			<div class="card-indicator indicator-blue"></div>
 			<p class="status-label status-connected">{m.tidal_connected()}</p>
 			<h2 id="connected-title">{m.tidal_settings_connected_title()}</h2>
 			<p>{m.tidal_settings_connected_description()}</p>
@@ -86,6 +89,7 @@
 		</section>
 	{:else}
 		<section class="connection-card" aria-labelledby="connect-title">
+			<div class="card-indicator indicator-yellow"></div>
 			<p class="status-label">{m.tidal_not_connected()}</p>
 			<h2 id="connect-title">{m.tidal_settings_connect_title()}</h2>
 			<p>{m.tidal_settings_connect_description()}</p>
@@ -96,7 +100,7 @@
 	{#if debugTokens}
 		<section class="debug-card" aria-labelledby="debug-title">
 			<div class="debug-header">
-				<Key size={20} />
+				<Key size={20} class="text-[var(--action)]" />
 				<div>
 					<h2 id="debug-title">{m.tidal_settings_debug_title()}</h2>
 					<p>{m.tidal_settings_debug_description()}</p>
@@ -162,44 +166,67 @@
 		max-width: 48rem;
 	}
 
-	h1,
-	h2,
-	p {
-		margin-top: 0;
+	.settings-header {
+		margin-bottom: 2rem;
+		border-bottom: 2px solid var(--border-subtle);
+		padding-bottom: 1.5rem;
 	}
 
 	.eyebrow {
-		margin: 0 0 0.75rem;
+		margin: 0 0 0.5rem;
 		color: var(--text-muted);
+		font-family: ui-monospace, monospace;
 		font-size: 0.75rem;
-		font-weight: 700;
-		letter-spacing: 0.18em;
+		font-weight: 800;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
 	}
 
 	h1 {
-		margin-bottom: 0;
-		font-size: clamp(2rem, 5vw, 3.25rem);
-		letter-spacing: -0.055em;
+		margin: 0;
+		font-size: clamp(2.2rem, 5vw, 3.5rem);
+		font-weight: 800;
+		letter-spacing: -0.04em;
+		line-height: 1.05;
+		text-transform: uppercase;
 	}
 
 	.intro {
-		margin: 0.75rem 0 2rem;
+		margin: 0.75rem 0 0;
 		color: var(--text-muted);
-		font-size: 1.1rem;
+		font-size: 1.05rem;
 	}
 
 	.notice,
 	.connection-card,
 	.info-card,
 	.debug-card {
-		border: 1px solid var(--border-subtle);
-		border-radius: 1.25rem;
+		position: relative;
+		border: 2px solid var(--border-subtle);
 		background: var(--surface-raised);
-		padding: clamp(1.1rem, 3vw, 1.5rem);
+		padding: clamp(1.25rem, 3vw, 1.75rem);
+	}
+
+	.card-indicator {
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		height: 3px;
+	}
+
+	.indicator-blue {
+		background: var(--bauhaus-blue);
+	}
+	.indicator-yellow {
+		background: var(--bauhaus-yellow);
+	}
+	.indicator-red {
+		background: var(--bauhaus-red);
 	}
 
 	.debug-card {
-		margin-top: 1rem;
+		margin-top: 1.5rem;
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
@@ -212,14 +239,16 @@
 	}
 
 	.debug-header h2 {
-		margin-bottom: 0.25rem;
+		margin: 0 0 0.25rem;
 		font-size: 1.2rem;
+		font-weight: 800;
+		text-transform: uppercase;
 	}
 
 	.debug-header p {
 		margin: 0;
 		color: var(--text-muted);
-		font-size: 0.9rem;
+		font-size: 0.85rem;
 	}
 
 	.token-group {
@@ -236,40 +265,48 @@
 
 	.token-label-row label {
 		color: var(--text-muted);
-		font-size: 0.85rem;
-		font-weight: 600;
+		font-size: 0.8rem;
+		font-weight: 800;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
 	}
 
 	.copy-button {
 		display: inline-flex;
 		align-items: center;
 		gap: 0.35rem;
-		border: 1px solid var(--border-subtle);
-		border-radius: 0.5rem;
+		border: 1px solid var(--border-strong);
 		background: var(--surface-canvas);
-		padding: 0.25rem 0.6rem;
+		padding: 0.3rem 0.65rem;
 		color: var(--text-primary);
 		font: inherit;
-		font-size: 0.8rem;
-		font-weight: 600;
+		font-size: 0.75rem;
+		font-weight: 800;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
 		cursor: pointer;
-		transition: all 0.15s ease;
+		transition: all 0.12s ease;
 	}
 
 	.copy-button:hover {
-		border-color: var(--border-strong);
+		border-color: var(--action);
 		background: var(--surface-selected);
+		color: var(--action);
 	}
 
 	.token-input {
 		width: 100%;
-		border: 1px solid var(--border-subtle);
-		border-radius: 0.65rem;
+		border: 2px solid var(--border-subtle);
 		background: var(--surface-canvas);
-		padding: 0.6rem 0.75rem;
+		padding: 0.65rem 0.75rem;
 		color: var(--text-primary);
-		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+		font-family: ui-monospace, monospace;
 		font-size: 0.85rem;
+	}
+
+	.token-input:focus {
+		border-color: var(--action);
+		outline: none;
 	}
 
 	.debug-warning {
@@ -280,39 +317,44 @@
 	}
 
 	.notice {
-		margin-bottom: 1rem;
+		margin-bottom: 1.5rem;
 		color: var(--text-muted);
 	}
 
 	.notice-success {
-		border-color: color-mix(in oklab, var(--action), var(--border-subtle) 55%);
+		border-color: var(--action);
+		border-left-width: 4px;
 		color: var(--text-primary);
 	}
 
 	.notice-error {
 		border-color: var(--danger);
 		background: var(--danger-subtle);
-		color: var(--text-primary);
+		color: var(--danger);
+		font-weight: 700;
 	}
 
 	.connection-card h2,
 	.info-card h2 {
-		margin-bottom: 0.5rem;
+		margin: 0 0 0.5rem;
 		font-size: 1.35rem;
+		font-weight: 800;
+		text-transform: uppercase;
 	}
 
 	.connection-card > p:not(.status-label):not(.refresh-note):not(.technical-detail),
 	.info-card p {
-		margin-bottom: 1.25rem;
+		margin: 0 0 1.25rem;
 		color: var(--text-muted);
 		line-height: 1.55;
 	}
 
 	.status-label {
-		margin-bottom: 0.75rem;
+		margin: 0 0 0.75rem;
+		font-family: ui-monospace, monospace;
 		font-size: 0.8rem;
-		font-weight: 700;
-		letter-spacing: 0.08em;
+		font-weight: 800;
+		letter-spacing: 0.1em;
 		text-transform: uppercase;
 	}
 
@@ -332,24 +374,36 @@
 
 	.button {
 		display: inline-flex;
-		min-height: 2.75rem;
+		min-height: 2.85rem;
 		align-items: center;
 		justify-content: center;
-		border: 0;
-		border-radius: 0.75rem;
+		border: 2px solid var(--border-strong);
 		background: var(--action);
-		padding: 0.75rem 1rem;
+		padding: 0.6rem 1.25rem;
 		color: var(--action-contrast);
 		font: inherit;
-		font-weight: 700;
+		font-size: 0.85rem;
+		font-weight: 800;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
 		text-decoration: none;
 		cursor: pointer;
+		transition: all 0.12s ease;
+	}
+
+	.button:hover {
+		box-shadow: var(--shadow-bauhaus);
+		transform: translate(-1px, -1px);
 	}
 
 	.button-secondary {
-		border: 1px solid var(--border-strong);
+		border: 2px solid var(--border-strong);
 		background: transparent;
 		color: var(--text-primary);
+	}
+
+	.button-secondary:hover {
+		background: var(--surface-selected);
 	}
 
 	.refresh-note,
@@ -358,16 +412,16 @@
 		border-left: 3px solid var(--border-strong);
 		padding-left: 0.75rem;
 		color: var(--text-muted);
-		font-size: 0.9rem;
+		font-size: 0.85rem;
 	}
 
 	.technical-detail {
-		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+		font-family: ui-monospace, monospace;
 		font-size: 0.8rem;
 	}
 
 	.info-card {
-		margin-top: 1rem;
+		margin-top: 1.5rem;
 	}
 
 	.info-card p {
@@ -375,9 +429,11 @@
 	}
 
 	.attribution {
-		margin: 1.5rem 0 0;
+		margin: 2.5rem 0 0;
 		color: var(--text-muted);
-		font-size: 0.85rem;
+		font-family: ui-monospace, monospace;
+		font-size: 0.75rem;
+		text-transform: uppercase;
 	}
 
 	.attribution a {

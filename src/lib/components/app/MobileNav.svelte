@@ -14,7 +14,7 @@
 </script>
 
 <nav
-	class="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--border-subtle)] bg-[color:var(--surface-raised)/0.96] px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur md:hidden"
+	class="fixed inset-x-0 bottom-0 z-20 border-t-2 border-[var(--border-strong)] bg-[var(--surface-raised)] px-2 pt-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden"
 	aria-label={navigationLabel}
 >
 	<ul class="grid auto-cols-fr grid-flow-col overflow-x-auto">

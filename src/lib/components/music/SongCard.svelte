@@ -37,7 +37,7 @@
 			<img class="artwork" src={coverImage} alt="" loading="lazy" />
 		{:else}
 			<div class="artwork artwork-placeholder" aria-hidden="true">
-				<Disc size={32} />
+				<Disc size={28} />
 			</div>
 		{/if}
 
@@ -48,14 +48,14 @@
 			title={m.player_play_track()}
 			aria-label={m.player_play_track()}
 		>
-			<Play size={18} fill="currentColor" />
+			<Play size={16} fill="currentColor" />
 		</button>
 	</div>
 
 	<div class="song-details">
 		<div class="title-row">
 			{#if index !== undefined}
-				<span class="song-index">{index + 1}</span>
+				<span class="song-index">{String(index + 1).padStart(2, '0')}</span>
 			{/if}
 			<a class="song-title" href={resolve('/app/tracks/[id]', { id: track.id })}>
 				<strong>{track.title}</strong>
@@ -96,12 +96,12 @@
 	<div class="card-actions">
 		<button
 			type="button"
-			class="action-btn"
+			class="action-btn play-btn"
 			onclick={() => player.play(track, contextTracks)}
 			title={m.player_play_track()}
 			aria-label={m.player_play_track()}
 		>
-			<Play size={15} fill="currentColor" />
+			<Play size={14} fill="currentColor" />
 		</button>
 
 		<button
@@ -111,18 +111,18 @@
 			title={m.player_add_to_queue()}
 			aria-label={m.player_add_to_queue()}
 		>
-			<ListPlus size={16} />
+			<ListPlus size={15} />
 		</button>
 
 		<a
-			class="action-btn"
+			class="action-btn external-btn"
 			href={tidalTrackUrl}
 			target="_blank"
 			rel="noreferrer"
 			title="Open in TIDAL"
 			aria-label="Open in TIDAL"
 		>
-			<ExternalLink size={14} />
+			<ExternalLink size={13} />
 		</a>
 	</div>
 </article>
@@ -131,31 +131,28 @@
 	.song-card {
 		display: flex;
 		align-items: center;
-		gap: 1rem;
-		padding: 0.85rem 1rem;
+		gap: 0.85rem;
+		padding: 0.75rem 0.9rem;
 		border: 1px solid var(--border-subtle);
-		border-radius: 1rem;
-		background: var(--surface-canvas);
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-		transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+		background: var(--surface-raised);
 		position: relative;
+		transition: all 120ms cubic-bezier(0.16, 1, 0.3, 1);
 	}
 
 	.song-card:hover {
 		border-color: var(--border-strong);
-		background: var(--surface-raised);
-		transform: translateY(-1px);
-		box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+		box-shadow: var(--shadow-bauhaus);
+		transform: translate(-1px, -1px);
 	}
 
 	.artwork-wrap {
 		position: relative;
-		width: 4.25rem;
-		height: 4.25rem;
-		flex: 0 0 4.25rem;
-		border-radius: 0.65rem;
+		width: 4rem;
+		height: 4rem;
+		flex: 0 0 4rem;
+		border: 1px solid var(--border-subtle);
+		background: var(--surface-canvas);
 		overflow: hidden;
-		background: var(--surface-selected);
 	}
 
 	.artwork {
@@ -163,11 +160,6 @@
 		height: 100%;
 		object-fit: cover;
 		display: block;
-		transition: transform 0.2s ease;
-	}
-
-	.song-card:hover .artwork {
-		transform: scale(1.05);
 	}
 
 	.artwork-placeholder {
@@ -181,12 +173,12 @@
 		inset: 0;
 		display: grid;
 		place-items: center;
-		background: rgba(0, 0, 0, 0.5);
+		background: color-mix(in oklab, var(--action) 85%, black);
 		color: #ffffff;
 		border: 0;
 		opacity: 0;
 		cursor: pointer;
-		transition: opacity 0.15s ease;
+		transition: opacity 120ms ease;
 	}
 
 	.song-card:hover .artwork-play-btn,
@@ -199,40 +191,43 @@
 		flex: 1;
 		display: flex;
 		flex-direction: column;
-		gap: 0.2rem;
+		gap: 0.15rem;
 	}
 
 	.title-row {
 		display: flex;
-		align-items: center;
+		align-items: baseline;
 		gap: 0.4rem;
 	}
 
 	.song-index {
+		font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 		color: var(--text-muted);
-		font-size: 0.8rem;
-		font-variant-numeric: tabular-nums;
+		font-size: 0.75rem;
 		font-weight: 700;
 	}
 
 	.song-title {
 		color: var(--text-primary);
 		text-decoration: none;
-		font-size: 1rem;
+		font-size: 0.95rem;
 		line-height: 1.25;
+		font-weight: 700;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}
 
 	.song-title:hover {
+		color: var(--action);
 		text-decoration: underline;
 	}
 
 	.song-artists {
 		margin: 0;
 		color: var(--text-muted);
-		font-size: 0.85rem;
+		font-size: 0.8rem;
+		font-weight: 500;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -251,7 +246,7 @@
 	.song-album {
 		margin: 0;
 		color: var(--text-muted);
-		font-size: 0.8rem;
+		font-size: 0.75rem;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -264,40 +259,41 @@
 
 	.song-album a:hover {
 		color: var(--text-primary);
-		text-decoration: underline;
 	}
 
 	.song-meta {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
-		margin-top: 0.2rem;
+		gap: 0.4rem;
+		margin-top: 0.15rem;
 	}
 
 	.song-duration {
+		font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 		color: var(--text-muted);
-		font-size: 0.75rem;
-		font-variant-numeric: tabular-nums;
+		font-size: 0.7rem;
+		font-weight: 600;
 	}
 
 	.explicit-badge {
-		border-radius: 0.25rem;
-		background: var(--surface-selected);
-		padding: 0.05rem 0.35rem;
-		color: var(--text-muted);
-		font-size: 0.65rem;
-		font-weight: 700;
+		border: 1px solid var(--border-strong);
+		padding: 0 0.25rem;
+		color: var(--text-primary);
+		font-family: ui-monospace, monospace;
+		font-size: 0.6rem;
+		font-weight: 800;
 	}
 
 	.quality-badge {
-		border-radius: 0.25rem;
-		background: color-mix(in oklab, var(--action), transparent 85%);
+		background: var(--surface-selected);
+		border: 1px solid var(--border-subtle);
 		color: var(--action);
-		padding: 0.05rem 0.35rem;
-		font-size: 0.65rem;
-		font-weight: 700;
+		padding: 0 0.35rem;
+		font-family: ui-monospace, monospace;
+		font-size: 0.6rem;
+		font-weight: 800;
 		text-transform: uppercase;
-		letter-spacing: 0.04em;
+		letter-spacing: 0.05em;
 	}
 
 	.card-actions {
@@ -310,15 +306,14 @@
 	.action-btn {
 		display: grid;
 		place-items: center;
-		width: 2.25rem;
-		height: 2.25rem;
+		width: 2.1rem;
+		height: 2.1rem;
 		border: 1px solid var(--border-subtle);
-		border-radius: 0.6rem;
-		background: var(--surface-raised);
+		background: var(--surface-canvas);
 		color: var(--text-muted);
 		cursor: pointer;
 		text-decoration: none;
-		transition: all 0.15s ease;
+		transition: all 120ms ease;
 	}
 
 	.action-btn:hover {
@@ -327,19 +322,25 @@
 		color: var(--text-primary);
 	}
 
+	.action-btn.play-btn:hover {
+		border-color: var(--action);
+		background: var(--action);
+		color: var(--action-contrast);
+	}
+
 	@media (max-width: 36rem) {
 		.song-card {
-			padding: 0.75rem;
-			gap: 0.75rem;
+			padding: 0.65rem;
+			gap: 0.65rem;
 		}
 
 		.artwork-wrap {
-			width: 3.5rem;
-			height: 3.5rem;
-			flex: 0 0 3.5rem;
+			width: 3.25rem;
+			height: 3.25rem;
+			flex: 0 0 3.25rem;
 		}
 
-		.card-actions a {
+		.external-btn {
 			display: none;
 		}
 	}

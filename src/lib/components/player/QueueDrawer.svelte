@@ -25,10 +25,10 @@
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div class="queue-backdrop" onclick={() => player.closeQueue()}></div>
 
-	<aside class="queue-drawer" aria-labelledby="queue-heading" role="dialog" aria-modal="true">
+	<div class="queue-drawer" aria-labelledby="queue-heading" role="dialog" aria-modal="true">
 		<header class="queue-header">
 			<div class="queue-title-group">
-				<ListMusic size={22} class="text-[var(--action)]" />
+				<ListMusic size={20} class="text-[var(--action)]" />
 				<h2 id="queue-heading">{m.player_queue()}</h2>
 				{#if player.queueCount > 0}
 					<span class="queue-badge">{player.queueCount}</span>
@@ -52,7 +52,7 @@
 					onclick={() => player.closeQueue()}
 					aria-label="Close queue"
 				>
-					<X size={18} />
+					<X size={16} />
 				</button>
 			</div>
 		</header>
@@ -77,7 +77,7 @@
 								aria-hidden="true"
 							/>
 						{:else}
-							<div class="track-thumb thumb-placeholder"><Disc size={18} /></div>
+							<div class="track-thumb thumb-placeholder"><Disc size={16} /></div>
 						{/if}
 
 						<div class="track-info">
@@ -117,7 +117,7 @@
 					<ol class="queue-list">
 						{#each player.queue as track, index (track.id + '-' + index)}
 							<li class="track-item">
-								<span class="queue-index">{index + 1}</span>
+								<span class="queue-index">{String(index + 1).padStart(2, '0')}</span>
 
 								<div class="track-info">
 									<a
@@ -152,7 +152,7 @@
 										title={m.player_play_track()}
 										aria-label={m.player_play_track()}
 									>
-										<Play size={14} fill="currentColor" />
+										<Play size={13} fill="currentColor" />
 									</button>
 									<button
 										type="button"
@@ -161,7 +161,7 @@
 										title={m.player_remove_from_queue()}
 										aria-label={m.player_remove_from_queue()}
 									>
-										<Trash2 size={14} />
+										<Trash2 size={13} />
 									</button>
 								</div>
 							</li>
@@ -170,17 +170,16 @@
 				{/if}
 			</section>
 		</div>
-	</aside>
+	</div>
 {/if}
 
 <style>
 	.queue-backdrop {
 		position: fixed;
 		inset: 0;
-		z-index: 90;
 		background: rgba(0, 0, 0, 0.65);
-		backdrop-filter: blur(4px);
-		animation: fadeIn 0.15s ease-out;
+		z-index: 90;
+		animation: fadeIn 0.15s ease;
 	}
 
 	.queue-drawer {
@@ -188,14 +187,14 @@
 		top: 0;
 		right: 0;
 		bottom: 0;
-		z-index: 100;
-		display: flex;
 		width: 100%;
 		max-width: 26rem;
-		flex-direction: column;
 		background: var(--surface-raised);
-		border-left: 1px solid var(--border-subtle);
-		box-shadow: var(--shadow-overlay, 0 10px 30px rgba(0, 0, 0, 0.5));
+		border-left: 2px solid var(--border-strong);
+		box-shadow: -4px 0px 0px rgba(0, 0, 0, 0.4);
+		z-index: 100;
+		display: flex;
+		flex-direction: column;
 		animation: slideLeft 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 	}
 
@@ -203,8 +202,8 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		padding: 1.25rem 1.25rem 1rem;
-		border-bottom: 1px solid var(--border-subtle);
+		padding: 1.15rem 1.25rem;
+		border-bottom: 2px solid var(--border-subtle);
 	}
 
 	.queue-title-group {
@@ -215,22 +214,25 @@
 
 	.queue-title-group h2 {
 		margin: 0;
-		font-size: 1.25rem;
+		font-size: 1.15rem;
+		font-weight: 800;
 		letter-spacing: -0.02em;
+		text-transform: uppercase;
 	}
 
 	.queue-badge {
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		min-width: 1.5rem;
-		height: 1.5rem;
-		padding: 0 0.35rem;
-		border-radius: 9999px;
+		min-width: 1.35rem;
+		height: 1.35rem;
+		padding: 0 0.3rem;
+		border: 1px solid var(--border-strong);
 		background: var(--surface-selected);
 		color: var(--text-primary);
-		font-size: 0.75rem;
-		font-weight: 700;
+		font-family: ui-monospace, monospace;
+		font-size: 0.7rem;
+		font-weight: 800;
 	}
 
 	.queue-actions {
@@ -240,20 +242,22 @@
 	}
 
 	.clear-btn {
-		border: 0;
-		background: transparent;
+		border: 1px solid var(--border-subtle);
+		background: var(--surface-canvas);
 		color: var(--text-muted);
 		font: inherit;
-		font-size: 0.8rem;
-		font-weight: 600;
+		font-size: 0.75rem;
+		font-weight: 700;
+		text-transform: uppercase;
 		cursor: pointer;
 		padding: 0.35rem 0.6rem;
-		border-radius: 0.4rem;
+		transition: all 0.12s ease;
 	}
 
 	.clear-btn:hover {
 		color: var(--danger);
-		background: var(--surface-selected);
+		border-color: var(--danger);
+		background: var(--danger-subtle);
 	}
 
 	.close-btn {
@@ -261,15 +265,16 @@
 		place-items: center;
 		width: 2rem;
 		height: 2rem;
-		border: 0;
-		border-radius: 0.5rem;
-		background: transparent;
+		border: 1px solid var(--border-subtle);
+		background: var(--surface-canvas);
 		color: var(--text-muted);
 		cursor: pointer;
+		transition: all 0.12s ease;
 	}
 
 	.close-btn:hover {
 		color: var(--text-primary);
+		border-color: var(--border-strong);
 		background: var(--surface-selected);
 	}
 
@@ -283,10 +288,10 @@
 	}
 
 	.section-label {
-		margin: 0 0 0.6rem;
+		margin: 0 0 0.5rem;
 		color: var(--text-muted);
 		font-size: 0.75rem;
-		font-weight: 700;
+		font-weight: 800;
 		letter-spacing: 0.12em;
 		text-transform: uppercase;
 	}
@@ -294,26 +299,29 @@
 	.track-item {
 		display: flex;
 		align-items: center;
-		gap: 0.75rem;
-		padding: 0.6rem;
-		border-radius: 0.65rem;
+		gap: 0.65rem;
+		padding: 0.6rem 0.75rem;
 		background: var(--surface-canvas);
 		border: 1px solid var(--border-subtle);
-		transition: background 0.15s ease;
+		transition: all 0.12s ease;
+	}
+
+	.track-item:hover {
+		border-color: var(--border-strong);
 	}
 
 	.current-track-item {
-		border-color: color-mix(in oklab, var(--action), var(--border-subtle) 40%);
-		background: color-mix(in oklab, var(--action), transparent 93%);
+		border-left: 3px solid var(--action);
+		background: var(--surface-selected);
 	}
 
 	.track-thumb {
-		width: 2.75rem;
-		height: 2.75rem;
+		width: 2.5rem;
+		height: 2.5rem;
 		flex: 0 0 auto;
-		border-radius: 0.4rem;
+		border: 1px solid var(--border-subtle);
 		object-fit: cover;
-		background: var(--surface-selected);
+		background: var(--surface-canvas);
 	}
 
 	.thumb-placeholder {
@@ -323,10 +331,11 @@
 	}
 
 	.queue-index {
+		font-family: ui-monospace, monospace;
 		color: var(--text-muted);
-		font-size: 0.8rem;
-		font-variant-numeric: tabular-nums;
-		width: 1.2rem;
+		font-size: 0.75rem;
+		font-weight: 700;
+		width: 1.3rem;
 		text-align: center;
 		flex: 0 0 auto;
 	}
@@ -335,26 +344,28 @@
 		min-width: 0;
 		flex: 1;
 		display: grid;
-		gap: 0.15rem;
+		gap: 0.1rem;
 	}
 
 	.track-title-link {
 		color: var(--text-primary);
 		text-decoration: none;
-		font-size: 0.9rem;
+		font-size: 0.85rem;
+		font-weight: 700;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}
 
 	.track-title-link:hover {
+		color: var(--action);
 		text-decoration: underline;
 	}
 
 	.track-artist {
 		margin: 0;
 		color: var(--text-muted);
-		font-size: 0.8rem;
+		font-size: 0.75rem;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -366,20 +377,22 @@
 	}
 
 	.track-artist a:hover {
+		color: var(--text-primary);
 		text-decoration: underline;
 	}
 
 	.track-time {
+		font-family: ui-monospace, monospace;
 		color: var(--text-muted);
-		font-size: 0.75rem;
-		font-variant-numeric: tabular-nums;
+		font-size: 0.7rem;
+		font-weight: 600;
 		flex: 0 0 auto;
 	}
 
 	.item-actions {
 		display: flex;
 		align-items: center;
-		gap: 0.25rem;
+		gap: 0.2rem;
 		flex: 0 0 auto;
 	}
 
@@ -388,27 +401,28 @@
 		place-items: center;
 		width: 1.75rem;
 		height: 1.75rem;
-		border: 0;
-		border-radius: 0.4rem;
-		background: transparent;
+		border: 1px solid var(--border-subtle);
+		background: var(--surface-canvas);
 		color: var(--text-muted);
 		cursor: pointer;
-		transition: all 0.15s ease;
+		transition: all 0.12s ease;
 	}
 
 	.icon-action-btn:hover {
 		color: var(--action);
+		border-color: var(--action);
 		background: var(--surface-selected);
 	}
 
 	.icon-delete-btn:hover {
 		color: var(--danger);
+		border-color: var(--danger);
 	}
 
 	.empty-notice {
 		margin: 0;
 		color: var(--text-muted);
-		font-size: 0.9rem;
+		font-size: 0.85rem;
 		font-style: italic;
 		padding: 1rem 0;
 	}

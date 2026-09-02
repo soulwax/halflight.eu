@@ -31,8 +31,8 @@
 </svelte:head>
 
 <section class="mixes-page" aria-labelledby="mixes-title">
-	<header>
-		<p class="eyebrow">TIDAL</p>
+	<header class="mixes-header">
+		<p class="eyebrow">SYN // AUTOMATED COMPOSITION</p>
 		<h1 id="mixes-title">{m.mixes_title()}</h1>
 		<p class="intro">{m.mixes_subtitle()}</p>
 	</header>
@@ -57,26 +57,32 @@
 		<nav class="mix-tabs" aria-label="Mix types">
 			<button
 				type="button"
+				class="tab-btn"
 				class:active={activeTab === 'daily'}
 				onclick={() => (activeTab = 'daily')}
 			>
-				<Sparkles size={18} />
+				<span class="tab-indicator tab-blue"></span>
+				<Sparkles size={16} />
 				<span>{m.mixes_tab_daily()}</span>
 			</button>
 			<button
 				type="button"
+				class="tab-btn"
 				class:active={activeTab === 'discovery'}
 				onclick={() => (activeTab = 'discovery')}
 			>
-				<Compass size={18} />
+				<span class="tab-indicator tab-yellow"></span>
+				<Compass size={16} />
 				<span>{m.mixes_tab_discovery()}</span>
 			</button>
 			<button
 				type="button"
+				class="tab-btn"
 				class:active={activeTab === 'newRelease'}
 				onclick={() => (activeTab = 'newRelease')}
 			>
-				<Flame size={18} />
+				<span class="tab-indicator tab-red"></span>
+				<Flame size={16} />
 				<span>{m.mixes_tab_new_release()}</span>
 			</button>
 		</nav>
@@ -97,13 +103,13 @@
 							class="play-mix-btn"
 							onclick={() => player.play(currentMix!.items[0], currentMix!.items)}
 						>
-							<Play size={15} fill="currentColor" />
+							<Play size={14} fill="currentColor" />
 							{m.player_play_all()}
 						</button>
 
 						<a class="tidal-mix-btn" href={mixTidalUrl} rel="noreferrer" target="_blank">
 							{m.mixes_open_in_tidal()}
-							<ExternalLink size={14} />
+							<ExternalLink size={13} />
 						</a>
 					</div>
 				</div>
@@ -132,137 +138,163 @@
 		max-width: 72rem;
 	}
 
-	.eyebrow {
-		margin: 0 0 0.75rem;
-		color: var(--text-muted);
-		font-size: 0.75rem;
-		font-weight: 700;
-		letter-spacing: 0.18em;
+	.mixes-header {
+		margin-bottom: 2rem;
+		border-bottom: 2px solid var(--border-subtle);
+		padding-bottom: 1.5rem;
 	}
 
-	h1,
-	h2,
-	p {
-		margin-top: 0;
+	.eyebrow {
+		margin: 0 0 0.5rem;
+		color: var(--text-muted);
+		font-family: ui-monospace, monospace;
+		font-size: 0.75rem;
+		font-weight: 800;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
 	}
 
 	h1 {
-		margin-bottom: 0;
-		font-size: clamp(2rem, 5vw, 3.25rem);
-		letter-spacing: -0.055em;
+		margin: 0;
+		font-size: clamp(2.2rem, 5vw, 3.5rem);
+		font-weight: 800;
+		letter-spacing: -0.04em;
+		line-height: 1.05;
+		text-transform: uppercase;
 	}
 
 	.intro {
-		margin: 0.75rem 0 2rem;
+		margin: 0.75rem 0 0;
 		color: var(--text-muted);
-		font-size: 1.1rem;
+		font-size: 1.05rem;
 	}
 
 	.mix-tabs {
 		display: flex;
-		gap: 0.5rem;
-		border-bottom: 1px solid var(--border-subtle);
-		padding-bottom: 0.75rem;
-		margin-bottom: 1.5rem;
+		gap: 0.75rem;
+		margin-bottom: 2rem;
 		overflow-x: auto;
+		padding-bottom: 0.25rem;
 	}
 
-	.mix-tabs button {
+	.tab-btn {
 		display: inline-flex;
 		align-items: center;
 		gap: 0.5rem;
-		border: 1px solid var(--border-subtle);
-		border-radius: 9999px;
+		border: 2px solid var(--border-strong);
 		background: var(--surface-raised);
-		padding: 0.6rem 1.15rem;
+		padding: 0.65rem 1.15rem;
 		color: var(--text-muted);
 		font: inherit;
-		font-size: 0.9rem;
-		font-weight: 600;
+		font-size: 0.85rem;
+		font-weight: 800;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
 		cursor: pointer;
 		white-space: nowrap;
-		transition: all 0.15s ease;
+		position: relative;
+		transition: all 0.12s ease;
 	}
 
-	.mix-tabs button:hover {
+	.tab-btn:hover {
 		color: var(--text-primary);
-		border-color: var(--border-strong);
+		box-shadow: 2px 2px 0px var(--border-strong);
+		transform: translate(-1px, -1px);
 	}
 
-	.mix-tabs button.active {
-		background: var(--action);
+	.tab-btn.active {
+		background: var(--surface-selected);
+		color: var(--text-primary);
 		border-color: var(--action);
-		color: var(--action-contrast);
+		box-shadow: 3px 3px 0px var(--action);
+	}
+
+	.tab-indicator {
+		display: inline-block;
+		width: 0.5rem;
+		height: 0.5rem;
+	}
+
+	.tab-blue {
+		background: var(--bauhaus-blue);
+	}
+	.tab-yellow {
+		background: var(--bauhaus-yellow);
+	}
+	.tab-red {
+		background: var(--bauhaus-red);
 	}
 
 	.mix-showcase {
-		border: 1px solid var(--border-subtle);
-		border-radius: 1.25rem;
+		border: 2px solid var(--border-subtle);
 		background: var(--surface-raised);
-		padding: clamp(1.1rem, 3vw, 1.75rem);
+		padding: clamp(1.25rem, 3vw, 1.75rem);
 	}
 
 	.mix-header {
 		display: flex;
-		flex-wrap: wrap;
-		align-items: flex-end;
+		align-items: center;
 		justify-content: space-between;
 		gap: 1rem;
-		margin-bottom: 1rem;
+		margin-bottom: 1.5rem;
+		flex-wrap: wrap;
 		border-bottom: 1px solid var(--border-subtle);
 		padding-bottom: 1rem;
 	}
 
 	.mix-header h2 {
-		margin-bottom: 0.25rem;
+		margin: 0;
 		font-size: 1.35rem;
+		font-weight: 800;
+		text-transform: uppercase;
 	}
 
 	.mix-subtitle {
-		margin: 0;
+		margin: 0.25rem 0 0;
 		color: var(--text-muted);
-		font-size: 0.9rem;
+		font-size: 0.85rem;
 	}
 
 	.mix-actions {
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
-		flex-wrap: wrap;
 	}
 
 	.play-mix-btn {
 		display: inline-flex;
 		align-items: center;
 		gap: 0.45rem;
-		border: 0;
-		border-radius: 0.65rem;
+		border: 1px solid var(--action);
 		background: var(--action);
 		color: var(--action-contrast);
-		padding: 0.5rem 0.9rem;
+		padding: 0.5rem 1rem;
 		font: inherit;
 		font-size: 0.85rem;
-		font-weight: 700;
+		font-weight: 800;
+		text-transform: uppercase;
 		cursor: pointer;
-		transition: opacity 0.15s ease;
+		transition: all 0.12s ease;
 	}
 
 	.play-mix-btn:hover {
-		opacity: 0.9;
+		box-shadow: 2px 2px 0px var(--border-strong);
+		transform: translate(-1px, -1px);
 	}
 
 	.tidal-mix-btn {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.4rem;
-		border-radius: 0.65rem;
-		background: var(--surface-selected);
+		gap: 0.35rem;
 		border: 1px solid var(--border-subtle);
-		padding: 0.5rem 0.85rem;
+		background: var(--surface-canvas);
 		color: var(--text-primary);
-		font-size: 0.85rem;
+		padding: 0.5rem 0.85rem;
+		font-size: 0.8rem;
 		font-weight: 700;
+		text-transform: uppercase;
 		text-decoration: none;
+		transition: all 0.12s ease;
 	}
 
 	.tidal-mix-btn:hover {
@@ -271,41 +303,47 @@
 
 	.song-cards-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr));
+		grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
 		gap: 0.75rem;
-		margin-top: 1rem;
 	}
 
 	.state-card {
 		margin-top: 1.5rem;
-		border: 1px solid var(--border-subtle);
-		border-radius: 1.25rem;
+		border: 2px solid var(--border-subtle);
 		background: var(--surface-raised);
-		padding: clamp(1.1rem, 3vw, 1.5rem);
+		padding: clamp(1.25rem, 3vw, 1.75rem);
+	}
+
+	.state-card h2 {
+		margin: 0 0 0.5rem;
+		font-size: 1.25rem;
+		font-weight: 800;
+		text-transform: uppercase;
 	}
 
 	.state-card p {
-		margin-bottom: 1rem;
+		margin: 0;
 		color: var(--text-muted);
 	}
 
 	.state-card a {
 		display: inline-flex;
-		min-height: 2.75rem;
-		align-items: center;
-		justify-content: center;
-		border-radius: 0.75rem;
+		margin-top: 1rem;
+		padding: 0.6rem 1.2rem;
 		background: var(--action);
-		padding: 0.75rem 1rem;
 		color: var(--action-contrast);
+		border: 1px solid var(--border-strong);
 		font-weight: 700;
+		text-transform: uppercase;
 		text-decoration: none;
 	}
 
 	.attribution {
-		margin-top: 2rem;
+		margin-top: 2.5rem;
 		color: var(--text-muted);
+		font-family: ui-monospace, monospace;
 		font-size: 0.75rem;
+		text-transform: uppercase;
 	}
 
 	.attribution a {

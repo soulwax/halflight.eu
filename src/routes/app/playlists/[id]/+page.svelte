@@ -50,25 +50,27 @@
 				<div class="cover cover-placeholder" aria-hidden="true"><ListMusic size={48} /></div>
 			{/if}
 			<div class="heading">
-				<p class="eyebrow">{m.playlist_label()}</p>
+				<p class="eyebrow">SYN // CURATED PLAYLIST</p>
 				<h1 id="playlist-title">{data.playlist.title}</h1>
 				{#if data.playlist.description}
 					<p class="description">{data.playlist.description}</p>
 				{/if}
 				<div class="meta-line">
 					{#if data.playlist.creator}
-						<span>{m.playlist_by({ creator: data.playlist.creator.name ?? 'TIDAL' })}</span>
+						<span class="font-bold"
+							>{m.playlist_by({ creator: data.playlist.creator.name ?? 'TIDAL' })}</span
+						>
 						<span>·</span>
 					{/if}
 					{#if data.playlist.numberOfItems || data.playlist.items.length}
-						<span
+						<span class="font-mono"
 							>{data.playlist.numberOfItems ?? data.playlist.items.length}
 							{m.playlist_track_count()}</span
 						>
 					{/if}
 					{#if data.playlist.duration}
 						<span>·</span>
-						<span>{formatTotalDuration(data.playlist.duration)}</span>
+						<span class="font-mono">{formatTotalDuration(data.playlist.duration)}</span>
 					{/if}
 				</div>
 
@@ -79,7 +81,7 @@
 							class="play-playlist-btn"
 							onclick={() => player.play(data.playlist!.items[0], data.playlist!.items)}
 						>
-							<Play size={16} fill="currentColor" />
+							<Play size={15} fill="currentColor" />
 							{m.player_play_all()}
 						</button>
 					</div>
@@ -110,7 +112,7 @@
 								<Play size={13} fill="currentColor" />
 							</button>
 
-							<span class="track-num">{index + 1}</span>
+							<span class="track-num">{String(index + 1).padStart(2, '0')}</span>
 							<div class="track-main">
 								<a class="track-link" href={resolve('/app/tracks/[id]', { id: track.id })}>
 									<strong>{track.title}</strong>
@@ -156,9 +158,9 @@
 
 		<div class="actions">
 			<a class="tidal-link" href={tidalPlaylistUrl} rel="noreferrer" target="_blank">
-				<Play size={17} fill="currentColor" />
+				<Play size={15} fill="currentColor" />
 				{m.playlist_open_in_tidal()}
-				<ExternalLink size={15} />
+				<ExternalLink size={13} />
 			</a>
 			<a class="back-link" href={resolve('/app/search')}>{m.track_back_to_search()}</a>
 		</div>
@@ -210,17 +212,19 @@
 	.playlist-header {
 		display: flex;
 		align-items: end;
-		gap: clamp(1rem, 3vw, 2rem);
+		gap: clamp(1.25rem, 3vw, 2.5rem);
+		border-bottom: 2px solid var(--border-subtle);
+		padding-bottom: 2rem;
 	}
 
 	.cover {
 		width: clamp(8rem, 19vw, 13rem);
 		aspect-ratio: 1;
 		flex: 0 0 auto;
-		border-radius: 0.75rem;
-		background: var(--surface-selected);
+		border: 2px solid var(--border-strong);
+		background: var(--surface-canvas);
 		object-fit: cover;
-		box-shadow: var(--shadow-raised);
+		box-shadow: var(--shadow-bauhaus);
 	}
 
 	.cover-placeholder {
@@ -236,17 +240,21 @@
 	.eyebrow {
 		margin: 0 0 0.5rem;
 		color: var(--text-muted);
+		font-family: ui-monospace, monospace;
 		font-size: 0.75rem;
-		font-weight: 700;
-		letter-spacing: 0.18em;
+		font-weight: 800;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
 	}
 
 	h1 {
 		margin-bottom: 0.35rem;
 		overflow-wrap: anywhere;
-		font-size: clamp(1.8rem, 4.5vw, 3rem);
-		letter-spacing: -0.05em;
-		line-height: 1.15;
+		font-size: clamp(2rem, 4.5vw, 3.25rem);
+		font-weight: 800;
+		letter-spacing: -0.04em;
+		line-height: 1.05;
+		text-transform: uppercase;
 	}
 
 	.description {
@@ -262,15 +270,14 @@
 		align-items: center;
 		gap: 0.4rem;
 		color: var(--text-muted);
-		font-size: 0.9rem;
+		font-size: 0.85rem;
 	}
 
 	.player {
-		margin-top: 1.75rem;
-		overflow: hidden;
-		border: 1px solid var(--border-subtle);
-		border-radius: 0.75rem;
+		margin-top: 2rem;
+		border: 2px solid var(--border-strong);
 		background: var(--surface-raised);
+		box-shadow: var(--shadow-bauhaus);
 	}
 
 	.player iframe {
@@ -281,35 +288,36 @@
 	}
 
 	.header-playback {
-		margin-top: 1rem;
+		margin-top: 1.25rem;
 	}
 
 	.play-playlist-btn {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.5rem;
-		border: 0;
-		border-radius: 0.65rem;
+		gap: 0.45rem;
+		border: 2px solid var(--border-strong);
 		background: var(--action);
 		color: var(--action-contrast);
-		padding: 0.6rem 1rem;
+		padding: 0.6rem 1.25rem;
 		font: inherit;
-		font-weight: 700;
-		font-size: 0.9rem;
+		font-weight: 800;
+		font-size: 0.85rem;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
 		cursor: pointer;
-		transition: opacity 0.15s ease;
+		transition: all 0.12s ease;
 	}
 
 	.play-playlist-btn:hover {
-		opacity: 0.9;
+		box-shadow: var(--shadow-bauhaus);
+		transform: translate(-1px, -1px);
 	}
 
 	.tracklist-section {
-		margin-top: 1.5rem;
-		border: 1px solid var(--border-subtle);
-		border-radius: 0.75rem;
+		margin-top: 2rem;
+		border: 2px solid var(--border-subtle);
 		background: var(--surface-raised);
-		padding: clamp(1rem, 3vw, 1.5rem);
+		padding: clamp(1.25rem, 3vw, 1.75rem);
 	}
 
 	.track-list {
@@ -320,7 +328,7 @@
 
 	.track-list li {
 		display: grid;
-		grid-template-columns: 2rem 1.8rem minmax(0, 1.5fr) minmax(0, 1fr) auto auto auto;
+		grid-template-columns: 2rem 2.2rem minmax(0, 1.5fr) minmax(0, 1fr) auto auto auto;
 		align-items: center;
 		gap: 0.5rem;
 		min-height: 3.25rem;
@@ -334,22 +342,23 @@
 		place-items: center;
 		width: 1.85rem;
 		height: 1.85rem;
-		border: 0;
-		border-radius: 0.4rem;
-		background: transparent;
+		border: 1px solid var(--border-subtle);
+		background: var(--surface-canvas);
 		color: var(--text-muted);
 		cursor: pointer;
 		padding: 0;
-		transition: all 0.15s ease;
+		transition: all 0.12s ease;
 	}
 
 	.track-play-btn:hover {
-		color: var(--action);
-		background: var(--surface-selected);
+		color: var(--action-contrast);
+		border-color: var(--action);
+		background: var(--action);
 	}
 
 	.track-queue-btn:hover {
 		color: var(--text-primary);
+		border-color: var(--border-strong);
 		background: var(--surface-selected);
 	}
 
@@ -359,8 +368,9 @@
 
 	.track-num {
 		color: var(--text-muted);
-		font-size: 0.85rem;
-		font-variant-numeric: tabular-nums;
+		font-family: ui-monospace, monospace;
+		font-size: 0.8rem;
+		font-weight: 700;
 		text-align: right;
 		padding-right: 0.25rem;
 	}
@@ -378,16 +388,14 @@
 
 	.track-link:hover strong,
 	.track-link:focus-visible strong {
+		color: var(--action);
 		text-decoration: underline;
 	}
 
 	.track-artists,
 	.track-album {
 		color: var(--text-muted);
-		font-size: 0.85rem;
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
+		font-size: 0.8rem;
 	}
 
 	.track-artists a,
@@ -400,51 +408,61 @@
 	.track-artists a:focus-visible,
 	.track-album a:hover,
 	.track-album a:focus-visible {
+		color: var(--text-primary);
 		text-decoration: underline;
 	}
 
 	.explicit-badge {
-		border-radius: 0.25rem;
-		background: var(--surface-selected);
-		padding: 0.1rem 0.35rem;
-		color: var(--text-muted);
-		font-size: 0.7rem;
-		font-weight: 700;
+		border: 1px solid var(--border-strong);
+		padding: 0.1rem 0.3rem;
+		color: var(--text-primary);
+		font-family: ui-monospace, monospace;
+		font-size: 0.65rem;
+		font-weight: 800;
 	}
 
 	.track-time {
 		color: var(--text-muted);
-		font-size: 0.85rem;
-		font-variant-numeric: tabular-nums;
+		font-family: ui-monospace, monospace;
+		font-size: 0.75rem;
+		font-weight: 600;
 	}
 
 	.actions {
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 0.5rem;
-		margin-top: 1.5rem;
+		gap: 0.75rem;
+		margin-top: 2rem;
 	}
 
 	.tidal-link {
 		display: inline-flex;
-		min-height: 2.75rem;
+		min-height: 2.85rem;
 		align-items: center;
 		gap: 0.4rem;
-		border-radius: 0.75rem;
 		background: var(--action);
-		padding: 0.75rem 1rem;
+		border: 2px solid var(--border-strong);
+		padding: 0.6rem 1.15rem;
 		color: var(--action-contrast);
-		font-weight: 700;
+		font-weight: 800;
+		font-size: 0.85rem;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
 		text-decoration: none;
+		transition: all 0.12s ease;
+	}
+
+	.tidal-link:hover {
+		box-shadow: var(--shadow-bauhaus);
+		transform: translate(-1px, -1px);
 	}
 
 	.state-card {
-		margin-top: 2rem;
-		border: 1px solid var(--border-subtle);
-		border-radius: 1.25rem;
+		margin-top: 1.5rem;
+		border: 2px solid var(--border-subtle);
 		background: var(--surface-raised);
-		padding: clamp(1.1rem, 3vw, 1.5rem);
+		padding: clamp(1.25rem, 3vw, 1.75rem);
 	}
 
 	.state-card p {
@@ -455,12 +473,15 @@
 	.state-card a,
 	.back-link {
 		display: inline-flex;
-		min-height: 2.75rem;
+		min-height: 2.85rem;
 		align-items: center;
 		justify-content: center;
-		border-radius: 0.75rem;
-		padding: 0.75rem 1rem;
-		font-weight: 700;
+		border: 2px solid var(--border-strong);
+		padding: 0.6rem 1.15rem;
+		font-weight: 800;
+		font-size: 0.85rem;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
 		text-decoration: none;
 	}
 
@@ -471,12 +492,19 @@
 
 	.back-link {
 		color: var(--text-primary);
+		background: transparent;
+	}
+
+	.back-link:hover {
+		background: var(--surface-selected);
 	}
 
 	.attribution {
-		margin-top: 2rem;
+		margin-top: 2.5rem;
 		color: var(--text-muted);
+		font-family: ui-monospace, monospace;
 		font-size: 0.75rem;
+		text-transform: uppercase;
 	}
 
 	.attribution a {
@@ -488,13 +516,10 @@
 			align-items: start;
 		}
 		.track-list li {
-			grid-template-columns: 2rem minmax(0, 1fr) auto auto;
+			grid-template-columns: 2rem 2.2rem minmax(0, 1fr) auto auto;
 		}
 		.track-album {
 			display: none;
-		}
-		.player iframe {
-			height: 10.75rem;
 		}
 	}
 </style>

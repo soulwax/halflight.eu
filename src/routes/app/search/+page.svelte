@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { Loader2 } from '@lucide/svelte';
+	import { Loader2, Search } from '@lucide/svelte';
 	import SongCard from '#lib/components/music/SongCard.svelte';
 	import { m } from '#lib/paraglide/messages';
 	import type { PageData } from './$types';
@@ -67,8 +67,8 @@
 </svelte:head>
 
 <section class="search-page" aria-labelledby="search-title">
-	<header>
-		<p class="eyebrow">TIDAL</p>
+	<header class="search-header">
+		<p class="eyebrow">SYN // EXPLORATION</p>
 		<h1 id="search-title">{m.search_title()}</h1>
 		<p class="intro">{m.search_subtitle()}</p>
 	</header>
@@ -81,22 +81,25 @@
 	>
 		<label for="search-query">{m.search_label()}</label>
 		<div class="search-input-wrap">
-			<input
-				id="search-query"
-				name="q"
-				type="search"
-				value={searchQuery}
-				oninput={handleInput}
-				placeholder={m.search_live_placeholder()}
-				maxlength="160"
-				autocomplete="off"
-			/>
+			<div class="input-container">
+				<span class="search-icon"><Search size={18} /></span>
+				<input
+					id="search-query"
+					name="q"
+					type="search"
+					value={searchQuery}
+					oninput={handleInput}
+					placeholder={m.search_live_placeholder()}
+					maxlength="160"
+					autocomplete="off"
+				/>
+			</div>
 			{#if isSearching}
 				<div class="search-spinner" aria-label={m.search_live_searching()}>
-					<Loader2 class="animate-spin text-[var(--action)]" size={18} />
+					<Loader2 class="animate-spin text-[var(--action)]" size={20} />
 				</div>
 			{:else}
-				<button type="submit">{m.search_button()}</button>
+				<button type="submit" class="search-submit-btn">{m.search_button()}</button>
 			{/if}
 		</div>
 	</form>
@@ -123,12 +126,17 @@
 		</section>
 	{:else if currentResults}
 		<div class="result-summary" role="status">
-			{m.search_results_for({ query: activeQuery })} · {resultCount}
+			<span class="query-tag">QUERY // {activeQuery.toUpperCase()}</span>
+			<span class="count-tag">[{resultCount} RESULTS]</span>
 		</div>
 
 		{#if currentResults.tracks.length}
 			<section class="result-group" aria-labelledby="tracks-title">
-				<h2 id="tracks-title">{m.search_tracks()}</h2>
+				<div class="group-header">
+					<span class="geo-mark geo-square"></span>
+					<h2 id="tracks-title">{m.search_tracks()}</h2>
+					<span class="group-count">({currentResults.tracks.length})</span>
+				</div>
 				<div class="song-cards-grid">
 					{#each currentResults.tracks as track, index (track.id)}
 						<SongCard {track} contextTracks={currentResults?.tracks} {index} />
@@ -139,15 +147,21 @@
 
 		{#if currentResults.albums.length}
 			<section class="result-group" aria-labelledby="albums-title">
-				<h2 id="albums-title">{m.search_albums()}</h2>
-				<ul>
+				<div class="group-header">
+					<span class="geo-mark geo-diamond"></span>
+					<h2 id="albums-title">{m.search_albums()}</h2>
+					<span class="group-count">({currentResults.albums.length})</span>
+				</div>
+				<ul class="result-list">
 					{#each currentResults.albums as album (album.id)}
-						<li>
+						<li class="result-row">
 							<div class="media-mark" aria-hidden="true">▣</div>
 							<a class="track-link" href={resolve('/app/albums/[id]', { id: album.id })}>
 								<strong>{album.title}</strong>
 								{#if album.artists.length}
-									<span>{album.artists.map((artist) => artist.name).join(', ')}</span>
+									<span class="artist-subtitle"
+										>{album.artists.map((artist) => artist.name).join(', ')}</span
+									>
 								{/if}
 							</a>
 						</li>
@@ -158,11 +172,15 @@
 
 		{#if currentResults.artists.length}
 			<section class="result-group" aria-labelledby="artists-title">
-				<h2 id="artists-title">{m.search_artists()}</h2>
-				<ul>
+				<div class="group-header">
+					<span class="geo-mark geo-circle"></span>
+					<h2 id="artists-title">{m.search_artists()}</h2>
+					<span class="group-count">({currentResults.artists.length})</span>
+				</div>
+				<ul class="result-list">
 					{#each currentResults.artists as artist (artist.id)}
-						<li>
-							<div class="media-mark" aria-hidden="true">●</div>
+						<li class="result-row">
+							<div class="media-mark circle-mark" aria-hidden="true">●</div>
 							<a class="track-link" href={resolve('/app/artists/[id]', { id: artist.id })}>
 								<strong>{artist.name}</strong>
 							</a>
@@ -174,10 +192,14 @@
 
 		{#if currentResults.playlists.length}
 			<section class="result-group" aria-labelledby="playlists-title">
-				<h2 id="playlists-title">{m.search_playlists()}</h2>
-				<ul>
+				<div class="group-header">
+					<span class="geo-mark geo-stripes"></span>
+					<h2 id="playlists-title">{m.search_playlists()}</h2>
+					<span class="group-count">({currentResults.playlists.length})</span>
+				</div>
+				<ul class="result-list">
 					{#each currentResults.playlists as playlist (playlist.id)}
-						<li>
+						<li class="result-row">
 							<div class="media-mark" aria-hidden="true">≡</div>
 							<a class="track-link" href={resolve('/app/playlists/[id]', { id: playlist.id })}>
 								<strong>{playlist.title}</strong>
@@ -199,161 +221,264 @@
 		max-width: 64rem;
 	}
 
-	.eyebrow {
-		margin: 0 0 0.75rem;
-		color: var(--text-muted);
-		font-size: 0.75rem;
-		font-weight: 700;
-		letter-spacing: 0.18em;
+	.search-header {
+		margin-bottom: 2rem;
+		border-bottom: 2px solid var(--border-subtle);
+		padding-bottom: 1.5rem;
 	}
 
-	h1,
-	h2,
-	p {
-		margin-top: 0;
+	.eyebrow {
+		margin: 0 0 0.5rem;
+		color: var(--text-muted);
+		font-family: ui-monospace, monospace;
+		font-size: 0.75rem;
+		font-weight: 800;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
 	}
 
 	h1 {
-		margin-bottom: 0;
-		font-size: clamp(2rem, 5vw, 3.25rem);
-		letter-spacing: -0.055em;
+		margin: 0;
+		font-size: clamp(2.2rem, 5vw, 3.5rem);
+		font-weight: 800;
+		letter-spacing: -0.04em;
+		line-height: 1.05;
+		text-transform: uppercase;
 	}
 
 	.intro {
-		margin: 0.75rem 0 2rem;
+		margin: 0.75rem 0 0;
 		color: var(--text-muted);
-		font-size: 1.1rem;
+		font-size: 1.05rem;
 	}
 
 	.search-form {
-		max-width: 42rem;
+		max-width: 48rem;
+		margin-bottom: 2rem;
 	}
 
 	.search-form label {
 		display: block;
 		margin-bottom: 0.5rem;
-		font-size: 0.9rem;
-		font-weight: 700;
-	}
-
-	.search-form div {
-		display: flex;
-		gap: 0.5rem;
-	}
-
-	input {
-		min-width: 0;
-		flex: 1;
-		border: 1px solid var(--border-strong);
-		border-radius: 0.75rem;
-		background: var(--surface-raised);
-		padding: 0.75rem 0.9rem;
-		color: var(--text-primary);
-	}
-
-	button,
-	.state-card a {
-		display: inline-flex;
-		min-height: 2.75rem;
-		align-items: center;
-		justify-content: center;
-		border: 0;
-		border-radius: 0.75rem;
-		background: var(--action);
-		padding: 0.75rem 1rem;
-		color: var(--action-contrast);
-		font: inherit;
-		font-weight: 700;
-		text-decoration: none;
-		cursor: pointer;
-	}
-
-	.state-card,
-	.result-group {
-		margin-top: 2rem;
-		border: 1px solid var(--border-subtle);
-		border-radius: 1.25rem;
-		background: var(--surface-raised);
-		padding: clamp(1.1rem, 3vw, 1.5rem);
-	}
-
-	.state-card h2,
-	.result-group h2 {
-		margin-bottom: 0.5rem;
-		font-size: 1.15rem;
-	}
-
-	.state-card p,
-	.result-group span,
-	.result-group small {
-		color: var(--text-muted);
-	}
-
-	.state-card a {
-		margin-top: 0.5rem;
-	}
-
-	.state-error {
-		margin-top: 1.5rem;
-		border-radius: 0.75rem;
-		background: var(--danger-subtle);
-		padding: 0.75rem;
-		color: var(--danger);
-	}
-
-	.result-summary {
-		margin-top: 2rem;
-		color: var(--text-muted);
-		font-size: 0.9rem;
-	}
-
-	.result-group {
-		margin-top: 1rem;
-	}
-
-	.song-cards-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr));
-		gap: 0.75rem;
-		margin-top: 0.5rem;
-	}
-
-	.result-group ul {
-		margin: 0;
-		padding: 0;
-		list-style: none;
-	}
-
-	.result-group li {
-		display: flex;
-		min-height: 3.5rem;
-		align-items: center;
-		gap: 0.75rem;
-		border-top: 1px solid var(--border-subtle);
-		padding: 0.7rem 0;
-	}
-
-	.result-group li:first-child {
-		border-top: 0;
-	}
-
-	.result-group li > div:last-child {
-		display: grid;
-		gap: 0.15rem;
+		font-size: 0.85rem;
+		font-weight: 800;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
 	}
 
 	.search-input-wrap {
 		display: flex;
-		align-items: center;
-		position: relative;
+		align-items: stretch;
 		gap: 0.5rem;
 		width: 100%;
+	}
+
+	.input-container {
+		display: flex;
+		align-items: center;
+		flex: 1;
+		position: relative;
+		border: 2px solid var(--border-strong);
+		background: var(--surface-raised);
+	}
+
+	.search-icon {
+		position: absolute;
+		left: 0.9rem;
+		color: var(--text-muted);
+		pointer-events: none;
+	}
+
+	input {
+		width: 100%;
+		border: 0;
+		background: transparent;
+		padding: 0.85rem 1rem 0.85rem 2.75rem;
+		color: var(--text-primary);
+		font: inherit;
+		font-size: 1rem;
+		font-weight: 500;
+	}
+
+	input:focus {
+		outline: none;
+	}
+
+	.input-container:focus-within {
+		border-color: var(--action);
+		box-shadow: 3px 3px 0px var(--action);
+	}
+
+	.search-submit-btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		border: 2px solid var(--border-strong);
+		background: var(--action);
+		padding: 0 1.5rem;
+		color: var(--action-contrast);
+		font: inherit;
+		font-weight: 800;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		cursor: pointer;
+		transition: all 0.12s ease;
+	}
+
+	.search-submit-btn:hover {
+		box-shadow: 2px 2px 0px var(--border-strong);
+		transform: translate(-1px, -1px);
 	}
 
 	.search-spinner {
 		display: grid;
 		place-items: center;
-		padding: 0 0.75rem;
+		padding: 0 1.25rem;
+	}
+
+	.state-card,
+	.result-group {
+		margin-top: 1.5rem;
+		border: 2px solid var(--border-subtle);
+		background: var(--surface-raised);
+		padding: clamp(1.25rem, 3vw, 1.75rem);
+	}
+
+	.state-card h2 {
+		margin: 0 0 0.5rem;
+		font-size: 1.25rem;
+		font-weight: 800;
+		text-transform: uppercase;
+	}
+
+	.state-card p {
+		margin: 0;
+		color: var(--text-muted);
+	}
+
+	.state-card a {
+		display: inline-flex;
+		margin-top: 1rem;
+		padding: 0.6rem 1.2rem;
+		background: var(--action);
+		color: var(--action-contrast);
+		border: 1px solid var(--border-strong);
+		font-weight: 700;
+		text-transform: uppercase;
+		text-decoration: none;
+	}
+
+	.state-error {
+		margin-top: 1.5rem;
+		border: 2px solid var(--danger);
+		background: var(--danger-subtle);
+		padding: 0.85rem 1rem;
+		color: var(--danger);
+		font-weight: 700;
+	}
+
+	.result-summary {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		margin-top: 1.5rem;
+		font-family: ui-monospace, monospace;
+		font-size: 0.85rem;
+		font-weight: 800;
+		color: var(--text-muted);
+	}
+
+	.query-tag {
+		color: var(--action);
+	}
+
+	.group-header {
+		display: flex;
+		align-items: center;
+		gap: 0.65rem;
+		margin-bottom: 1.25rem;
+		border-bottom: 1px solid var(--border-subtle);
+		padding-bottom: 0.75rem;
+	}
+
+	.group-header h2 {
+		margin: 0;
+		font-size: 1.2rem;
+		font-weight: 800;
+		text-transform: uppercase;
+		letter-spacing: 0.02em;
+	}
+
+	.group-count {
+		font-family: ui-monospace, monospace;
+		color: var(--text-muted);
+		font-size: 0.85rem;
+	}
+
+	.geo-mark {
+		display: inline-block;
+		width: 0.75rem;
+		height: 0.75rem;
+		background: var(--action);
+	}
+
+	.geo-diamond {
+		background: var(--bauhaus-yellow);
+		transform: rotate(45deg);
+	}
+
+	.geo-circle {
+		background: var(--bauhaus-red);
+		border-radius: 50%;
+	}
+
+	.geo-stripes {
+		background: var(--text-primary);
+	}
+
+	.song-cards-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+		gap: 0.75rem;
+	}
+
+	.result-list {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.result-row {
+		display: flex;
+		align-items: center;
+		gap: 0.85rem;
+		padding: 0.75rem;
+		border: 1px solid var(--border-subtle);
+		background: var(--surface-canvas);
+		margin-bottom: 0.5rem;
+		transition: all 0.12s ease;
+	}
+
+	.result-row:hover {
+		border-color: var(--border-strong);
+		box-shadow: 2px 2px 0px var(--border-strong);
+	}
+
+	.media-mark {
+		display: grid;
+		place-items: center;
+		width: 2.25rem;
+		height: 2.25rem;
+		flex: 0 0 auto;
+		border: 1px solid var(--border-strong);
+		background: var(--surface-selected);
+		color: var(--text-primary);
+		font-family: ui-monospace, monospace;
+		font-weight: 800;
+	}
+
+	.circle-mark {
+		border-radius: 50%;
 	}
 
 	.track-link {
@@ -365,36 +490,45 @@
 		text-decoration: none;
 	}
 
-	.track-link:hover strong,
-	.track-link:focus-visible strong {
+	.track-link strong {
+		font-size: 0.95rem;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.track-link:hover strong {
+		color: var(--action);
 		text-decoration: underline;
 	}
 
-	.media-mark {
-		display: grid;
-		width: 2.5rem;
-		height: 2.5rem;
-		flex: 0 0 auto;
-		place-items: center;
-		border-radius: 0.65rem;
-		background: var(--surface-selected);
-		color: var(--text-primary);
-		font-weight: 700;
+	.artist-subtitle {
+		color: var(--text-muted);
+		font-size: 0.8rem;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 
 	.attribution {
-		margin-top: 2rem;
+		margin-top: 2.5rem;
 		color: var(--text-muted);
+		font-family: ui-monospace, monospace;
 		font-size: 0.75rem;
+		text-transform: uppercase;
 	}
 
 	.attribution a {
 		color: inherit;
 	}
 
-	@media (max-width: 31rem) {
-		.search-form div {
+	@media (max-width: 36rem) {
+		.search-input-wrap {
 			flex-direction: column;
+		}
+
+		.search-submit-btn {
+			min-height: 2.85rem;
 		}
 	}
 </style>

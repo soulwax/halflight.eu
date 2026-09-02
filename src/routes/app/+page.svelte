@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { ListPlus, Play } from '@lucide/svelte';
+	import { ArrowRight, Disc, Play, Sparkles } from '@lucide/svelte';
+	import SongCard from '#lib/components/music/SongCard.svelte';
 	import { player } from '#lib/player/player.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import type { PageData } from './$types';
@@ -9,21 +10,30 @@
 </script>
 
 <svelte:head>
-	<title>Syn</title>
+	<title>Syn — Bauhaus Sound</title>
 	<meta name="description" content={m.home_subtitle()} />
 </svelte:head>
 
 <section class="welcome" aria-labelledby="home-title">
-	<p class="eyebrow">SYN</p>
-	<h1 id="home-title">{m.home_title({ name: data.user.name })}</h1>
-	<p class="intro">{m.home_subtitle()}</p>
+	<header class="hero-header">
+		<div class="stripe-bar" aria-hidden="true">
+			<span class="stripe stripe-blue"></span>
+			<span class="stripe stripe-red"></span>
+			<span class="stripe stripe-yellow"></span>
+		</div>
+		<p class="eyebrow">SYN // SOUND LABORATORY</p>
+		<h1 id="home-title">{m.home_title({ name: data.user.name })}</h1>
+		<p class="intro">{m.home_subtitle()}</p>
+	</header>
 
 	{#if data.connection.connected}
 		{#if data.dailyMix.length}
-			<section class="mix" aria-labelledby="daily-mix-title">
+			<section class="mix-section" aria-labelledby="daily-mix-title">
 				<div class="section-heading">
 					<div>
-						<p class="eyebrow">TIDAL</p>
+						<p class="eyebrow">
+							<Sparkles size={14} class="inline text-[var(--action)]" /> CURATED SOUNDS
+						</p>
 						<h2 id="daily-mix-title">{m.home_daily_mix_title()}</h2>
 					</div>
 					<div class="mix-header-actions">
@@ -37,66 +47,47 @@
 						</button>
 					</div>
 				</div>
-				<ol class="track-list">
+
+				<div class="song-cards-grid">
 					{#each data.dailyMix as track, index (track.id)}
-						<li>
-							<button
-								type="button"
-								class="track-play-btn"
-								onclick={() => player.play(track, data.dailyMix)}
-								title={m.player_play_track()}
-								aria-label={m.player_play_track()}
-							>
-								<Play size={13} fill="currentColor" />
-							</button>
-
-							<span class="track-number">{String(index + 1).padStart(2, '0')}</span>
-							<a href={resolve('/app/tracks/[id]', { id: track.id })}>
-								<strong>{track.title}</strong>
-								<span>{track.artists.map((artist) => artist.name).join(', ')}</span>
-							</a>
-							{#if track.duration}<time
-									>{Math.floor(track.duration / 60)}:{String(track.duration % 60).padStart(
-										2,
-										'0'
-									)}</time
-								>{/if}
-
-							<button
-								type="button"
-								class="track-queue-btn"
-								onclick={() => player.addToQueue(track)}
-								title={m.player_add_to_queue()}
-								aria-label={m.player_add_to_queue()}
-							>
-								<ListPlus size={15} />
-							</button>
-						</li>
+						<SongCard {track} contextTracks={data.dailyMix} {index} />
 					{/each}
-				</ol>
-				<a class="mix-link" href={resolve('/app/mixes')}>
-					{m.home_daily_mix_more()} →
-				</a>
+				</div>
+
+				<div class="mix-footer">
+					<a class="mix-link" href={resolve('/app/mixes')}>
+						{m.home_daily_mix_more()}
+						<ArrowRight size={15} />
+					</a>
+				</div>
 			</section>
 		{/if}
 
-		<article class="action-card">
-			<h2>{m.home_search_title()}</h2>
-			<p>{m.home_search_description()}</p>
-			<a href={resolve('/app/search')}>{m.home_search_button()}</a>
-		</article>
-		<article class="action-card">
-			<h2>{m.home_library_title()}</h2>
-			<p>{m.home_library_description()}</p>
-			<a href={resolve('/app/library')}>{m.home_library_button()}</a>
-		</article>
-		<article class="action-card">
-			<h2>{m.mixes_title()}</h2>
-			<p>{m.mixes_subtitle()}</p>
-			<a href={resolve('/app/mixes')}>{m.nav_mixes()}</a>
-		</article>
+		<div class="actions-grid">
+			<article class="action-card">
+				<div class="card-indicator indicator-blue"></div>
+				<h2>{m.home_search_title()}</h2>
+				<p>{m.home_search_description()}</p>
+				<a href={resolve('/app/search')}>{m.home_search_button()}</a>
+			</article>
+
+			<article class="action-card">
+				<div class="card-indicator indicator-yellow"></div>
+				<h2>{m.home_library_title()}</h2>
+				<p>{m.home_library_description()}</p>
+				<a href={resolve('/app/library')}>{m.home_library_button()}</a>
+			</article>
+
+			<article class="action-card">
+				<div class="card-indicator indicator-red"></div>
+				<h2>{m.mixes_title()}</h2>
+				<p>{m.mixes_subtitle()}</p>
+				<a href={resolve('/app/mixes')}>{m.nav_mixes()}</a>
+			</article>
+		</div>
 	{:else}
-		<article class="action-card">
+		<article class="action-card connect-card">
+			<div class="card-indicator indicator-red"></div>
 			<h2>{m.home_connect_title()}</h2>
 			<p>{m.home_connect_description()}</p>
 			<a href={resolve('/app/settings/tidal')}>{m.home_connect_button()}</a>
@@ -106,42 +97,69 @@
 
 <style>
 	.welcome {
-		max-width: 48rem;
+		max-width: 64rem;
+	}
+
+	.hero-header {
+		position: relative;
+		margin-bottom: 2.5rem;
+		border-bottom: 2px solid var(--border-subtle);
+		padding-bottom: 2rem;
+	}
+
+	.stripe-bar {
+		display: flex;
+		height: 4px;
+		width: 4.5rem;
+		margin-bottom: 1.5rem;
+		gap: 2px;
+	}
+
+	.stripe {
+		flex: 1;
+	}
+
+	.stripe-blue {
+		background: var(--bauhaus-blue);
+	}
+	.stripe-red {
+		background: var(--bauhaus-red);
+	}
+	.stripe-yellow {
+		background: var(--bauhaus-yellow);
 	}
 
 	.eyebrow {
-		margin: 0 0 0.75rem;
+		margin: 0 0 0.5rem;
 		color: var(--text-muted);
+		font-family: ui-monospace, monospace;
 		font-size: 0.75rem;
-		font-weight: 700;
-		letter-spacing: 0.18em;
+		font-weight: 800;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
 	}
 
 	h1 {
 		margin: 0;
-		font-size: clamp(2rem, 5vw, 3.25rem);
-		letter-spacing: -0.055em;
+		font-size: clamp(2.2rem, 5vw, 3.5rem);
+		font-weight: 800;
+		letter-spacing: -0.04em;
+		line-height: 1.05;
+		text-transform: uppercase;
 	}
 
 	.intro {
-		margin: 0.75rem 0 2rem;
+		margin: 0.75rem 0 0;
 		color: var(--text-muted);
 		font-size: 1.1rem;
+		max-width: 40rem;
 	}
 
-	.action-card {
-		border: 1px solid var(--border-subtle);
-		border-radius: 1.25rem;
+	.mix-section {
+		margin-bottom: 2.5rem;
+		border: 2px solid var(--border-subtle);
 		background: var(--surface-raised);
-		padding: clamp(1.25rem, 4vw, 2rem);
-	}
-
-	.mix {
-		margin-bottom: 1rem;
-		border: 1px solid var(--border-subtle);
-		border-radius: 0.5rem;
-		background: var(--surface-raised);
-		padding: clamp(1.25rem, 4vw, 2rem);
+		padding: clamp(1.25rem, 3vw, 1.75rem);
 	}
 
 	.section-heading {
@@ -149,135 +167,146 @@
 		align-items: center;
 		justify-content: space-between;
 		gap: 1rem;
+		margin-bottom: 1.5rem;
+		flex-wrap: wrap;
 	}
-	.section-heading .eyebrow {
-		margin-bottom: 0.4rem;
-	}
+
 	.section-heading h2 {
 		margin: 0;
-		font-size: 1.25rem;
+		font-size: 1.35rem;
+		font-weight: 800;
+		text-transform: uppercase;
+		letter-spacing: -0.02em;
 	}
 
 	.play-mix-btn {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.4rem;
-		border: 0;
-		border-radius: 0.5rem;
+		gap: 0.45rem;
+		border: 1px solid var(--action);
 		background: var(--action);
 		color: var(--action-contrast);
-		padding: 0.4rem 0.8rem;
+		padding: 0.45rem 0.9rem;
 		font: inherit;
 		font-size: 0.85rem;
 		font-weight: 700;
+		text-transform: uppercase;
 		cursor: pointer;
-		transition: opacity 0.15s ease;
+		transition: all 0.12s ease;
 	}
 
 	.play-mix-btn:hover {
-		opacity: 0.9;
+		box-shadow: 2px 2px 0px var(--border-strong);
+		transform: translate(-1px, -1px);
 	}
 
-	.track-list {
-		margin: 1.5rem 0 1rem;
-		padding: 0;
-		list-style: none;
-	}
-	.track-list li {
+	.song-cards-grid {
 		display: grid;
-		grid-template-columns: 1.8rem 2rem minmax(0, 1fr) auto auto;
-		align-items: center;
-		gap: 0.5rem;
-		min-height: 4rem;
+		grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+		gap: 0.75rem;
+	}
+
+	.mix-footer {
+		margin-top: 1.25rem;
+		padding-top: 1rem;
 		border-top: 1px solid var(--border-subtle);
 	}
 
-	.track-play-btn,
-	.track-queue-btn {
-		display: grid;
-		place-items: center;
-		width: 1.85rem;
-		height: 1.85rem;
-		border: 0;
-		border-radius: 0.4rem;
-		background: transparent;
-		color: var(--text-muted);
-		cursor: pointer;
-		padding: 0;
-		transition: all 0.15s ease;
-	}
-
-	.track-play-btn:hover {
-		color: var(--action);
-		background: var(--surface-selected);
-	}
-
-	.track-queue-btn:hover {
-		color: var(--text-primary);
-		background: var(--surface-selected);
-	}
-
-	.track-list a {
-		display: grid;
-		min-width: 0;
-		gap: 0.2rem;
-		color: inherit;
-		text-decoration: none;
-	}
-	.track-list a:hover strong,
-	.track-list a:focus-visible strong {
-		text-decoration: underline;
-	}
-	.track-list a span,
-	.track-list time,
-	.track-number {
-		color: var(--text-muted);
-		font-size: 0.85rem;
-	}
-	.track-number {
-		font-variant-numeric: tabular-nums;
-	}
-	.track-list time {
-		font-variant-numeric: tabular-nums;
-	}
 	.mix-link {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
 		color: var(--text-primary);
 		font-weight: 700;
+		font-size: 0.9rem;
+		text-transform: uppercase;
+		text-decoration: none;
 	}
 
-	.action-card + .action-card {
-		margin-top: 1rem;
+	.mix-link:hover {
+		color: var(--action);
+		text-decoration: underline;
+	}
+
+	.actions-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+		gap: 1.25rem;
+	}
+
+	.action-card {
+		position: relative;
+		border: 2px solid var(--border-subtle);
+		background: var(--surface-raised);
+		padding: 1.5rem;
+		display: flex;
+		flex-direction: column;
+		transition: all 0.12s ease;
+	}
+
+	.action-card:hover {
+		border-color: var(--border-strong);
+		box-shadow: var(--shadow-bauhaus);
+		transform: translate(-2px, -2px);
+	}
+
+	.card-indicator {
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		height: 3px;
+	}
+
+	.indicator-blue {
+		background: var(--bauhaus-blue);
+	}
+	.indicator-yellow {
+		background: var(--bauhaus-yellow);
+	}
+	.indicator-red {
+		background: var(--bauhaus-red);
 	}
 
 	.action-card h2 {
-		margin: 0;
-		font-size: 1.25rem;
+		margin: 0 0 0.5rem;
+		font-size: 1.2rem;
+		font-weight: 800;
+		text-transform: uppercase;
+		letter-spacing: -0.01em;
 	}
 
 	.action-card p {
-		margin: 0.5rem 0 1.25rem;
+		margin: 0 0 1.5rem;
 		color: var(--text-muted);
+		font-size: 0.9rem;
+		flex: 1;
 	}
 
 	.action-card a {
 		display: inline-flex;
-		min-height: 2.75rem;
+		min-height: 2.6rem;
 		align-items: center;
-		border-radius: 0.75rem;
-		background: var(--action);
-		padding: 0.75rem 1rem;
-		color: var(--action-contrast);
+		justify-content: center;
+		border: 1px solid var(--border-strong);
+		background: var(--surface-canvas);
+		padding: 0.5rem 1rem;
+		color: var(--text-primary);
 		font-weight: 700;
+		font-size: 0.85rem;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
 		text-decoration: none;
+		transition: all 0.12s ease;
 	}
 
-	@media (max-width: 36rem) {
-		.section-heading {
-			display: block;
-		}
-		.section-heading p:last-child {
-			margin-top: 0.5rem;
-			text-align: left;
-		}
+	.action-card a:hover {
+		background: var(--action);
+		color: var(--action-contrast);
+		border-color: var(--action);
+	}
+
+	.connect-card {
+		max-width: 32rem;
 	}
 </style>

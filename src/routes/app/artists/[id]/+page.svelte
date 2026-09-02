@@ -35,7 +35,7 @@
 				<div class="avatar avatar-placeholder" aria-hidden="true"><User size={48} /></div>
 			{/if}
 			<div class="heading">
-				<p class="eyebrow">{m.artist_label()}</p>
+				<p class="eyebrow">SYN // ARTIST PROFILE</p>
 				<h1 id="artist-title">{data.artist.name}</h1>
 				<div class="meta-line">
 					{#if data.artist.popularity !== undefined}
@@ -48,7 +48,10 @@
 		{#if data.artist.topTracks.length}
 			<section class="section-block" aria-labelledby="top-tracks-title">
 				<div class="tracks-header">
-					<h2 id="top-tracks-title">{m.artist_top_tracks()}</h2>
+					<div class="flex items-center gap-2">
+						<span class="geo-square"></span>
+						<h2 id="top-tracks-title">{m.artist_top_tracks()}</h2>
+					</div>
 					<button
 						type="button"
 						class="play-all-btn"
@@ -71,7 +74,7 @@
 				<div class="tracks-header">
 					<div>
 						<h2 id="artist-radio-title" class="flex items-center gap-2">
-							<Sparkles size={20} class="text-[var(--action)]" />
+							<Sparkles size={18} class="text-[var(--action)]" />
 							{m.artist_radio_title()}
 						</h2>
 						<p class="section-subtitle">
@@ -97,7 +100,10 @@
 
 		{#if data.artist.albums.length}
 			<section class="section-block" aria-labelledby="albums-title">
-				<h2 id="albums-title">{m.artist_albums()}</h2>
+				<div class="mb-4 flex items-center gap-2">
+					<span class="geo-diamond"></span>
+					<h2 id="albums-title">{m.artist_albums()}</h2>
+				</div>
 				<div class="grid-albums">
 					{#each data.artist.albums as album (album.id)}
 						<a class="album-card" href={resolve('/app/albums/[id]', { id: album.id })}>
@@ -116,7 +122,7 @@
 							<div class="card-info">
 								<strong>{album.title}</strong>
 								{#if album.releaseDate}
-									<span>{album.releaseDate.slice(0, 4)}</span>
+									<span class="font-mono">{album.releaseDate.slice(0, 4)}</span>
 								{/if}
 							</div>
 						</a>
@@ -127,11 +133,14 @@
 
 		{#if data.artist.similarArtists.length}
 			<section class="section-block" aria-labelledby="similar-title">
-				<h2 id="similar-title">{m.artist_similar()}</h2>
+				<div class="mb-4 flex items-center gap-2">
+					<span class="geo-circle"></span>
+					<h2 id="similar-title">{m.artist_similar()}</h2>
+				</div>
 				<div class="grid-artists">
 					{#each data.artist.similarArtists as similar (similar.id)}
 						<a class="similar-card" href={resolve('/app/artists/[id]', { id: similar.id })}>
-							<div class="similar-avatar" aria-hidden="true"><User size={24} /></div>
+							<div class="similar-avatar" aria-hidden="true"><User size={22} /></div>
 							<strong>{similar.name}</strong>
 						</a>
 					{/each}
@@ -141,9 +150,9 @@
 
 		<div class="actions">
 			<a class="tidal-link" href={tidalArtistUrl} rel="noreferrer" target="_blank">
-				<Play size={17} fill="currentColor" />
+				<Play size={15} fill="currentColor" />
 				{m.artist_open_in_tidal()}
-				<ExternalLink size={15} />
+				<ExternalLink size={13} />
 			</a>
 			<a class="back-link" href={resolve('/app/search')}>{m.track_back_to_search()}</a>
 		</div>
@@ -196,17 +205,20 @@
 	.artist-header {
 		display: flex;
 		align-items: center;
-		gap: clamp(1.25rem, 4vw, 2.25rem);
+		gap: clamp(1.25rem, 3vw, 2.5rem);
+		border-bottom: 2px solid var(--border-subtle);
+		padding-bottom: 2rem;
 	}
 
 	.avatar {
-		width: clamp(7rem, 16vw, 11rem);
+		width: clamp(6.5rem, 15vw, 10rem);
 		aspect-ratio: 1;
 		flex: 0 0 auto;
-		border-radius: 9999px;
-		background: var(--surface-selected);
+		border-radius: 50%;
+		border: 2px solid var(--border-strong);
+		background: var(--surface-canvas);
 		object-fit: cover;
-		box-shadow: var(--shadow-raised);
+		box-shadow: var(--shadow-bauhaus);
 	}
 
 	.avatar-placeholder {
@@ -222,79 +234,107 @@
 	.eyebrow {
 		margin: 0 0 0.5rem;
 		color: var(--text-muted);
+		font-family: ui-monospace, monospace;
 		font-size: 0.75rem;
-		font-weight: 700;
-		letter-spacing: 0.18em;
+		font-weight: 800;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
 	}
 
 	h1 {
 		margin-bottom: 0.35rem;
 		overflow-wrap: anywhere;
 		font-size: clamp(2rem, 5vw, 3.5rem);
-		letter-spacing: -0.05em;
-		line-height: 1.15;
+		font-weight: 800;
+		letter-spacing: -0.04em;
+		line-height: 1.05;
+		text-transform: uppercase;
 	}
 
 	.meta-line {
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
-		margin-top: 0.4rem;
+		margin-top: 0.5rem;
 	}
 
 	.popularity-badge {
-		border-radius: 0.35rem;
-		background: var(--surface-raised);
+		background: var(--surface-selected);
 		border: 1px solid var(--border-subtle);
 		padding: 0.2rem 0.55rem;
-		color: var(--text-muted);
-		font-size: 0.8rem;
-		font-weight: 600;
+		color: var(--action);
+		font-family: ui-monospace, monospace;
+		font-size: 0.75rem;
+		font-weight: 800;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
 	}
 
 	.section-block {
 		margin-top: 2rem;
-		border: 1px solid var(--border-subtle);
-		border-radius: 0.75rem;
+		border: 2px solid var(--border-subtle);
 		background: var(--surface-raised);
-		padding: clamp(1.1rem, 3vw, 1.5rem);
+		padding: clamp(1.25rem, 3vw, 1.75rem);
 	}
 
 	.section-block h2 {
-		margin: 0 0 1rem;
-		font-size: 1.2rem;
+		margin: 0;
+		font-size: 1.25rem;
+		font-weight: 800;
+		text-transform: uppercase;
 	}
 
 	.tracks-header {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		margin-bottom: 1rem;
-	}
-
-	.tracks-header h2 {
-		margin: 0;
-		font-size: 1.2rem;
+		margin-bottom: 1.25rem;
+		border-bottom: 1px solid var(--border-subtle);
+		padding-bottom: 0.75rem;
 	}
 
 	.play-all-btn {
 		display: inline-flex;
 		align-items: center;
 		gap: 0.4rem;
-		border: 0;
-		border-radius: 0.5rem;
+		border: 1px solid var(--action);
 		background: var(--action);
 		color: var(--action-contrast);
-		padding: 0.4rem 0.8rem;
+		padding: 0.45rem 0.9rem;
 		font: inherit;
 		font-size: 0.85rem;
-		font-weight: 700;
+		font-weight: 800;
+		text-transform: uppercase;
 		cursor: pointer;
-		transition: opacity 0.15s ease;
+		transition: all 0.12s ease;
 	}
 
 	.play-all-btn:hover {
-		opacity: 0.9;
+		box-shadow: 2px 2px 0px var(--border-strong);
+		transform: translate(-1px, -1px);
+	}
+
+	.geo-square {
+		display: inline-block;
+		width: 0.75rem;
+		height: 0.75rem;
+		background: var(--bauhaus-blue);
+	}
+
+	.geo-diamond {
+		display: inline-block;
+		width: 0.75rem;
+		height: 0.75rem;
+		background: var(--bauhaus-yellow);
+		transform: rotate(45deg);
+	}
+
+	.geo-circle {
+		display: inline-block;
+		width: 0.75rem;
+		height: 0.75rem;
+		background: var(--bauhaus-red);
+		border-radius: 50%;
 	}
 
 	.section-subtitle {
@@ -305,13 +345,13 @@
 
 	.song-cards-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr));
+		grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
 		gap: 0.75rem;
 	}
 
 	.grid-albums {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+		grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
 		gap: 1rem;
 	}
 
@@ -319,38 +359,37 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.5rem;
-		padding: 0.65rem;
-		border-radius: 0.65rem;
+		padding: 0.75rem;
+		border: 2px solid var(--border-subtle);
 		background: var(--surface-canvas);
-		border: 1px solid var(--border-subtle);
 		color: inherit;
 		text-decoration: none;
-		transition:
-			transform 0.15s ease,
-			border-color 0.15s ease;
+		transition: all 0.12s ease;
 	}
 
-	.album-card:hover,
-	.album-card:focus-visible {
-		transform: translateY(-2px);
+	.album-card:hover {
 		border-color: var(--border-strong);
+		box-shadow: var(--shadow-bauhaus);
+		transform: translate(-1px, -1px);
 	}
 
 	.card-cover {
 		width: 100%;
 		aspect-ratio: 1;
-		border-radius: 0.45rem;
 		object-fit: cover;
-		background: var(--surface-selected);
+		border: 1px solid var(--border-subtle);
+		background: var(--surface-raised);
 	}
 
 	.card-info {
-		display: grid;
+		display: flex;
+		flex-direction: column;
 		gap: 0.15rem;
 	}
 
 	.card-info strong {
 		font-size: 0.9rem;
+		font-weight: 700;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -374,34 +413,33 @@
 		text-align: center;
 		gap: 0.5rem;
 		padding: 0.85rem 0.5rem;
-		border-radius: 0.65rem;
+		border: 2px solid var(--border-subtle);
 		background: var(--surface-canvas);
-		border: 1px solid var(--border-subtle);
 		color: inherit;
 		text-decoration: none;
-		transition:
-			transform 0.15s ease,
-			border-color 0.15s ease;
+		transition: all 0.12s ease;
 	}
 
-	.similar-card:hover,
-	.similar-card:focus-visible {
-		transform: translateY(-2px);
+	.similar-card:hover {
 		border-color: var(--border-strong);
+		box-shadow: var(--shadow-bauhaus);
+		transform: translate(-1px, -1px);
 	}
 
 	.similar-avatar {
-		width: 3rem;
-		height: 3rem;
-		border-radius: 9999px;
+		width: 2.75rem;
+		height: 2.75rem;
+		border-radius: 50%;
+		border: 1px solid var(--border-strong);
 		background: var(--surface-selected);
 		display: grid;
 		place-items: center;
-		color: var(--text-muted);
+		color: var(--text-primary);
 	}
 
 	.similar-card strong {
 		font-size: 0.85rem;
+		font-weight: 700;
 		overflow-wrap: anywhere;
 	}
 
@@ -409,29 +447,37 @@
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 0.5rem;
-		margin-top: 1.5rem;
+		gap: 0.75rem;
+		margin-top: 2rem;
 	}
 
 	.tidal-link {
 		display: inline-flex;
-		min-height: 2.75rem;
+		min-height: 2.85rem;
 		align-items: center;
 		gap: 0.4rem;
-		border-radius: 0.75rem;
 		background: var(--action);
-		padding: 0.75rem 1rem;
+		border: 2px solid var(--border-strong);
+		padding: 0.6rem 1.15rem;
 		color: var(--action-contrast);
-		font-weight: 700;
+		font-weight: 800;
+		font-size: 0.85rem;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
 		text-decoration: none;
+		transition: all 0.12s ease;
+	}
+
+	.tidal-link:hover {
+		box-shadow: var(--shadow-bauhaus);
+		transform: translate(-1px, -1px);
 	}
 
 	.state-card {
-		margin-top: 2rem;
-		border: 1px solid var(--border-subtle);
-		border-radius: 1.25rem;
+		margin-top: 1.5rem;
+		border: 2px solid var(--border-subtle);
 		background: var(--surface-raised);
-		padding: clamp(1.1rem, 3vw, 1.5rem);
+		padding: clamp(1.25rem, 3vw, 1.75rem);
 	}
 
 	.state-card p {
@@ -442,12 +488,15 @@
 	.state-card a,
 	.back-link {
 		display: inline-flex;
-		min-height: 2.75rem;
+		min-height: 2.85rem;
 		align-items: center;
 		justify-content: center;
-		border-radius: 0.75rem;
-		padding: 0.75rem 1rem;
-		font-weight: 700;
+		border: 2px solid var(--border-strong);
+		padding: 0.6rem 1.15rem;
+		font-weight: 800;
+		font-size: 0.85rem;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
 		text-decoration: none;
 	}
 
@@ -458,12 +507,19 @@
 
 	.back-link {
 		color: var(--text-primary);
+		background: transparent;
+	}
+
+	.back-link:hover {
+		background: var(--surface-selected);
 	}
 
 	.attribution {
-		margin-top: 2rem;
+		margin-top: 2.5rem;
 		color: var(--text-muted);
+		font-family: ui-monospace, monospace;
 		font-size: 0.75rem;
+		text-transform: uppercase;
 	}
 
 	.attribution a {
