@@ -24,6 +24,8 @@
 	userName={data.user.name}
 	accountHref={resolve('/app/settings/tidal')}
 	accountLabel={m.nav_settings()}
+	signOutAction={resolve('/logout')}
+	signOutLabel={m.sign_out()}
 >
 	{@render children()}
 </AppShell>

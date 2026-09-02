@@ -14,6 +14,8 @@
 		userName?: string;
 		accountHref?: string;
 		accountLabel?: string;
+		signOutAction?: string;
+		signOutLabel?: string;
 	}
 
 	let {
@@ -25,7 +27,9 @@
 		navigationLabel,
 		userName,
 		accountHref,
-		accountLabel
+		accountLabel,
+		signOutAction,
+		signOutLabel
 	}: Props = $props();
 </script>
 
@@ -41,6 +45,8 @@
 			{userName}
 			{accountHref}
 			{accountLabel}
+			{signOutAction}
+			{signOutLabel}
 		/>
 
 		<main
@@ -53,4 +59,4 @@
 	</div>
 </div>
 
-<MobileNav {navigation} {currentPath} {navigationLabel} />
+<MobileNav {navigation} {currentPath} {navigationLabel} {signOutAction} {signOutLabel} />

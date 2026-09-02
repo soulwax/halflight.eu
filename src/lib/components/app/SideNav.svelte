@@ -10,6 +10,8 @@
 		userName?: string;
 		accountHref?: string;
 		accountLabel?: string;
+		signOutAction?: string;
+		signOutLabel?: string;
 	}
 
 	let {
@@ -19,7 +21,9 @@
 		navigationLabel,
 		userName,
 		accountHref,
-		accountLabel
+		accountLabel,
+		signOutAction,
+		signOutLabel
 	}: Props = $props();
 </script>
 
@@ -57,6 +61,13 @@
 				</a>
 			{:else if userName}
 				<p class="truncate text-sm text-[var(--text-muted)]">{userName}</p>
+			{/if}
+			{#if signOutAction && signOutLabel}
+				<form method="POST" action={signOutAction} class="mt-3">
+					<button class="app-account-link w-full cursor-pointer text-left" type="submit">
+						<span class="text-sm text-[var(--text-muted)]">{signOutLabel}</span>
+					</button>
+				</form>
 			{/if}
 		</div>
 	{/if}

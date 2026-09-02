@@ -6,9 +6,11 @@
 		navigation: AppNavigationItem[];
 		currentPath: string;
 		navigationLabel: string;
+		signOutAction?: string;
+		signOutLabel?: string;
 	}
 
-	let { navigation, currentPath, navigationLabel }: Props = $props();
+	let { navigation, currentPath, navigationLabel, signOutAction, signOutLabel }: Props = $props();
 </script>
 
 <nav
@@ -29,5 +31,14 @@
 				</a>
 			</li>
 		{/each}
+		{#if signOutAction && signOutLabel}
+			<li class="min-w-20">
+				<form method="POST" action={signOutAction}>
+					<button class="app-mobile-nav-link w-full cursor-pointer" type="submit"
+						>{signOutLabel}</button
+					>
+				</form>
+			</li>
+		{/if}
 	</ul>
 </nav>

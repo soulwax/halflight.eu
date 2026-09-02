@@ -43,6 +43,7 @@
 	"sign_up_button": "Konto erstellen",
 	"sign_in_github": "Mit GitHub fortfahren",
 	"sign_in_error": "Die Anmeldung war nicht möglich. Prüfe deine Angaben und versuche es erneut.",
+	"sign_out": "Abmelden",
 	"home_title": "Schön, dass du da bist, {name}",
 	"home_subtitle": "Entdecke deine TIDAL-Welt an einem ruhigen Ort.",
 	"home_search_title": "Finde etwas zum Hören",

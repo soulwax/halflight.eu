@@ -43,6 +43,7 @@
 	"sign_up_button": "Create account",
 	"sign_in_github": "Continue with GitHub",
 	"sign_in_error": "We could not sign you in. Check your details and try again.",
+	"sign_out": "Sign out",
 	"home_title": "Good to see you, {name}",
 	"home_subtitle": "Explore your TIDAL world from one calm place.",
 	"home_search_title": "Find something to play",
