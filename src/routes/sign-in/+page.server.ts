@@ -56,8 +56,9 @@ export const actions: Actions = {
 		}
 
 		// `redirect` throws — it must live outside the try/catch above, or it is
-		// swallowed and wrongly reported as a sign-in failure.
+		// swallowed and wrongly reported as a sign-in failure. SvelteKit 3 also
+		// requires opting in to the external GitHub origin.
 		if (!authorizeUrl) return fail(400, { signInFailed: true });
-		redirect(302, authorizeUrl);
+		redirect(302, authorizeUrl, { external: ['https://github.com'] });
 	}
 };

@@ -71,7 +71,7 @@ export const actions: Actions = {
 		});
 
 		if (result.url) {
-			return redirect(302, result.url);
+			return redirect(302, result.url, { external: true });
 		}
 		return fail(400, { message: 'Social sign-in failed' });
 	}
