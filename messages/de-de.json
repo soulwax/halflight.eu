@@ -193,5 +193,6 @@
 	"album_similar_title": "Ähnliche Alben",
 	"album_similar_subtitle": "Alben passend zu dieser Veröffentlichung",
 	"artist_radio_title": "Künstler-Radio",
-	"artist_radio_subtitle": "Musik inspiriert von {name} und verwandten Klängen"
+	"artist_radio_subtitle": "Musik inspiriert von {name} und verwandten Klängen",
+	"footer_text": "{version} - Copyright soulwax@github 2026 - Diese Seite wurde nach den reinen Bauhaus-Prinzipien erstellt."
 }

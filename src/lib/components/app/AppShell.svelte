@@ -35,8 +35,8 @@
 
 <a class="app-skip-link" href="#main-content">{skipLinkLabel}</a>
 
-<div class="min-h-dvh bg-[var(--surface-canvas)] text-[var(--text-primary)]">
-	<div class="mx-auto flex min-h-dvh max-w-screen-2xl">
+<div class="min-h-[calc(100dvh-10px)] bg-[var(--surface-canvas)] text-[var(--text-primary)]">
+	<div class="mx-auto flex min-h-[calc(100dvh-10px)] max-w-screen-2xl">
 		<SideNav
 			{brand}
 			{navigation}

@@ -1,8 +1,11 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { Disc, ListMusic, Play, Trash2, X } from '@lucide/svelte';
+	import { Check, Disc, FolderPlus, ListMusic, Play, Sparkles, Trash2, X } from '@lucide/svelte';
 	import { player } from '#lib/player/player.svelte.js';
+	import { customPlaylists } from '#lib/player/customPlaylists.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
+
+	let savedQueue = $state(false);
 
 	function formatDuration(seconds?: number): string {
 		if (!seconds) return '';
@@ -15,6 +18,20 @@
 		if (event.key === 'Escape') {
 			player.closeQueue();
 		}
+	}
+
+	function saveQueueToPlaylist() {
+		const allTracks = player.currentTrack
+			? [player.currentTrack, ...player.queue]
+			: [...player.queue];
+		if (allTracks.length === 0) return;
+
+		const title = `SYN // QUEUE ARCHIVE [${new Date().toLocaleDateString()}]`;
+		customPlaylists.createPlaylist(title, 'Saved from audio engine queue', allTracks);
+		savedQueue = true;
+		setTimeout(() => {
+			savedQueue = false;
+		}, 1500);
 	}
 </script>
 
@@ -36,6 +53,21 @@
 			</div>
 
 			<div class="queue-actions">
+				{#if player.queueCount > 0 || player.currentTrack}
+					<button
+						type="button"
+						class="save-queue-btn"
+						onclick={saveQueueToPlaylist}
+						title="Save queue as custom playlist"
+					>
+						{#if savedQueue}
+							<Check size={13} /> SAVED
+						{:else}
+							<FolderPlus size={13} /> SAVE PLAYLIST
+						{/if}
+					</button>
+				{/if}
+
 				{#if player.queueCount > 0}
 					<button
 						type="button"
@@ -112,7 +144,20 @@
 				<p id="next-up-heading" class="section-label">{m.player_next_up()}</p>
 
 				{#if player.queue.length === 0}
-					<p class="empty-notice">{m.player_queue_empty()}</p>
+					<div class="empty-wrap">
+						<p class="empty-notice">{m.player_queue_empty()}</p>
+						<button
+							type="button"
+							class="drawer-compose-btn"
+							onclick={() => {
+								player.closeQueue();
+								customPlaylists.openGenerator();
+							}}
+						>
+							<Sparkles size={14} />
+							COMPOSE RANDOM PLAYLIST
+						</button>
+					</div>
 				{:else}
 					<ol class="queue-list">
 						{#each player.queue as track, index (track.id + '-' + index)}
@@ -419,12 +464,64 @@
 		border-color: var(--danger);
 	}
 
+	.save-queue-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		border: 1px solid var(--action);
+		background: var(--action);
+		color: var(--action-contrast);
+		font: inherit;
+		font-size: 0.72rem;
+		font-weight: 800;
+		text-transform: uppercase;
+		cursor: pointer;
+		padding: 0.35rem 0.6rem;
+		transition: all 0.12s ease;
+	}
+
+	.save-queue-btn:hover {
+		box-shadow: 2px 2px 0px var(--border-strong);
+		transform: translate(-1px, -1px);
+	}
+
+	.empty-wrap {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		text-align: center;
+		gap: 1rem;
+		padding: 2rem 1rem;
+		background: var(--surface-canvas);
+		border: 1px dashed var(--border-subtle);
+	}
+
 	.empty-notice {
 		margin: 0;
 		color: var(--text-muted);
 		font-size: 0.85rem;
-		font-style: italic;
-		padding: 1rem 0;
+	}
+
+	.drawer-compose-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		padding: 0.55rem 1rem;
+		border: 2px solid var(--border-strong);
+		background: var(--action);
+		color: var(--action-contrast);
+		font-weight: 800;
+		font-size: 0.75rem;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		cursor: pointer;
+		box-shadow: 2px 2px 0px var(--border-strong);
+		transition: all 0.12s ease;
+	}
+
+	.drawer-compose-btn:hover {
+		transform: translate(-1px, -1px);
+		box-shadow: 3px 3px 0px var(--border-strong);
 	}
 
 	.queue-list {

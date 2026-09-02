@@ -4,6 +4,8 @@
 	import AppShell from '#lib/components/app/AppShell.svelte';
 	import MiniPlayer from '#lib/components/player/MiniPlayer.svelte';
 	import QueueDrawer from '#lib/components/player/QueueDrawer.svelte';
+	import PlaylistGeneratorModal from '#lib/components/music/PlaylistGeneratorModal.svelte';
+	import AddToPlaylistModal from '#lib/components/music/AddToPlaylistModal.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import type { LayoutData } from './$types';
 
@@ -35,3 +37,5 @@
 
 <MiniPlayer />
 <QueueDrawer />
+<PlaylistGeneratorModal />
+<AddToPlaylistModal />

@@ -1,6 +1,9 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { ListMusic, Play, Sparkles, Trash2 } from '@lucide/svelte';
+
 	import SongCard from '#lib/components/music/SongCard.svelte';
+	import { customPlaylists } from '#lib/player/customPlaylists.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import type { PageData } from './$types';
 	import type { TrackSummary } from '#lib/server/tidal/models';
@@ -49,6 +52,64 @@
 		<h1 id="library-title">{m.library_title()}</h1>
 		<p class="intro">{m.library_subtitle()}</p>
 	</header>
+
+	<!-- Custom Playlists Section -->
+	<section class="custom-pl-block" aria-labelledby="user-playlists-title">
+		<div class="custom-pl-header">
+			<div class="flex items-center gap-2">
+				<span class="geo-mark geo-playlists"></span>
+				<h2 id="user-playlists-title">MY CUSTOM PLAYLISTS</h2>
+				<span class="group-count">({customPlaylists.playlists.length})</span>
+			</div>
+			<button type="button" class="create-btn" onclick={() => customPlaylists.openGenerator()}>
+				<Sparkles size={14} />
+				COMPOSE ON THE FLY
+			</button>
+		</div>
+
+		{#if customPlaylists.playlists.length === 0}
+			<p class="group-empty">
+				No custom playlists created yet. Click "Compose On The Fly" or add tracks from any song card
+				with (+).
+			</p>
+		{:else}
+			<div class="custom-grid">
+				{#each customPlaylists.playlists as playlist (playlist.id)}
+					<article class="custom-card">
+						<div class="card-top">
+							<ListMusic size={22} class="text-[var(--action)]" />
+							<div class="min-w-0 flex-1">
+								<strong class="block truncate">{playlist.title}</strong>
+								<span class="font-mono text-xs text-[var(--text-muted)]"
+									>{playlist.items.length} tracks</span
+								>
+							</div>
+						</div>
+						<div class="card-bottom">
+							<button
+								type="button"
+								class="card-play-btn"
+								disabled={playlist.items.length === 0}
+								onclick={() => customPlaylists.playPlaylist(playlist.id)}
+							>
+								<Play size={12} fill="currentColor" />
+								PLAY
+							</button>
+							<button
+								type="button"
+								class="card-del-btn"
+								onclick={() => customPlaylists.deletePlaylist(playlist.id)}
+								title="Delete"
+								aria-label="Delete playlist"
+							>
+								<Trash2 size={13} />
+							</button>
+						</div>
+					</article>
+				{/each}
+			</div>
+		{/if}
+	</section>
 
 	{#if !data.connected}
 		<section class="state-card" aria-labelledby="connect-title">
@@ -341,5 +402,133 @@
 
 	.attribution a {
 		color: inherit;
+	}
+
+	/* Custom Playlists Block */
+	.custom-pl-block {
+		margin-bottom: 2.5rem;
+		border: 2px solid var(--border-subtle);
+		background: var(--surface-raised);
+		padding: clamp(1.25rem, 3vw, 1.75rem);
+	}
+
+	.custom-pl-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 1.25rem;
+		border-bottom: 1px solid var(--border-subtle);
+		padding-bottom: 0.75rem;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+	}
+
+	.custom-pl-header h2 {
+		margin: 0;
+		font-size: 1.2rem;
+		font-weight: 800;
+		text-transform: uppercase;
+		letter-spacing: 0.02em;
+	}
+
+	.create-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		padding: 0.45rem 0.9rem;
+		border: 1px solid var(--action);
+		background: var(--action);
+		color: var(--action-contrast);
+		font-family: ui-monospace, monospace;
+		font-size: 0.75rem;
+		font-weight: 800;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		cursor: pointer;
+		transition: all 0.12s ease;
+	}
+
+	.create-btn:hover {
+		box-shadow: 2px 2px 0px var(--border-strong);
+		transform: translate(-1px, -1px);
+	}
+
+	.custom-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+		gap: 0.85rem;
+	}
+
+	.custom-card {
+		padding: 0.85rem;
+		border: 2px solid var(--border-subtle);
+		background: var(--surface-canvas);
+		display: flex;
+		flex-direction: column;
+		gap: 0.65rem;
+		transition: all 0.12s ease;
+	}
+
+	.custom-card:hover {
+		border-color: var(--border-strong);
+		box-shadow: var(--shadow-bauhaus);
+		transform: translate(-1px, -1px);
+	}
+
+	.card-top {
+		display: flex;
+		align-items: center;
+		gap: 0.65rem;
+	}
+
+	.card-bottom {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-top: auto;
+		padding-top: 0.5rem;
+		border-top: 1px solid var(--border-subtle);
+	}
+
+	.card-play-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		padding: 0.35rem 0.75rem;
+		border: 1px solid var(--action);
+		background: var(--action);
+		color: var(--action-contrast);
+		font-family: ui-monospace, monospace;
+		font-size: 0.75rem;
+		font-weight: 800;
+		cursor: pointer;
+		transition: all 0.12s ease;
+	}
+
+	.card-play-btn:hover:not(:disabled) {
+		filter: brightness(1.1);
+	}
+
+	.card-play-btn:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	.card-del-btn {
+		display: grid;
+		place-items: center;
+		width: 1.85rem;
+		height: 1.85rem;
+		border: 1px solid var(--border-subtle);
+		background: transparent;
+		color: var(--text-muted);
+		cursor: pointer;
+		transition: all 0.12s ease;
+	}
+
+	.card-del-btn:hover {
+		border-color: var(--danger);
+		color: var(--danger);
+		background: var(--danger-subtle);
 	}
 </style>

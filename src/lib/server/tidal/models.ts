@@ -60,6 +60,8 @@ export interface ArtistSummary {
 	kind: 'artist';
 	id: string;
 	name: string;
+	imageUrl?: string;
+	popularity?: number;
 }
 
 export interface AlbumDetail extends AlbumSummary {

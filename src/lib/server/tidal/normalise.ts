@@ -63,11 +63,66 @@ function readBooleanAttribute(resource: ResourceLike, names: string[]): boolean 
 	}
 }
 
+function formatTidalCdnImage(idOrUrl: string, size = '640x640'): string {
+	if (!idOrUrl || typeof idOrUrl !== 'string') return '';
+	const trimmed = idOrUrl.trim();
+	if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+		return trimmed;
+	}
+	const path = trimmed.replace(/-/g, '/');
+	return `https://resources.tidal.com/images/${path}/${size}.jpg`;
+}
+
 function imageUrl(resource: ResourceLike): string | undefined {
-	return (
-		readAttribute(resource, ['imageUrl', 'coverUrl', 'image', 'cover']) ??
-		readAttribute(resource, ['image'])
-	);
+	// 1. Direct string attribute
+	const direct = readAttribute(resource, [
+		'imageUrl',
+		'coverUrl',
+		'image',
+		'cover',
+		'picture',
+		'avatar',
+		'artwork',
+		'albumCover',
+		'squareImage'
+	]);
+	if (direct) return formatTidalCdnImage(direct);
+
+	// 2. imageLinks or images array in attributes
+	for (const key of ['imageLinks', 'images', 'covers', 'artworks', 'pictures']) {
+		const arr = resource.attributes[key];
+		if (Array.isArray(arr) && arr.length > 0) {
+			for (const item of arr) {
+				if (isRecord(item)) {
+					const href =
+						typeof item.href === 'string'
+							? item.href
+							: typeof item.url === 'string'
+								? item.url
+								: undefined;
+					if (href) return formatTidalCdnImage(href);
+				} else if (typeof item === 'string') {
+					return formatTidalCdnImage(item);
+				}
+			}
+		}
+	}
+
+	// 3. Object-based cover/image/artwork in attributes
+	for (const key of ['albumCover', 'cover', 'image', 'picture', 'artwork']) {
+		const obj = resource.attributes[key];
+		if (isRecord(obj)) {
+			const href =
+				typeof obj.href === 'string'
+					? obj.href
+					: typeof obj.url === 'string'
+						? obj.url
+						: typeof obj.id === 'string'
+							? obj.id
+							: undefined;
+			if (href) return formatTidalCdnImage(href);
+		}
+	}
 }
 
 function resourceTitle(resource: ResourceLike): string {
@@ -92,14 +147,15 @@ function relatedResources(
 	const related: ResourceLike[] = [];
 	const seen = new Set<string>();
 
-	for (const relationship of Object.values(resource.relationships)) {
+	for (const [relName, relationship] of Object.entries(resource.relationships)) {
 		if (!isRecord(relationship)) continue;
 		const data = relationship.data;
 		const linkages = Array.isArray(data) ? data : [data];
 
 		for (const linkage of linkages) {
 			const identifier = readResource(linkage);
-			if (!identifier || identifier.type !== type) continue;
+			if (!identifier) continue;
+			if (identifier.type !== type && !relName.toLowerCase().startsWith(type.slice(0, 4))) continue;
 
 			const resolved = readResource(included.get(includedKey(identifier))) ?? identifier;
 			const key = includedKey(resolved);
@@ -137,13 +193,59 @@ export function normaliseTrack(
 	if (!resource || resource.type !== 'tracks') return null;
 	const album = relatedResources(resource, 'albums', included)[0];
 
-	const image = imageUrl(resource) ?? (album ? imageUrl(album) : undefined);
+	// 1. Artists: from relationships or fallback to attributes
+	let artists = relatedResources(resource, 'artists', included).map(normaliseArtistReference);
+	if (!artists.length) {
+		const rawArtists = resource.attributes.artists ?? resource.attributes.artist;
+		if (Array.isArray(rawArtists)) {
+			artists = rawArtists
+				.map((a: unknown) => {
+					if (isRecord(a)) {
+						return { id: String(a.id ?? ''), name: String(a.name ?? a.title ?? '') };
+					}
+					if (typeof a === 'string') return { id: '', name: a };
+					return null;
+				})
+				.filter((a): a is ArtistReference => Boolean(a && a.name));
+		} else if (typeof resource.attributes.artistName === 'string') {
+			artists = [{ id: '', name: resource.attributes.artistName }];
+		} else if (typeof resource.attributes.artist === 'string') {
+			artists = [{ id: '', name: resource.attributes.artist }];
+		} else if (typeof resource.attributes.artistsText === 'string') {
+			artists = [{ id: '', name: resource.attributes.artistsText }];
+		}
+	}
+
+	// 2. Album: from relationships or fallback to attributes
+	let albumRef = album ? normaliseAlbumReference(album) : undefined;
+	if (!albumRef) {
+		const rawAlbum = resource.attributes.album;
+		if (isRecord(rawAlbum)) {
+			const albumResource = readResource(rawAlbum) ?? {
+				id: String(rawAlbum.id ?? ''),
+				type: 'albums',
+				attributes: rawAlbum,
+				relationships: {}
+			};
+			albumRef = normaliseAlbumReference(albumResource);
+		} else if (typeof resource.attributes.albumTitle === 'string') {
+			albumRef = {
+				id: '',
+				title: resource.attributes.albumTitle,
+				imageUrl: imageUrl(resource)
+			};
+		}
+	}
+
+	// 3. Image: resolve from track, album, or albumRef
+	const image = imageUrl(resource) ?? (album ? imageUrl(album) : undefined) ?? albumRef?.imageUrl;
+
 	return {
 		kind: 'track',
 		id: resource.id,
 		title: resourceTitle(resource),
-		artists: relatedResources(resource, 'artists', included).map(normaliseArtistReference),
-		...(album ? { album: normaliseAlbumReference(album) } : {}),
+		artists,
+		...(albumRef ? { album: albumRef } : {}),
 		...(readNumberAttribute(resource, ['duration', 'durationSeconds'])
 			? { duration: readNumberAttribute(resource, ['duration', 'durationSeconds']) }
 			: {}),
@@ -208,11 +310,31 @@ export function normaliseAlbum(
 	if (!resource || resource.type !== 'albums') return null;
 
 	const image = imageUrl(resource);
+	let artists = relatedResources(resource, 'artists', included).map(normaliseArtistReference);
+	if (!artists.length) {
+		const rawArtists = resource.attributes.artists ?? resource.attributes.artist;
+		if (Array.isArray(rawArtists)) {
+			artists = rawArtists
+				.map((a: unknown) => {
+					if (isRecord(a)) {
+						return { id: String(a.id ?? ''), name: String(a.name ?? a.title ?? '') };
+					}
+					if (typeof a === 'string') return { id: '', name: a };
+					return null;
+				})
+				.filter((a): a is ArtistReference => Boolean(a && a.name));
+		} else if (typeof resource.attributes.artistName === 'string') {
+			artists = [{ id: '', name: resource.attributes.artistName }];
+		} else if (typeof resource.attributes.artist === 'string') {
+			artists = [{ id: '', name: resource.attributes.artist }];
+		}
+	}
+
 	return {
 		kind: 'album',
 		id: resource.id,
 		title: resourceTitle(resource),
-		artists: relatedResources(resource, 'artists', included).map(normaliseArtistReference),
+		artists,
 		...(image ? { imageUrl: image } : {}),
 		...(readAttribute(resource, ['releaseDate', 'release_date'])
 			? { releaseDate: readAttribute(resource, ['releaseDate', 'release_date']) }
@@ -233,7 +355,15 @@ export function normaliseAlbum(
 export function normaliseArtist(value: unknown): ArtistSummary | null {
 	const resource = readResource(value);
 	if (!resource || resource.type !== 'artists') return null;
-	return { kind: 'artist', id: resource.id, name: resourceTitle(resource) };
+	const image = imageUrl(resource);
+	const popularity = readNumberAttribute(resource, ['popularity']);
+	return {
+		kind: 'artist',
+		id: resource.id,
+		name: resourceTitle(resource),
+		...(image ? { imageUrl: image } : {}),
+		...(popularity !== undefined ? { popularity } : {})
+	};
 }
 
 /** Return a display-ready playlist, or `null` for malformed/non-playlist input. */

@@ -42,7 +42,7 @@
 <style>
 	.auth-page {
 		display: grid;
-		min-height: 100dvh;
+		min-height: calc(100dvh - 10px);
 		place-items: center;
 		padding: 1.5rem;
 	}

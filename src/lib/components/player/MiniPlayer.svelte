@@ -6,11 +6,14 @@
 		Disc,
 		ExternalLink,
 		ListMusic,
+		Search,
 		SkipBack,
 		SkipForward,
+		Sparkles,
 		X
 	} from '@lucide/svelte';
 	import { player } from '#lib/player/player.svelte.js';
+	import { customPlaylists } from '#lib/player/customPlaylists.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 
 	const tidalEmbedUrl = $derived(
@@ -26,13 +29,14 @@
 	);
 </script>
 
-{#if player.currentTrack}
-	<aside
-		class="mini-player"
-		class:expanded={player.isExpanded}
-		aria-label="Now Playing"
-		role="region"
-	>
+<aside
+	class="mini-player"
+	class:expanded={player.isExpanded && player.currentTrack}
+	class:idle-dock={!player.currentTrack}
+	aria-label="Audio Player"
+	role="region"
+>
+	{#if player.currentTrack}
 		<div class="player-bar">
 			<div class="track-meta">
 				{#if player.currentTrack.imageUrl}
@@ -48,11 +52,18 @@
 						<strong>{player.currentTrack.title}</strong>
 					</a>
 					<p class="track-artist">
-						{#each player.currentTrack.artists as artist, i (artist.id)}
-							<a href={resolve('/app/artists/[id]', { id: artist.id })}>{artist.name}</a
-							>{#if i < player.currentTrack.artists.length - 1},
-							{/if}
-						{/each}
+						{#if player.currentTrack.artists.length}
+							{#each player.currentTrack.artists as artist, i (artist.id || i)}
+								{#if artist.id}
+									<a href={resolve('/app/artists/[id]', { id: artist.id })}>{artist.name}</a>
+								{:else}
+									<span>{artist.name}</span>
+								{/if}{#if i < player.currentTrack.artists.length - 1},
+								{/if}
+							{/each}
+						{:else}
+							<span>TIDAL Artist</span>
+						{/if}
 					</p>
 				</div>
 			</div>
@@ -142,8 +153,46 @@
 				></iframe>
 			</div>
 		{/if}
-	</aside>
-{/if}
+	{:else}
+		<!-- Persistent Idle Dock: Visible to all users / empty accounts -->
+		<div class="idle-bar">
+			<div class="idle-engine-status">
+				<span class="idle-indicator-dot"></span>
+				<div class="flex flex-col">
+					<span class="font-mono text-xs font-bold tracking-wider text-[var(--text-primary)]">
+						SYN // AUDIO ENGINE
+					</span>
+					<span class="font-mono text-[0.65rem] text-[var(--text-muted)]"
+						>READY // NO TRACK LOADED</span
+					>
+				</div>
+			</div>
+
+			<div class="idle-actions">
+				<button type="button" class="compose-btn" onclick={() => customPlaylists.openGenerator()}>
+					<Sparkles size={14} />
+					COMPOSE PLAYLIST
+				</button>
+
+				<a class="idle-action-link" href={resolve('/app/search')}>
+					<Search size={14} />
+					SEARCH
+				</a>
+
+				<button
+					type="button"
+					class="control-btn queue-btn"
+					class:active={player.isQueueOpen}
+					onclick={() => player.toggleQueue()}
+					title={m.player_queue()}
+					aria-label={m.player_queue()}
+				>
+					<ListMusic size={16} />
+				</button>
+			</div>
+		</div>
+	{/if}
+</aside>
 
 <style>
 	.mini-player {
@@ -162,12 +211,86 @@
 		transition: all 0.15s ease;
 	}
 
+	.idle-dock {
+		background: var(--surface-canvas);
+	}
+
 	.player-bar {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		padding: 0.6rem 0.9rem;
 		gap: 0.75rem;
+	}
+
+	.idle-bar {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 0.55rem 0.9rem;
+		gap: 0.75rem;
+	}
+
+	.idle-engine-status {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+	}
+
+	.idle-indicator-dot {
+		width: 10px;
+		height: 10px;
+		background: var(--bauhaus-blue);
+		box-shadow: 0 0 8px var(--bauhaus-blue);
+	}
+
+	.idle-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.compose-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		padding: 0.45rem 0.85rem;
+		border: 2px solid var(--border-strong);
+		background: var(--action);
+		color: var(--action-contrast);
+		font-family: ui-monospace, monospace;
+		font-size: 0.75rem;
+		font-weight: 800;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		cursor: pointer;
+		transition: all 0.12s ease;
+	}
+
+	.compose-btn:hover {
+		box-shadow: 2px 2px 0px var(--border-strong);
+		transform: translate(-1px, -1px);
+	}
+
+	.idle-action-link {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		padding: 0.45rem 0.75rem;
+		border: 1px solid var(--border-subtle);
+		background: var(--surface-raised);
+		color: var(--text-primary);
+		font-family: ui-monospace, monospace;
+		font-size: 0.75rem;
+		font-weight: 700;
+		text-decoration: none;
+		text-transform: uppercase;
+		transition: all 0.12s ease;
+	}
+
+	.idle-action-link:hover {
+		border-color: var(--border-strong);
+		background: var(--surface-selected);
 	}
 
 	.track-meta {
@@ -328,6 +451,9 @@
 			width: calc(100% - 1rem);
 		}
 		.playback-controls .tidal-link {
+			display: none;
+		}
+		.idle-engine-status {
 			display: none;
 		}
 	}

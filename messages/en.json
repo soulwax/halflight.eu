@@ -193,5 +193,6 @@
 	"album_similar_title": "Similar Albums",
 	"album_similar_subtitle": "Albums related to this release",
 	"artist_radio_title": "Artist Radio Station",
-	"artist_radio_subtitle": "Music inspired by {name} and similar sounds"
+	"artist_radio_subtitle": "Music inspired by {name} and similar sounds",
+	"footer_text": "{version} - Copyright soulwax@github 2026 - Btw this site was built using pure Bauhaus principles"
 }
