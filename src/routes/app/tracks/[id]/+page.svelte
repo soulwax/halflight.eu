@@ -47,7 +47,7 @@
 			<h1 id="track-title">{m.track_not_connected_title()}</h1>
 			<p>{m.track_not_connected_description()}</p>
 			{#if data.configured}
-				<a href={resolve('/tidal/connect')}>{m.home_connect_button()}</a>
+				<a href={resolve('/app/settings/tidal')}>{m.home_connect_button()}</a>
 			{:else}
 				<p>{m.tidal_not_configured()}</p>
 			{/if}

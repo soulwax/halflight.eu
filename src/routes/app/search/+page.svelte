@@ -47,7 +47,7 @@
 		<section class="state-card" aria-labelledby="connect-title">
 			<h2 id="connect-title">{m.search_not_connected_title()}</h2>
 			<p>{m.search_not_connected_description()}</p>
-			<a href={resolve('/tidal/connect')}>{m.home_connect_button()}</a>
+			<a href={resolve('/app/settings/tidal')}>{m.home_connect_button()}</a>
 		</section>
 	{:else if data.error === 'invalid_query'}
 		<p class="state-error" role="alert">{m.search_invalid_query()}</p>

@@ -26,7 +26,7 @@
 		<article class="action-card">
 			<h2>{m.home_connect_title()}</h2>
 			<p>{m.home_connect_description()}</p>
-			<a href={resolve('/tidal/connect')}>{m.home_connect_button()}</a>
+			<a href={resolve('/app/settings/tidal')}>{m.home_connect_button()}</a>
 		</article>
 	{/if}
 </section>
