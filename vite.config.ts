@@ -3,10 +3,16 @@ import { mdsvex } from 'mdsvex';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vitest/config';
 import { playwright } from '@vitest/browser-playwright';
-import adapter from '@sveltejs/adapter-vercel';
+import vercelAdapter from '@sveltejs/adapter-vercel';
+import nodeAdapter from '@sveltejs/adapter-node';
 import { sveltekit } from '@sveltejs/kit/vite';
 import path from 'node:path';
 import { storybookTest } from '@storybook/addon-vitest/vitest-plugin';
+
+// `ADAPTER=node pnpm build` produces a standalone Node server in `build/` for the
+// self-hosted (PM2) deployment; the default keeps the Vercel serverless target.
+const adapter =
+	process.env.ADAPTER === 'node' ? nodeAdapter() : vercelAdapter({ runtime: 'nodejs24.x' });
 
 // More info at: https://storybook.js.org/docs/next/writing-tests/integrations/vitest-addon
 export default defineConfig({
@@ -21,9 +27,7 @@ export default defineConfig({
 					async: true
 				}
 			},
-			// Pin the serverless runtime: the local Node version (26) is newer than
-			// anything the adapter can infer a default from.
-			adapter: adapter({ runtime: 'nodejs24.x' }),
+			adapter,
 			preprocess: [
 				mdsvex({
 					extensions: ['.svx', '.md']

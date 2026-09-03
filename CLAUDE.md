@@ -1,7 +1,10 @@
 # CLAUDE.md
 
-Read **`AGENTS.md`** first — it covers the stack, commands, layout, conventions, testing,
-and security rules for this repo. This file adds the working agreement specific to Claude.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+Read **`AGENTS.md`** first — it is the source of truth for the stack, commands, layout,
+conventions, testing, and security rules. This file does not repeat it; it adds the
+Claude-specific working agreement and the architecture map that spans multiple files.
 
 ## Git & commits (strict)
 
@@ -29,28 +32,136 @@ pnpm check && pnpm lint && pnpm test:unit -- --run
 Run `pnpm format` if you edited files. If a step fails or is skipped, say so plainly —
 don't report success over a red result.
 
-## Current focus
+### Running one test
 
-A personal **TIDAL OAuth token foundation**: a reusable, server-only `tidalClient` under
-`src/lib/server/tidal/` with
+```sh
+pnpm test:unit -- --run --project server src/lib/server/tidal/crypto.spec.ts   # one file
+pnpm test:unit -- --run --project server -t "coalesces concurrent refreshes"   # by name
+```
 
-- OAuth authorization-code flow + PKCE + `state`;
-- an encrypted **single-row Postgres** token store (AES-256-GCM, key from
-  `TIDAL_TOKEN_ENC_KEY`) — a `.data/*.enc` file was rejected because prod is Vercel
-  serverless;
-- automatic pre-expiry refresh with refresh-token rotation, persisted atomically;
-- one-shot refresh + retry on a 401;
-- a status endpoint and Connect / Disconnect dashboard, gated behind the existing Better
-  Auth session; tokens never sent to the client.
+`--project server` is node-only and fast (no browser). `client` and `storybook` need
+Playwright's chromium (`pnpm test:e2e` installs it). `expect.requireAssertions` is on —
+a test with no assertion fails.
 
-Keep it single-user and simple. The detailed build plan lives in the project notes /
-issue tracker.
+## Architecture
+
+Syn is a **single-user** SvelteKit music client for the owner's own TIDAL account: browse,
+search, curate playlists, and play full tracks in-app. Treat prod as having **no
+persistent local filesystem** (secrets and tokens go to Postgres, media to object
+storage). The long-form plan is `MASTERPLAN.md`.
+
+### Deployment / adapter
+
+The build target is chosen in `vite.config.ts` by the `ADAPTER` env var:
+
+- default → `@sveltejs/adapter-vercel` (`runtime: 'nodejs24.x'`).
+- `ADAPTER=node` → `@sveltejs/adapter-node`, a standalone server in `build/` run under
+  PM2 (`ecosystem.config.cjs`, `pnpm pm2:start` / `pm2:reload`). It reads `PORT` and
+  `ORIGIN` from `.env` (loaded via Node `--env-file`); the self-hosted origin is
+  `syn.bluesix.dev`. There is a separate `syn-worker` service (see the `SYN_WORKER_*`
+  env vars) for media downloads.
+
+### Access model — one hard-wired administrator
+
+Better Auth handles sessions (email/password + GitHub), but the app has exactly one
+privileged user. `src/lib/server/admin.ts` maps a Better Auth user id to owner status via
+the singleton `administrator` table; the configured `ADMIN_USERNAME` (a GitHub login,
+matched case-insensitively) links to a synthetic `admin-<sha256>@syn.invalid` email so
+both providers resolve to the same user without an email in config. `hooks.server.ts` sets
+`event.locals.isAdministrator`. `/app/**` routes and the TIDAL OAuth/proxy routes gate on
+`locals.user && locals.isAdministrator` (redirecting to `/sign-in`); the `/api/**` data
+handlers currently gate on `locals.user` alone — tighten to `isAdministrator` if you touch
+one. There is deliberately no code path to reassign or delete the owner.
+
+### Dual TIDAL token model (the subtle part)
+
+TIDAL needs **two independent OAuth tokens**, stored as two AES-256-GCM ciphertext columns
+in the single-row `tidal_auth` table (`src/lib/server/tidal/`, key from
+`TIDAL_TOKEN_ENC_KEY`; plaintext never touches the DB):
+
+| Column            | Flow                                                      | Surface                                             | Accessor                                      |
+| ----------------- | --------------------------------------------------------- | --------------------------------------------------- | --------------------------------------------- |
+| `secret`          | Authorization-code + PKCE + `state`, from a developer app | JSON:API v2 browse (`openapi.tidal.com/v2`)         | `getAccessToken` / `tidalJson` / `tidalApi.*` |
+| `playback_secret` | TIDAL Link **device authorization** (`r_usr` scopes)      | legacy playback/lyrics/credits (`api.tidal.com/v1`) | `getPlaybackToken`                            |
+
+Both refresh pre-expiry with refresh-token rotation, persist atomically, coalesce
+concurrent refreshes behind a module-level single-flight guard, and retry once on a 401
+(`client.ts`). The browse token connects at `/tidal/connect` → `/tidal/callback`; the
+playback token connects via `/api/tidal/device-auth` + `/poll`. `getConnectionStatus()`
+reports `configured` / `connected` / `hasPlayback`. Disconnect deletes the row (TIDAL has
+no revocation endpoint).
+
+### Nothing reaches the browser
+
+Tokens and TIDAL URLs stay server-side. Three proxies:
+
+- **`/api/tracks/[id]/stream`** — resolves stream metadata (quality tier, codecs, bit
+  depth, ReplayGain). `stream.ts` walks the `BTS_QUALITY_LADDER` down from the requested
+  quality; `HI_RES_LOSSLESS` is excluded (segmented DASH the single-URL proxy can't serve).
+- **`/api/tracks/[id]/audio`** — streams the media bytes through Syn with HTTP Range
+  forwarding so the native `<audio>` element can seek.
+- **`/tidal/api/[...path]`** — read-only (`GET`/`HEAD` only) authenticated pass-through to
+  the v2 API for ad-hoc calls; host is fixed, only path+query are caller-controlled.
+
+`src/lib/player/player.svelte.ts` is a `$state` class (`export const player`) mounted once
+in `src/routes/app/+layout.svelte`. It drives the `<audio>` element, does an automatic
+length+quality self-check (`playback-assessment.ts` — catches previews served as full
+tracks and silent downgrades), and falls back to a TIDAL embed iframe when direct
+playback is unavailable. Player position/queue persist (debounced) to
+`/api/playback-state`.
+
+### View-model boundary
+
+Routes and components never see raw JSON:API. `src/lib/server/tidal/models.ts` defines
+small, stable display contracts (`TrackSummary`, `AlbumSummary`, …) and
+`normalise.ts` translates JSON:API `Document`s (with side-loaded `included`) into them.
+Add a field to a model only when a page needs it and its upstream shape is verified.
+
+### Data layer
+
+Drizzle + Postgres (Neon), `drizzle-orm/postgres-js`. App tables in
+`src/lib/server/db/schema.ts`: `tidal_auth`, `administrator`, `user_playlist`,
+`streaming_settings`, `playback_state`, `user_settings`. Better Auth tables live in
+`auth.schema.ts` — **generated**, regenerate with `pnpm auth:schema` after changing
+`auth.ts`. Migrations in `drizzle/` (`pnpm db:generate` → `pnpm db:migrate`). Some code
+paths self-heal a missing table/row at runtime (`ensurePlaylistTable()`, settings loads
+that fall back to defaults) because a fresh serverless deploy may race the migration.
+
+Each server data module follows the same shape: a `*Store` interface, a `db*Store`
+implementation, and a public function taking an optional store — tests inject an in-memory
+store so they need no DB or network.
+
+### Routes
+
+- `/` → redirects to `/app` (owner) or `/sign-in`.
+- `/sign-in`, `/logout` — Better Auth.
+- `/app/**` — the product: home (daily mix), `search`, `library`, `mixes`,
+  `artists/[id]`, `albums/[id]`, `tracks/[id]`, `playlists/[id]`, `settings/tidal`.
+  `/app/+layout.server.ts` loads connection status + settings + saved playback state for
+  the shell.
+- `/tidal/connect` · `/callback` · `/disconnect` · `/status` — browse-token OAuth;
+  `/tidal/api/[...path]` — the read-only v2 proxy. The old `/tidal` dashboard page
+  **308-redirects** to `/app/settings/tidal`.
+- `/demo/**` — SvelteKit starter scaffolding, not part of the product.
+
+### Other
+
+- **Playlist generation** (`/api/generate-playlist`, `PlaylistGeneratorModal`) is
+  deterministic: a curated map of vibe/era → search queries feeding TIDAL search. No LLM.
+- **Themes**: dark-only, eight named palettes (`src/lib/theme/types.ts`), persisted in
+  `user_settings.theme`, applied by `theme.svelte.ts`; CSS variables in
+  `src/routes/layout.css`.
+- **`external/tiddl`** is a git submodule (`oskvr37/tiddl`, Python) — the reference
+  implementation the stream-manifest parser and `parseTidalResource` were ported from.
 
 ## Reminders
 
-- OAuth and token logic stays under `src/lib/server/` — never client-reachable.
-- No token values in logs, errors, URLs, cookies (beyond the short-lived PKCE/state
-  cookie), or client state.
-- New env vars: declare in `src/env.ts`, add a placeholder to `.env.example`, never
-  commit real values.
+- OAuth, token, and secret logic stays under `src/lib/server/` — SvelteKit fails the build
+  if such a module becomes client-reachable. Never relocate it.
+- No token values in logs, errors, URLs, cookies (beyond the short-lived PKCE/state cookie
+  and the encrypted `HttpOnly` TIDAL session cookie), or client state.
+- New env vars: declare in `src/env.ts` via `defineEnvVars`, import from `$app/env/private`
+  or `$app/env/public`, add a placeholder to `.env.example`, never commit real values.
+  Don't reach for `process.env` in app code (only `drizzle.config.ts` may).
+- Import alias is `#lib`, not `$lib` — match the surrounding code.
 - Use the Svelte MCP tools (see `AGENTS.md`) when writing Svelte code.

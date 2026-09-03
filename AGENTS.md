@@ -15,8 +15,10 @@ account (see `CLAUDE.md` and the TIDAL plan).
   app code.
 - **Language** — TypeScript, `strict`, `rewriteRelativeImportExtensions`.
 - **Package manager** — pnpm (`engine-strict`); do not use npm or yarn in this repo.
-- **Adapter** — `@sveltejs/adapter-vercel`: serverless, **no persistent local filesystem
-  in prod**.
+- **Adapter** — chosen in `vite.config.ts` by `$ADAPTER`: default `@sveltejs/adapter-vercel`
+  (serverless); `ADAPTER=node` builds `@sveltejs/adapter-node` into `build/` for the
+  self-hosted PM2 deploy (`ecosystem.config.cjs`). Either way assume **no persistent local
+  filesystem in prod**.
 - **Database** — PostgreSQL (Neon) via Drizzle ORM (`drizzle-orm/postgres-js`).
 - **Auth** — Better Auth (email/password + GitHub); session populated in
   `hooks.server.ts`.
@@ -31,7 +33,10 @@ account (see `CLAUDE.md` and the TIDAL plan).
 
 ```sh
 pnpm dev                              # dev server (port per ORIGIN in .env)
-pnpm build                            # production build
+pnpm build                            # production build (Vercel adapter)
+pnpm build:node                       # production build (adapter-node -> ./build)
+pnpm pm2:start                        # build:node + pm2 start ecosystem.config.cjs
+pnpm pm2:reload                       # rebuild + zero-downtime pm2 reload
 pnpm check                            # svelte-kit sync + svelte-check (type check)
 pnpm lint                             # prettier --check . && eslint .
 pnpm format                           # prettier --write .
