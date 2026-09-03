@@ -8,9 +8,10 @@
 	import { player } from '#lib/player/player.svelte.js';
 	import { themeManager } from '#lib/theme/theme.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
+	import type { Snippet } from 'svelte';
 	import type { LayoutData } from './$types';
 
-	let { data, children }: { data: LayoutData; children: import('svelte').Snippet } = $props();
+	let { data, children }: { data: LayoutData; children: Snippet } = $props();
 
 	const navigation = $derived([
 		{ href: resolve('/app'), label: m.nav_home() },

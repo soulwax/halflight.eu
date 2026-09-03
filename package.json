@@ -18,6 +18,7 @@
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"lint": "prettier --check . && eslint --cache --cache-location node_modules/.cache/eslint/ .",
+		"lint:types": "eslint --config eslint.config.typed.js --cache --cache-location node_modules/.cache/eslint-typed/ .",
 		"format": "prettier --write .",
 		"test:unit": "vitest",
 		"test": "npm run test:unit -- --run && npm run test:e2e",

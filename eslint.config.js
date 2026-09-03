@@ -11,6 +11,9 @@ import ts from 'typescript-eslint';
 
 const gitignorePath = path.resolve(import.meta.dirname, '.gitignore');
 
+// Fast, syntax-only rules — run on every `pnpm lint`. The type-aware pass
+// (no-floating-promises et al.) lives in eslint.config.typed.js / `pnpm lint:types`
+// because building the TS program per run is slow.
 export default defineConfig(
 	includeIgnoreFile(gitignorePath),
 	{ ignores: ['src/lib/paraglide/**', 'storybook-static/**'] },
@@ -22,20 +25,12 @@ export default defineConfig(
 	svelte.configs.prettier,
 	{
 		languageOptions: {
-			globals: { ...globals.browser, ...globals.node },
-			parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname }
+			globals: { ...globals.browser, ...globals.node }
 		},
 		rules: {
 			// typescript-eslint strongly recommend that you do not use the no-undef lint rule on TypeScript projects.
 			// see: https://typescript-eslint.io/troubleshooting/faqs/eslint/#i-get-errors-from-the-no-undef-rule-about-global-variables-not-being-defined-even-though-there-are-no-typescript-errors
 			'no-undef': 'off',
-
-			// Type-aware safety: catch the mistakes svelte-check can't.
-			'@typescript-eslint/no-floating-promises': 'error',
-			'@typescript-eslint/no-misused-promises': 'error',
-			'@typescript-eslint/await-thenable': 'error',
-			'@typescript-eslint/require-await': 'error',
-			'@typescript-eslint/switch-exhaustiveness-check': 'error',
 			'@typescript-eslint/no-explicit-any': 'error',
 			'@typescript-eslint/consistent-type-imports': ['error', { fixStyle: 'inline-type-imports' }]
 		}
@@ -43,11 +38,7 @@ export default defineConfig(
 	{
 		files: ['**/*.svelte', '**/*.svelte.ts', '**/*.svelte.js'],
 		languageOptions: {
-			parserOptions: {
-				projectService: true,
-				extraFileExtensions: ['.svelte'],
-				parser: ts.parser
-			}
+			parserOptions: { extraFileExtensions: ['.svelte'], parser: ts.parser }
 		},
 		rules: {
 			'svelte/button-has-type': 'error',
@@ -57,8 +48,10 @@ export default defineConfig(
 	{
 		files: ['**/*.spec.ts', '**/*.spec.js', '**/*.e2e.ts'],
 		rules: {
-			// Test doubles legitimately need `any`; assertions carry the intent.
-			'@typescript-eslint/no-explicit-any': 'off'
+			// Test doubles legitimately need `any`; `typeof import()` is the idiomatic
+			// way to type `vi.importActual`.
+			'@typescript-eslint/no-explicit-any': 'off',
+			'@typescript-eslint/consistent-type-imports': 'off'
 		}
 	}
 );

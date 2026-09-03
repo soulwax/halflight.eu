@@ -367,6 +367,7 @@
 
 				<div class="tabs" role="tablist">
 					<button
+						type="button"
 						role="tab"
 						aria-selected={player.panel === 'queue'}
 						class:on={player.panel === 'queue'}
@@ -377,6 +378,7 @@
 						{#if player.queueCount}<span class="tab-count">{player.queueCount}</span>{/if}
 					</button>
 					<button
+						type="button"
 						role="tab"
 						aria-selected={player.panel === 'lyrics'}
 						class:on={player.panel === 'lyrics'}
@@ -386,6 +388,7 @@
 						{m.player_lyrics()}
 					</button>
 					<button
+						type="button"
 						role="tab"
 						aria-selected={player.panel === 'source'}
 						class:on={player.panel === 'source'}
