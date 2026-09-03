@@ -22,6 +22,7 @@
 
 	$effect(() => {
 		player.applyStreamingSettings(data.streamingSettings);
+		player.restorePlaybackState(data.playbackState);
 	});
 </script>
 

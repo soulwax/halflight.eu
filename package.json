@@ -21,13 +21,7 @@
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "drizzle-kit migrate",
 		"db:studio": "drizzle-kit studio",
-		"auth:schema": "auth generate --config src/lib/server/auth.ts --output src/lib/server/db/auth.schema.ts --yes",
-		"worker:build": "docker compose -f worker/compose.yaml build",
-		"worker:migrate": "docker compose -f worker/compose.yaml run --rm migrate",
-		"worker:start": "pnpm worker:build && pnpm worker:migrate && pnpm worker:up",
-		"worker:up": "docker compose -f worker/compose.yaml up -d api runner",
-		"worker:down": "docker compose -f worker/compose.yaml down",
-		"worker:logs": "docker compose -f worker/compose.yaml logs -f api runner"
+		"auth:schema": "auth generate --config src/lib/server/auth.ts --output src/lib/server/db/auth.schema.ts --yes"
 	},
 	"devDependencies": {
 		"@chromatic-com/storybook": "latest",

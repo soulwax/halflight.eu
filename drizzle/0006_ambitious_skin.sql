@@ -1,0 +1,1 @@
+DROP TABLE "streamrip_job" CASCADE;

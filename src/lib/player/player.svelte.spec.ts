@@ -98,4 +98,20 @@ describe('PlayerState', () => {
 		expect(player.isMuted).toBe(false);
 		expect(player.isNormalizationEnabled).toBe(false);
 	});
+
+	it('restores a saved queue and position without starting playback', () => {
+		const player = new PlayerState();
+		player.restorePlaybackState({
+			currentTrack: sampleTrack1,
+			queue: [sampleTrack2],
+			history: [sampleTrack3],
+			currentTime: 67.8
+		});
+
+		expect(player.currentTrack).toEqual(sampleTrack1);
+		expect(player.queue).toEqual([sampleTrack2]);
+		expect(player.history).toEqual([sampleTrack3]);
+		expect(player.currentTime).toBe(67);
+		expect(player.isPlaying).toBe(false);
+	});
 });

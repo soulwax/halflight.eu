@@ -1,13 +1,4 @@
-import {
-	pgTable,
-	serial,
-	integer,
-	text,
-	timestamp,
-	boolean,
-	check,
-	real
-} from 'drizzle-orm/pg-core';
+import { pgTable, serial, integer, text, timestamp, boolean, check } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { user } from './auth.schema';
 
@@ -94,51 +85,20 @@ export const streamingSettings = pgTable(
 );
 
 /**
- * Durable commands for the self-hosted streamrip worker. The worker and Syn
- * share this state, but neither side stores TIDAL bearer tokens, signed playback
- * tickets, CDN URLs, or conversion temp paths here.
+ * The owner's resumable player state. This is deliberately bounded workflow
+ * state, not a catalogue cache: it contains only the currently playing track,
+ * a short queue/history, and the last known position. It never holds stream
+ * URLs, audio bytes, or TIDAL credentials.
  */
-export const streamripJob = pgTable(
-	'streamrip_job',
-	{
-		id: text('id').primaryKey(),
-		userId: text('user_id')
-			.notNull()
-			.references(() => user.id, { onDelete: 'cascade' }),
-		trackId: text('track_id').notNull(),
-		kind: text('kind').notNull(),
-		status: text('status').notNull().default('queued'),
-		requestedQuality: text('requested_quality').notNull().default('HIGH'),
-		outputFormat: text('output_format').notNull().default('source'),
-		workerJobId: text('worker_job_id').unique(),
-		audioQuality: text('audio_quality'),
-		mimeType: text('mime_type'),
-		codecs: text('codecs'),
-		fileExtension: text('file_extension'),
-		bitDepth: integer('bit_depth'),
-		sampleRate: integer('sample_rate'),
-		trackReplayGain: real('track_replay_gain'),
-		artifactKey: text('artifact_key'),
-		artifactSize: integer('artifact_size'),
-		errorCode: text('error_code'),
-		attempts: integer('attempts').notNull().default(0),
-		expiresAt: timestamp('expires_at', { withTimezone: true }),
-		completedAt: timestamp('completed_at', { withTimezone: true }),
-		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
-	},
-	(table) => [
-		check('streamrip_job_kind', sql`${table.kind} in ('playback', 'download')`),
-		check(
-			'streamrip_job_status',
-			sql`${table.status} in ('queued', 'preparing', 'ready', 'downloading', 'completed', 'failed', 'expired')`
-		),
-		check('streamrip_job_quality', sql`${table.requestedQuality} in ('LOW', 'HIGH', 'LOSSLESS')`),
-		check(
-			'streamrip_job_output_format',
-			sql`${table.outputFormat} in ('source', 'flac', 'aac', 'mp3', 'opus')`
-		)
-	]
-);
+export const playbackState = pgTable('playback_state', {
+	userId: text('user_id')
+		.primaryKey()
+		.references(() => user.id, { onDelete: 'cascade' }),
+	currentTrackJson: text('current_track_json'),
+	queueJson: text('queue_json').notNull().default('[]'),
+	historyJson: text('history_json').notNull().default('[]'),
+	currentTime: integer('current_time').notNull().default(0),
+	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+});
 
 export * from './auth.schema';

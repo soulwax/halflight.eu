@@ -59,14 +59,17 @@ export {
 	resolveTrackStream,
 	parseTrackStream,
 	parseManifestXml,
+	describePlaybackDelivery,
 	BTS_QUALITY_LADDER,
 	TidalQualityDeniedError,
 	type TrackAudioQuality,
 	type TrackStreamResponse,
 	type BTSManifest,
 	type ParsedTrackStream,
-	type ResolvedStreamInfo
+	type ResolvedStreamInfo,
+	type PlaybackDelivery
 } from './stream';
+export { getRequestedStreamQuality, type StreamingSettingsReader } from './playback';
 export {
 	requestDeviceAuthorization,
 	pollDeviceToken,

@@ -14,9 +14,6 @@
 	const tidalTrackUrl = $derived(
 		data.track ? `https://tidal.com/browse/track/${encodeURIComponent(data.track.id)}` : ''
 	);
-	const tidalEmbedUrl = $derived(
-		data.track ? `https://embed.tidal.com/tracks/${encodeURIComponent(data.track.id)}` : ''
-	);
 
 	function formatDuration(seconds: number): string {
 		const minutes = Math.floor(seconds / 60);
@@ -69,14 +66,6 @@
 				{/if}
 			</div>
 		</header>
-
-		<section class="player" aria-label={`Play ${data.track.title} on TIDAL`}>
-			<iframe
-				title={`TIDAL player: ${data.track.title}`}
-				src={tidalEmbedUrl}
-				allow="autoplay; encrypted-media"
-			></iframe>
-		</section>
 
 		<div class="track-layout">
 			<section class="metadata-section" aria-labelledby="about-title">
@@ -399,22 +388,6 @@
 	.album-line {
 		color: var(--text-muted);
 		font-size: 0.95rem;
-	}
-
-	.player {
-		margin-top: 2rem;
-		border: 2px solid var(--border-strong);
-		border-radius: var(--radius-lg, 14px);
-		overflow: hidden;
-		background: var(--surface-raised);
-		box-shadow: var(--shadow-bauhaus);
-	}
-
-	.player iframe {
-		display: block;
-		width: 100%;
-		height: 9.5rem;
-		border: 0;
 	}
 
 	.track-layout {

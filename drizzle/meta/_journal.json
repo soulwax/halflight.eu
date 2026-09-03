@@ -43,6 +43,20 @@
       "when": 1788406703343,
       "tag": "0005_thick_iron_man",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788420880233,
+      "tag": "0006_ambitious_skin",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1788421278923,
+      "tag": "0007_native_playback_state",
+      "breakpoints": true
     }
   ]
 }

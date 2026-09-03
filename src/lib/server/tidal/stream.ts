@@ -68,9 +68,50 @@ export interface ResolvedStreamInfo {
 	audioQuality: TrackAudioQuality;
 	bitDepth?: number | null;
 	sampleRate?: number | null;
+	trackReplayGain?: number | null;
+}
+
+/** Safe, public description of the bytes Syn will deliver to the player. */
+export interface PlaybackDelivery {
+	format: 'flac' | 'aac' | 'dolby';
+	mimeType: string;
+	lossless: boolean;
+	/** Nominal bitrate for TIDAL's lossy tiers. Lossless FLAC is variable-rate. */
+	nominalBitrateKbps: 96 | 320 | null;
 }
 
 const DOLBY_CODECS = new Set(['eac3', 'ac4']);
+
+/**
+ * Describe the source stream without changing its codec. In particular, AAC is
+ * never wrapped or re-encoded as FLAC: that would not restore lost detail.
+ */
+export function describePlaybackDelivery(
+	stream: Pick<ResolvedStreamInfo, 'audioQuality' | 'codecs' | 'mimeType'>
+): PlaybackDelivery {
+	if (stream.codecs === 'flac') {
+		return {
+			format: 'flac',
+			mimeType: stream.mimeType || 'audio/flac',
+			lossless: true,
+			nominalBitrateKbps: null
+		};
+	}
+	if (DOLBY_CODECS.has(stream.codecs)) {
+		return {
+			format: 'dolby',
+			mimeType: stream.mimeType || 'audio/mp4',
+			lossless: false,
+			nominalBitrateKbps: null
+		};
+	}
+	return {
+		format: 'aac',
+		mimeType: stream.mimeType || 'audio/mp4',
+		lossless: false,
+		nominalBitrateKbps: stream.audioQuality === 'LOW' ? 96 : 320
+	};
+}
 
 /**
  * Parses XML DASH manifest of a track stream, translating tiddl's parse_manifest_XML.
@@ -217,7 +258,8 @@ export async function fetchTrackStream(
 		audioMode: data.audioMode,
 		audioQuality: data.audioQuality,
 		bitDepth: data.bitDepth,
-		sampleRate: data.sampleRate
+		sampleRate: data.sampleRate,
+		trackReplayGain: data.trackReplayGain
 	};
 }
 

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+	describePlaybackDelivery,
 	fetchTrackStream,
 	parseManifestXml,
 	parseTrackStream,
@@ -187,6 +188,28 @@ describe('stream manifest parsing (translated from tiddl)', () => {
 		};
 
 		expect(() => parseTrackStream(stream)).toThrow(TidalError);
+	});
+});
+
+describe('playback delivery descriptions', () => {
+	it('keeps lossless streams as FLAC and reports no fake fixed bitrate', () => {
+		expect(
+			describePlaybackDelivery({ audioQuality: 'LOSSLESS', codecs: 'flac', mimeType: 'audio/flac' })
+		).toEqual({
+			format: 'flac',
+			mimeType: 'audio/flac',
+			lossless: true,
+			nominalBitrateKbps: null
+		});
+	});
+
+	it('describes the native lossy tiers accurately', () => {
+		expect(
+			describePlaybackDelivery({ audioQuality: 'HIGH', codecs: 'mp4a.40.2', mimeType: 'audio/mp4' })
+		).toMatchObject({ format: 'aac', nominalBitrateKbps: 320, lossless: false });
+		expect(
+			describePlaybackDelivery({ audioQuality: 'LOW', codecs: 'mp4a.40.2', mimeType: 'audio/mp4' })
+		).toMatchObject({ format: 'aac', nominalBitrateKbps: 96, lossless: false });
 	});
 });
 

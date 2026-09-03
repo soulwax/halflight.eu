@@ -1,6 +1,15 @@
 import type { TrackSummary } from '#lib/server/tidal/models';
 
+export interface SavedPlaybackState {
+	currentTrack: TrackSummary | null;
+	queue: TrackSummary[];
+	history: TrackSummary[];
+	currentTime: number;
+}
+
 const isBrowser = typeof window !== 'undefined';
+const MAX_QUEUE_LENGTH = 100;
+const MAX_HISTORY_LENGTH = 50;
 
 export class PlayerState {
 	currentTrack = $state<TrackSummary | null>(null);
@@ -37,6 +46,9 @@ export class PlayerState {
 	isLyricsLoading = $state(false);
 
 	private audio: HTMLAudioElement | null = null;
+	private hasRestoredPlaybackState = false;
+	private persistenceTimer: ReturnType<typeof setTimeout> | undefined;
+	private lastPersistedPosition = 0;
 
 	constructor() {
 		if (isBrowser) {
@@ -54,6 +66,10 @@ export class PlayerState {
 		this.audio.addEventListener('timeupdate', () => {
 			if (this.audio && !isNaN(this.audio.currentTime)) {
 				this.currentTime = this.audio.currentTime;
+				if (Math.abs(this.currentTime - this.lastPersistedPosition) >= 15) {
+					this.lastPersistedPosition = this.currentTime;
+					this.schedulePersistence();
+				}
 			}
 		});
 
@@ -133,6 +149,7 @@ export class PlayerState {
 				this.queue = [...contextTracks];
 			}
 		}
+		this.schedulePersistence();
 
 		if (isBrowser) {
 			this.loadAndPlayStream(track.id);
@@ -210,7 +227,6 @@ export class PlayerState {
 			);
 			if (res && res.ok) {
 				const data = (await res.json().catch(() => null)) as {
-					streamUrl?: string;
 					audioQuality?: string;
 					audioMode?: string;
 					codecs?: string;
@@ -224,7 +240,7 @@ export class PlayerState {
 
 				if (data && this.audio) {
 					// Store metadata
-					this.streamUrl = data.streamUrl || null;
+					this.streamUrl = `/api/tracks/${encodeURIComponent(trackId)}/audio`;
 					this.audioQuality = data.audioQuality || data.audioMode || 'HIGH';
 					this.codecs = data.codecs || null;
 					this.fileExtension = data.fileExtension || null;
@@ -234,10 +250,16 @@ export class PlayerState {
 					this.requiresFullAuth = data.requiresFullAuth ?? false;
 					this.playbackMode = 'direct';
 
-					// The self-hosted worker returns an opaque, expiring playback ticket. It
-					// serves media itself, keeping TIDAL/CDN bytes and conversion work off Vercel.
-					if (!data.streamUrl) throw new Error('Worker response did not include a playback URL.');
-					this.audio.src = data.streamUrl;
+					// Syn proxies the authenticated CDN response so the browser never sees a
+					// provider URL or bearer credential.
+					this.audio.src = this.streamUrl;
+					if (this.currentTime > 0) {
+						try {
+							this.audio.currentTime = this.currentTime;
+						} catch {
+							// The stream may not be seekable until metadata arrives.
+						}
+					}
 					this.applyVolume();
 					await this.audio.play().catch(() => {
 						this.playbackMode = 'embed';
@@ -277,7 +299,9 @@ export class PlayerState {
 			return;
 		}
 
-		if (this.audio && this.streamUrl) {
+		if (this.currentTrack && !this.streamUrl) {
+			this.loadAndPlayStream(this.currentTrack.id);
+		} else if (this.audio && this.streamUrl) {
 			if (this.isPlaying) {
 				this.audio.pause();
 			} else {
@@ -297,6 +321,8 @@ export class PlayerState {
 		if (this.audio && !isNaN(target)) {
 			this.audio.currentTime = target;
 		}
+		this.lastPersistedPosition = target;
+		this.schedulePersistence();
 	}
 
 	setVolume(vol: number): void {
@@ -325,20 +351,24 @@ export class PlayerState {
 
 	addToQueue(track: TrackSummary): void {
 		this.queue.push(track);
+		this.schedulePersistence();
 	}
 
 	addMultipleToQueue(tracks: TrackSummary[]): void {
 		this.queue.push(...tracks);
+		this.schedulePersistence();
 	}
 
 	removeFromQueue(index: number): void {
 		if (index >= 0 && index < this.queue.length) {
 			this.queue.splice(index, 1);
+			this.schedulePersistence();
 		}
 	}
 
 	clearQueue(): void {
 		this.queue = [];
+		this.schedulePersistence();
 	}
 
 	next(): TrackSummary | null {
@@ -353,6 +383,7 @@ export class PlayerState {
 		if (isBrowser) {
 			this.loadAndPlayStream(nextTrack.id);
 		}
+		this.schedulePersistence();
 		return nextTrack;
 	}
 
@@ -377,6 +408,7 @@ export class PlayerState {
 		if (isBrowser) {
 			this.loadAndPlayStream(prevTrack.id);
 		}
+		this.schedulePersistence();
 		return prevTrack;
 	}
 
@@ -392,6 +424,7 @@ export class PlayerState {
 		if (isBrowser) {
 			this.loadAndPlayStream(targetTrack.id);
 		}
+		this.schedulePersistence();
 	}
 
 	toggleQueue(): void {
@@ -419,6 +452,50 @@ export class PlayerState {
 		this.currentTime = 0;
 		this.duration = 0;
 		this.streamUrl = null;
+		this.schedulePersistence();
+	}
+
+	/** Restore a server-saved queue once per browser session without auto-playing it. */
+	restorePlaybackState(state: SavedPlaybackState): void {
+		if (
+			this.hasRestoredPlaybackState ||
+			this.currentTrack ||
+			this.queue.length ||
+			this.history.length
+		)
+			return;
+		this.hasRestoredPlaybackState = true;
+		this.currentTrack = state.currentTrack;
+		this.queue = state.queue.slice(0, MAX_QUEUE_LENGTH);
+		this.history = state.history.slice(-MAX_HISTORY_LENGTH);
+		this.currentTime = Math.max(0, Math.floor(state.currentTime));
+		this.lastPersistedPosition = this.currentTime;
+		this.duration = state.currentTrack?.duration || 0;
+	}
+
+	private snapshotPlaybackState(): SavedPlaybackState {
+		return {
+			currentTrack: this.currentTrack,
+			queue: this.queue.slice(0, MAX_QUEUE_LENGTH),
+			history: this.history.slice(-MAX_HISTORY_LENGTH),
+			currentTime: Math.max(0, Math.floor(this.currentTime))
+		};
+	}
+
+	private schedulePersistence(): void {
+		if (!isBrowser || !this.hasRestoredPlaybackState) return;
+		if (this.persistenceTimer) clearTimeout(this.persistenceTimer);
+		this.persistenceTimer = setTimeout(() => {
+			this.persistenceTimer = undefined;
+			void fetch('/api/playback-state', {
+				method: 'PUT',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify(this.snapshotPlaybackState()),
+				keepalive: true
+			}).catch(() => {
+				// Resume state is a convenience; playback must remain usable offline.
+			});
+		}, 500);
 	}
 }
 
