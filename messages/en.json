@@ -1,6 +1,5 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
-	"hello_world": "Hello, {name} from en!",
 	"tidal_title": "TIDAL",
 	"tidal_subtitle": "Personal account connection",
 	"tidal_connected": "Connected",

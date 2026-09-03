@@ -1,12 +1,6 @@
-import { pgTable, serial, integer, text, timestamp, boolean, check } from 'drizzle-orm/pg-core';
+import { pgTable, integer, text, timestamp, boolean, check } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { user } from './auth.schema';
-
-export const task = pgTable('task', {
-	id: serial('id').primaryKey(),
-	title: text('title').notNull(),
-	priority: integer('priority').notNull().default(1)
-});
 
 /**
  * Single-row store for the personal TIDAL tokens. Both columns hold AES-256-GCM
