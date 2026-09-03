@@ -2,8 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import AppShell from '#lib/components/app/AppShell.svelte';
-	import MiniPlayer from '#lib/components/player/MiniPlayer.svelte';
-	import QueueDrawer from '#lib/components/player/QueueDrawer.svelte';
+	import Player from '#lib/components/player/Player.svelte';
 	import PlaylistGeneratorModal from '#lib/components/music/PlaylistGeneratorModal.svelte';
 	import AddToPlaylistModal from '#lib/components/music/AddToPlaylistModal.svelte';
 	import { player } from '#lib/player/player.svelte.js';
@@ -41,7 +40,6 @@
 	{@render children()}
 </AppShell>
 
-<MiniPlayer />
-<QueueDrawer />
+<Player />
 <PlaylistGeneratorModal />
 <AddToPlaylistModal />

@@ -7,17 +7,46 @@ export interface SavedPlaybackState {
 	currentTime: number;
 }
 
+export type DockMode = 'docked' | 'floating';
+export type RepeatMode = 'off' | 'all' | 'one';
+export type PlayerPanel = 'queue' | 'lyrics' | 'source';
+
+interface PlayerPrefs {
+	dockMode: DockMode;
+	shuffle: boolean;
+	repeatMode: RepeatMode;
+	floatingPos: { x: number; y: number };
+	panel: PlayerPanel;
+}
+
 const isBrowser = typeof window !== 'undefined';
 const MAX_QUEUE_LENGTH = 100;
 const MAX_HISTORY_LENGTH = 50;
+const PREFS_KEY = 'syn:player:prefs';
+
+function shuffled<T>(items: T[]): T[] {
+	const copy = [...items];
+	for (let i = copy.length - 1; i > 0; i--) {
+		const j = Math.floor(Math.random() * (i + 1));
+		[copy[i], copy[j]] = [copy[j], copy[i]];
+	}
+	return copy;
+}
 
 export class PlayerState {
 	currentTrack = $state<TrackSummary | null>(null);
 	queue = $state<TrackSummary[]>([]);
 	history = $state<TrackSummary[]>([]);
-	isQueueOpen = $state(false);
 	isExpanded = $state(false);
 	isCoverExpanded = $state(false);
+
+	/** Which panel the expanded player shows. */
+	panel = $state<PlayerPanel>('queue');
+	/** `docked` = pinned dock/sheet; `floating` = draggable window (desktop only). */
+	dockMode = $state<DockMode>('docked');
+	floatingPos = $state<{ x: number; y: number }>({ x: 24, y: 24 });
+	shuffle = $state(false);
+	repeatMode = $state<RepeatMode>('off');
 
 	// Audio playback engine states
 	isPlaying = $state(false);
@@ -42,8 +71,8 @@ export class PlayerState {
 	// Synchronized Lyrics state
 	lyrics = $state<string | null>(null);
 	lyricsCues = $state<Array<{ time: number; text: string }>>([]);
-	isLyricsOpen = $state(false);
 	isLyricsLoading = $state(false);
+	isLyricsOpen = $derived(this.isExpanded && this.panel === 'lyrics');
 
 	private audio: HTMLAudioElement | null = null;
 	private hasRestoredPlaybackState = false;
@@ -52,7 +81,47 @@ export class PlayerState {
 
 	constructor() {
 		if (isBrowser) {
+			this.loadPrefs();
 			this.initAudio();
+		}
+	}
+
+	private loadPrefs(): void {
+		try {
+			const raw = localStorage.getItem(PREFS_KEY);
+			if (!raw) return;
+			const p = JSON.parse(raw) as Partial<PlayerPrefs>;
+			if (p.dockMode === 'docked' || p.dockMode === 'floating') this.dockMode = p.dockMode;
+			if (typeof p.shuffle === 'boolean') this.shuffle = p.shuffle;
+			if (p.repeatMode === 'off' || p.repeatMode === 'all' || p.repeatMode === 'one') {
+				this.repeatMode = p.repeatMode;
+			}
+			if (p.panel === 'queue' || p.panel === 'lyrics' || p.panel === 'source') this.panel = p.panel;
+			if (
+				p.floatingPos &&
+				typeof p.floatingPos.x === 'number' &&
+				typeof p.floatingPos.y === 'number'
+			) {
+				this.floatingPos = p.floatingPos;
+			}
+		} catch {
+			// Corrupt prefs are not worth surfacing.
+		}
+	}
+
+	private savePrefs(): void {
+		if (!isBrowser) return;
+		try {
+			const prefs: PlayerPrefs = {
+				dockMode: this.dockMode,
+				shuffle: this.shuffle,
+				repeatMode: this.repeatMode,
+				floatingPos: this.floatingPos,
+				panel: this.panel
+			};
+			localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+		} catch {
+			// Storage may be unavailable (private mode); prefs are a convenience.
 		}
 	}
 
@@ -88,7 +157,7 @@ export class PlayerState {
 		});
 
 		this.audio.addEventListener('ended', () => {
-			this.next();
+			this.next(true);
 		});
 
 		this.audio.addEventListener('error', () => {
@@ -142,11 +211,11 @@ export class PlayerState {
 		this.requiresFullAuth = false;
 
 		if (contextTracks && contextTracks.length > 0) {
-			const trackIndex = contextTracks.findIndex((t) => t.id === track.id);
-			if (trackIndex !== -1) {
-				this.queue = contextTracks.slice(trackIndex + 1);
+			if (this.shuffle) {
+				this.queue = shuffled(contextTracks.filter((t) => t.id !== track.id));
 			} else {
-				this.queue = [...contextTracks];
+				const at = contextTracks.findIndex((t) => t.id === track.id);
+				this.queue = at === -1 ? [...contextTracks] : contextTracks.slice(at + 1);
 			}
 		}
 		this.schedulePersistence();
@@ -181,15 +250,39 @@ export class PlayerState {
 		}
 	}
 
-	toggleLyrics(): void {
-		this.isLyricsOpen = !this.isLyricsOpen;
-		if (this.isLyricsOpen && !this.lyrics && this.currentTrack) {
+	/** Show a panel (expanding the player), or collapse if that panel is already open. */
+	openPanel(panel: PlayerPanel): void {
+		if (this.isExpanded && this.panel === panel) {
+			this.isExpanded = false;
+		} else {
+			this.panel = panel;
+			this.isExpanded = true;
+		}
+		if (panel === 'lyrics' && this.isExpanded && !this.lyrics && this.currentTrack) {
 			this.loadLyrics(this.currentTrack.id);
 		}
+		this.savePrefs();
 	}
 
-	closeLyrics(): void {
-		this.isLyricsOpen = false;
+	toggleShuffle(): void {
+		this.shuffle = !this.shuffle;
+		this.savePrefs();
+	}
+
+	cycleRepeat(): void {
+		this.repeatMode = this.repeatMode === 'off' ? 'all' : this.repeatMode === 'all' ? 'one' : 'off';
+		this.savePrefs();
+	}
+
+	toggleDock(): void {
+		this.dockMode = this.dockMode === 'docked' ? 'floating' : 'docked';
+		if (this.dockMode === 'floating') this.isExpanded = true;
+		this.savePrefs();
+	}
+
+	setFloatingPos(x: number, y: number): void {
+		this.floatingPos = { x, y };
+		this.savePrefs();
 	}
 
 	toggleNormalization(): void {
@@ -371,12 +464,38 @@ export class PlayerState {
 		this.schedulePersistence();
 	}
 
-	next(): TrackSummary | null {
-		if (this.queue.length === 0) return null;
-		if (this.currentTrack) {
-			this.history.push(this.currentTrack);
+	/** Move a queued track one slot up (`-1`) or down (`1`). */
+	moveQueueItem(index: number, direction: -1 | 1): void {
+		const target = index + direction;
+		if (index < 0 || index >= this.queue.length || target < 0 || target >= this.queue.length)
+			return;
+		[this.queue[index], this.queue[target]] = [this.queue[target], this.queue[index]];
+		this.schedulePersistence();
+	}
+
+	/**
+	 * Advance playback. Honours repeat (`one` replays, `all` refills the queue
+	 * from history once it empties) and shuffle (picks a random queued track).
+	 * @param auto `true` when triggered by a track ending, so repeat-one applies.
+	 */
+	next(auto = false): TrackSummary | null {
+		if (auto && this.repeatMode === 'one' && this.currentTrack) {
+			this.currentTime = 0;
+			if (isBrowser) this.loadAndPlayStream(this.currentTrack.id);
+			return this.currentTrack;
 		}
-		const nextTrack = this.queue.shift()!;
+
+		if (this.queue.length === 0) {
+			if (this.repeatMode !== 'all') return null;
+			const loop = [...this.history, ...(this.currentTrack ? [this.currentTrack] : [])];
+			if (loop.length === 0) return null;
+			this.history = [];
+			this.queue = this.shuffle ? shuffled(loop) : loop;
+		}
+
+		if (this.currentTrack) this.history.push(this.currentTrack);
+		const index = this.shuffle ? Math.floor(Math.random() * this.queue.length) : 0;
+		const [nextTrack] = this.queue.splice(index, 1);
 		this.currentTrack = nextTrack;
 		this.currentTime = 0;
 		this.duration = nextTrack.duration || 0;
@@ -427,14 +546,6 @@ export class PlayerState {
 		this.schedulePersistence();
 	}
 
-	toggleQueue(): void {
-		this.isQueueOpen = !this.isQueueOpen;
-	}
-
-	closeQueue(): void {
-		this.isQueueOpen = false;
-	}
-
 	toggleExpanded(): void {
 		this.isExpanded = !this.isExpanded;
 	}
@@ -447,7 +558,7 @@ export class PlayerState {
 		this.currentTrack = null;
 		this.queue = [];
 		this.history = [];
-		this.isQueueOpen = false;
+		this.isExpanded = false;
 		this.isPlaying = false;
 		this.currentTime = 0;
 		this.duration = 0;
