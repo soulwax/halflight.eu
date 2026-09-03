@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, text, timestamp, check } from 'drizzle-orm/pg-core';
+import { pgTable, serial, integer, text, timestamp, boolean, check } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { user } from './auth.schema';
 
@@ -59,5 +59,29 @@ export const userPlaylist = pgTable('user_playlist', {
 	createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 });
+
+/**
+ * Durable playback preferences. They are intentionally separate from OAuth
+ * credentials, so a reconnect never resets the owner's listening setup.
+ */
+export const streamingSettings = pgTable(
+	'streaming_settings',
+	{
+		userId: text('user_id')
+			.primaryKey()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		preferredQuality: text('preferred_quality').notNull().default('HIGH'),
+		volume: integer('volume').notNull().default(100),
+		loudnessNormalization: boolean('loudness_normalization').notNull().default(true),
+		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+	},
+	(table) => [
+		check(
+			'streaming_settings_quality',
+			sql`${table.preferredQuality} in ('LOW', 'HIGH', 'LOSSLESS')`
+		),
+		check('streaming_settings_volume', sql`${table.volume} between 0 and 100`)
+	]
+);
 
 export * from './auth.schema';

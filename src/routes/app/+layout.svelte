@@ -6,6 +6,7 @@
 	import QueueDrawer from '#lib/components/player/QueueDrawer.svelte';
 	import PlaylistGeneratorModal from '#lib/components/music/PlaylistGeneratorModal.svelte';
 	import AddToPlaylistModal from '#lib/components/music/AddToPlaylistModal.svelte';
+	import { player } from '#lib/player/player.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import type { LayoutData } from './$types';
 
@@ -18,6 +19,10 @@
 		{ href: resolve('/app/mixes'), label: m.nav_mixes() },
 		{ href: resolve('/app/settings/tidal'), label: m.nav_settings() }
 	]);
+
+	$effect(() => {
+		player.applyStreamingSettings(data.streamingSettings);
+	});
 </script>
 
 <AppShell

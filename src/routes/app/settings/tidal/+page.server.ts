@@ -1,46 +1,44 @@
+import { fail, redirect } from '@sveltejs/kit';
 import { getConnectionStatus } from '#lib/server/tidal';
-import { readPlaybackRecord, readRecord } from '#lib/server/tidal/store';
-import type { PageServerLoad } from './$types';
-
-type DebugToken = {
-	accessToken: string;
-	refreshToken: string;
-	expiresAt: number;
-	scopes: string[];
-};
-
-async function debugToken(read: () => Promise<Awaited<ReturnType<typeof readRecord>>>) {
-	try {
-		const record = await read();
-		if (!record) return null;
-		return {
-			accessToken: record.accessToken,
-			refreshToken: record.refreshToken,
-			expiresAt: record.expiresAt,
-			scopes: record.scope
-		} satisfies DebugToken;
-	} catch {
-		return null;
-	}
-}
+import {
+	getStreamingSettings,
+	parseStreamingSettingsInput,
+	saveStreamingSettings
+} from '#lib/server/streaming-settings';
+import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async (event) => {
-	const status = await getConnectionStatus();
-
-	const [debugTokens, playbackDebugTokens] = await Promise.all([
-		status.connected ? debugToken(() => readRecord()) : Promise.resolve(null),
-		status.hasPlayback ? debugToken(() => readPlaybackRecord()) : Promise.resolve(null)
+	if (!event.locals.user || !event.locals.isAdministrator) redirect(302, '/sign-in');
+	const [status, streamingSettings] = await Promise.all([
+		getConnectionStatus(),
+		getStreamingSettings(event.locals.user.id)
 	]);
 
 	return {
 		status,
 		hasFullPlayback: status.hasPlayback,
-		debugTokens,
-		playbackDebugTokens,
+		streamingSettings,
 		notice: {
 			connected: event.url.searchParams.has('connected'),
 			disconnected: event.url.searchParams.has('disconnected'),
 			error: event.url.searchParams.get('error')
 		}
 	};
+};
+
+export const actions: Actions = {
+	saveStreamingSettings: async (event) => {
+		if (!event.locals.user || !event.locals.isAdministrator) redirect(302, '/sign-in');
+
+		const formData = await event.request.formData();
+		const settings = parseStreamingSettingsInput({
+			preferredQuality: formData.get('preferredQuality')?.toString(),
+			volume: formData.get('volume')?.toString(),
+			loudnessNormalization: formData.get('loudnessNormalization')?.toString()
+		});
+		if (!settings) return fail(400, { streamingSettingsError: true });
+
+		await saveStreamingSettings(event.locals.user.id, settings);
+		return { streamingSettingsSaved: true };
+	}
 };

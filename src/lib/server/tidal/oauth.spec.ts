@@ -1,7 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createHash } from 'node:crypto';
 import { buildAuthorizeUrl, createPkcePair, exchangeCode, refreshTokens } from './oauth';
+import { getTidalConfig } from './config';
 import { TidalAuthError } from './errors';
+
+// The suite runs against whatever `.env` provides, so assert against the
+// resolved config rather than hard-coded fixture values.
+const config = getTidalConfig();
 
 const b64url = (buf: Buffer) => buf.toString('base64url');
 
@@ -26,8 +31,8 @@ describe('pkce + authorize url', () => {
 		expect(url.searchParams.get('code_challenge_method')).toBe('S256');
 		expect(url.searchParams.get('code_challenge')).toBe('ch');
 		expect(url.searchParams.get('state')).toBe('st');
-		expect(url.searchParams.get('client_id')).toBe('test-client-id');
-		expect(url.searchParams.get('redirect_uri')).toBe('http://localhost:3000/tidal/callback');
+		expect(url.searchParams.get('client_id')).toBe(config.clientId);
+		expect(url.searchParams.get('redirect_uri')).toBe(config.redirectUri);
 	});
 });
 
@@ -50,8 +55,8 @@ describe('token exchange', () => {
 		const body = init.body as URLSearchParams;
 		expect(body.get('grant_type')).toBe('authorization_code');
 		expect(body.get('code_verifier')).toBe('v');
-		expect(body.get('client_id')).toBe('test-client-id');
-		expect(body.get('client_secret')).toBe('test-client-secret');
+		expect(body.get('client_id')).toBe(config.clientId);
+		if (config.clientSecret) expect(body.get('client_secret')).toBe(config.clientSecret);
 
 		expect(record.accessToken).toBe('at');
 		expect(record.refreshToken).toBe('rt');

@@ -88,4 +88,14 @@ describe('PlayerState', () => {
 		expect(player.queue).toEqual([]);
 		expect(player.history).toEqual([]);
 	});
+
+	it('hydrates persisted volume and ReplayGain preferences', () => {
+		const player = new PlayerState();
+
+		player.applyStreamingSettings({ volume: 42, loudnessNormalization: false });
+
+		expect(player.volume).toBe(0.42);
+		expect(player.isMuted).toBe(false);
+		expect(player.isNormalizationEnabled).toBe(false);
+	});
 });

@@ -3,9 +3,54 @@ import {
 	fetchTrackStream,
 	parseManifestXml,
 	parseTrackStream,
+	resolveTrackStream,
+	TidalQualityDeniedError,
 	type TrackStreamResponse
 } from './stream';
+import { writePlaybackRecord, type TokenRowStore, type TokenSlot } from './store';
 import { TidalApiError, TidalError } from './errors';
+
+function memoryStore(): TokenRowStore {
+	const blobs: Record<TokenSlot, string | null> = { primary: null, playback: null };
+	return {
+		read: async (slot = 'primary') => blobs[slot],
+		write: async (v, slot = 'primary') => void (blobs[slot] = v),
+		clear: async (slot = 'primary') => void (blobs[slot] = null)
+	};
+}
+
+function btsResponse(quality: string): { ok: true; json: () => Promise<TrackStreamResponse> } {
+	const manifest = Buffer.from(
+		JSON.stringify({
+			mimeType: quality === 'LOSSLESS' ? 'audio/flac' : 'audio/mp4',
+			codecs: quality === 'LOSSLESS' ? 'flac' : 'mp4a.40.2',
+			encryptionType: 'NONE',
+			urls: [`https://cdn.tidal.com/${quality}.file`]
+		})
+	).toString('base64');
+	return {
+		ok: true,
+		json: async () => ({
+			trackId: 1,
+			assetPresentation: 'FULL',
+			audioMode: 'STEREO',
+			audioQuality: quality as TrackStreamResponse['audioQuality'],
+			manifestMimeType: 'application/vnd.tidal.bts',
+			manifestHash: 'h',
+			manifest
+		})
+	};
+}
+
+const qualityDenied = {
+	ok: false,
+	status: 401,
+	json: async () => ({
+		status: 401,
+		subStatus: 5003,
+		userMessage: 'Requested quality is not allowed'
+	})
+};
 
 describe('stream manifest parsing (translated from tiddl)', () => {
 	it('parses DASH XML manifest and expands timeline numbers', () => {
@@ -210,5 +255,62 @@ describe('fetchTrackStream', () => {
 				ctx: { fetch: fetchMock as unknown as typeof fetch }
 			})
 		).rejects.toThrow(TidalApiError);
+	});
+});
+
+describe('resolveTrackStream quality ladder', () => {
+	async function storeWithPlayback() {
+		const store = memoryStore();
+		await writePlaybackRecord(
+			{
+				accessToken: 't',
+				refreshToken: 'r',
+				expiresAt: Date.now() + 3_600_000,
+				tokenType: 'Bearer',
+				scope: ['r_usr'],
+				obtainedAt: Date.now()
+			},
+			store
+		);
+		return store;
+	}
+
+	it('walks down past "quality not allowed" to the first allowed tier', async () => {
+		const store = await storeWithPlayback();
+		const fetchMock = vi.fn(async (url: string) => {
+			if (url.includes('audioquality=LOSSLESS')) return qualityDenied;
+			if (url.includes('audioquality=HIGH')) return btsResponse('HIGH');
+			throw new Error('should not reach LOW');
+		});
+
+		const res = await resolveTrackStream('1', {
+			ctx: { fetch: fetchMock as never, store }
+		});
+		expect(res.audioQuality).toBe('HIGH');
+		expect(res.streamUrl).toBe('https://cdn.tidal.com/HIGH.file');
+	});
+
+	it('throws TidalQualityDeniedError when every tier is refused', async () => {
+		const store = await storeWithPlayback();
+		const fetchMock = vi.fn(async () => qualityDenied);
+
+		await expect(
+			resolveTrackStream('1', { ctx: { fetch: fetchMock as never, store } })
+		).rejects.toBeInstanceOf(TidalQualityDeniedError);
+		expect(fetchMock).toHaveBeenCalledTimes(3); // LOSSLESS, HIGH, LOW
+	});
+
+	it('surfaces a non-quality auth error immediately without walking the ladder', async () => {
+		const store = await storeWithPlayback();
+		const fetchMock = vi.fn(async () => ({
+			ok: false,
+			status: 401,
+			json: async () => ({ status: 401, subStatus: 11002, userMessage: 'Token expired' })
+		}));
+
+		await expect(
+			resolveTrackStream('1', { ctx: { fetch: fetchMock as never, store } })
+		).rejects.toBeInstanceOf(TidalApiError);
+		expect(fetchMock).toHaveBeenCalledTimes(1);
 	});
 });

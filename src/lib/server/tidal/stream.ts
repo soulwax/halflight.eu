@@ -3,6 +3,30 @@ import { getPlaybackToken, type TidalRequestContext } from './client';
 
 export type TrackAudioQuality = 'LOW' | 'HIGH' | 'LOSSLESS' | 'HI_RES_LOSSLESS';
 
+/**
+ * Single-file (BTS) qualities, best to worst. `HI_RES_LOSSLESS` is excluded — it
+ * returns a segmented DASH manifest the single-URL proxy can't serve.
+ */
+export const BTS_QUALITY_LADDER: TrackAudioQuality[] = ['LOSSLESS', 'HIGH', 'LOW'];
+
+/** TIDAL `subStatus` for "requested quality is not allowed in the user's subscription". */
+const SUBSTATUS_QUALITY_NOT_ALLOWED = 5003;
+
+/**
+ * Every quality the account is entitled to was refused (`subStatus 5003`) — the
+ * plan has no streaming entitlement (e.g. free tier or lapsed subscription).
+ */
+export class TidalQualityDeniedError extends TidalError {
+	constructor(readonly triedQualities: TrackAudioQuality[]) {
+		super('This TIDAL plan does not allow streaming playback at any available quality.');
+	}
+}
+
+function subStatusOf(err: unknown): number | undefined {
+	if (!(err instanceof TidalApiError)) return undefined;
+	return (err.body as { subStatus?: number } | null)?.subStatus;
+}
+
 export interface TrackStreamResponse {
 	trackId: number;
 	assetPresentation: 'FULL';
@@ -195,4 +219,41 @@ export async function fetchTrackStream(
 		bitDepth: data.bitDepth,
 		sampleRate: data.sampleRate
 	};
+}
+
+/**
+ * Resolve a playable single-file stream, walking **down** the quality ladder past
+ * "quality not allowed in your subscription" responses so a HiFi request still
+ * lands on `HIGH`/`LOW` for a lower-tier plan.
+ *
+ * @throws {TidalQualityDeniedError} when every tier is refused (no streaming plan)
+ * @throws {TidalApiError | TidalPlaybackNotLinkedError | TidalAuthError} for other failures
+ */
+export async function resolveTrackStream(
+	trackId: string | number,
+	options: { quality?: TrackAudioQuality; ctx?: TidalRequestContext } = {}
+): Promise<ResolvedStreamInfo> {
+	const ladder =
+		options.quality && !BTS_QUALITY_LADDER.includes(options.quality)
+			? [options.quality, ...BTS_QUALITY_LADDER]
+			: options.quality
+				? [options.quality, ...BTS_QUALITY_LADDER.filter((q) => q !== options.quality)]
+				: BTS_QUALITY_LADDER;
+
+	const tried: TrackAudioQuality[] = [];
+	let lastError: unknown;
+	for (const quality of ladder) {
+		tried.push(quality);
+		try {
+			return await fetchTrackStream(trackId, { quality, ctx: options.ctx });
+		} catch (err) {
+			lastError = err;
+			if (subStatusOf(err) === SUBSTATUS_QUALITY_NOT_ALLOWED) continue;
+			throw err;
+		}
+	}
+	if (subStatusOf(lastError) === SUBSTATUS_QUALITY_NOT_ALLOWED) {
+		throw new TidalQualityDeniedError(tried);
+	}
+	throw lastError;
 }

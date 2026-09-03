@@ -307,6 +307,14 @@ export class PlayerState {
 		this.applyVolume();
 	}
 
+	/** Apply server-persisted listening preferences whenever the app shell loads. */
+	applyStreamingSettings(settings: { volume: number; loudnessNormalization: boolean }): void {
+		this.volume = Math.max(0, Math.min(1, settings.volume / 100));
+		this.isMuted = this.volume === 0;
+		this.isNormalizationEnabled = settings.loudnessNormalization;
+		this.applyVolume();
+	}
+
 	toggleMute(): void {
 		this.isMuted = !this.isMuted;
 		this.applyVolume();

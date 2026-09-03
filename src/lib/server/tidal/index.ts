@@ -56,8 +56,11 @@ export * from './jsonapi';
 export { getConnectionStatus, type TidalConnectionStatus } from './status';
 export {
 	fetchTrackStream,
+	resolveTrackStream,
 	parseTrackStream,
 	parseManifestXml,
+	BTS_QUALITY_LADDER,
+	TidalQualityDeniedError,
 	type TrackAudioQuality,
 	type TrackStreamResponse,
 	type BTSManifest,

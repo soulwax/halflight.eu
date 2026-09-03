@@ -1,17 +1,13 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { Check, Copy, ExternalLink, Key, Loader2, Music, Sparkles } from '@lucide/svelte';
+	import { Check, ExternalLink, Loader2, Music, Sparkles } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
-	import type { PageData } from './$types';
+	import type { ActionData, PageData } from './$types';
 
-	let { data }: { data: PageData } = $props();
+	let { data, form }: { data: PageData; form: ActionData } = $props();
 
 	const status = $derived(data.status);
 	const hasFullPlayback = $derived(data.hasFullPlayback);
-	const debugTokens = $derived(data.debugTokens);
-
-	let copiedAccess = $state(false);
-	let copiedRefresh = $state(false);
 
 	let deviceLoading = $state(false);
 	let deviceData = $state<{
@@ -73,24 +69,6 @@
 			deviceStatus = 'error';
 			deviceError = err instanceof Error ? err.message : 'Unknown error';
 		}
-	}
-
-	async function copyAccessToken() {
-		if (!debugTokens?.accessToken) return;
-		await navigator.clipboard.writeText(debugTokens.accessToken);
-		copiedAccess = true;
-		setTimeout(() => {
-			copiedAccess = false;
-		}, 2000);
-	}
-
-	async function copyRefreshToken() {
-		if (!debugTokens?.refreshToken) return;
-		await navigator.clipboard.writeText(debugTokens.refreshToken);
-		copiedRefresh = true;
-		setTimeout(() => {
-			copiedRefresh = false;
-		}, 2000);
 	}
 </script>
 
@@ -224,59 +202,63 @@
 		{/if}
 	</section>
 
-	{#if debugTokens}
-		<section class="debug-card" aria-labelledby="debug-title">
-			<div class="debug-header">
-				<Key size={20} class="text-[var(--action)]" />
-				<div>
-					<h2 id="debug-title">{m.tidal_settings_debug_title()}</h2>
-					<p>{m.tidal_settings_debug_description()}</p>
-				</div>
-			</div>
+	<section class="streaming-settings-card" aria-labelledby="streaming-settings-title">
+		<div>
+			<h2 id="streaming-settings-title">{m.streaming_settings_title()}</h2>
+			<p>{m.streaming_settings_description()}</p>
+		</div>
 
-			<div class="token-group">
-				<div class="token-label-row">
-					<label for="access-token-input">{m.tidal_settings_debug_access_token()}</label>
-					<button type="button" class="copy-button" onclick={copyAccessToken}>
-						{#if copiedAccess}
-							<Check size={14} /> {m.tidal_settings_debug_copied()}
-						{:else}
-							<Copy size={14} /> {m.tidal_settings_debug_copy()}
-						{/if}
-					</button>
-				</div>
+		{#if form?.streamingSettingsSaved}
+			<p class="notice notice-success" role="status">{m.streaming_settings_saved()}</p>
+		{:else if form?.streamingSettingsError}
+			<p class="notice notice-error" role="alert">{m.streaming_settings_error()}</p>
+		{/if}
+
+		<form method="POST" action="?/saveStreamingSettings" class="streaming-settings-form">
+			<label for="preferred-quality">
+				<span>{m.streaming_quality_label()}</span>
+				<select id="preferred-quality" name="preferredQuality">
+					<option value="LOW" selected={data.streamingSettings.preferredQuality === 'LOW'}>
+						{m.streaming_quality_low()}
+					</option>
+					<option value="HIGH" selected={data.streamingSettings.preferredQuality === 'HIGH'}>
+						{m.streaming_quality_high()}
+					</option>
+					<option
+						value="LOSSLESS"
+						selected={data.streamingSettings.preferredQuality === 'LOSSLESS'}
+					>
+						{m.streaming_quality_lossless()}
+					</option>
+				</select>
+			</label>
+
+			<label for="streaming-volume">
+				<span>{m.streaming_volume_label()}</span>
 				<input
-					id="access-token-input"
-					type="password"
-					readonly
-					value={debugTokens.accessToken}
-					class="token-input"
+					id="streaming-volume"
+					name="volume"
+					type="range"
+					min="0"
+					max="100"
+					step="1"
+					value={data.streamingSettings.volume}
 				/>
-			</div>
+			</label>
 
-			<div class="token-group">
-				<div class="token-label-row">
-					<label for="refresh-token-input">{m.tidal_settings_debug_refresh_token()}</label>
-					<button type="button" class="copy-button" onclick={copyRefreshToken}>
-						{#if copiedRefresh}
-							<Check size={14} /> {m.tidal_settings_debug_copied()}
-						{:else}
-							<Copy size={14} /> {m.tidal_settings_debug_copy()}
-						{/if}
-					</button>
-				</div>
+			<label class="check-label" for="loudness-normalization">
 				<input
-					id="refresh-token-input"
-					type="password"
-					readonly
-					value={debugTokens.refreshToken}
-					class="token-input"
+					id="loudness-normalization"
+					name="loudnessNormalization"
+					type="checkbox"
+					checked={data.streamingSettings.loudnessNormalization}
 				/>
-			</div>
+				<span>{m.streaming_normalization_label()}</span>
+			</label>
 
-			<p class="debug-warning">{m.tidal_settings_debug_warning()}</p>
-		</section>
-	{/if}
+			<button class="button" type="submit">{m.streaming_settings_save()}</button>
+		</form>
+	</section>
 
 	<section class="info-card" aria-labelledby="privacy-title">
 		<h2 id="privacy-title">{m.tidal_settings_privacy_title()}</h2>
@@ -327,7 +309,7 @@
 	.notice,
 	.connection-card,
 	.info-card,
-	.debug-card {
+	.streaming-settings-card {
 		position: relative;
 		border: 2px solid var(--border-subtle);
 		border-radius: var(--radius-lg, 14px);
@@ -566,7 +548,8 @@
 	}
 
 	.connection-card h2,
-	.info-card h2 {
+	.info-card h2,
+	.streaming-settings-card h2 {
 		margin: 0 0 0.5rem;
 		font-size: 1.35rem;
 		font-weight: 800;
@@ -654,6 +637,57 @@
 
 	.info-card {
 		margin-top: 1.5rem;
+	}
+
+	.streaming-settings-card {
+		margin-top: 1.5rem;
+	}
+
+	.streaming-settings-card > div > p {
+		margin: 0.5rem 0 0;
+		color: var(--text-muted);
+		line-height: 1.5;
+	}
+
+	.streaming-settings-form {
+		display: grid;
+		gap: 1rem;
+		margin-top: 1.25rem;
+	}
+
+	.streaming-settings-form label {
+		display: grid;
+		gap: 0.5rem;
+		font-size: 0.85rem;
+		font-weight: 800;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+	}
+
+	.streaming-settings-form select,
+	.streaming-settings-form input[type='range'] {
+		width: 100%;
+	}
+
+	.streaming-settings-form select {
+		border: 2px solid var(--border-subtle);
+		border-radius: var(--radius-sm, 6px);
+		background: var(--surface-canvas);
+		padding: 0.65rem 0.75rem;
+		color: var(--text-primary);
+		font: inherit;
+	}
+
+	.streaming-settings-form .check-label {
+		display: flex;
+		align-items: center;
+		gap: 0.65rem;
+		text-transform: none;
+	}
+
+	.check-label input {
+		width: 1rem;
+		height: 1rem;
 	}
 
 	.info-card p {
