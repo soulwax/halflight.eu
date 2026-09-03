@@ -1,4 +1,5 @@
 import type { TrackSummary } from '#lib/server/tidal/models';
+import { assessPlayback, type PlaybackAssessment } from './playback-assessment';
 
 export interface SavedPlaybackState {
 	currentTrack: TrackSummary | null;
@@ -58,6 +59,7 @@ export class PlayerState {
 	streamUrl = $state<string | null>(null);
 	playbackMode = $state<'direct' | 'embed'>('direct');
 	audioQuality = $state<string | null>(null);
+	requestedQuality = $state<string | null>(null);
 	codecs = $state<string | null>(null);
 	fileExtension = $state<string | null>(null);
 	bitDepth = $state<number | null>(null);
@@ -65,6 +67,8 @@ export class PlayerState {
 	trackReplayGain = $state<number | null>(null);
 	isNormalizationEnabled = $state(true);
 	requiresFullAuth = $state(false);
+	/** `true` once the `<audio>` element has reported real media metadata. */
+	hasMediaMetadata = $state(false);
 	/** Diagnostic for the last failed direct-stream attempt (e.g. `not_linked`). */
 	playbackReason = $state<string | null>(null);
 
@@ -142,11 +146,14 @@ export class PlayerState {
 			}
 		});
 
-		this.audio.addEventListener('durationchange', () => {
+		const onMeta = () => {
 			if (this.audio && !isNaN(this.audio.duration) && this.audio.duration > 0) {
 				this.duration = this.audio.duration;
+				this.hasMediaMetadata = true;
 			}
-		});
+		};
+		this.audio.addEventListener('durationchange', onMeta);
+		this.audio.addEventListener('loadedmetadata', onMeta);
 
 		this.audio.addEventListener('play', () => {
 			this.isPlaying = true;
@@ -188,6 +195,23 @@ export class PlayerState {
 		return this.audioQuality;
 	});
 
+	/**
+	 * Automatic length + quality self-check for the current stream. Compares the
+	 * catalogue duration with the `<audio>` element's real duration and the
+	 * requested quality tier with what was delivered — catches previews served
+	 * as full tracks and silent quality downgrades.
+	 */
+	assessment = $derived.by<PlaybackAssessment>(() =>
+		assessPlayback({
+			expectedSeconds: this.currentTrack?.duration ?? null,
+			actualSeconds: this.hasMediaMetadata ? this.duration : null,
+			requestedQuality: this.requestedQuality,
+			deliveredQuality: this.audioQuality,
+			codecs: this.codecs,
+			mode: this.playbackMode
+		})
+	);
+
 	activeLyricIndex = $derived.by(() => {
 		if (!this.lyricsCues.length) return -1;
 		const time = this.currentTime;
@@ -204,6 +228,10 @@ export class PlayerState {
 		this.currentTrack = track;
 		this.currentTime = 0;
 		this.duration = track.duration || 0;
+		this.hasMediaMetadata = false;
+		this.requestedQuality = null;
+		this.audioQuality = null;
+		this.codecs = null;
 		this.lyrics = null;
 		this.lyricsCues = [];
 		this.playbackMode = 'direct';
@@ -322,6 +350,7 @@ export class PlayerState {
 				const data = (await res.json().catch(() => null)) as {
 					audioQuality?: string;
 					audioMode?: string;
+					requestedQuality?: string | null;
 					codecs?: string;
 					fileExtension?: string;
 					bitDepth?: number | null;
@@ -335,6 +364,7 @@ export class PlayerState {
 					// Store metadata
 					this.streamUrl = `/api/tracks/${encodeURIComponent(trackId)}/audio`;
 					this.audioQuality = data.audioQuality || data.audioMode || 'HIGH';
+					this.requestedQuality = data.requestedQuality ?? null;
 					this.codecs = data.codecs || null;
 					this.fileExtension = data.fileExtension || null;
 					this.bitDepth = data.bitDepth ?? null;

@@ -57,8 +57,8 @@
 
 	function fmt(seconds: number): string {
 		if (!seconds || isNaN(seconds) || seconds < 0) return '0:00';
-		const m = Math.floor(seconds / 60);
-		return `${m}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
+		const mins = Math.floor(seconds / 60);
+		return `${mins}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
 	}
 
 	// --- drag (floating mode) --------------------------------------------------
@@ -183,6 +183,16 @@
 						{#if artistLine}<span class="artists">{artistLine}</span>{/if}
 						{#if player.qualityLabel}<span class="badge">{player.qualityLabel}</span>{/if}
 						{#if player.playbackMode === 'embed'}<span class="badge badge-embed">TIDAL</span>{/if}
+						{#if player.assessment.warning}
+							<button
+								type="button"
+								class="badge badge-warn"
+								onclick={() => player.openPanel('source')}
+								title={player.assessment.warning}
+							>
+								{player.assessment.isLikelyPreview ? m.player_preview() : m.player_check_failed()}
+							</button>
+						{/if}
 					</span>
 				</div>
 			</div>
@@ -476,7 +486,32 @@
 						{/if}
 					{:else}
 						<div class="source">
-							{#if player.playbackMode === 'embed'}
+							{#if player.playbackMode === 'direct'}
+								{@const a = player.assessment}
+								<dl class="verify" class:verify-bad={!a.ok}>
+									<dt>{m.player_length()}</dt>
+									<dd>
+										{#if a.actualSeconds != null}
+											{fmt(a.actualSeconds)}
+											{#if a.expectedSeconds != null}<span class="verify-dim">
+													/ {fmt(a.expectedSeconds)}</span
+												>{/if}
+											<span class="verify-tag verify-{a.length}">{a.length}</span>
+										{:else}
+											<span class="verify-dim">{m.player_check_pending()}</span>
+										{/if}
+									</dd>
+									<dt>{m.player_quality()}</dt>
+									<dd>
+										{player.audioQuality ?? '—'}{#if player.codecs}
+											<span class="verify-dim"> · {player.codecs}</span>{/if}
+										{#if a.downgraded}<span class="verify-tag verify-short"
+												>{m.player_downgraded({ requested: a.requestedQuality ?? '?' })}</span
+											>{:else if a.lossless}<span class="verify-tag verify-match">FLAC</span>{/if}
+									</dd>
+								</dl>
+								{#if a.warning}<p class="source-note verify-warn">{a.warning}</p>{/if}
+							{:else}
 								<p class="source-note">
 									{#if player.requiresFullAuth}
 										{m.player_source_preview()}
@@ -485,12 +520,12 @@
 										{m.player_source_tidal()}
 									{/if}
 								</p>
+								<iframe
+									title={`TIDAL — ${track.title}`}
+									src={embedUrl}
+									allow="autoplay; encrypted-media"
+								></iframe>
 							{/if}
-							<iframe
-								title={`TIDAL — ${track.title}`}
-								src={embedUrl}
-								allow="autoplay; encrypted-media"
-							></iframe>
 						</div>
 					{/if}
 				</div>
@@ -732,6 +767,67 @@
 	.badge-embed {
 		color: var(--accent-jade);
 		border-color: color-mix(in oklab, var(--accent-jade) 40%, transparent);
+	}
+	.badge-warn {
+		cursor: pointer;
+		color: var(--accent-oxblood);
+		border-color: color-mix(in oklab, var(--accent-oxblood) 55%, transparent);
+		background: var(--danger-subtle);
+		font-family: inherit;
+	}
+	.badge-warn:hover {
+		filter: brightness(1.12);
+	}
+
+	.verify {
+		display: grid;
+		grid-template-columns: auto 1fr;
+		gap: 0.3rem 0.9rem;
+		margin: 0;
+		padding: 0.7rem 0.75rem;
+		font-size: 0.8rem;
+	}
+	.verify dt {
+		color: var(--text-muted);
+		font-size: 0.62rem;
+		font-weight: 700;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
+		align-self: center;
+	}
+	.verify dd {
+		margin: 0;
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		color: var(--text-primary);
+	}
+	.verify-dim {
+		color: var(--text-muted);
+	}
+	.verify-tag {
+		padding: 0 0.35rem;
+		border: 1px solid var(--border-subtle);
+		font-size: 0.58rem;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+	}
+	.verify-match {
+		color: var(--accent-jade);
+		border-color: color-mix(in oklab, var(--accent-jade) 40%, transparent);
+	}
+	.verify-short,
+	.verify-long {
+		color: var(--accent-oxblood);
+		border-color: color-mix(in oklab, var(--accent-oxblood) 45%, transparent);
+	}
+	.verify-unknown {
+		color: var(--text-muted);
+	}
+	.verify-warn {
+		color: var(--accent-oxblood);
+		border-top: 1px solid var(--border-subtle);
 	}
 
 	.transport {

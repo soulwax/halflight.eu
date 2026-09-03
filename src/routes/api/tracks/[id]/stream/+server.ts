@@ -39,8 +39,9 @@ export const GET: RequestHandler = async (event) => {
 	}
 
 	try {
+		const requestedQuality = await getRequestedStreamQuality(event.url, event.locals.user.id);
 		const stream = await resolveTrackStream(trackId, {
-			quality: await getRequestedStreamQuality(event.url, event.locals.user.id),
+			quality: requestedQuality,
 			ctx: { fetch: event.fetch, cookies: event.cookies }
 		});
 		// CDN URLs are short-lived bearer-like capabilities. They are needed only by
@@ -52,6 +53,7 @@ export const GET: RequestHandler = async (event) => {
 			codecs: stream.codecs,
 			audioMode: stream.audioMode,
 			audioQuality: stream.audioQuality,
+			requestedQuality: requestedQuality ?? null,
 			bitDepth: stream.bitDepth,
 			sampleRate: stream.sampleRate,
 			trackReplayGain: stream.trackReplayGain,
