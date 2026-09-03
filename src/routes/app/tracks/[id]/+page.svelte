@@ -4,6 +4,7 @@
 	import SongCard from '#lib/components/music/SongCard.svelte';
 	import { player } from '#lib/player/player.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
+	import { formatClock, formatDuration } from '#lib/format';
 	import { downloadM3u8File, generateM3u8 } from '#lib/utils/m3u';
 	import Badge from '#lib/components/ui/Badge.svelte';
 	import Button from '#lib/components/ui/Button.svelte';
@@ -21,12 +22,6 @@
 	const tidalTrackUrl = $derived(
 		data.track ? `https://tidal.com/browse/track/${encodeURIComponent(data.track.id)}` : ''
 	);
-
-	function formatDuration(seconds: number): string {
-		const minutes = Math.floor(seconds / 60);
-		const secs = seconds % 60;
-		return `${minutes}:${String(secs).padStart(2, '0')}`;
-	}
 </script>
 
 <svelte:head>
@@ -83,8 +78,8 @@
 						const m3uContent = generateM3u8(data.track.title, [data.track]);
 						downloadM3u8File(`${data.track.title}.m3u8`, m3uContent);
 					}}
-					title="Export Track as M3U8"
-					ariaLabel="Export Track as M3U8"
+					title={m.action_export_track_m3u8()}
+					ariaLabel={m.action_export_track_m3u8()}
 				>
 					<Download size={14} />
 					M3U8
@@ -141,7 +136,7 @@
 				</dl>
 			</section>
 
-			<section class="facts" aria-label="Track details">
+			<section class="facts" aria-label={m.track_details_label()}>
 				{#if data.track.duration}
 					<div>
 						<span>Duration</span>
@@ -183,7 +178,7 @@
 
 		{#if data.lyrics}
 			<section class="lyrics-page-section" aria-labelledby="track-lyrics-title">
-				<SectionHeader title="Track Lyrics" titleId="track-lyrics-title">
+				<SectionHeader title={m.track_lyrics_heading()} titleId="track-lyrics-title">
 					<Mic2 size={18} class="text-[var(--action)]" />
 					{#snippet actions()}
 						{#if data.lyrics?.lyricsProvider}
@@ -211,7 +206,7 @@
 								}}
 							>
 								<span class="shrink-0 font-mono text-xs text-[var(--text-muted)] opacity-70">
-									{formatDuration(cue.time)}
+									{formatClock(cue.time)}
 								</span>
 								<span class="cue-lyric-text">{cue.text}</span>
 							</button>
@@ -281,7 +276,7 @@
 
 		<PageActions tidalUrl={tidalTrackUrl} tidalLabel="Open in TIDAL" {retryHref} />
 	{:else}
-		<StateCard state={data.state} configured={data.configured} id={data.id} {retryHref} />
+		<StateCard state={data.state} configured={data.configured} {retryHref} />
 	{/if}
 </section>
 

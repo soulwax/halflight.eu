@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { PlayerState } from './player.svelte';
-import type { TrackSummary } from '#lib/server/tidal/models';
+import type { TrackSummary } from '#lib/tidal/models';
 
 // The player persists preferences to localStorage; isolate every case from it.
 beforeEach(() => {

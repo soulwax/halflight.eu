@@ -2,7 +2,7 @@ import { error, type RequestHandler } from '@sveltejs/kit';
 import { getUserPlaylists } from '#lib/server/playlists';
 import { generateM3u, sanitizeFileName, tidalApi } from '#lib/server/tidal';
 import { normalisePlaylistDetail } from '#lib/server/tidal/normalise';
-import type { TrackSummary } from '#lib/server/tidal/models';
+import type { TrackSummary } from '#lib/tidal/models';
 
 export const GET: RequestHandler = async (event) => {
 	const user = event.locals.user;

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { Disc, ListMusic, Sparkles, User } from '@lucide/svelte';
-	import type { AlbumSummary, ArtistSummary, PlaylistSummary } from '#lib/server/tidal/models';
+	import type { AlbumSummary, ArtistSummary, PlaylistSummary } from '#lib/tidal/models';
 
 	type MediaItem =
 		| AlbumSummary

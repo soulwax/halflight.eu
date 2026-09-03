@@ -1,7 +1,7 @@
 import { db } from '#lib/server/db';
 import { userPlaylist } from '#lib/server/db/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
-import type { TrackSummary } from '#lib/server/tidal/models';
+import type { TrackSummary } from '#lib/tidal/models';
 import { readRecord } from '#lib/server/tidal/store';
 import { getAccessToken, type TidalRequestContext } from '#lib/server/tidal/client';
 

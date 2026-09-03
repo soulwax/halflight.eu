@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Check, FolderPlus, ListPlus, Music, Plus, X } from '@lucide/svelte';
+	import { m } from '#lib/paraglide/messages.js';
 	import { customPlaylists } from '#lib/player/customPlaylists.svelte';
 
 	const track = $derived(customPlaylists.selectedTrackForPlaylist);
@@ -43,7 +44,7 @@
 				type="button"
 				class="close-btn"
 				onclick={() => customPlaylists.closeAddToPlaylist()}
-				aria-label="Close"
+				aria-label={m.action_close()}
 			>
 				<X size={18} />
 			</button>
@@ -109,7 +110,7 @@
 					<input
 						type="text"
 						bind:value={newPlaylistTitle}
-						placeholder="Playlist title..."
+						placeholder={m.playlist_title_placeholder()}
 						maxlength="60"
 						class="playlist-name-input"
 					/>

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { m } from '#lib/paraglide/messages.js';
+	import { formatClock } from '#lib/format';
 	import { customPlaylists } from '#lib/player/customPlaylists.svelte.js';
 	import { player } from '#lib/player/player.svelte.js';
 	import { resolve } from '$app/paths';
@@ -54,12 +55,6 @@
 		return () => mq.removeEventListener('change', sync);
 	});
 	const floating = $derived(player.dockMode === 'floating' && !isNarrow);
-
-	function fmt(seconds: number): string {
-		if (!seconds || isNaN(seconds) || seconds < 0) return '0:00';
-		const mins = Math.floor(seconds / 60);
-		return `${mins}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
-	}
 
 	// --- drag (floating mode) --------------------------------------------------
 	let dragging = $state(false);
@@ -133,7 +128,7 @@
 	>
 		<!-- seek -->
 		<div class="seek">
-			<span class="time">{fmt(player.currentTime)}</span>
+			<span class="time">{formatClock(player.currentTime)}</span>
 			<div class="seek-track">
 				<input
 					type="range"
@@ -142,14 +137,14 @@
 					step="0.5"
 					value={player.currentTime}
 					oninput={(e) => player.seek(parseFloat(e.currentTarget.value))}
-					aria-label="Seek"
+					aria-label={m.player_seek()}
 				/>
 				<span
 					class="seek-fill"
 					style="width:{player.duration > 0 ? (player.currentTime / player.duration) * 100 : 0}%"
 				></span>
 			</div>
-			<span class="time">{fmt(player.duration)}</span>
+			<span class="time">{formatClock(player.duration)}</span>
 		</div>
 
 		<div class="bar">
@@ -492,9 +487,9 @@
 									<dt>{m.player_length()}</dt>
 									<dd>
 										{#if a.actualSeconds != null}
-											{fmt(a.actualSeconds)}
+											{formatClock(a.actualSeconds)}
 											{#if a.expectedSeconds != null}<span class="verify-dim">
-													/ {fmt(a.expectedSeconds)}</span
+													/ {formatClock(a.expectedSeconds)}</span
 												>{/if}
 											<span class="verify-tag verify-{a.length}">{a.length}</span>
 										{:else}

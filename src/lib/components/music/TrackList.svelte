@@ -1,6 +1,6 @@
 <script lang="ts">
 	import TrackRow from './TrackRow.svelte';
-	import type { TrackSummary } from '#lib/server/tidal/models';
+	import type { TrackSummary } from '#lib/tidal/models';
 
 	let {
 		tracks,

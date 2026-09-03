@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { db } from '#lib/server/db';
 import { playbackState } from '#lib/server/db/schema';
-import type { AlbumReference, ArtistReference, TrackSummary } from '#lib/server/tidal/models';
+import type { AlbumReference, ArtistReference, TrackSummary } from '#lib/tidal/models';
 
 export const MAX_PLAYBACK_QUEUE_LENGTH = 100;
 export const MAX_PLAYBACK_HISTORY_LENGTH = 50;

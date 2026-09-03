@@ -9,7 +9,7 @@
 	import MediaCard from '#lib/components/music/MediaCard.svelte';
 	import StateCard from '#lib/components/music/StateCard.svelte';
 	import type { PageData } from './$types';
-	import type { TrackSummary } from '#lib/server/tidal/models';
+	import type { TrackSummary } from '#lib/tidal/models';
 
 	let { data }: { data: PageData } = $props();
 
@@ -90,7 +90,7 @@
 								type="button"
 								class="card-export-btn"
 								disabled={playlist.items.length === 0}
-								title="Download as M3U8"
+								title={m.action_export_m3u8()}
 								onclick={() => downloadPlaylist(playlist.id, 'm3u8')}
 							>
 								<Download size={12} />
@@ -100,8 +100,8 @@
 								type="button"
 								class="card-del-btn"
 								onclick={() => customPlaylists.deletePlaylist(playlist.id)}
-								title="Delete"
-								aria-label="Delete playlist"
+								title={m.action_delete()}
+								aria-label={m.action_delete_playlist()}
 							>
 								<Trash2 size={13} />
 							</button>

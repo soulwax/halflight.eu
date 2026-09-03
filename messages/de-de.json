@@ -245,5 +245,21 @@
 	"tidal_device_auth_open": "link.tidal.com öffnen",
 	"tidal_device_auth_waiting": "Warte auf Bestätigung in TIDAL...",
 	"tidal_device_auth_success": "Geräteautorisierung erfolgreich! Hi-Res-Wiedergabe ist jetzt aktiv.",
-	"tidal_device_auth_btn": "Vollständige Wiedergabe autorisieren"
+	"tidal_device_auth_btn": "Vollständige Wiedergabe autorisieren",
+	"action_close": "Schließen",
+	"action_delete": "Löschen",
+	"action_delete_playlist": "Playlist löschen",
+	"action_add_to_custom_playlist": "Zur eigenen Playlist hinzufügen",
+	"action_open_in_tidal": "In TIDAL öffnen",
+	"action_export_m3u8": "Als M3U8 exportieren",
+	"action_export_track_m3u8": "Track als M3U8 exportieren",
+	"playlist_title_placeholder": "Playlist-Titel …",
+	"player_seek": "Wiedergabeposition",
+	"track_badge_explicit": "Explizit",
+	"track_badge_popularity": "Beliebtheit",
+	"track_details_label": "Track-Details",
+	"track_lyrics_heading": "Songtext",
+	"mixes_types_label": "Mix-Typen",
+	"album_review_heading": "Album-Rezension",
+	"album_credits_heading": "Album- & Track-Credits"
 }

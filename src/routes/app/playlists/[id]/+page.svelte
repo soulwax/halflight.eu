@@ -85,7 +85,7 @@
 							const m3uContent = generateM3u8(data.playlist.title, data.playlist.items);
 							downloadM3u8File(`${data.playlist.title}.m3u8`, m3uContent);
 						}}
-						title="Export as M3U8 Playlist"
+						title={m.action_export_m3u8()}
 						ariaLabel="Export as M3U8 Playlist"
 					>
 						<Download size={14} />
@@ -107,7 +107,7 @@
 
 		<PageActions tidalUrl={tidalPlaylistUrl} tidalLabel={m.playlist_open_in_tidal()} {retryHref} />
 	{:else}
-		<StateCard state={data.state} configured={data.configured} id={data.id} {retryHref} />
+		<StateCard state={data.state} configured={data.configured} {retryHref} />
 	{/if}
 
 	<p class="attribution">

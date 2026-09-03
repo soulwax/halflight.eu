@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { CheckCircle2, Cloud, Disc, Sparkles, X } from '@lucide/svelte';
+	import { m } from '#lib/paraglide/messages.js';
 	import { customPlaylists, type CustomPlaylist } from '#lib/player/customPlaylists.svelte';
 	import { player } from '#lib/player/player.svelte';
-	import type { TrackSummary } from '#lib/server/tidal/models';
+	import type { TrackSummary } from '#lib/tidal/models';
 
 	let selectedVibe = $state('kinetic');
 	let selectedEra = $state('contemporary');
@@ -195,7 +196,7 @@
 				class="close-btn"
 				disabled={isGenerating}
 				onclick={() => customPlaylists.closeGenerator()}
-				aria-label="Close"
+				aria-label={m.action_close()}
 			>
 				<X size={18} />
 			</button>

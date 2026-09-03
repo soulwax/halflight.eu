@@ -1,26 +1,23 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { m } from '#lib/paraglide/messages.js';
+	import type { TidalPageState } from '#lib/tidal/page-state';
 
 	let {
 		state,
 		configured = true,
-		id,
 		title,
 		description,
 		retryHref
 	}: {
-		state?: 'not_connected' | 'authorization_expired' | 'not_found' | 'unavailable' | string | null;
+		state?: TidalPageState | 'disconnected' | null;
 		configured?: boolean;
-		id?: string;
 		title?: string;
 		description?: string;
 		retryHref?: string;
 	} = $props();
 
-	const defaultRetryHref = $derived(
-		retryHref ?? (id ? resolve('/app/search') : resolve('/app/search'))
-	);
+	const defaultRetryHref = $derived(retryHref ?? resolve('/app/search'));
 </script>
 
 {#if state === 'not_connected' || state === 'disconnected'}

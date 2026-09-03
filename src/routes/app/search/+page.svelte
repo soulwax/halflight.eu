@@ -10,7 +10,7 @@
 	import StateCard from '#lib/components/music/StateCard.svelte';
 	import { parseTidalResource } from '#lib/tidal/resource';
 	import type { PageData } from './$types';
-	import type { SearchResultGroups } from '#lib/server/tidal/models';
+	import type { SearchResultGroups } from '#lib/tidal/models';
 
 	let { data }: { data: PageData } = $props();
 

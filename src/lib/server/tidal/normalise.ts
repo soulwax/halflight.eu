@@ -12,7 +12,7 @@ import type {
 	SearchResultGroups,
 	TrackDetail,
 	TrackSummary
-} from './models';
+} from '#lib/tidal/models';
 
 type ResourceType = 'tracks' | 'albums' | 'artists' | 'playlists';
 

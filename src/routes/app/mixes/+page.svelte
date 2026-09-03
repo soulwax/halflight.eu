@@ -55,7 +55,7 @@
 			description={m.track_authorization_expired_description()}
 		/>
 	{:else}
-		<nav class="mix-tabs" aria-label="Mix types">
+		<nav class="mix-tabs" aria-label={m.mixes_types_label()}>
 			<button
 				type="button"
 				class="tab-btn"

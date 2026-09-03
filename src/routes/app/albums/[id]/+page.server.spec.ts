@@ -1,26 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { TidalApiError, TidalAuthError } from '#lib/server/tidal/errors';
 
-const mocks = vi.hoisted(() => {
-	class MockTidalApiError extends Error {
-		constructor(readonly status: number) {
-			super(`TIDAL API ${status}`);
-		}
-	}
-
-	class MockTidalAuthError extends Error {}
-	class MockTidalNotConnectedError extends Error {}
-
-	return {
-		getConnectionStatus: vi.fn(),
-		getAlbum: vi.fn(),
-		getAlbumRelationship: vi.fn().mockResolvedValue(null),
-		fetchAlbumReview: vi.fn().mockResolvedValue(null),
-		fetchAlbumCredits: vi.fn().mockResolvedValue(null),
-		MockTidalApiError,
-		MockTidalAuthError,
-		MockTidalNotConnectedError
-	};
-});
+const mocks = vi.hoisted(() => ({
+	getConnectionStatus: vi.fn(),
+	getAlbum: vi.fn(),
+	getAlbumRelationship: vi.fn().mockResolvedValue(null),
+	fetchAlbumReview: vi.fn().mockResolvedValue(null),
+	fetchAlbumCredits: vi.fn().mockResolvedValue(null)
+}));
 
 vi.mock('#lib/server/tidal', () => ({
 	getConnectionStatus: mocks.getConnectionStatus,
@@ -29,10 +16,7 @@ vi.mock('#lib/server/tidal', () => ({
 	tidalApi: {
 		getAlbum: mocks.getAlbum,
 		getAlbumRelationship: mocks.getAlbumRelationship
-	},
-	TidalApiError: mocks.MockTidalApiError,
-	TidalAuthError: mocks.MockTidalAuthError,
-	TidalNotConnectedError: mocks.MockTidalNotConnectedError
+	}
 }));
 
 import { load } from './+page.server';
@@ -51,10 +35,8 @@ describe('/app/albums/[id] load', () => {
 	beforeEach(() => {
 		mocks.getConnectionStatus.mockReset();
 		mocks.getAlbum.mockReset();
-		mocks.fetchAlbumReview.mockReset();
-		mocks.fetchAlbumReview.mockResolvedValue(null);
-		mocks.fetchAlbumCredits.mockReset();
-		mocks.fetchAlbumCredits.mockResolvedValue(null);
+		mocks.fetchAlbumReview.mockReset().mockResolvedValue(null);
+		mocks.fetchAlbumCredits.mockReset().mockResolvedValue(null);
 		fetchMock.mockReset();
 	});
 
@@ -133,14 +115,14 @@ describe('/app/albums/[id] load', () => {
 
 	it('maps a 404 upstream to not_found', async () => {
 		mocks.getConnectionStatus.mockResolvedValue({ connected: true, configured: true });
-		mocks.getAlbum.mockRejectedValue(new mocks.MockTidalApiError(404));
+		mocks.getAlbum.mockRejectedValue(new TidalApiError(404, 'Not Found', null, '/albums/album-1'));
 
 		await expect(load(event())).resolves.toMatchObject({ state: 'not_found', album: null });
 	});
 
 	it('maps an expired authorization to a reconnect state', async () => {
 		mocks.getConnectionStatus.mockResolvedValue({ connected: true, configured: true });
-		mocks.getAlbum.mockRejectedValue(new mocks.MockTidalAuthError());
+		mocks.getAlbum.mockRejectedValue(new TidalAuthError());
 
 		await expect(load(event())).resolves.toMatchObject({
 			state: 'authorization_expired',

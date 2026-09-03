@@ -1,5 +1,5 @@
 import { SvelteDate, SvelteMap, SvelteSet } from 'svelte/reactivity';
-import type { TrackSummary } from '#lib/server/tidal/models';
+import type { TrackSummary } from '#lib/tidal/models';
 import { player } from './player.svelte';
 
 const isBrowser = typeof window !== 'undefined';

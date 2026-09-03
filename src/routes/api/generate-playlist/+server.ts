@@ -1,7 +1,7 @@
 import { error, json } from '@sveltejs/kit';
 import { getConnectionStatus, tidalApi } from '#lib/server/tidal';
 import { normaliseSearchResults } from '#lib/server/tidal/normalise';
-import type { TrackSummary } from '#lib/server/tidal/models';
+import type { TrackSummary } from '#lib/tidal/models';
 import { createUserPlaylist, attemptTidalPlaylistSync } from '#lib/server/playlists';
 import type { RequestHandler } from './$types';
 

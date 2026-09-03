@@ -245,5 +245,21 @@
 	"tidal_device_auth_open": "Open link.tidal.com",
 	"tidal_device_auth_waiting": "Waiting for authorization on TIDAL...",
 	"tidal_device_auth_success": "Device authorization successful! Full Hi-Res playback is now enabled.",
-	"tidal_device_auth_btn": "Authorize Full Playback"
+	"tidal_device_auth_btn": "Authorize Full Playback",
+	"action_close": "Close",
+	"action_delete": "Delete",
+	"action_delete_playlist": "Delete playlist",
+	"action_add_to_custom_playlist": "Add to custom playlist",
+	"action_open_in_tidal": "Open in TIDAL",
+	"action_export_m3u8": "Export as M3U8",
+	"action_export_track_m3u8": "Export track as M3U8",
+	"playlist_title_placeholder": "Playlist title…",
+	"player_seek": "Seek",
+	"track_badge_explicit": "Explicit",
+	"track_badge_popularity": "Popularity",
+	"track_details_label": "Track details",
+	"track_lyrics_heading": "Track Lyrics",
+	"mixes_types_label": "Mix types",
+	"album_review_heading": "Album Review",
+	"album_credits_heading": "Album & Track Credits"
 }

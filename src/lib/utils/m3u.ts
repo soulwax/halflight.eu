@@ -1,26 +1,16 @@
-import type { TrackSummary } from '#lib/server/tidal/models';
+import type { TrackSummary } from '#lib/tidal/models';
+import { buildM3u, tidalTrackUrl } from '#lib/m3u';
 
 /**
- * Generates standard Extended M3U8 playlist content from a list of tracks.
- * Translates tiddl/core/utils/m3u.py:save_tracks_to_m3u.
+ * Extended M3U8 playlist content for a browser-side download, linking each track
+ * to its public `tidal.com` page.
  */
 export function generateM3u8(title: string, tracks: TrackSummary[]): string {
-	const lines: string[] = ['#EXTM3U', `#PLAYLIST:${title.trim()}`];
-
-	for (const track of tracks) {
-		const duration = Math.round(track.duration || 0);
-		const artistName = track.artists?.map((a) => a.name).join(', ') || 'Unknown Artist';
-		const trackTitle = track.title || 'Unknown Title';
-
-		lines.push(`#EXTINF:${duration},${artistName} - ${trackTitle}`);
-		lines.push(`https://tidal.com/browse/track/${encodeURIComponent(track.id)}`);
-	}
-
-	return lines.join('\n') + '\n';
+	return buildM3u({ title, tracks, trackUrl: tidalTrackUrl });
 }
 
 /**
- * Initiates client-side file download of M3U8 playlist content in the browser.
+ * Triggers a client-side file download of M3U8 playlist content in the browser.
  */
 export function downloadM3u8File(filename: string, content: string): void {
 	if (typeof window === 'undefined' || typeof document === 'undefined') return;

@@ -1,6 +1,6 @@
 import { error, json } from '@sveltejs/kit';
 import { updateUserPlaylist, deleteUserPlaylist } from '#lib/server/playlists';
-import type { TrackSummary } from '#lib/server/tidal/models';
+import type { TrackSummary } from '#lib/tidal/models';
 import type { RequestHandler } from './$types';
 
 interface UpdatePlaylistPayload {

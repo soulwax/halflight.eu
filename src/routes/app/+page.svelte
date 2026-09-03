@@ -100,8 +100,8 @@
 									type="button"
 									class="pl-delete-btn"
 									onclick={() => customPlaylists.deletePlaylist(playlist.id)}
-									title="Delete playlist"
-									aria-label="Delete playlist"
+									title={m.action_delete_playlist()}
+									aria-label={m.action_delete_playlist()}
 								>
 									<Trash2 size={13} />
 								</button>

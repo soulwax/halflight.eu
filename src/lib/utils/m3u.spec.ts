@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { generateM3u8 } from './m3u';
-import type { TrackSummary } from '#lib/server/tidal/models';
+import type { TrackSummary } from '#lib/tidal/models';
 
 describe('m3u8 playlist generator (translated from tiddl)', () => {
 	it('generates valid EXTM3U header and playlist title', () => {

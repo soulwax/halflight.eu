@@ -101,7 +101,7 @@ export {
 	VALID_RESOURCE_TYPES,
 	type TidalResourceType,
 	type ParsedTidalResource
-} from './resource';
+} from '#lib/tidal/resource';
 export { fetchUserFavorites, type UserFavorites, type UserFavoritesRaw } from './favorites';
 export {
 	fetchAlbumCredits,

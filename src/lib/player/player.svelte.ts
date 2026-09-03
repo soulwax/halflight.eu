@@ -1,4 +1,4 @@
-import type { TrackSummary } from '#lib/server/tidal/models';
+import type { TrackSummary } from '#lib/tidal/models';
 import { assessPlayback, type PlaybackAssessment } from './playback-assessment';
 
 export interface SavedPlaybackState {

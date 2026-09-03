@@ -1,34 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { TidalApiError, TidalAuthError } from '#lib/server/tidal/errors';
 
-const mocks = vi.hoisted(() => {
-	class MockTidalApiError extends Error {
-		constructor(readonly status: number) {
-			super(`TIDAL API ${status}`);
-		}
-	}
-
-	class MockTidalAuthError extends Error {}
-	class MockTidalNotConnectedError extends Error {}
-
-	return {
-		getConnectionStatus: vi.fn(),
-		getPlaylist: vi.fn(),
-		getPlaylistItems: vi.fn(),
-		MockTidalApiError,
-		MockTidalAuthError,
-		MockTidalNotConnectedError
-	};
-});
+const mocks = vi.hoisted(() => ({
+	getConnectionStatus: vi.fn(),
+	getPlaylist: vi.fn(),
+	getPlaylistItems: vi.fn()
+}));
 
 vi.mock('#lib/server/tidal', () => ({
 	getConnectionStatus: mocks.getConnectionStatus,
 	tidalApi: {
 		getPlaylist: mocks.getPlaylist,
 		getPlaylistItems: mocks.getPlaylistItems
-	},
-	TidalApiError: mocks.MockTidalApiError,
-	TidalAuthError: mocks.MockTidalAuthError,
-	TidalNotConnectedError: mocks.MockTidalNotConnectedError
+	}
 }));
 
 import { load } from './+page.server';
@@ -113,14 +97,16 @@ describe('/app/playlists/[id] load', () => {
 
 	it('maps a 404 upstream to not_found', async () => {
 		mocks.getConnectionStatus.mockResolvedValue({ connected: true, configured: true });
-		mocks.getPlaylist.mockRejectedValue(new mocks.MockTidalApiError(404));
+		mocks.getPlaylist.mockRejectedValue(
+			new TidalApiError(404, 'Not Found', null, '/playlists/playlist-1')
+		);
 
 		await expect(load(event())).resolves.toMatchObject({ state: 'not_found', playlist: null });
 	});
 
 	it('maps an expired authorization to reconnect', async () => {
 		mocks.getConnectionStatus.mockResolvedValue({ connected: true, configured: true });
-		mocks.getPlaylist.mockRejectedValue(new mocks.MockTidalAuthError());
+		mocks.getPlaylist.mockRejectedValue(new TidalAuthError());
 
 		await expect(load(event())).resolves.toMatchObject({
 			state: 'authorization_expired',

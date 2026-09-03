@@ -93,7 +93,7 @@
 							const m3uContent = generateM3u8(data.album.title, data.album.items);
 							downloadM3u8File(`${data.album.title}.m3u8`, m3uContent);
 						}}
-						title="Export as M3U8 Playlist"
+						title={m.action_export_m3u8()}
 						ariaLabel="Export as M3U8 Playlist"
 					>
 						<Download size={14} />
@@ -124,7 +124,7 @@
 
 		{#if data.review}
 			<section class="review-section" aria-labelledby="album-review-title">
-				<SectionHeader title="Album Review" titleId="album-review-title">
+				<SectionHeader title={m.album_review_heading()} titleId="album-review-title">
 					<BookOpen size={18} class="text-[var(--action)]" />
 					{#snippet actions()}
 						{#if data.review?.source}
@@ -156,7 +156,7 @@
 		{#if data.credits && data.credits.length}
 			<section class="credits-section" aria-labelledby="album-credits-title">
 				<SectionHeader
-					title="Album & Track Credits"
+					title={m.album_credits_heading()}
 					titleId="album-credits-title"
 					count={`${data.credits.length} tracks credited`}
 				>
@@ -202,7 +202,7 @@
 
 		<PageActions tidalUrl={tidalAlbumUrl} tidalLabel={m.album_open_in_tidal()} {retryHref} />
 	{:else}
-		<StateCard state={data.state} configured={data.configured} id={data.id} {retryHref} />
+		<StateCard state={data.state} configured={data.configured} {retryHref} />
 	{/if}
 </section>
 

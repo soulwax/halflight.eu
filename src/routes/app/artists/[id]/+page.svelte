@@ -123,7 +123,7 @@
 
 		<PageActions tidalUrl={tidalArtistUrl} tidalLabel={m.artist_open_in_tidal()} {retryHref} />
 	{:else}
-		<StateCard state={data.state} configured={data.configured} id={data.id} {retryHref} />
+		<StateCard state={data.state} configured={data.configured} {retryHref} />
 	{/if}
 
 	<p class="attribution">

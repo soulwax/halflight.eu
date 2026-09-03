@@ -4,8 +4,9 @@
 	import { player } from '#lib/player/player.svelte.js';
 	import { customPlaylists } from '#lib/player/customPlaylists.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
+	import { formatDuration } from '#lib/format';
 	import Badge from '#lib/components/ui/Badge.svelte';
-	import type { TrackSummary } from '#lib/server/tidal/models';
+	import type { TrackSummary } from '#lib/tidal/models';
 
 	let {
 		track,
@@ -20,12 +21,6 @@
 		showAlbum?: boolean;
 		parentArtistName?: string;
 	} = $props();
-
-	function formatDuration(seconds: number): string {
-		const minutes = Math.floor(seconds / 60);
-		const secs = seconds % 60;
-		return `${minutes}:${String(secs).padStart(2, '0')}`;
-	}
 
 	const hasDistinctArtists = $derived(
 		track.artists &&
@@ -88,8 +83,8 @@
 			type="button"
 			class="action-btn p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
 			onclick={() => customPlaylists.promptAddToPlaylist(track)}
-			title="Add to Custom Playlist"
-			aria-label="Add to Custom Playlist"
+			title={m.action_add_to_custom_playlist()}
+			aria-label={m.action_add_to_custom_playlist()}
 		>
 			<Plus size={14} />
 		</button>

@@ -4,7 +4,8 @@
 	import { player } from '#lib/player/player.svelte.js';
 	import { customPlaylists } from '#lib/player/customPlaylists.svelte';
 	import { m } from '#lib/paraglide/messages.js';
-	import type { TrackSummary } from '#lib/server/tidal/models';
+	import { formatDuration } from '#lib/format';
+	import type { TrackSummary } from '#lib/tidal/models';
 
 	let {
 		track,
@@ -18,13 +19,6 @@
 
 	let imageError = $state(false);
 	let queuedFeedback = $state(false);
-
-	function formatDuration(seconds?: number): string {
-		if (!seconds) return '';
-		const minutes = Math.floor(seconds / 60);
-		const secs = seconds % 60;
-		return `${minutes}:${String(secs).padStart(2, '0')}`;
-	}
 
 	function formatQuality(quality?: string): string {
 		if (!quality) return '';
@@ -123,7 +117,7 @@
 			{/if}
 
 			{#if track.explicit}
-				<span class="explicit-badge" title="Explicit">E</span>
+				<span class="explicit-badge" title={m.track_badge_explicit()}>E</span>
 			{/if}
 
 			{#if track.audioQuality}
@@ -131,7 +125,9 @@
 			{/if}
 
 			{#if track.popularity !== undefined && track.popularity > 0}
-				<span class="pop-badge font-mono" title="Popularity">{track.popularity}%</span>
+				<span class="pop-badge font-mono" title={m.track_badge_popularity()}
+					>{track.popularity}%</span
+				>
 			{/if}
 		</div>
 	</div>
@@ -166,8 +162,8 @@
 			type="button"
 			class="action-btn"
 			onclick={() => customPlaylists.promptAddToPlaylist(track)}
-			title="Add to Custom Playlist"
-			aria-label="Add to Custom Playlist"
+			title={m.action_add_to_custom_playlist()}
+			aria-label={m.action_add_to_custom_playlist()}
 		>
 			<Plus size={15} />
 		</button>
@@ -177,8 +173,8 @@
 			href={tidalTrackUrl}
 			target="_blank"
 			rel="noreferrer"
-			title="Open in TIDAL"
-			aria-label="Open in TIDAL"
+			title={m.action_open_in_tidal()}
+			aria-label={m.action_open_in_tidal()}
 		>
 			<ExternalLink size={13} />
 		</a>
