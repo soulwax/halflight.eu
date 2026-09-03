@@ -1,0 +1,26 @@
+name: syn-streamrip
+
+x-worker: &worker
+  build:
+    context: ..
+    dockerfile: worker/Dockerfile
+  image: syn-stream-worker:local
+  env_file:
+    - .env
+
+services:
+  api:
+    <<: *worker
+    ports:
+      - '${SYN_WORKER_PORT:-8080}:8080'
+    restart: unless-stopped
+
+  runner:
+    <<: *worker
+    command: ['syn-stream-worker-runner']
+    restart: unless-stopped
+
+  migrate:
+    <<: *worker
+    command: ['python', '/app/worker/scripts/migrate.py']
+    profiles: ['tools']

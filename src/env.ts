@@ -48,5 +48,15 @@ export const variables = defineEnvVars({
 		schema: optional,
 		description:
 			'Base64-encoded 32-byte key used to encrypt the stored TIDAL token record. Generate with `openssl rand -base64 32`.'
+	},
+	STREAMRIP_WORKER_URL: {
+		schema: optional,
+		description:
+			"HTTPS URL of Syn's self-hosted streamrip worker. When unset, worker playback and downloads are unavailable."
+	},
+	STREAMRIP_WORKER_TOKEN: {
+		schema: optional,
+		description:
+			"High-entropy bearer credential shared only by Syn's server and the self-hosted streamrip worker."
 	}
 });

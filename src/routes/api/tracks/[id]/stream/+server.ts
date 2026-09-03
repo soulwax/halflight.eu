@@ -1,74 +1,35 @@
 import { error, json, type RequestHandler } from '@sveltejs/kit';
-import {
-	getConnectionStatus,
-	resolveTrackStream,
-	TidalApiError,
-	TidalAuthError,
-	TidalPlaybackNotLinkedError,
-	TidalQualityDeniedError,
-	type TrackAudioQuality
-} from '#lib/server/tidal';
+import { getConnectionStatus } from '#lib/server/tidal';
 import { getStreamingSettings, isStreamingQuality } from '#lib/server/streaming-settings';
+import { createPlaybackJob } from '#lib/server/streamrip-jobs';
+import {
+	WorkerAuthenticationError,
+	WorkerConfigError,
+	WorkerUnavailableError,
+	type WorkerAudioQuality
+} from '#lib/server/worker';
 
-/**
- * The quality to start the ladder at: an explicit `?quality=` wins, otherwise the
- * signed-in owner's saved preference, otherwise the ladder's own default.
- */
-async function startQuality(event: {
+async function requestedQuality(event: {
 	url: URL;
 	locals: App.Locals;
-}): Promise<TrackAudioQuality | undefined> {
+}): Promise<Extract<WorkerAudioQuality, 'LOW' | 'HIGH' | 'LOSSLESS'>> {
 	const explicit = event.url.searchParams.get('quality')?.toUpperCase();
 	if (explicit && isStreamingQuality(explicit)) return explicit;
-	if (!event.locals.user) return undefined;
-	try {
-		return (await getStreamingSettings(event.locals.user.id)).preferredQuality;
-	} catch {
-		return undefined;
-	}
-}
-
-function isAuthProblem(err: unknown): boolean {
-	return (
-		err instanceof TidalPlaybackNotLinkedError ||
-		err instanceof TidalAuthError ||
-		(err instanceof TidalApiError && (err.status === 401 || err.status === 403))
-	);
-}
-
-/** A short, loggable reason for a playback failure. */
-function describe(err: unknown): string {
-	if (err instanceof TidalPlaybackNotLinkedError) return 'not_linked';
-	if (err instanceof TidalAuthError) return 'device_refresh_rejected';
-	if (err instanceof TidalQualityDeniedError)
-		return `plan_no_streaming (${err.triedQualities.join(',')})`;
-	if (err instanceof TidalApiError) {
-		const body = err.body as { subStatus?: number; userMessage?: string } | null;
-		return `tidal_${err.status}${body?.subStatus ? `_${body.subStatus}` : ''}: ${
-			body?.userMessage ?? err.statusText
-		}`;
-	}
-	return err instanceof Error ? err.message : 'unknown';
+	return (await getStreamingSettings(event.locals.user!.id)).preferredQuality;
 }
 
 /**
- * GET /api/tracks/[id]/stream
- *
- * Returns full playback metadata (stream URL, quality, codecs, ReplayGain) for a
- * track, walking down the quality ladder to whatever the account's plan allows.
- * A 403 with `requiresFullAuth: true` means the player should prompt for a TIDAL
- * Link; `reason: "plan_no_streaming"` means the plan has no streaming at all.
+ * Starts worker-owned playback. Syn returns a short-lived opaque worker URL and
+ * never proxies the audio/CDN response through Vercel.
  */
 export const GET: RequestHandler = async (event) => {
-	if (!event.locals.user) {
-		error(401, 'Unauthorized');
-	}
+	if (!event.locals.user) error(401, 'Unauthorized');
+	const trackId = event.params.id;
+	if (!trackId) error(400, 'Track ID required');
 
-	const status = await getConnectionStatus();
-	if (!status.configured) {
-		return json({ error: 'not_connected' }, { status: 503 });
-	}
-	if (!status.hasPlayback) {
+	const connection = await getConnectionStatus();
+	if (!connection.configured) return json({ error: 'not_connected' }, { status: 503 });
+	if (!connection.hasPlayback) {
 		return json(
 			{
 				error: 'playback_unauthorized',
@@ -80,43 +41,32 @@ export const GET: RequestHandler = async (event) => {
 		);
 	}
 
-	const trackId = event.params.id;
-	if (!trackId) {
-		error(400, 'Track ID required');
-	}
-
 	try {
-		const streamInfo = await resolveTrackStream(trackId, {
-			quality: await startQuality(event),
-			ctx: { fetch: event.fetch, cookies: event.cookies }
+		const settings = await getStreamingSettings(event.locals.user.id);
+		const result = await createPlaybackJob(
+			event.locals.user.id,
+			trackId,
+			await requestedQuality(event),
+			settings.loudnessNormalization,
+			event.fetch
+		);
+		return json({
+			streamUrl: result.session.playbackUrl,
+			jobId: result.jobId,
+			audioQuality: result.session.audioQuality,
+			mimeType: result.session.mimeType,
+			fileExtension: result.session.fileExtension,
+			expiresAt: result.session.expiresAt,
+			isPreview: false,
+			requiresFullAuth: false
 		});
-		return json({ ...streamInfo, isPreview: false, requiresFullAuth: false });
-	} catch (err) {
-		const reason = describe(err);
-		console.error(`[tidal] stream ${trackId} failed: ${reason}`);
-
-		if (err instanceof TidalQualityDeniedError) {
-			return json(
-				{
-					error: 'plan_no_streaming',
-					reason,
-					message: err.message,
-					requiresFullAuth: false
-				},
-				{ status: 403 }
-			);
+	} catch (cause) {
+		if (cause instanceof WorkerConfigError || cause instanceof WorkerUnavailableError) {
+			return json({ error: 'worker_unavailable', requiresFullAuth: false }, { status: 503 });
 		}
-		if (isAuthProblem(err)) {
-			return json(
-				{
-					error: 'playback_unauthorized',
-					reason,
-					message: err instanceof Error ? err.message : 'Full playback authorization required.',
-					requiresFullAuth: true
-				},
-				{ status: 403 }
-			);
+		if (cause instanceof WorkerAuthenticationError) {
+			return json({ error: 'worker_misconfigured', requiresFullAuth: false }, { status: 503 });
 		}
-		return json({ error: 'stream_unavailable', reason }, { status: 404 });
+		return json({ error: 'stream_unavailable', requiresFullAuth: false }, { status: 404 });
 	}
 };

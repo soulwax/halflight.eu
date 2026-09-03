@@ -234,11 +234,10 @@ export class PlayerState {
 					this.requiresFullAuth = data.requiresFullAuth ?? false;
 					this.playbackMode = 'direct';
 
-					// Use the server-side audio proxy to avoid TIDAL CDN CORS restrictions.
-					// The proxy at /api/tracks/[id]/audio fetches the CDN URL server-to-server
-					// and pipes it back, so the browser <audio> element never hits the CDN directly.
-					const proxyUrl = `/api/tracks/${encodeURIComponent(trackId)}/audio`;
-					this.audio.src = proxyUrl;
+					// The self-hosted worker returns an opaque, expiring playback ticket. It
+					// serves media itself, keeping TIDAL/CDN bytes and conversion work off Vercel.
+					if (!data.streamUrl) throw new Error('Worker response did not include a playback URL.');
+					this.audio.src = data.streamUrl;
 					this.applyVolume();
 					await this.audio.play().catch(() => {
 						this.playbackMode = 'embed';

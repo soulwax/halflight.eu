@@ -1,0 +1,32 @@
+CREATE TABLE "streamrip_job" (
+	"id" text PRIMARY KEY NOT NULL,
+	"user_id" text NOT NULL,
+	"track_id" text NOT NULL,
+	"kind" text NOT NULL,
+	"status" text DEFAULT 'queued' NOT NULL,
+	"requested_quality" text DEFAULT 'HIGH' NOT NULL,
+	"output_format" text DEFAULT 'source' NOT NULL,
+	"worker_job_id" text,
+	"audio_quality" text,
+	"mime_type" text,
+	"codecs" text,
+	"file_extension" text,
+	"bit_depth" integer,
+	"sample_rate" integer,
+	"track_replay_gain" real,
+	"artifact_key" text,
+	"artifact_size" integer,
+	"error_code" text,
+	"attempts" integer DEFAULT 0 NOT NULL,
+	"expires_at" timestamp with time zone,
+	"completed_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "streamrip_job_worker_job_id_unique" UNIQUE("worker_job_id"),
+	CONSTRAINT "streamrip_job_kind" CHECK ("streamrip_job"."kind" in ('playback', 'download')),
+	CONSTRAINT "streamrip_job_status" CHECK ("streamrip_job"."status" in ('queued', 'preparing', 'ready', 'downloading', 'completed', 'failed', 'expired')),
+	CONSTRAINT "streamrip_job_quality" CHECK ("streamrip_job"."requested_quality" in ('LOW', 'HIGH', 'LOSSLESS')),
+	CONSTRAINT "streamrip_job_output_format" CHECK ("streamrip_job"."output_format" in ('source', 'flac', 'aac', 'mp3', 'opus'))
+);
+--> statement-breakpoint
+ALTER TABLE "streamrip_job" ADD CONSTRAINT "streamrip_job_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
