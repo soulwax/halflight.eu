@@ -336,44 +336,6 @@
 		background: var(--bauhaus-red);
 	}
 
-	.debug-card {
-		margin-top: 1.5rem;
-		display: flex;
-		flex-direction: column;
-		gap: 1rem;
-	}
-
-	.debug-header {
-		display: flex;
-		align-items: flex-start;
-		gap: 0.75rem;
-	}
-
-	.debug-header h2 {
-		margin: 0 0 0.25rem;
-		font-size: 1.2rem;
-		font-weight: 800;
-		text-transform: uppercase;
-	}
-
-	.debug-header p {
-		margin: 0;
-		color: var(--text-muted);
-		font-size: 0.85rem;
-	}
-
-	.token-group {
-		display: flex;
-		flex-direction: column;
-		gap: 0.4rem;
-	}
-
-	.token-label-row {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-	}
-
 	.device-auth-card {
 		position: relative;
 		margin-top: 1.5rem;
@@ -471,61 +433,6 @@
 		color: var(--text-muted);
 		font-size: 0.8rem;
 		font-family: var(--font-mono, monospace);
-	}
-
-	.token-label-row label {
-		color: var(--text-muted);
-		font-size: 0.8rem;
-		font-weight: 800;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-	}
-
-	.copy-button {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.35rem;
-		border: 1px solid var(--border-strong);
-		border-radius: var(--radius-sm, 6px);
-		background: var(--surface-canvas);
-		padding: 0.35rem 0.75rem;
-		color: var(--text-primary);
-		font: inherit;
-		font-size: 0.75rem;
-		font-weight: 800;
-		text-transform: uppercase;
-		letter-spacing: 0.04em;
-		cursor: pointer;
-		transition: all 0.12s ease;
-	}
-
-	.copy-button:hover {
-		border-color: var(--action);
-		background: var(--surface-selected);
-		color: var(--action);
-	}
-
-	.token-input {
-		width: 100%;
-		border: 2px solid var(--border-subtle);
-		border-radius: var(--radius-sm, 6px);
-		background: var(--surface-canvas);
-		padding: 0.65rem 0.75rem;
-		color: var(--text-primary);
-		font-family: ui-monospace, monospace;
-		font-size: 0.85rem;
-	}
-
-	.token-input:focus {
-		border-color: var(--action);
-		outline: none;
-	}
-
-	.debug-warning {
-		margin: 0;
-		color: var(--text-muted);
-		font-size: 0.8rem;
-		font-style: italic;
 	}
 
 	.notice {
