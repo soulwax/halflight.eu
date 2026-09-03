@@ -12,18 +12,18 @@
 </script>
 
 <svelte:head>
-	<title>Syn — Bauhaus Sound</title>
+	<title>Syn</title>
 	<meta name="description" content={m.home_subtitle()} />
 </svelte:head>
 
 <section class="welcome" aria-labelledby="home-title">
 	<header class="hero-header">
-		<div class="stripe-bar" aria-hidden="true">
-			<span class="stripe stripe-blue"></span>
-			<span class="stripe stripe-red"></span>
-			<span class="stripe stripe-yellow"></span>
+		<div class="hero-mark" aria-hidden="true">
+			<span class="hero-mark-line"></span>
+			<span class="hero-mark-node"></span>
+			<span class="hero-mark-line"></span>
 		</div>
-		<p class="eyebrow">SYN // SOUND LABORATORY</p>
+		<p class="deco-eyebrow">SYN — Sound Laboratory</p>
 		<h1 id="home-title">{m.home_title({ name: data.user.name })}</h1>
 		<p class="intro">{m.home_subtitle()}</p>
 	</header>
@@ -185,77 +185,75 @@
 
 <style>
 	.welcome {
-		max-width: 64rem;
+		max-width: 100%;
 	}
 
 	.hero-header {
 		position: relative;
-		margin-bottom: 2rem;
-		border-bottom: 2px solid var(--border-subtle);
-		padding-bottom: 1.75rem;
+		margin-bottom: var(--space-section);
+		border-bottom: 1px solid var(--border-subtle);
+		padding-bottom: clamp(1.75rem, 4vw, 2.75rem);
 	}
 
-	.stripe-bar {
+	.hero-mark {
 		display: flex;
-		height: 4px;
-		width: 4.5rem;
-		margin-bottom: 1.5rem;
-		gap: 2px;
+		align-items: center;
+		gap: 0.6rem;
+		width: 7rem;
+		margin-bottom: 1.75rem;
 	}
 
-	.stripe {
+	.hero-mark-line {
+		height: 1px;
 		flex: 1;
+		background: var(--accent-gold-deep);
 	}
 
-	.stripe-blue {
-		background: var(--bauhaus-blue);
-	}
-	.stripe-red {
-		background: var(--bauhaus-red);
-	}
-	.stripe-yellow {
-		background: var(--bauhaus-yellow);
-	}
-
-	.eyebrow {
-		margin: 0 0 0.5rem;
-		color: var(--text-muted);
-		font-family: ui-monospace, monospace;
-		font-size: 0.75rem;
-		font-weight: 800;
-		letter-spacing: 0.14em;
-		text-transform: uppercase;
+	.hero-mark-node {
+		width: 6px;
+		height: 6px;
+		rotate: 45deg;
+		background: var(--accent-gold);
 	}
 
 	h1 {
-		margin: 0;
-		font-size: clamp(2.4rem, 5vw, 3.8rem);
-		font-weight: 800;
-		letter-spacing: -0.04em;
-		line-height: 1.05;
-		text-transform: uppercase;
+		margin: 0.9rem 0 0;
+		font-size: clamp(2.6rem, 5.5vw, 4.25rem);
+		letter-spacing: 0.005em;
+		line-height: 1.06;
 	}
 
 	.intro {
-		margin: 0.75rem 0 0;
+		margin: 1.1rem 0 0;
+		max-width: 42rem;
 		color: var(--text-muted);
-		font-size: 1.1rem;
-		line-height: 1.5;
+		font-size: 1.15rem;
+		line-height: 1.65;
 	}
 
 	/* Composer Hero Banner */
 	.composer-hero {
+		position: relative;
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		flex-wrap: wrap;
-		gap: 2rem;
-		margin-bottom: 3.5rem;
-		padding: 2rem 2.25rem;
+		gap: 2.25rem;
+		margin-bottom: var(--space-section);
+		padding: clamp(2rem, 4vw, 3rem);
 		background: var(--surface-raised);
-		border: 2px solid var(--border-strong);
-		border-radius: var(--radius-lg, 14px);
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-lg);
 		box-shadow: var(--shadow-bauhaus);
+		overflow: hidden;
+	}
+
+	.composer-hero::before {
+		content: '';
+		position: absolute;
+		inset: 7px;
+		border: 1px solid color-mix(in oklab, var(--accent-gold) 22%, transparent);
+		pointer-events: none;
 	}
 
 	.composer-content {
@@ -265,25 +263,22 @@
 	.composer-badge {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.45rem;
-		padding: 0.25rem 0.75rem;
-		background: var(--action);
-		color: var(--action-contrast);
-		font-family: ui-monospace, monospace;
-		font-size: 0.7rem;
-		font-weight: 800;
-		letter-spacing: 0.08em;
+		gap: 0.5rem;
+		padding: 0.3rem 0.85rem;
+		border: 1px solid var(--accent-gold-deep);
+		color: var(--accent-gold);
+		font-size: 0.66rem;
+		font-weight: 700;
+		letter-spacing: 0.22em;
 		text-transform: uppercase;
-		border-radius: var(--radius-full, 9999px);
-		margin-bottom: 0.85rem;
+		border-radius: 0;
+		margin-bottom: 1.1rem;
 	}
 
 	.composer-hero h2 {
-		margin: 0 0 0.5rem;
-		font-size: 1.45rem;
-		font-weight: 800;
-		letter-spacing: -0.02em;
-		text-transform: uppercase;
+		margin: 0 0 0.6rem;
+		font-size: clamp(1.5rem, 2.5vw, 1.9rem);
+		letter-spacing: 0.02em;
 	}
 
 	.composer-desc {
@@ -466,47 +461,47 @@
 
 	/* Mix Section */
 	.mix-section {
-		margin-bottom: 4rem;
+		margin-bottom: var(--space-section);
 	}
 
 	.section-heading {
 		display: flex;
 		align-items: flex-end;
 		justify-content: space-between;
-		margin-bottom: 1.5rem;
-		border-bottom: 2px solid var(--border-subtle);
-		padding-bottom: 0.85rem;
+		gap: 1.5rem;
+		margin-bottom: 2rem;
+		border-bottom: 1px solid var(--border-subtle);
+		padding-bottom: 1.1rem;
 	}
 
 	.section-heading h2 {
 		margin: 0;
-		font-size: 1.45rem;
-		font-weight: 800;
-		letter-spacing: -0.03em;
-		text-transform: uppercase;
+		font-size: clamp(1.5rem, 2.4vw, 1.95rem);
+		letter-spacing: 0.02em;
 	}
 
 	.play-mix-btn {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.45rem;
-		border: 1px solid var(--action);
-		border-radius: var(--radius-sm, 6px);
+		gap: 0.5rem;
+		border: 1px solid var(--accent-gold-deep);
+		border-radius: 0;
 		background: var(--action);
 		color: var(--action-contrast);
-		padding: 0.5rem 1.15rem;
+		padding: 0.6rem 1.3rem;
 		font: inherit;
-		font-size: 0.8rem;
-		font-weight: 800;
-		letter-spacing: 0.04em;
+		font-size: 0.72rem;
+		font-weight: 700;
+		letter-spacing: 0.16em;
 		text-transform: uppercase;
 		cursor: pointer;
-		transition: all 0.12s ease;
+		transition:
+			filter 0.14s ease,
+			box-shadow 0.14s ease;
 	}
 
 	.play-mix-btn:hover {
-		box-shadow: 2px 2px 0px var(--border-strong);
-		transform: translate(-1px, -1px);
+		box-shadow: var(--shadow-bauhaus-hover);
 	}
 
 	.song-cards-grid {
@@ -524,43 +519,59 @@
 	.mix-link {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.45rem;
+		gap: 0.5rem;
 		color: var(--text-primary);
-		font-weight: 800;
-		font-size: 0.85rem;
+		font-weight: 600;
+		font-size: 0.72rem;
 		text-transform: uppercase;
-		letter-spacing: 0.04em;
+		letter-spacing: 0.16em;
 		text-decoration: none;
-		border-bottom: 2px solid var(--action);
-		padding-bottom: 0.2rem;
-		transition: all 0.12s ease;
+		border-bottom: 1px solid var(--accent-gold);
+		padding-bottom: 0.3rem;
+		transition:
+			color 0.14s ease,
+			gap 0.14s ease;
 	}
 
 	.mix-link:hover {
 		color: var(--action);
-		gap: 0.65rem;
+		gap: 0.75rem;
 	}
 
 	.actions-grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
-		gap: 1.5rem;
+		gap: 1.75rem;
 	}
 
 	.action-card {
 		position: relative;
-		border: 2px solid var(--border-subtle);
-		border-radius: var(--radius-lg, 14px);
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-lg);
 		background: var(--surface-raised);
-		padding: clamp(1.5rem, 3.5vw, 2rem);
+		padding: clamp(1.75rem, 3.5vw, 2.5rem);
 		overflow: hidden;
-		transition: all 0.15s ease;
+		transition:
+			border-color 0.16s ease,
+			box-shadow 0.16s ease;
+	}
+
+	.action-card::before {
+		content: '';
+		position: absolute;
+		inset: 6px;
+		border: 1px solid transparent;
+		transition: border-color 0.16s ease;
+		pointer-events: none;
 	}
 
 	.action-card:hover {
-		border-color: var(--border-strong);
+		border-color: var(--accent-gold-deep);
 		box-shadow: var(--shadow-bauhaus);
-		transform: translate(-1px, -1px);
+	}
+
+	.action-card:hover::before {
+		border-color: color-mix(in oklab, var(--accent-gold) 24%, transparent);
 	}
 
 	.card-indicator {
@@ -568,56 +579,54 @@
 		top: 0;
 		left: 0;
 		right: 0;
-		height: 4px;
+		height: 2px;
 	}
 
 	.indicator-blue {
-		background: var(--bauhaus-blue);
+		background: var(--accent-jade);
 	}
 	.indicator-yellow {
-		background: var(--bauhaus-yellow);
+		background: var(--accent-gold);
 	}
 	.indicator-red {
-		background: var(--bauhaus-red);
+		background: var(--accent-oxblood);
 	}
 
 	.action-card h2 {
-		margin: 0.5rem 0 0.5rem;
-		font-size: 1.25rem;
-		font-weight: 800;
-		letter-spacing: -0.02em;
-		text-transform: uppercase;
+		margin: 0.65rem 0 0.6rem;
+		font-size: 1.35rem;
+		letter-spacing: 0.02em;
 	}
 
 	.action-card p {
-		margin: 0 0 1.5rem;
+		margin: 0 0 1.75rem;
 		color: var(--text-muted);
-		font-size: 0.9rem;
-		line-height: 1.5;
+		font-size: 0.95rem;
+		line-height: 1.6;
 	}
 
 	.action-card a {
 		display: inline-flex;
-		min-height: 2.75rem;
+		min-height: 2.85rem;
 		align-items: center;
 		justify-content: center;
-		border: 2px solid var(--border-strong);
-		border-radius: var(--radius-sm, 6px);
+		border: 1px solid var(--accent-gold-deep);
+		border-radius: 0;
 		background: var(--action);
-		padding: 0.6rem 1.25rem;
+		padding: 0.65rem 1.5rem;
 		color: var(--action-contrast);
-		font-weight: 800;
-		font-size: 0.85rem;
-		letter-spacing: 0.04em;
+		font-weight: 700;
+		font-size: 0.72rem;
+		letter-spacing: 0.16em;
 		text-transform: uppercase;
-
 		text-decoration: none;
-		transition: all 0.12s ease;
+		transition:
+			filter 0.14s ease,
+			box-shadow 0.14s ease;
 	}
 
 	.action-card a:hover {
-		box-shadow: 2px 2px 0px var(--border-strong);
-		transform: translate(-1px, -1px);
+		box-shadow: var(--shadow-bauhaus-hover);
 	}
 
 	.connect-card {

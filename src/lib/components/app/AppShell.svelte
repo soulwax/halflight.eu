@@ -51,10 +51,12 @@
 
 		<main
 			id="main-content"
-			class="min-w-0 flex-1 px-6 py-8 pb-36 sm:px-10 sm:py-12 lg:px-14 lg:py-12 lg:pb-36"
+			class="min-w-0 flex-1 px-6 py-10 pb-40 sm:px-12 sm:py-16 lg:px-20 lg:py-20 lg:pb-40"
 			tabindex="-1"
 		>
-			{@render children()}
+			<div class="mx-auto w-full max-w-[var(--content-max)]">
+				{@render children()}
+			</div>
 		</main>
 	</div>
 </div>

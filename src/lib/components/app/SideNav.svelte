@@ -28,23 +28,26 @@
 </script>
 
 <aside
-	class="hidden w-64 shrink-0 border-r-2 border-[var(--border-subtle)] bg-[var(--surface-raised)] md:flex md:flex-col"
+	class="relative hidden w-72 shrink-0 border-r border-[var(--border-subtle)] bg-[var(--surface-raised)] md:flex md:flex-col"
 >
+	<span
+		class="pointer-events-none absolute inset-y-0 right-[3px] w-px bg-[color-mix(in_oklab,var(--accent-gold)_28%,transparent)]"
+	></span>
 	<div
-		class="flex min-h-18 items-center justify-between border-b-2 border-[var(--border-subtle)] px-6"
+		class="flex min-h-20 items-center justify-between border-b border-[var(--border-subtle)] px-7"
 	>
 		<a
-			class="flex items-center gap-2 text-xl font-extrabold tracking-tighter uppercase"
+			class="flex items-center gap-3 font-[family-name:var(--font-display)] text-2xl tracking-[0.14em] uppercase"
 			href={brand.href}
 		>
-			<span class="inline-block h-3 w-3 bg-[var(--action)]"></span>
+			<span class="inline-block h-2.5 w-2.5 rotate-45 bg-[var(--accent-gold)]"></span>
 			{brand.label}
 		</a>
-		<span class="font-mono text-xs font-bold tracking-widest text-[var(--text-muted)]">01</span>
+		<span class="font-mono text-[0.65rem] tracking-[0.3em] text-[var(--text-muted)]">I</span>
 	</div>
 
-	<nav class="p-3" aria-label={navigationLabel}>
-		<ul class="space-y-1">
+	<nav class="px-3 py-5" aria-label={navigationLabel}>
+		<ul class="space-y-0.5">
 			{#each navigation as item (item.href)}
 				{@const current = isCurrentNavigationItem(item, currentPath)}
 				<li>

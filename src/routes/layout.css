@@ -5,63 +5,101 @@
 :root {
 	color-scheme: dark;
 
-	/* Dimmed Bauhaus Architectural Palette */
-	--bauhaus-blue: oklch(0.55 0.14 250);
-	--bauhaus-red: oklch(0.58 0.16 28);
-	--bauhaus-yellow: oklch(0.78 0.13 80);
+	/* ---- Deco palette: warm charcoal ground, ivory ink, brass + jade accents ---- */
+	--accent-gold: oklch(0.82 0.1 86);
+	--accent-gold-deep: oklch(0.7 0.1 82);
+	--accent-jade: oklch(0.64 0.075 168);
+	--accent-oxblood: oklch(0.53 0.13 24);
 
-	--surface-canvas: oklch(0.15 0.008 260);
-	--surface-raised: oklch(0.19 0.012 260);
-	--surface-selected: oklch(0.25 0.02 250);
-	--border-subtle: oklch(0.28 0.012 260);
-	--border-strong: oklch(0.44 0.018 260);
-	--text-primary: oklch(0.95 0.005 260);
-	--text-muted: oklch(0.7 0.012 260);
+	/* Legacy triad names kept so component styles stay wired — repointed to the deco set. */
+	--bauhaus-blue: oklch(0.55 0.06 214);
+	--bauhaus-red: var(--accent-oxblood);
+	--bauhaus-yellow: var(--accent-gold);
 
-	--action: var(--bauhaus-blue);
-	--action-contrast: #ffffff;
-	--danger: var(--bauhaus-red);
-	--danger-subtle: oklch(0.26 0.06 28);
-	--focus-ring: var(--bauhaus-yellow);
+	--surface-canvas: oklch(0.16 0.006 60);
+	--surface-raised: oklch(0.2 0.007 62);
+	--surface-selected: oklch(0.27 0.012 66);
+	--border-subtle: oklch(0.32 0.008 66);
+	--border-strong: oklch(0.56 0.03 80);
+	--text-primary: oklch(0.94 0.008 78);
+	--text-muted: oklch(0.72 0.014 78);
 
-	/* Tasteful Rounded Bauhaus Geometry */
-	--radius-xs: 4px;
-	--radius-sm: 6px;
-	--radius-md: 10px;
-	--radius-lg: 14px;
-	--radius-xl: 18px;
+	--action: var(--accent-gold);
+	--action-contrast: oklch(0.18 0.01 70);
+	--danger: var(--accent-oxblood);
+	--danger-subtle: oklch(0.28 0.06 24);
+	--focus-ring: var(--accent-gold);
+
+	/* ---- Deco geometry: sharp, near-flat. Curves are the exception, not the default. ---- */
+	--radius-xs: 0px;
+	--radius-sm: 1px;
+	--radius-md: 2px;
+	--radius-lg: 3px;
+	--radius-xl: 4px;
 	--radius-full: 9999px;
 
-	--shadow-raised: 0 8px 24px -4px rgba(0, 0, 0, 0.35), 3px 3px 0px var(--border-strong);
-	--shadow-bauhaus: 3px 3px 0px var(--border-strong);
-	--shadow-bauhaus-hover: 4px 4px 0px var(--action);
+	/* ---- Generous vertical rhythm ---- */
+	--space-section: clamp(3rem, 7vw, 5.25rem);
+	--space-panel: clamp(1.75rem, 3.5vw, 2.75rem);
+	--content-max: 74rem;
+
+	--font-display: 'Marcellus', ui-serif, Georgia, 'Times New Roman', serif;
+
+	/* ---- Contours: hairline metal rules + a quiet lift, never a hard poster offset ---- */
+	--hairline: 1px solid var(--border-subtle);
+	--rule-gold: linear-gradient(
+		90deg,
+		transparent,
+		var(--border-subtle) 8%,
+		var(--accent-gold-deep) 50%,
+		var(--border-subtle) 92%,
+		transparent
+	);
+	--shadow-raised:
+		0 1px 0 0 color-mix(in oklab, var(--accent-gold) 12%, transparent) inset,
+		0 18px 48px -24px rgba(0, 0, 0, 0.7);
+	--shadow-bauhaus:
+		0 1px 0 0 color-mix(in oklab, var(--accent-gold) 10%, transparent) inset,
+		0 12px 32px -20px rgba(0, 0, 0, 0.6);
+	--shadow-bauhaus-hover:
+		0 0 0 1px var(--accent-gold-deep) inset, 0 16px 40px -20px rgba(0, 0, 0, 0.65);
 }
 
 @media (prefers-color-scheme: light) {
 	:root {
 		color-scheme: light;
 
-		--bauhaus-blue: oklch(0.48 0.13 250);
-		--bauhaus-red: oklch(0.52 0.15 28);
-		--bauhaus-yellow: oklch(0.74 0.12 80);
+		--accent-gold: oklch(0.62 0.11 74);
+		--accent-gold-deep: oklch(0.52 0.11 70);
+		--accent-jade: oklch(0.5 0.09 168);
+		--accent-oxblood: oklch(0.46 0.15 24);
 
-		--surface-canvas: #f5f4ef;
-		--surface-raised: #ffffff;
-		--surface-selected: #eaeff5;
-		--border-subtle: #dbd9d0;
-		--border-strong: #28292d;
-		--text-primary: #1c1d21;
-		--text-muted: #5e6068;
+		--bauhaus-blue: oklch(0.46 0.07 214);
+		--bauhaus-red: var(--accent-oxblood);
+		--bauhaus-yellow: var(--accent-gold);
 
-		--action: var(--bauhaus-blue);
-		--action-contrast: #ffffff;
-		--danger: var(--bauhaus-red);
-		--danger-subtle: #fbeae8;
-		--focus-ring: var(--bauhaus-yellow);
+		--surface-canvas: oklch(0.96 0.008 84);
+		--surface-raised: oklch(0.99 0.004 84);
+		--surface-selected: oklch(0.92 0.012 84);
+		--border-subtle: oklch(0.82 0.014 82);
+		--border-strong: oklch(0.34 0.02 74);
+		--text-primary: oklch(0.22 0.014 74);
+		--text-muted: oklch(0.44 0.016 74);
 
-		--shadow-raised: 0 8px 20px -4px rgba(0, 0, 0, 0.1), 3px 3px 0px #28292d;
-		--shadow-bauhaus: 3px 3px 0px #28292d;
-		--shadow-bauhaus-hover: 4px 4px 0px var(--action);
+		--action: var(--accent-gold);
+		--action-contrast: oklch(0.99 0.004 84);
+		--danger: var(--accent-oxblood);
+		--danger-subtle: oklch(0.92 0.05 24);
+		--focus-ring: var(--accent-gold-deep);
+
+		--shadow-raised:
+			0 1px 0 0 color-mix(in oklab, var(--accent-gold) 22%, transparent) inset,
+			0 18px 44px -26px rgba(40, 32, 12, 0.28);
+		--shadow-bauhaus:
+			0 1px 0 0 color-mix(in oklab, var(--accent-gold) 18%, transparent) inset,
+			0 12px 30px -22px rgba(40, 32, 12, 0.24);
+		--shadow-bauhaus-hover:
+			0 0 0 1px var(--accent-gold-deep) inset, 0 16px 36px -22px rgba(40, 32, 12, 0.26);
 	}
 }
 
@@ -77,7 +115,13 @@
 	body {
 		min-width: 20rem;
 		margin: 0;
-		background: var(--surface-canvas);
+		background:
+			radial-gradient(
+				120% 80% at 50% -20%,
+				color-mix(in oklab, var(--accent-gold) 6%, transparent),
+				transparent 60%
+			),
+			var(--surface-canvas);
 		color: var(--text-primary);
 		font-family:
 			system-ui,
@@ -86,32 +130,128 @@
 			'Segoe UI',
 			Roboto,
 			sans-serif;
-		letter-spacing: -0.01em;
+		letter-spacing: 0;
+		line-height: 1.6;
+	}
+
+	h1,
+	h2,
+	h3 {
+		font-family: var(--font-display);
+		font-weight: 400;
+		letter-spacing: 0.01em;
 	}
 
 	:focus-visible {
-		outline: 3px solid var(--focus-ring);
-		outline-offset: 2px;
-		border-radius: var(--radius-xs);
+		outline: 2px solid var(--focus-ring);
+		outline-offset: 3px;
+		border-radius: 0;
 	}
 }
 
 @layer components {
+	/* ---- Deco building blocks ---- */
+
+	/* Eyebrow / kicker: small caps, wide tracking, brass. */
+	.deco-eyebrow {
+		display: inline-block;
+		color: var(--accent-gold-deep);
+		font-family: system-ui, sans-serif;
+		font-size: 0.7rem;
+		font-weight: 700;
+		letter-spacing: 0.32em;
+		text-transform: uppercase;
+	}
+
+	/* A centred thin–thick–thin rule with a diamond node — the classic deco divider. */
+	.deco-rule {
+		position: relative;
+		height: 1px;
+		border: 0;
+		margin: var(--space-section) 0;
+		background: var(--rule-gold);
+	}
+	.deco-rule::after {
+		content: '';
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		width: 7px;
+		height: 7px;
+		translate: -50% -50%;
+		rotate: 45deg;
+		background: var(--accent-gold);
+		box-shadow: 0 0 0 4px var(--surface-canvas);
+	}
+
+	/* Panel: hairline border + an inset second rule (double-line deco frame) + notched top corners. */
+	.deco-panel {
+		position: relative;
+		background: var(--surface-raised);
+		border: var(--hairline);
+		box-shadow:
+			inset 0 0 0 1px transparent,
+			inset 0 0 0 5px transparent;
+		padding: var(--space-panel);
+		border-radius: var(--radius-lg);
+	}
+	.deco-panel::before {
+		content: '';
+		position: absolute;
+		inset: 6px;
+		border: 1px solid color-mix(in oklab, var(--accent-gold) 22%, transparent);
+		pointer-events: none;
+	}
+	.deco-panel--stepped {
+		clip-path: polygon(
+			14px 0,
+			calc(100% - 14px) 0,
+			calc(100% - 14px) 7px,
+			100% 7px,
+			100% calc(100% - 14px),
+			calc(100% - 14px) calc(100% - 14px),
+			calc(100% - 14px) 100%,
+			14px 100%,
+			14px calc(100% - 14px),
+			0 calc(100% - 14px),
+			0 7px,
+			14px 7px
+		);
+	}
+
+	/* Sunburst corner flourish — attach to a positioned container. */
+	.deco-sunburst::after {
+		content: '';
+		position: absolute;
+		top: 0;
+		right: 0;
+		width: 84px;
+		height: 84px;
+		background: repeating-conic-gradient(
+			from 0deg at 100% 0,
+			color-mix(in oklab, var(--accent-gold) 30%, transparent) 0deg 4deg,
+			transparent 4deg 12deg
+		);
+		mask: radial-gradient(120% 120% at 100% 0, #000 40%, transparent 72%);
+		pointer-events: none;
+	}
+
+	/* ---- App chrome ---- */
+
 	.app-skip-link {
 		position: fixed;
 		z-index: 50;
 		top: 0.75rem;
 		left: 0.75rem;
 		transform: translateY(-200%);
-		border: 2px solid var(--text-primary);
-		background: var(--action);
-		padding: 0.625rem 0.875rem;
-		color: var(--action-contrast);
+		border: 1px solid var(--accent-gold);
+		background: var(--surface-raised);
+		padding: 0.7rem 1rem;
+		color: var(--accent-gold);
 		font-weight: 700;
 		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		border-radius: var(--radius-sm);
-		box-shadow: 3px 3px 0px var(--text-primary);
+		letter-spacing: 0.18em;
+		border-radius: 0;
 	}
 
 	.app-skip-link:focus {
@@ -124,17 +264,22 @@
 		display: flex;
 		color: var(--text-muted);
 		text-decoration: none;
-		border-radius: var(--radius-md);
-		transition: all 120ms cubic-bezier(0.16, 1, 0.3, 1);
+		border-radius: 0;
+		transition:
+			color 140ms ease,
+			background-color 140ms ease,
+			box-shadow 140ms ease;
 	}
 
 	.app-nav-link {
-		min-height: 2.85rem;
+		position: relative;
+		min-height: 3rem;
 		align-items: center;
-		padding: 0.65rem 1.15rem;
+		padding: 0.7rem 1.15rem 0.7rem 1.35rem;
+		font-size: 0.83rem;
 		font-weight: 600;
-		letter-spacing: 0.02em;
-		margin-bottom: 0.25rem;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
 	}
 
 	.app-nav-link:hover,
@@ -145,41 +290,45 @@
 	}
 
 	.app-nav-link-current {
-		background: var(--surface-selected);
+		background: linear-gradient(
+			90deg,
+			color-mix(in oklab, var(--accent-gold) 12%, transparent),
+			transparent 70%
+		);
 		color: var(--text-primary);
 		font-weight: 700;
-		box-shadow: inset 3px 0 0 var(--action);
+		box-shadow: inset 3px 0 0 var(--accent-gold);
 	}
 
 	.app-mobile-nav-link-current {
 		background: var(--surface-selected);
 		color: var(--text-primary);
-		border-bottom: 3px solid var(--action);
+		border-top: 2px solid var(--accent-gold);
 		font-weight: 700;
 	}
 
 	.app-account-link {
-		min-height: 2.85rem;
+		min-height: 3rem;
 		flex-direction: column;
 		justify-content: center;
-		padding: 0.65rem 1rem;
-		border: 1px solid var(--border-subtle);
+		padding: 0.75rem 1rem;
+		border: var(--hairline);
 		background: var(--surface-canvas);
 	}
 
 	.app-account-link:hover {
-		border-color: var(--border-strong);
+		border-color: var(--accent-gold-deep);
 	}
 
 	.app-mobile-nav-link {
-		min-height: 3rem;
+		min-height: 3.1rem;
 		align-items: center;
 		justify-content: center;
 		padding: 0.6rem;
-		font-size: 0.75rem;
+		font-size: 0.68rem;
 		font-weight: 700;
 		text-transform: uppercase;
-		letter-spacing: 0.05em;
+		letter-spacing: 0.16em;
 		text-align: center;
 	}
 }
