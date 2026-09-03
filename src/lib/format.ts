@@ -29,3 +29,16 @@ export function formatClock(seconds: number | null | undefined): string {
 	if (seconds == null || !Number.isFinite(seconds) || seconds < 0) return '0:00';
 	return clock(seconds);
 }
+
+export type QualityTier = 'lossy' | 'lossless' | 'hires';
+
+/**
+ * Group a TIDAL audio-quality string into a tier so badges can colour by fidelity
+ * (grey lossy / cyan lossless / gold HiRes), mirroring tiddl's CLI colour scheme.
+ */
+export function qualityTier(quality: string | null | undefined): QualityTier {
+	const q = quality?.toUpperCase();
+	if (q === 'HI_RES_LOSSLESS' || q === 'HI_RES') return 'hires';
+	if (q === 'LOSSLESS') return 'lossless';
+	return 'lossy';
+}

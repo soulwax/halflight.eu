@@ -19,7 +19,7 @@ Claude-specific working agreement and the architecture map that spans multiple f
 - **Push when meaningful**: once a coherent unit of work is done and `pnpm check`,
   `pnpm lint`, and unit tests pass, commit and push to `origin` without asking. Don't
   push broken or half-finished work; don't sit on finished green work.
-- Work directly on `master` for small changes; branch + PR only for large or risky ones.
+- Work directly on `main` for small changes; branch + PR only for large or risky ones.
 
 ## Before saying "done"
 
@@ -28,6 +28,11 @@ Run and report the real result of:
 ```sh
 pnpm check && pnpm lint && pnpm test:unit -- --run
 ```
+
+`pnpm lint` is the fast pass (prettier + eslint, no type info). `pnpm lint:types`
+(`eslint.config.typed.js`) adds the slow type-aware rules — floating/misused promises,
+`await-thenable`, exhaustiveness. It builds a TS program per run, so run it before pushing
+and in CI, not on every save; still run it once before calling a token/async change done.
 
 Run `pnpm format` if you edited files. If a step fails or is skipped, say so plainly —
 don't report success over a red result.
@@ -69,9 +74,11 @@ the singleton `administrator` table; the configured `ADMIN_USERNAME` (a GitHub l
 matched case-insensitively) links to a synthetic `admin-<sha256>@syn.invalid` email so
 both providers resolve to the same user without an email in config. `hooks.server.ts` sets
 `event.locals.isAdministrator`. `/app/**` routes and the TIDAL OAuth/proxy routes gate on
-`locals.user && locals.isAdministrator` (redirecting to `/sign-in`); the `/api/**` data
-handlers currently gate on `locals.user` alone — tighten to `isAdministrator` if you touch
-one. There is deliberately no code path to reassign or delete the owner.
+`locals.user && locals.isAdministrator` (redirecting to `/sign-in`). Among `/api/**`, only
+the device-auth endpoints (`/api/tidal/device-auth` + `/poll`) currently check
+`isAdministrator`; the rest of the data handlers gate on `locals.user` alone — tighten to
+`isAdministrator` if you touch one. There is deliberately no code path to reassign or
+delete the owner.
 
 ### Dual TIDAL token model (the subtle part)
 
@@ -96,10 +103,16 @@ no revocation endpoint).
 Tokens and TIDAL URLs stay server-side. Three proxies:
 
 - **`/api/tracks/[id]/stream`** — resolves stream metadata (quality tier, codecs, bit
-  depth, ReplayGain). `stream.ts` walks the `BTS_QUALITY_LADDER` down from the requested
-  quality; `HI_RES_LOSSLESS` is excluded (segmented DASH the single-URL proxy can't serve).
+  depth/rate, ReplayGain). `stream.ts` walks the `QUALITY_LADDER`
+  (`HI_RES_LOSSLESS → LOSSLESS → HIGH → LOW`) **down** from the requested quality past
+  `subStatus 5003` ("not in your plan"), so a lower-tier subscription still lands on a
+  playable tier.
 - **`/api/tracks/[id]/audio`** — streams the media bytes through Syn with HTTP Range
-  forwarding so the native `<audio>` element can seek.
+  forwarding so the native `<audio>` element can seek. `LOW`/`HIGH`/`LOSSLESS` are
+  single-file BTS streams proxied byte-for-byte; `HI_RES_LOSSLESS` is segmented DASH
+  (init + numbered fragments) — `segmented.ts` fetches every fragment, concatenates
+  them, and serves the result with `Range` support from a small in-memory LRU (first
+  play buffers the whole track).
 - **`/tidal/api/[...path]`** — read-only (`GET`/`HEAD` only) authenticated pass-through to
   the v2 API for ad-hoc calls; host is fixed, only path+query are caller-controlled.
 
@@ -112,10 +125,12 @@ playback is unavailable. Player position/queue persist (debounced) to
 
 ### View-model boundary
 
-Routes and components never see raw JSON:API. `src/lib/server/tidal/models.ts` defines
-small, stable display contracts (`TrackSummary`, `AlbumSummary`, …) and
-`normalise.ts` translates JSON:API `Document`s (with side-loaded `included`) into them.
-Add a field to a model only when a page needs it and its upstream shape is verified.
+Routes and components never see raw JSON:API. `src/lib/tidal/models.ts` (client-safe, pure
+types — hence outside `server/`) defines small, stable display contracts (`TrackSummary`,
+`AlbumSummary`, …); `src/lib/server/tidal/normalise.ts` translates JSON:API `Document`s
+(with side-loaded `included`) into them, and `load.ts`'s `loadTidalPage()` wraps a page
+`load` with connection-status + error handling. Add a field to a model only when a page
+needs it and its upstream shape is verified.
 
 ### Data layer
 
@@ -131,6 +146,29 @@ Each server data module follows the same shape: a `*Store` interface, a `db*Stor
 implementation, and a public function taking an optional store — tests inject an in-memory
 store so they need no DB or network.
 
+### Client-side layout
+
+Everything under `src/lib/` that is _not_ in `server/` is browser-reachable:
+
+- `components/ui/` — primitives (`Button`, `Badge`, `SectionHeader`, `ThemeSelector`).
+- `components/music/` — domain widgets (`MediaCard`, `TrackList`/`TrackRow`, `SongCard`,
+  `PageHeader`/`PageActions`, `StateCard`, `AddToPlaylistModal`, `PlaylistGeneratorModal`).
+- `components/app/` — the shell (`AppShell`, `SideNav`, `MobileNav`, `navigation.ts`);
+  `components/player/Player.svelte` is the player UI. `components/Footer.svelte` is the
+  fixed 10px footer.
+- `player/` — `player.svelte.ts` (the `$state` engine), `playback-assessment.ts`,
+  `customPlaylists.svelte.ts`.
+- `theme/` — `types.ts` (palette names) + `theme.svelte.ts` (applies CSS vars).
+- `tidal/` — `models.ts` (display contracts), `resource.ts` (`parseTidalResource`),
+  `page-state.ts`.
+- `format.ts` / `m3u.ts` / `version.ts` — shared pure helpers; `m3u.ts` is the single
+  Extended-M3U builder that the server (`server/tidal/m3u.ts`) and browser
+  (`utils/m3u.ts`) wrappers both call.
+- `index.ts` is the `#lib` barrel — it re-exports the UI components and theme store only.
+
+Svelte compiles in **runes + async mode**, and SvelteKit `experimental.remoteFunctions`
+is on (`vite.config.ts`).
+
 ### Routes
 
 - `/` → redirects to `/app` (owner) or `/sign-in`.
@@ -141,8 +179,10 @@ store so they need no DB or network.
   the shell.
 - `/tidal/connect` · `/callback` · `/disconnect` · `/status` — browse-token OAuth;
   `/tidal/api/[...path]` — the read-only v2 proxy. The old `/tidal` dashboard page
-  **308-redirects** to `/app/settings/tidal`.
-- `/demo/**` — SvelteKit starter scaffolding, not part of the product.
+  **308-redirects** to `/app/settings/tidal` (`/tidal/+page.server.ts`).
+- `/api/**` — JSON handlers the client fetches: `favorites`, `search`,
+  `generate-playlist`, `playback-state`, `playlists` (+ `[id]`, `[id]/export`),
+  `settings/theme`, `tidal/device-auth` (+ `/poll`), `tracks/[id]/{stream,audio,lyrics}`.
 
 ### Other
 
@@ -151,8 +191,13 @@ store so they need no DB or network.
 - **Themes**: dark-only, eight named palettes (`src/lib/theme/types.ts`), persisted in
   `user_settings.theme`, applied by `theme.svelte.ts`; CSS variables in
   `src/routes/layout.css`.
-- **`external/tiddl`** is a git submodule (`oskvr37/tiddl`, Python) — the reference
-  implementation the stream-manifest parser and `parseTidalResource` were ported from.
+- **TIDAL streaming lineage**: the stream-manifest parsers (`stream.ts`,
+  `segmented.ts`), `parseTidalResource`, `buildM3u`, `parseLrc`, the review-text
+  sanitiser, and the device-auth client id were ported from the Python
+  [`oskvr37/tiddl`](https://github.com/oskvr37/tiddl) and
+  [`Dniel97/OrpheusDL-TIDAL`](https://github.com/Dniel97/OrpheusDL-TIDAL). Those
+  checkouts used to live in a gitignored `external/`; they are gone — the per-file
+  `Translates …` docstrings point back at the upstream sources.
 
 ## Reminders
 

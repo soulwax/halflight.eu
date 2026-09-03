@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatClock, formatDuration } from './format';
+import { formatClock, formatDuration, qualityTier } from './format';
 
 describe('formatDuration', () => {
 	it('renders m:ss with a zero-padded seconds field', () => {
@@ -35,5 +35,21 @@ describe('formatClock', () => {
 	it('formats a live position', () => {
 		expect(formatClock(0)).toBe('0:00');
 		expect(formatClock(94.4)).toBe('1:34');
+	});
+});
+
+describe('qualityTier', () => {
+	it('groups TIDAL quality strings into fidelity tiers', () => {
+		expect(qualityTier('HI_RES_LOSSLESS')).toBe('hires');
+		expect(qualityTier('hi_res')).toBe('hires');
+		expect(qualityTier('LOSSLESS')).toBe('lossless');
+		expect(qualityTier('HIGH')).toBe('lossy');
+		expect(qualityTier('LOW')).toBe('lossy');
+	});
+
+	it('falls back to lossy for unknown, empty, or missing values', () => {
+		expect(qualityTier(null)).toBe('lossy');
+		expect(qualityTier(undefined)).toBe('lossy');
+		expect(qualityTier('MQA')).toBe('lossy');
 	});
 });

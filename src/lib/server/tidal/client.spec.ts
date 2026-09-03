@@ -160,7 +160,7 @@ describe('getPlaybackToken', () => {
 		const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
 			expect(url).toBe('https://auth.tidal.com/v1/oauth2/token');
 			expect(String(init?.body)).toContain('grant_type=refresh_token');
-			expect(String(init?.body)).toContain('4N3n6Q1x95LL5K7p'); // TIDDL_CLIENT_ID
+			expect(String(init?.body)).toContain('4N3n6Q1x95LL5K7p'); // TIDAL_DEVICE_CLIENT_ID
 			return new Response(
 				JSON.stringify({ access_token: 'new-device', expires_in: 3600, token_type: 'Bearer' }),
 				{ status: 200, headers: { 'content-type': 'application/json' } }

@@ -53,35 +53,70 @@ const qualityDenied = {
 	})
 };
 
-describe('stream manifest parsing (translated from tiddl)', () => {
-	it('parses DASH XML manifest and expands timeline numbers', () => {
-		const xml = `
-			<MPD xmlns="urn:mpeg:dash:schema:mpd:2011">
-				<Period>
-					<AdaptationSet>
-						<Representation codecs="flac">
-							<SegmentTemplate media="https://audio.tidal.com/seg-$Number$.mp4">
-								<SegmentTimeline>
-									<S t="0" d="1000" r="2" />
-									<S d="1000" />
-								</SegmentTimeline>
-							</SegmentTemplate>
-						</Representation>
-					</AdaptationSet>
-				</Period>
-			</MPD>
-		`;
+/** A HiRes DASH manifest shaped like TIDAL's: init segment + numbered fragments. */
+const HI_RES_MPD = `<?xml version="1.0" encoding="UTF-8"?>
+<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" profiles="urn:mpeg:dash:profile:isoff-on-demand:2011" type="static">
+	<Period>
+		<AdaptationSet contentType="audio" mimeType="audio/mp4">
+			<Representation id="1" codecs="flac" bandwidth="1152000" audioSamplingRate="96000">
+				<SegmentTemplate
+					timescale="96000"
+					initialization="https://sp-ad-cf.audio.tidal.com/init.mp4"
+					media="https://sp-ad-cf.audio.tidal.com/seg-$Number$.mp4"
+					startNumber="1">
+					<SegmentTimeline>
+						<S t="0" d="960000" r="3" />
+						<S d="480000" />
+					</SegmentTimeline>
+				</SegmentTemplate>
+			</Representation>
+		</AdaptationSet>
+	</Period>
+</MPD>`;
 
-		const res = parseManifestXml(xml);
+describe('stream manifest parsing (translated from tiddl / OrpheusDL-TIDAL)', () => {
+	it('parses a HiRes DASH manifest: init segment first, then numbered fragments', () => {
+		const res = parseManifestXml(HI_RES_MPD);
 		expect(res.codecs).toBe('flac');
-		// r=2 means 1 initial + 2 repeats = 3 segments, plus the second <S> = 1 segment -> total count = 4 (indices 0..4)
-		expect(res.urls).toEqual([
-			'https://audio.tidal.com/seg-0.mp4',
-			'https://audio.tidal.com/seg-1.mp4',
-			'https://audio.tidal.com/seg-2.mp4',
-			'https://audio.tidal.com/seg-3.mp4',
-			'https://audio.tidal.com/seg-4.mp4'
+		expect(res.bitrateKbps).toBe(1152);
+		expect(res.sampleRateHz).toBe(96000);
+		expect(res.initUrl).toBe('https://sp-ad-cf.audio.tidal.com/init.mp4');
+		// <S r=3> => 4 segments, plus the trailing <S> => 5, numbered from startNumber=1.
+		expect(res.mediaUrls).toEqual([
+			'https://sp-ad-cf.audio.tidal.com/seg-1.mp4',
+			'https://sp-ad-cf.audio.tidal.com/seg-2.mp4',
+			'https://sp-ad-cf.audio.tidal.com/seg-3.mp4',
+			'https://sp-ad-cf.audio.tidal.com/seg-4.mp4',
+			'https://sp-ad-cf.audio.tidal.com/seg-5.mp4'
 		]);
+	});
+
+	it('defaults startNumber to 1 and tolerates a missing init segment', () => {
+		const res = parseManifestXml(
+			HI_RES_MPD.replace(/initialization="[^"]*"\s*/, '').replace(/startNumber="1"/, '')
+		);
+		expect(res.initUrl).toBeNull();
+		expect(res.mediaUrls[0]).toBe('https://sp-ad-cf.audio.tidal.com/seg-1.mp4');
+		expect(res.mediaUrls).toHaveLength(5);
+	});
+
+	it('parseTrackStream prepends the init segment and marks the stream segmented', () => {
+		const parsed = parseTrackStream({
+			trackId: 42,
+			assetPresentation: 'FULL',
+			audioMode: 'STEREO',
+			audioQuality: 'HI_RES_LOSSLESS',
+			manifestMimeType: 'application/dash+xml',
+			manifestHash: 'h',
+			manifest: Buffer.from(HI_RES_MPD).toString('base64')
+		});
+		expect(parsed.segmented).toBe(true);
+		expect(parsed.urls[0]).toBe('https://sp-ad-cf.audio.tidal.com/init.mp4');
+		expect(parsed.urls).toHaveLength(6);
+		expect(parsed.mimeType).toBe('audio/mp4');
+		expect(parsed.fileExtension).toBe('.m4a');
+		expect(parsed.bitrateKbps).toBe(1152);
+		expect(parsed.sampleRateHz).toBe(96000);
 	});
 
 	it('throws on malformed DASH XML missing SegmentTemplate media', () => {
@@ -211,6 +246,21 @@ describe('playback delivery descriptions', () => {
 			describePlaybackDelivery({ audioQuality: 'LOW', codecs: 'mp4a.40.2', mimeType: 'audio/mp4' })
 		).toMatchObject({ format: 'aac', nominalBitrateKbps: 96, lossless: false });
 	});
+
+	it('marks HiRes lossless as its own fMP4 format', () => {
+		expect(
+			describePlaybackDelivery({
+				audioQuality: 'HI_RES_LOSSLESS',
+				codecs: 'flac',
+				mimeType: 'audio/mp4'
+			})
+		).toEqual({
+			format: 'hi_res',
+			mimeType: 'audio/mp4',
+			lossless: true,
+			nominalBitrateKbps: null
+		});
+	});
 });
 
 describe('fetchTrackStream', () => {
@@ -279,6 +329,35 @@ describe('fetchTrackStream', () => {
 			})
 		).rejects.toThrow(TidalApiError);
 	});
+
+	it('resolves a HiRes DASH stream to an ordered segment list', async () => {
+		const fetchMock = vi.fn().mockResolvedValue({
+			ok: true,
+			json: async (): Promise<TrackStreamResponse> => ({
+				trackId: 9,
+				assetPresentation: 'FULL',
+				audioMode: 'STEREO',
+				audioQuality: 'HI_RES_LOSSLESS',
+				manifestMimeType: 'application/dash+xml',
+				manifestHash: 'h',
+				manifest: Buffer.from(HI_RES_MPD).toString('base64'),
+				bitDepth: 24
+			})
+		});
+
+		const res = await fetchTrackStream('9', {
+			quality: 'HI_RES_LOSSLESS',
+			accessToken: 't',
+			ctx: { fetch: fetchMock as never }
+		});
+
+		expect(res.segmented).toBe(true);
+		expect(res.urls).toHaveLength(6);
+		expect(res.streamUrl).toBe('https://sp-ad-cf.audio.tidal.com/init.mp4');
+		expect(res.bitDepth).toBe(24);
+		expect(res.sampleRate).toBe(96000); // filled from the MPD when the API omits it
+		expect(res.bitrateKbps).toBe(1152);
+	});
 });
 
 describe('resolveTrackStream quality ladder', () => {
@@ -301,6 +380,7 @@ describe('resolveTrackStream quality ladder', () => {
 	it('walks down past "quality not allowed" to the first allowed tier', async () => {
 		const store = await storeWithPlayback();
 		const fetchMock = vi.fn(async (url: string) => {
+			if (url.includes('audioquality=HI_RES_LOSSLESS')) return qualityDenied;
 			if (url.includes('audioquality=LOSSLESS')) return qualityDenied;
 			if (url.includes('audioquality=HIGH')) return btsResponse('HIGH');
 			throw new Error('should not reach LOW');
@@ -320,7 +400,7 @@ describe('resolveTrackStream quality ladder', () => {
 		await expect(
 			resolveTrackStream('1', { ctx: { fetch: fetchMock as never, store } })
 		).rejects.toBeInstanceOf(TidalQualityDeniedError);
-		expect(fetchMock).toHaveBeenCalledTimes(3); // LOSSLESS, HIGH, LOW
+		expect(fetchMock).toHaveBeenCalledTimes(4); // HI_RES_LOSSLESS, LOSSLESS, HIGH, LOW
 	});
 
 	it('surfaces a non-quality auth error immediately without walking the ladder', async () => {

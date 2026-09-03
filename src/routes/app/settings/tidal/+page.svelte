@@ -43,33 +43,35 @@
 			if (pollTimer) clearInterval(pollTimer);
 			const intervalMs = Math.max((deviceData?.interval || 2) * 1000, 2000);
 
-			pollTimer = setInterval(async () => {
-				if (!deviceData?.deviceCode) return;
-				try {
-					const pollRes = await fetch('/api/tidal/device-auth/poll', {
-						method: 'POST',
-						headers: { 'content-type': 'application/json' },
-						body: JSON.stringify({ deviceCode: deviceData.deviceCode })
-					});
-					const pollData = await pollRes.json();
-					if (pollData.status === 'success') {
-						if (pollTimer) clearInterval(pollTimer);
-						deviceStatus = 'success';
-						setTimeout(() => {
-							window.location.href = resolve('/app/settings/tidal?connected=1');
-						}, 1000);
-					} else if (pollData.status === 'expired') {
-						if (pollTimer) clearInterval(pollTimer);
-						deviceStatus = 'expired';
-					}
-				} catch {
-					// continue polling
-				}
-			}, intervalMs);
+			pollTimer = setInterval(() => void pollDeviceAuthorization(), intervalMs);
 		} catch (err) {
 			deviceLoading = false;
 			deviceStatus = 'error';
 			deviceError = err instanceof Error ? err.message : 'Unknown error';
+		}
+	}
+
+	async function pollDeviceAuthorization() {
+		if (!deviceData?.deviceCode) return;
+		try {
+			const pollRes = await fetch('/api/tidal/device-auth/poll', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ deviceCode: deviceData.deviceCode })
+			});
+			const pollData = await pollRes.json();
+			if (pollData.status === 'success') {
+				if (pollTimer) clearInterval(pollTimer);
+				deviceStatus = 'success';
+				setTimeout(() => {
+					window.location.href = resolve('/app/settings/tidal?connected=1');
+				}, 1000);
+			} else if (pollData.status === 'expired') {
+				if (pollTimer) clearInterval(pollTimer);
+				deviceStatus = 'expired';
+			}
+		} catch {
+			// continue polling
 		}
 	}
 </script>
@@ -231,6 +233,12 @@
 						selected={data.streamingSettings.preferredQuality === 'LOSSLESS'}
 					>
 						{m.streaming_quality_lossless()}
+					</option>
+					<option
+						value="HI_RES_LOSSLESS"
+						selected={data.streamingSettings.preferredQuality === 'HI_RES_LOSSLESS'}
+					>
+						{m.streaming_quality_hires()}
 					</option>
 				</select>
 			</label>

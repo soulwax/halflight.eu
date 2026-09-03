@@ -176,7 +176,9 @@
 					<a class="title" href={resolve('/app/tracks/[id]', { id: track.id })}>{track.title}</a>
 					<span class="sub">
 						{#if artistLine}<span class="artists">{artistLine}</span>{/if}
-						{#if player.qualityLabel}<span class="badge">{player.qualityLabel}</span>{/if}
+						{#if player.qualityLabel}<span class="badge badge-tier-{player.qualityTier}"
+								>{player.qualityLabel}</span
+							>{/if}
 						{#if player.playbackMode === 'embed'}<span class="badge badge-embed">TIDAL</span>{/if}
 						{#if player.assessment.warning}
 							<button
@@ -501,10 +503,13 @@
 									</dd>
 									<dt>{m.player_quality()}</dt>
 									<dd>
-										{player.audioQuality ?? '—'}{#if player.codecs}
+										<span class="badge-tier-{player.qualityTier}">{player.audioQuality ?? '—'}</span
+										>{#if player.codecs}
 											<span class="verify-dim"> · {player.codecs}</span>{/if}
 										{#if a.downgraded}<span class="verify-tag verify-short"
 												>{m.player_downgraded({ requested: a.requestedQuality ?? '?' })}</span
+											>{:else if player.qualityTier === 'hires'}<span
+												class="verify-tag verify-match">HiRes</span
 											>{:else if a.lossless}<span class="verify-tag verify-match">FLAC</span>{/if}
 									</dd>
 								</dl>
@@ -775,6 +780,18 @@
 	}
 	.badge-warn:hover {
 		filter: brightness(1.12);
+	}
+	/* Fidelity tier colouring (after tiddl's CLI: grey lossy, cyan lossless, gold HiRes). */
+	.badge-tier-lossy {
+		color: var(--text-muted);
+	}
+	.badge-tier-lossless {
+		color: var(--accent-jade);
+		border-color: color-mix(in oklab, var(--accent-jade) 40%, transparent);
+	}
+	.badge-tier-hires {
+		color: var(--accent-gold);
+		border-color: color-mix(in oklab, var(--accent-gold) 45%, transparent);
 	}
 
 	.verify {

@@ -63,26 +63,31 @@
 		}
 
 		isSearching = true;
-		debounceTimer = setTimeout(async () => {
-			try {
-				const res = await fetch(`/api/search?q=${encodeURIComponent(query.trim())}`);
-				if (res.ok) {
-					const body = await res.json();
-					if (body.results) {
-						liveResults = body.results;
-					}
-				}
-			} catch {
-				// retain existing results on network failure
-			} finally {
-				isSearching = false;
-			}
+		const q = query.trim();
+		debounceTimer = setTimeout(() => {
+			void runLiveSearch(q);
 		}, 280);
+	}
+
+	async function runLiveSearch(q: string) {
+		try {
+			const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+			if (res.ok) {
+				const body = await res.json();
+				if (body.results) {
+					liveResults = body.results;
+				}
+			}
+		} catch {
+			// retain existing results on network failure
+		} finally {
+			isSearching = false;
+		}
 	}
 
 	function navigateToResource() {
 		if (urlDetected) {
-			goto(urlDetected);
+			void goto(urlDetected);
 		}
 	}
 </script>

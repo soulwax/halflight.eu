@@ -1,9 +1,16 @@
 import { TidalAuthError, TidalError } from './errors';
 import type { TidalTokenRecord } from './store';
 
-export const TIDDL_CLIENT_ID = '4N3n6Q1x95LL5K7p';
-export const TIDDL_CLIENT_SECRET = 'oKOXfJW371cX6xaZ0PyhgGNBdNLlBZd4AKKYougMjik=';
-export const TIDDL_SCOPE = 'r_usr+w_usr+w_sub';
+/**
+ * TIDAL Link (device-authorization) client credentials. These are the public
+ * credentials of the `tiddl` project's registered device client (oskvr37/tiddl,
+ * `tiddl/core/auth/client.py`) — TIDAL issues no per-developer device client, so
+ * every open TIDAL Link tool shares this one. They grant the `r_usr` playback
+ * scopes the JSON:API browse token cannot.
+ */
+export const TIDAL_DEVICE_CLIENT_ID = '4N3n6Q1x95LL5K7p';
+export const TIDAL_DEVICE_CLIENT_SECRET = 'oKOXfJW371cX6xaZ0PyhgGNBdNLlBZd4AKKYougMjik=';
+export const TIDAL_DEVICE_SCOPE = 'r_usr+w_usr+w_sub';
 
 const TIDAL_AUTH_BASE = 'https://auth.tidal.com/v1/oauth2';
 
@@ -33,8 +40,8 @@ export interface DeviceTokenExpired {
 export type DeviceTokenResult = DeviceTokenSuccess | DeviceTokenPending | DeviceTokenExpired;
 
 function getBasicAuthHeader(
-	clientId = TIDDL_CLIENT_ID,
-	clientSecret = TIDDL_CLIENT_SECRET
+	clientId = TIDAL_DEVICE_CLIENT_ID,
+	clientSecret = TIDAL_DEVICE_CLIENT_SECRET
 ): string {
 	return 'Basic ' + Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
 }
@@ -47,8 +54,8 @@ export async function requestDeviceAuthorization(
 	fetchImpl: typeof fetch = fetch
 ): Promise<DeviceAuthorizationResponse> {
 	const body = new URLSearchParams({
-		client_id: TIDDL_CLIENT_ID,
-		scope: TIDDL_SCOPE
+		client_id: TIDAL_DEVICE_CLIENT_ID,
+		scope: TIDAL_DEVICE_SCOPE
 	});
 
 	const response = await fetchImpl(`${TIDAL_AUTH_BASE}/device_authorization`, {
@@ -79,10 +86,10 @@ export async function pollDeviceToken(
 	fetchImpl: typeof fetch = fetch
 ): Promise<DeviceTokenResult> {
 	const body = new URLSearchParams({
-		client_id: TIDDL_CLIENT_ID,
+		client_id: TIDAL_DEVICE_CLIENT_ID,
 		device_code: deviceCode,
 		grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
-		scope: TIDDL_SCOPE
+		scope: TIDAL_DEVICE_SCOPE
 	});
 
 	const response = await fetchImpl(`${TIDAL_AUTH_BASE}/token`, {
@@ -134,7 +141,7 @@ export async function pollDeviceToken(
 		refreshToken: data.refresh_token,
 		expiresAt: Date.now() + data.expires_in * 1000,
 		tokenType: data.token_type || 'Bearer',
-		scope: (data.scope || TIDDL_SCOPE).split(/[+ ]/),
+		scope: (data.scope || TIDAL_DEVICE_SCOPE).split(/[+ ]/),
 		obtainedAt: Date.now(),
 		userId: data.user_id
 			? String(data.user_id)
@@ -158,10 +165,10 @@ export async function refreshDeviceToken(
 	fetchImpl: typeof fetch = fetch
 ): Promise<TidalTokenRecord> {
 	const body = new URLSearchParams({
-		client_id: TIDDL_CLIENT_ID,
+		client_id: TIDAL_DEVICE_CLIENT_ID,
 		refresh_token: refreshToken,
 		grant_type: 'refresh_token',
-		scope: TIDDL_SCOPE
+		scope: TIDAL_DEVICE_SCOPE
 	});
 
 	const response = await fetchImpl(`${TIDAL_AUTH_BASE}/token`, {
@@ -198,7 +205,7 @@ export async function refreshDeviceToken(
 		refreshToken: data.refresh_token || refreshToken,
 		expiresAt: Date.now() + data.expires_in * 1000,
 		tokenType: data.token_type || 'Bearer',
-		scope: (data.scope || TIDDL_SCOPE).split(/[+ ]/),
+		scope: (data.scope || TIDAL_DEVICE_SCOPE).split(/[+ ]/),
 		obtainedAt: Date.now(),
 		userId: data.user_id ? String(data.user_id) : undefined
 	};

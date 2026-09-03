@@ -4,7 +4,7 @@
 	import { player } from '#lib/player/player.svelte.js';
 	import { customPlaylists } from '#lib/player/customPlaylists.svelte';
 	import { m } from '#lib/paraglide/messages.js';
-	import { formatDuration } from '#lib/format';
+	import { formatDuration, qualityTier } from '#lib/format';
 	import type { TrackSummary } from '#lib/tidal/models';
 
 	let {
@@ -121,7 +121,9 @@
 			{/if}
 
 			{#if track.audioQuality}
-				<span class="quality-badge">{formatQuality(track.audioQuality)}</span>
+				<span class="quality-badge" data-tier={qualityTier(track.audioQuality)}
+					>{formatQuality(track.audioQuality)}</span
+				>
 			{/if}
 
 			{#if track.popularity !== undefined && track.popularity > 0}
@@ -383,6 +385,17 @@
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
 		border-radius: var(--radius-full, 9999px);
+	}
+	.quality-badge[data-tier='lossy'] {
+		color: var(--text-muted);
+	}
+	.quality-badge[data-tier='lossless'] {
+		color: var(--accent-jade);
+		border-color: color-mix(in oklab, var(--accent-jade) 40%, transparent);
+	}
+	.quality-badge[data-tier='hires'] {
+		color: var(--accent-gold);
+		border-color: color-mix(in oklab, var(--accent-gold) 45%, transparent);
 	}
 
 	.pop-badge {

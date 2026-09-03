@@ -15,6 +15,11 @@ describe('Badge.svelte', () => {
 		await expect.element(page.getByText('HI RES LOSSLESS')).toBeInTheDocument();
 	});
 
+	it('tags a quality badge with its fidelity tier for colouring', async () => {
+		render(Badge, { variant: 'quality', text: 'HI_RES_LOSSLESS' });
+		await expect.element(page.getByText('HI RES LOSSLESS')).toHaveAttribute('data-tier', 'hires');
+	});
+
 	it('passes a custom title through', async () => {
 		render(Badge, { variant: 'accent', text: 'NEW', title: 'Fresh release' });
 		await expect.element(page.getByTitle('Fresh release')).toHaveTextContent('NEW');

@@ -152,5 +152,5 @@ When the Svelte MCP tools are available, use them for Svelte 5 / SvelteKit work:
   required.
 - Push when a change is meaningful — a coherent unit that passes check + lint + tests.
   Don't push broken or half-finished work; don't sit on finished green work.
-- Solo personal repo: work directly on `master` for small changes; use a short-lived
+- Solo personal repo: work directly on `main` for small changes; use a short-lived
   branch + PR only for large or risky ones.

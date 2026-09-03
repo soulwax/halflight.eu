@@ -56,6 +56,7 @@ export const GET: RequestHandler = async (event) => {
 			requestedQuality: requestedQuality ?? null,
 			bitDepth: stream.bitDepth,
 			sampleRate: stream.sampleRate,
+			bitrateKbps: stream.bitrateKbps ?? null,
 			trackReplayGain: stream.trackReplayGain,
 			delivery: describePlaybackDelivery(stream),
 			isPreview: false,

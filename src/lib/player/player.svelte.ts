@@ -1,4 +1,5 @@
 import type { TrackSummary } from '#lib/tidal/models';
+import { qualityTier, type QualityTier } from '#lib/format';
 import { assessPlayback, type PlaybackAssessment } from './playback-assessment';
 
 export interface SavedPlaybackState {
@@ -194,6 +195,8 @@ export class PlayerState {
 		}
 		return this.audioQuality;
 	});
+	/** Fidelity tier of the current stream, for badge colouring. */
+	qualityTier = $derived<QualityTier>(qualityTier(this.audioQuality));
 
 	/**
 	 * Automatic length + quality self-check for the current stream. Compares the

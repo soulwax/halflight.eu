@@ -1,0 +1,2 @@
+ALTER TABLE "streaming_settings" DROP CONSTRAINT "streaming_settings_quality";--> statement-breakpoint
+ALTER TABLE "streaming_settings" ADD CONSTRAINT "streaming_settings_quality" CHECK ("streaming_settings"."preferred_quality" in ('LOW', 'HIGH', 'LOSSLESS', 'HI_RES_LOSSLESS'));

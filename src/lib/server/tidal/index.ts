@@ -60,22 +60,24 @@ export {
 	parseTrackStream,
 	parseManifestXml,
 	describePlaybackDelivery,
-	BTS_QUALITY_LADDER,
+	QUALITY_LADDER,
 	TidalQualityDeniedError,
 	type TrackAudioQuality,
 	type TrackStreamResponse,
 	type BTSManifest,
+	type ParsedDashManifest,
 	type ParsedTrackStream,
 	type ResolvedStreamInfo,
 	type PlaybackDelivery
 } from './stream';
+export { streamSegmentedAudio, __resetSegmentCache } from './segmented';
 export { getRequestedStreamQuality, type StreamingSettingsReader } from './playback';
 export {
 	requestDeviceAuthorization,
 	pollDeviceToken,
 	refreshDeviceToken,
-	TIDDL_CLIENT_ID,
-	TIDDL_SCOPE,
+	TIDAL_DEVICE_CLIENT_ID,
+	TIDAL_DEVICE_SCOPE,
 	type DeviceAuthorizationResponse,
 	type DeviceTokenResult,
 	type DeviceTokenSuccess,

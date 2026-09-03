@@ -566,6 +566,19 @@
 		white-space: nowrap;
 	}
 
+	/* Tier colouring: grey lossy, cyan lossless, gold HiRes (after tiddl's CLI). */
+	.badge-quality[data-tier='lossy'] {
+		color: var(--text-muted);
+	}
+	.badge-quality[data-tier='lossless'] {
+		color: var(--accent-jade);
+		border-color: color-mix(in oklab, var(--accent-jade) 40%, transparent);
+	}
+	.badge-quality[data-tier='hires'] {
+		color: var(--accent-gold);
+		border-color: color-mix(in oklab, var(--accent-gold) 45%, transparent);
+	}
+
 	.badge-explicit {
 		display: inline-block;
 		font-family: ui-monospace, monospace;

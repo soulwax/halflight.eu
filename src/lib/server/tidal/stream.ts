@@ -4,10 +4,15 @@ import { getPlaybackToken, type TidalRequestContext } from './client';
 export type TrackAudioQuality = 'LOW' | 'HIGH' | 'LOSSLESS' | 'HI_RES_LOSSLESS';
 
 /**
- * Single-file (BTS) qualities, best to worst. `HI_RES_LOSSLESS` is excluded — it
- * returns a segmented DASH manifest the single-URL proxy can't serve.
+ * Every streamable quality, best to worst. `resolveTrackStream` walks **down**
+ * this ladder past "quality not allowed in your plan" (`subStatus 5003`), so a
+ * HiRes request on a lower-tier subscription still lands on `LOSSLESS`/`HIGH`.
+ *
+ * `HI_RES_LOSSLESS` is a segmented DASH manifest (`initialization` + numbered
+ * fragments); `LOW`/`HIGH`/`LOSSLESS` are single-file BTS manifests. Both are
+ * handled — see `parseTrackStream` and `#lib/server/tidal/segmented`.
  */
-export const BTS_QUALITY_LADDER: TrackAudioQuality[] = ['LOSSLESS', 'HIGH', 'LOW'];
+export const QUALITY_LADDER: TrackAudioQuality[] = ['HI_RES_LOSSLESS', 'LOSSLESS', 'HIGH', 'LOW'];
 
 /** TIDAL `subStatus` for "requested quality is not allowed in the user's subscription". */
 const SUBSTATUS_QUALITY_NOT_ALLOWED = 5003;
@@ -50,11 +55,31 @@ export interface BTSManifest {
 	urls: string[];
 }
 
+/** Parsed MPEG-DASH audio manifest. Translated from OrpheusDL-TIDAL `parse_mpd`. */
+export interface ParsedDashManifest {
+	/** The `initialization` segment URL, or `null` when the template has none. */
+	initUrl: string | null;
+	/** Media fragment URLs, in play order (the init segment is not included here). */
+	mediaUrls: string[];
+	codecs: string;
+	/** From `<Representation bandwidth>`, kbps. */
+	bitrateKbps: number | null;
+	/** From `<Representation audioSamplingRate>`, Hz. */
+	sampleRateHz: number | null;
+}
+
 export interface ParsedTrackStream {
+	/** Every URL to fetch, in order. For DASH the first entry is the init segment. */
 	urls: string[];
 	fileExtension: string;
 	mimeType: string;
 	codecs: string;
+	/** `true` when `urls` is a segmented DASH stream that must be concatenated. */
+	segmented: boolean;
+	/** Precise bitrate from the DASH manifest, kbps. `null` for single-file BTS. */
+	bitrateKbps: number | null;
+	/** Precise sample rate from the DASH manifest, Hz. `null` for single-file BTS. */
+	sampleRateHz: number | null;
 }
 
 export interface ResolvedStreamInfo {
@@ -64,16 +89,18 @@ export interface ResolvedStreamInfo {
 	fileExtension: string;
 	mimeType: string;
 	codecs: string;
+	segmented: boolean;
 	audioMode: 'STEREO' | 'DOLBY_ATMOS';
 	audioQuality: TrackAudioQuality;
 	bitDepth?: number | null;
 	sampleRate?: number | null;
+	bitrateKbps?: number | null;
 	trackReplayGain?: number | null;
 }
 
 /** Safe, public description of the bytes Syn will deliver to the player. */
 export interface PlaybackDelivery {
-	format: 'flac' | 'aac' | 'dolby';
+	format: 'flac' | 'hi_res' | 'aac' | 'dolby';
 	mimeType: string;
 	lossless: boolean;
 	/** Nominal bitrate for TIDAL's lossy tiers. Lossless FLAC is variable-rate. */
@@ -89,6 +116,14 @@ const DOLBY_CODECS = new Set(['eac3', 'ac4']);
 export function describePlaybackDelivery(
 	stream: Pick<ResolvedStreamInfo, 'audioQuality' | 'codecs' | 'mimeType'>
 ): PlaybackDelivery {
+	if (stream.audioQuality === 'HI_RES_LOSSLESS') {
+		return {
+			format: 'hi_res',
+			mimeType: stream.mimeType || 'audio/mp4',
+			lossless: true,
+			nominalBitrateKbps: null
+		};
+	}
 	if (stream.codecs === 'flac') {
 		return {
 			format: 'flac',
@@ -113,48 +148,71 @@ export function describePlaybackDelivery(
 	};
 }
 
-/**
- * Parses XML DASH manifest of a track stream, translating tiddl's parse_manifest_XML.
- */
-export function parseManifestXml(xmlContent: string): { urls: string[]; codecs: string } {
-	// Extract codecs attribute from Representation element
-	const repMatch = xmlContent.match(/<Representation[^>]*codecs=["']([^"']+)["']/i);
-	const codecs = repMatch ? repMatch[1] : '';
+function readAttr(tag: string, name: string): string | undefined {
+	const match = tag.match(new RegExp(`\\b${name}\\s*=\\s*["']([^"']*)["']`, 'i'));
+	return match ? match[1] : undefined;
+}
 
-	// Extract media attribute from SegmentTemplate
-	const segTemplateMatch = xmlContent.match(/<SegmentTemplate[^>]*media=["']([^"']+)["']/i);
-	if (!segTemplateMatch) {
+function readNumAttr(tag: string, name: string): number | undefined {
+	const raw = readAttr(tag, name);
+	if (raw == null) return undefined;
+	const value = Number(raw);
+	return Number.isFinite(value) ? value : undefined;
+}
+
+/**
+ * Parse a TIDAL MPEG-DASH audio manifest into its ordered segment URLs.
+ *
+ * Translated from OrpheusDL-TIDAL `interface.py:parse_mpd` (a more complete
+ * reference than tiddl's `parse_manifest_XML`, which drops the `initialization`
+ * segment and ignores `startNumber`). Uses regex rather than an XML parser to
+ * stay dependency-free — TIDAL's manifests are a single audio `Representation`.
+ */
+export function parseManifestXml(xmlContent: string): ParsedDashManifest {
+	const repTag = xmlContent.match(/<Representation\b[^>]*>/i)?.[0] ?? '';
+	const codecs = readAttr(repTag, 'codecs') ?? '';
+	const bandwidth = readNumAttr(repTag, 'bandwidth');
+	const sampleRateHz = readNumAttr(repTag, 'audioSamplingRate') ?? null;
+
+	const segTag = xmlContent.match(/<SegmentTemplate\b[^>]*>/i)?.[0];
+	const mediaTemplate = segTag ? readAttr(segTag, 'media') : undefined;
+	if (!segTag || !mediaTemplate) {
 		throw new TidalError('SegmentTemplate element with media attribute not found in DASH manifest');
 	}
-	const urlTemplate = segTemplateMatch[1];
 
-	// Match all <S> elements in SegmentTimeline
-	const sRegex = /<S\b[^>]*\/?>/gi;
-	const sMatches = xmlContent.match(sRegex);
-	if (!sMatches || sMatches.length === 0) {
+	const initUrl = readAttr(segTag, 'initialization') ?? null;
+	const startNumber = readNumAttr(segTag, 'startNumber') ?? 1;
+
+	const sTags = xmlContent.match(/<S\b[^>]*\/?>/gi);
+	if (!sTags || sTags.length === 0) {
 		throw new TidalError('SegmentTimeline S elements not found in DASH manifest');
 	}
 
-	let total = 0;
-	for (const sTag of sMatches) {
-		total += 1;
-		const rMatch = sTag.match(/\br=["']?(\d+)["']?/i);
-		if (rMatch) {
-			total += parseInt(rMatch[1], 10);
-		}
+	let count = 0;
+	for (const sTag of sTags) {
+		count += 1;
+		const repeat = readNumAttr(sTag, 'r');
+		if (repeat && repeat > 0) count += repeat;
 	}
 
-	const urls: string[] = [];
-	for (let i = 0; i <= total; i++) {
-		urls.push(urlTemplate.replace('$Number$', String(i)));
+	const mediaUrls: string[] = [];
+	for (let i = 0; i < count; i++) {
+		mediaUrls.push(mediaTemplate.replace(/\$Number\$/g, String(startNumber + i)));
 	}
 
-	return { urls, codecs };
+	return {
+		initUrl,
+		mediaUrls,
+		codecs,
+		bitrateKbps: bandwidth ? Math.round(bandwidth / 1000) : null,
+		sampleRateHz
+	};
 }
 
 /**
  * Parses URLs, codecs, and file extension from a TIDAL track stream manifest.
- * Translates tiddl/core/utils/parse.py:parse_track_stream.
+ * Translates tiddl/core/utils/parse.py:parse_track_stream, extended to keep the
+ * DASH init segment and precise MPD telemetry.
  */
 export function parseTrackStream(stream: TrackStreamResponse): ParsedTrackStream {
 	const decodedManifest = Buffer.from(stream.manifest, 'base64').toString('utf-8');
@@ -162,6 +220,9 @@ export function parseTrackStream(stream: TrackStreamResponse): ParsedTrackStream
 	let urls: string[];
 	let codecs: string;
 	let mimeType: string;
+	let segmented = false;
+	let bitrateKbps: number | null = null;
+	let sampleRateHz: number | null = null;
 
 	switch (stream.manifestMimeType) {
 		case 'application/vnd.tidal.bts': {
@@ -173,9 +234,13 @@ export function parseTrackStream(stream: TrackStreamResponse): ParsedTrackStream
 		}
 		case 'application/dash+xml': {
 			const parsed = parseManifestXml(decodedManifest);
-			urls = parsed.urls;
+			urls = parsed.initUrl ? [parsed.initUrl, ...parsed.mediaUrls] : [...parsed.mediaUrls];
 			codecs = parsed.codecs;
-			mimeType = codecs === 'flac' ? 'audio/flac' : 'audio/mp4';
+			// A DASH stream is always fragmented MP4, even for the FLAC codec.
+			mimeType = 'audio/mp4';
+			segmented = urls.length > 1;
+			bitrateKbps = parsed.bitrateKbps;
+			sampleRateHz = parsed.sampleRateHz;
 			break;
 		}
 		default:
@@ -191,12 +256,7 @@ export function parseTrackStream(stream: TrackStreamResponse): ParsedTrackStream
 		throw new TidalError(`Unknown codecs '${codecs}' (trackId: ${stream.trackId})`);
 	}
 
-	return {
-		urls,
-		fileExtension,
-		mimeType,
-		codecs
-	};
+	return { urls, fileExtension, mimeType, codecs, segmented, bitrateKbps, sampleRateHz };
 }
 
 /**
@@ -255,18 +315,20 @@ export async function fetchTrackStream(
 		fileExtension: parsed.fileExtension,
 		mimeType: parsed.mimeType,
 		codecs: parsed.codecs,
+		segmented: parsed.segmented,
 		audioMode: data.audioMode,
 		audioQuality: data.audioQuality,
 		bitDepth: data.bitDepth,
-		sampleRate: data.sampleRate,
+		sampleRate: data.sampleRate ?? parsed.sampleRateHz,
+		bitrateKbps: parsed.bitrateKbps,
 		trackReplayGain: data.trackReplayGain
 	};
 }
 
 /**
- * Resolve a playable single-file stream, walking **down** the quality ladder past
- * "quality not allowed in your subscription" responses so a HiFi request still
- * lands on `HIGH`/`LOW` for a lower-tier plan.
+ * Resolve a playable stream, walking **down** the quality ladder past "quality
+ * not allowed in your subscription" responses so a HiRes request still lands on
+ * `LOSSLESS`/`HIGH`/`LOW` for a lower-tier plan.
  *
  * @throws {TidalQualityDeniedError} when every tier is refused (no streaming plan)
  * @throws {TidalApiError | TidalPlaybackNotLinkedError | TidalAuthError} for other failures
@@ -275,12 +337,9 @@ export async function resolveTrackStream(
 	trackId: string | number,
 	options: { quality?: TrackAudioQuality; ctx?: TidalRequestContext } = {}
 ): Promise<ResolvedStreamInfo> {
-	const ladder =
-		options.quality && !BTS_QUALITY_LADDER.includes(options.quality)
-			? [options.quality, ...BTS_QUALITY_LADDER]
-			: options.quality
-				? [options.quality, ...BTS_QUALITY_LADDER.filter((q) => q !== options.quality)]
-				: BTS_QUALITY_LADDER;
+	const ladder = options.quality
+		? [options.quality, ...QUALITY_LADDER.filter((q) => q !== options.quality)]
+		: QUALITY_LADDER;
 
 	const tried: TrackAudioQuality[] = [];
 	let lastError: unknown;

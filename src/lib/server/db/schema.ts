@@ -72,7 +72,7 @@ export const streamingSettings = pgTable(
 	(table) => [
 		check(
 			'streaming_settings_quality',
-			sql`${table.preferredQuality} in ('LOW', 'HIGH', 'LOSSLESS')`
+			sql`${table.preferredQuality} in ('LOW', 'HIGH', 'LOSSLESS', 'HI_RES_LOSSLESS')`
 		),
 		check('streaming_settings_volume', sql`${table.volume} between 0 and 100`)
 	]

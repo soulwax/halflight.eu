@@ -3,12 +3,16 @@ import {
 	getConnectionStatus,
 	getRequestedStreamQuality,
 	resolveTrackStream,
+	streamSegmentedAudio,
 	TidalApiError,
 	TidalAuthError,
 	TidalPlaybackNotLinkedError,
 	TidalQualityDeniedError
 } from '#lib/server/tidal';
 import { log } from '#lib/server/log';
+
+/** CDN-facing headers borrowed from the TIDAL Android client. */
+const CDN_HEADERS = { Accept: '*/*', 'User-Agent': 'TIDAL_ANDROID/1039 okhttp/3.13.1' };
 
 /**
  * Streams media through Syn so the browser never needs access to a TIDAL CDN URL.
@@ -42,7 +46,25 @@ export const GET: RequestHandler = async (event) => {
 		error(404, 'Stream unavailable');
 	}
 
-	const headers = new Headers({ Accept: '*/*', 'User-Agent': 'TIDAL_ANDROID/1039 okhttp/3.13.1' });
+	// Segmented DASH (HiRes): no single URL to range against — concatenate every
+	// fragment and serve the whole stream with Range support from an in-memory cache.
+	if (stream.segmented) {
+		try {
+			return await streamSegmentedAudio({
+				key: `${stream.trackId}:${stream.audioQuality}`,
+				urls: stream.urls,
+				mimeType: stream.mimeType,
+				fetchImpl: event.fetch,
+				rangeHeader: event.request.headers.get('range'),
+				upstreamHeaders: CDN_HEADERS
+			});
+		} catch (cause) {
+			log.error('audio proxy: segmented fetch failed', { trackId, cause });
+			error(502, 'CDN unreachable');
+		}
+	}
+
+	const headers = new Headers(CDN_HEADERS);
 	const range = event.request.headers.get('range');
 	if (range) headers.set('Range', range);
 

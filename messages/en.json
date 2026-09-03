@@ -40,6 +40,7 @@
 	"streaming_quality_low": "Low — AAC 96k",
 	"streaming_quality_high": "High — AAC 320k",
 	"streaming_quality_lossless": "Lossless — FLAC",
+	"streaming_quality_hires": "HiRes — FLAC up to 24-bit",
 	"streaming_volume_label": "Default volume",
 	"streaming_normalization_label": "Use ReplayGain loudness normalization",
 	"streaming_settings_save": "Save streaming preferences",

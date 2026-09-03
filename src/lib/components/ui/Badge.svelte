@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { qualityTier } from '#lib/format';
 
 	let {
 		variant = 'quality',
@@ -28,7 +29,7 @@
 		{#if children}{@render children()}{:else}{formatText(text)}{/if}
 	</span>
 {:else}
-	<span class="badge-quality" {title}>
+	<span class="badge-quality" data-tier={qualityTier(text)} {title}>
 		{#if children}{@render children()}{:else}{formatText(text)}{/if}
 	</span>
 {/if}

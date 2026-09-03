@@ -1,7 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async (event) => {
+export const load: PageServerLoad = (event) => {
 	const params = new URLSearchParams();
 	for (const key of ['connected', 'disconnected', 'error']) {
 		const value = event.url.searchParams.get(key);

@@ -3,7 +3,7 @@ import { db } from '#lib/server/db';
 import { streamingSettings } from '#lib/server/db/schema';
 import { log } from '#lib/server/log';
 
-export const STREAMING_QUALITIES = ['LOW', 'HIGH', 'LOSSLESS'] as const;
+export const STREAMING_QUALITIES = ['LOW', 'HIGH', 'LOSSLESS', 'HI_RES_LOSSLESS'] as const;
 export type StreamingQuality = (typeof STREAMING_QUALITIES)[number];
 
 export interface StreamingSettings {

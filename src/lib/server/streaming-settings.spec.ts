@@ -26,9 +26,10 @@ describe('streaming settings', () => {
 				loudnessNormalization: 'on'
 			})
 		).toEqual({ preferredQuality: 'LOSSLESS', volume: 72, loudnessNormalization: true });
-		expect(parseStreamingSettingsInput({ preferredQuality: 'HI_RES_LOSSLESS', volume: '72' })).toBe(
-			null
-		);
+		expect(
+			parseStreamingSettingsInput({ preferredQuality: 'HI_RES_LOSSLESS', volume: '72' })
+		).toEqual({ preferredQuality: 'HI_RES_LOSSLESS', volume: 72, loudnessNormalization: false });
+		expect(parseStreamingSettingsInput({ preferredQuality: 'HIRES', volume: '72' })).toBe(null);
 		expect(parseStreamingSettingsInput({ preferredQuality: 'HIGH', volume: '100.5' })).toBe(null);
 	});
 });

@@ -9,7 +9,8 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('#lib/server/streaming-settings', () => ({
 	getStreamingSettings: mocks.getStreamingSettings,
-	isStreamingQuality: (value: string) => ['LOW', 'HIGH', 'LOSSLESS'].includes(value)
+	isStreamingQuality: (value: string) =>
+		['LOW', 'HIGH', 'LOSSLESS', 'HI_RES_LOSSLESS'].includes(value)
 }));
 vi.mock('#lib/server/tidal', async (importOriginal) => ({
 	...((await importOriginal()) as object),
@@ -19,6 +20,7 @@ vi.mock('#lib/server/tidal', async (importOriginal) => ({
 }));
 
 import type { Cookies } from '@sveltejs/kit';
+import { __resetSegmentCache } from '#lib/server/tidal';
 import { GET } from './+server';
 
 const fetchMock = vi.fn();
@@ -73,5 +75,54 @@ describe('GET /api/tracks/[id]/audio', () => {
 			expect.objectContaining({ headers: expect.any(Headers) })
 		);
 		expect(new Headers(fetchMock.mock.calls[0][1].headers).get('Range')).toBe('bytes=0-1');
+	});
+
+	describe('segmented (HiRes DASH) delivery', () => {
+		const SEGMENTS = [
+			'https://cdn.example.test/init.mp4',
+			'https://cdn.example.test/seg-1.mp4',
+			'https://cdn.example.test/seg-2.mp4'
+		];
+
+		beforeEach(() => {
+			__resetSegmentCache();
+			mocks.getRequestedStreamQuality.mockResolvedValue('HI_RES_LOSSLESS');
+			mocks.resolveTrackStream.mockResolvedValue({
+				trackId: 123,
+				audioQuality: 'HI_RES_LOSSLESS',
+				segmented: true,
+				urls: SEGMENTS,
+				streamUrl: SEGMENTS[0],
+				mimeType: 'audio/mp4'
+			});
+			// Each fragment is 4 bytes; full stream is 12 bytes.
+			fetchMock.mockImplementation((url: string) => {
+				const idx = SEGMENTS.indexOf(url);
+				return Promise.resolve(new Response(new Uint8Array([idx, idx, idx, idx])));
+			});
+		});
+
+		it('concatenates every fragment for a full (rangeless) request', async () => {
+			const response = await GET(event());
+			expect(response.status).toBe(200);
+			expect(response.headers.get('Content-Length')).toBe('12');
+			expect(response.headers.get('Accept-Ranges')).toBe('bytes');
+			expect(new Uint8Array(await response.arrayBuffer())).toEqual(
+				new Uint8Array([0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2])
+			);
+			expect(fetchMock).toHaveBeenCalledTimes(3);
+		});
+
+		it('serves a byte range from cache without re-fetching segments', async () => {
+			await GET(event()); // prime the cache (3 fetches)
+			fetchMock.mockClear();
+
+			const response = await GET(event('bytes=5-9'));
+			expect(response.status).toBe(206);
+			expect(response.headers.get('Content-Range')).toBe('bytes 5-9/12');
+			expect(response.headers.get('Content-Length')).toBe('5');
+			expect(new Uint8Array(await response.arrayBuffer())).toEqual(new Uint8Array([1, 1, 1, 2, 2]));
+			expect(fetchMock).not.toHaveBeenCalled();
+		});
 	});
 });
