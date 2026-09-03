@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { m } from '#lib/paraglide/messages.js';
+	import { customPlaylists } from '#lib/player/customPlaylists.svelte.js';
+	import { player } from '#lib/player/player.svelte.js';
 	import { resolve } from '$app/paths';
 	import {
 		ArrowDown,
@@ -26,9 +29,6 @@
 		VolumeX,
 		X
 	} from '@lucide/svelte';
-	import { player } from '#lib/player/player.svelte.js';
-	import { customPlaylists } from '#lib/player/customPlaylists.svelte.js';
-	import { m } from '#lib/paraglide/messages.js';
 
 	const embedUrl = $derived(
 		player.currentTrack
