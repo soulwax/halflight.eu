@@ -54,7 +54,8 @@ export const GET: RequestHandler = async (event) => {
 				key: `${stream.trackId}:${stream.audioQuality}`,
 				urls: stream.urls,
 				mimeType: stream.mimeType,
-				fetchImpl: event.fetch,
+				// Global fetch, not `event.fetch` — see the note on the single-file path below.
+				fetchImpl: fetch,
 				rangeHeader: event.request.headers.get('range'),
 				upstreamHeaders: CDN_HEADERS
 			});
@@ -77,7 +78,11 @@ export const GET: RequestHandler = async (event) => {
 
 	let upstream: Response;
 	try {
-		upstream = await event.fetch(stream.streamUrl, { headers, redirect: 'follow' });
+		// Use the global fetch, NOT `event.fetch`: SvelteKit's wrapper forwards the
+		// incoming request's context (cookies / referer) to the target, and the
+		// TIDAL media CDN 403s a signed-URL request that carries those. Only the
+		// query-string token authorises the request — send nothing else.
+		upstream = await fetch(stream.streamUrl, { headers, redirect: 'follow' });
 	} catch (cause) {
 		log.error('audio proxy: CDN fetch threw', { trackId, cdnHost, cause });
 		error(502, 'CDN unreachable');

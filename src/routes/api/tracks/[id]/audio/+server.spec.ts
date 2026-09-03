@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
 	getConnectionStatus: vi.fn(),
@@ -23,6 +23,8 @@ import type { Cookies } from '@sveltejs/kit';
 import { __resetSegmentCache } from '#lib/server/tidal';
 import { GET } from './+server';
 
+// The route fetches CDN media with the *global* fetch (not `event.fetch`), because
+// SvelteKit's wrapper forwards request context that the media CDN 403s on.
 const fetchMock = vi.fn();
 
 function event(range?: string) {
@@ -39,12 +41,15 @@ function event(range?: string) {
 }
 
 describe('GET /api/tracks/[id]/audio', () => {
+	afterEach(() => vi.unstubAllGlobals());
+
 	beforeEach(() => {
 		mocks.getConnectionStatus.mockReset();
 		mocks.resolveTrackStream.mockReset();
 		mocks.getStreamingSettings.mockReset();
 		mocks.getRequestedStreamQuality.mockReset();
 		fetchMock.mockReset();
+		vi.stubGlobal('fetch', fetchMock);
 		mocks.getConnectionStatus.mockResolvedValue({ configured: true, hasPlayback: true });
 		mocks.getStreamingSettings.mockResolvedValue({ preferredQuality: 'HIGH' });
 		mocks.getRequestedStreamQuality.mockResolvedValue('HIGH');
