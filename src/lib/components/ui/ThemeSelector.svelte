@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Check, ChevronDown, Palette } from '@lucide/svelte';
 	import { themeManager, THEME_OPTIONS } from '#lib/theme/theme.svelte.js';
-	import type { DarkTheme } from '#lib/server/user-settings';
+	import type { DarkTheme } from '#lib/theme/types';
 
 	let {
 		compact = false,
