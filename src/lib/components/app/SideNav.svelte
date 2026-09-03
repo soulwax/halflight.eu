@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { AppBrand, AppNavigationItem } from './navigation.js';
 	import { isCurrentNavigationItem } from './navigation.js';
+	import ThemeSelector from '#lib/components/ui/ThemeSelector.svelte';
 
 	interface Props {
 		brand: AppBrand;
@@ -64,28 +65,28 @@
 		</ul>
 	</nav>
 
-	{#if userName || (accountHref && accountLabel)}
-		<div class="mt-auto border-t-2 border-[var(--border-subtle)] bg-[var(--surface-canvas)] p-4">
-			{#if accountHref && accountLabel}
-				<a class="app-account-link" href={accountHref}>
-					{#if userName}<span class="truncate font-bold">{userName}</span>{/if}
-					<span class="text-xs tracking-wider text-[var(--text-muted)] uppercase"
-						>{accountLabel}</span
-					>
-				</a>
-			{:else if userName}
-				<p class="truncate text-xs tracking-wider text-[var(--text-muted)] uppercase">{userName}</p>
-			{/if}
-			{#if signOutAction && signOutLabel}
-				<form method="POST" action={signOutAction} class="mt-2">
-					<button
-						class="app-account-link w-full cursor-pointer text-left hover:border-[var(--danger)] hover:text-[var(--danger)]"
-						type="submit"
-					>
-						<span class="text-xs font-bold tracking-wider uppercase">{signOutLabel}</span>
-					</button>
-				</form>
-			{/if}
+	<div class="mt-auto border-t-2 border-[var(--border-subtle)] bg-[var(--surface-canvas)] p-4">
+		<div class="mb-3">
+			<ThemeSelector compact={true} id="sidenav-theme-selector" />
 		</div>
-	{/if}
+		{#if accountHref && accountLabel}
+			<a class="app-account-link" href={accountHref}>
+				{#if userName}<span class="truncate font-bold">{userName}</span>{/if}
+				<span class="text-xs tracking-wider text-[var(--text-muted)] uppercase">{accountLabel}</span
+				>
+			</a>
+		{:else if userName}
+			<p class="truncate text-xs tracking-wider text-[var(--text-muted)] uppercase">{userName}</p>
+		{/if}
+		{#if signOutAction && signOutLabel}
+			<form method="POST" action={signOutAction} class="mt-2">
+				<button
+					class="app-account-link w-full cursor-pointer text-left hover:border-[var(--danger)] hover:text-[var(--danger)]"
+					type="submit"
+				>
+					<span class="text-xs font-bold tracking-wider uppercase">{signOutLabel}</span>
+				</button>
+			</form>
+		{/if}
+	</div>
 </aside>

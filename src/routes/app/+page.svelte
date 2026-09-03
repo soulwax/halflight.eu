@@ -1,11 +1,13 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { ArrowRight, ListMusic, Play, Plus, Sparkles, Trash2, Wand2 } from '@lucide/svelte';
-
 	import SongCard from '#lib/components/music/SongCard.svelte';
 	import { player } from '#lib/player/player.svelte.js';
 	import { customPlaylists } from '#lib/player/customPlaylists.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
+	import Button from '#lib/components/ui/Button.svelte';
+	import SectionHeader from '#lib/components/ui/SectionHeader.svelte';
+	import StateCard from '#lib/components/music/StateCard.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -24,12 +26,12 @@
 			<span class="hero-mark-line"></span>
 		</div>
 		<p class="deco-eyebrow">SYN — Sound Laboratory</p>
-		<h1 id="home-title">{m.home_title({ name: data.user.name })}</h1>
+		<h1 id="home-title" class="hero-title">{m.home_title({ name: data.user.name })}</h1>
 		<p class="intro">{m.home_subtitle()}</p>
 	</header>
 
 	{#if data.connection.connected}
-		<!-- Bauhaus Composer Banner: Perfect for Empty Accounts & Discovery -->
+		<!-- Bauhaus Composer Banner -->
 		<section class="composer-hero" aria-labelledby="composer-heading">
 			<div class="composer-content">
 				<div class="composer-badge">
@@ -43,34 +45,29 @@
 				</p>
 			</div>
 			<div class="composer-action">
-				<button
-					type="button"
-					class="composer-launch-btn"
-					onclick={() => customPlaylists.openGenerator()}
-				>
+				<Button variant="primary" size="lg" onclick={() => customPlaylists.openGenerator()}>
 					<Wand2 size={16} />
 					COMPOSE PLAYLIST
-				</button>
+				</Button>
 			</div>
 		</section>
 
 		<!-- Custom Playlists Section -->
 		{#if customPlaylists.playlists.length > 0}
 			<section class="custom-playlists-section" aria-labelledby="custom-playlists-heading">
-				<div class="section-heading">
-					<div>
-						<p class="eyebrow">USER ARCHIVE // ON THE FLY</p>
-						<h2 id="custom-playlists-heading">MY CUSTOM PLAYLISTS</h2>
-					</div>
-					<button
-						type="button"
-						class="create-pl-btn"
-						onclick={() => customPlaylists.openGenerator()}
-					>
-						<Plus size={14} />
-						COMPOSE NEW
-					</button>
-				</div>
+				<SectionHeader
+					eyebrow="USER ARCHIVE // ON THE FLY"
+					title="MY CUSTOM PLAYLISTS"
+					titleId="custom-playlists-heading"
+					count={customPlaylists.playlists.length}
+				>
+					{#snippet actions()}
+						<Button variant="secondary" size="sm" onclick={() => customPlaylists.openGenerator()}>
+							<Plus size={14} />
+							COMPOSE NEW
+						</Button>
+					{/snippet}
+				</SectionHeader>
 
 				<div class="custom-playlists-grid">
 					{#each customPlaylists.playlists as playlist (playlist.id)}
@@ -117,24 +114,19 @@
 
 		{#if data.dailyMix.length}
 			<section class="mix-section" aria-labelledby="daily-mix-title">
-				<div class="section-heading">
-					<div>
-						<p class="eyebrow">
-							<Sparkles size={14} class="inline text-[var(--action)]" /> CURATED SOUNDS
-						</p>
-						<h2 id="daily-mix-title">{m.home_daily_mix_title()}</h2>
-					</div>
-					<div class="mix-header-actions">
-						<button
-							type="button"
-							class="play-mix-btn"
-							onclick={() => player.play(data.dailyMix[0], data.dailyMix)}
-						>
+				<SectionHeader
+					eyebrow="CURATED SOUNDS"
+					title={m.home_daily_mix_title()}
+					titleId="daily-mix-title"
+				>
+					<Sparkles size={16} class="text-[var(--action)]" />
+					{#snippet actions()}
+						<Button variant="primary" onclick={() => player.play(data.dailyMix[0], data.dailyMix)}>
 							<Play size={14} fill="currentColor" />
 							{m.player_play_all()}
-						</button>
-					</div>
-				</div>
+						</Button>
+					{/snippet}
+				</SectionHeader>
 
 				<div class="song-cards-grid">
 					{#each data.dailyMix as track, index (track.id)}
@@ -174,12 +166,11 @@
 			</article>
 		</div>
 	{:else}
-		<article class="action-card connect-card">
-			<div class="card-indicator indicator-red"></div>
-			<h2>{m.home_connect_title()}</h2>
-			<p>{m.home_connect_description()}</p>
-			<a href={resolve('/app/settings/tidal')}>{m.home_connect_button()}</a>
-		</article>
+		<StateCard
+			state="not_connected"
+			title={m.home_connect_title()}
+			description={m.home_connect_description()}
+		/>
 	{/if}
 </section>
 
@@ -198,137 +189,111 @@
 	.hero-mark {
 		display: flex;
 		align-items: center;
-		gap: 0.6rem;
-		width: 7rem;
-		margin-bottom: 1.75rem;
+		gap: 0.5rem;
+		margin-bottom: 1rem;
 	}
 
 	.hero-mark-line {
+		width: 2rem;
 		height: 1px;
-		flex: 1;
-		background: var(--accent-gold-deep);
+		background: var(--accent-gold);
 	}
 
 	.hero-mark-node {
 		width: 6px;
 		height: 6px;
-		rotate: 45deg;
 		background: var(--accent-gold);
+		rotate: 45deg;
 	}
 
-	h1 {
-		margin: 0.9rem 0 0;
-		font-size: clamp(2.6rem, 5.5vw, 4.25rem);
-		letter-spacing: 0.005em;
-		line-height: 1.06;
+	.hero-title {
+		margin: 0.35rem 0 0.5rem;
+		font-size: clamp(2rem, 5vw, 3.25rem);
+		font-weight: 700;
+		color: var(--text-primary);
 	}
 
 	.intro {
-		margin: 1.1rem 0 0;
-		max-width: 42rem;
+		margin: 0;
 		color: var(--text-muted);
-		font-size: 1.15rem;
-		line-height: 1.65;
+		font-size: 1rem;
+		max-width: 48rem;
+		line-height: 1.55;
 	}
 
-	/* Composer Hero Banner */
 	.composer-hero {
-		position: relative;
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
 		justify-content: space-between;
-		flex-wrap: wrap;
-		gap: 2.25rem;
-		margin-bottom: var(--space-section);
-		padding: clamp(2rem, 4vw, 3rem);
-		background: var(--surface-raised);
-		border: 1px solid var(--border-subtle);
+		gap: 1.5rem;
+		padding: clamp(1.5rem, 3.5vw, 2.5rem);
+		border: 1px solid var(--accent-gold);
+		background: linear-gradient(
+			135deg,
+			color-mix(in oklch, var(--accent-gold) 10%, var(--surface-raised)),
+			var(--surface-raised)
+		);
 		border-radius: var(--radius-lg);
-		box-shadow: var(--shadow-bauhaus);
-		overflow: hidden;
-	}
-
-	.composer-hero::before {
-		content: '';
-		position: absolute;
-		inset: 7px;
-		border: 1px solid color-mix(in oklab, var(--accent-gold) 22%, transparent);
-		pointer-events: none;
+		box-shadow: var(--shadow-raised);
+		margin-bottom: 3.5rem;
 	}
 
 	.composer-content {
-		max-width: 38rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.45rem;
+		max-width: 36rem;
 	}
 
 	.composer-badge {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.5rem;
-		padding: 0.3rem 0.85rem;
-		border: 1px solid var(--accent-gold-deep);
-		color: var(--accent-gold);
-		font-size: 0.66rem;
-		font-weight: 700;
-		letter-spacing: 0.22em;
-		text-transform: uppercase;
-		border-radius: 0;
-		margin-bottom: 1.1rem;
+		gap: 0.45rem;
+		width: fit-content;
+		padding: 0.2rem 0.6rem;
+		background: var(--action);
+		color: var(--action-contrast);
+		font-family: ui-monospace, monospace;
+		font-size: 0.68rem;
+		font-weight: 800;
+		letter-spacing: 0.1em;
+		border-radius: var(--radius-sm);
 	}
 
-	.composer-hero h2 {
-		margin: 0 0 0.6rem;
-		font-size: clamp(1.5rem, 2.5vw, 1.9rem);
-		letter-spacing: 0.02em;
+	.composer-content h2 {
+		margin: 0.2rem 0 0;
+		font-size: clamp(1.2rem, 3vw, 1.65rem);
+		font-weight: 800;
+		color: var(--text-primary);
 	}
 
 	.composer-desc {
 		margin: 0;
 		color: var(--text-muted);
-		font-size: 0.95rem;
-		line-height: 1.55;
+		font-size: 0.88rem;
+		line-height: 1.45;
 	}
 
-	.composer-launch-btn {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.55rem;
-		padding: 0.85rem 1.6rem;
-		border: 2px solid var(--border-strong);
-		border-radius: var(--radius-md, 8px);
-		background: var(--action);
-		color: var(--action-contrast);
-		font-weight: 800;
-		font-size: 0.85rem;
-		letter-spacing: 0.04em;
-		text-transform: uppercase;
-		cursor: pointer;
-		box-shadow: 3px 3px 0px var(--border-strong);
-		transition: all 0.12s ease;
-	}
-
-	.composer-launch-btn:hover {
-		transform: translate(-1px, -1px);
-		box-shadow: 4px 4px 0px var(--border-strong);
-	}
-
-	/* Custom Playlists */
 	.custom-playlists-section {
 		margin-bottom: 3.5rem;
 	}
 
 	.custom-playlists-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr));
-		gap: 1.25rem;
+		grid-template-columns: repeat(auto-fill, minmax(14.5rem, 1fr));
+		gap: 1rem;
+		margin-top: 1rem;
 	}
 
 	.custom-playlist-card {
-		padding: 1.25rem;
-		border: 2px solid var(--border-subtle);
-		border-radius: var(--radius-lg, 12px);
-		background: var(--surface-canvas);
+		padding: 1.15rem;
+		border: 1px solid var(--border-subtle);
+		background: var(--surface-raised);
+		border-radius: var(--radius-md);
 		display: flex;
 		flex-direction: column;
+		justify-content: space-between;
 		gap: 0.85rem;
 		transition: all 0.12s ease;
 	}
@@ -342,17 +307,18 @@
 	.pl-card-header {
 		display: flex;
 		align-items: center;
-		gap: 0.85rem;
+		gap: 0.75rem;
 	}
 
 	.pl-icon-wrap {
+		width: 2.25rem;
+		height: 2.25rem;
+		border-radius: var(--radius-sm);
+		background: var(--surface-canvas);
+		border: 1px solid var(--border-subtle);
 		display: grid;
 		place-items: center;
-		width: 2.5rem;
-		height: 2.5rem;
-		border: 1px solid var(--border-strong);
-		border-radius: var(--radius-md, 8px);
-		background: var(--surface-selected);
+		flex-shrink: 0;
 	}
 
 	.pl-meta {
@@ -362,15 +328,16 @@
 	}
 
 	.pl-title {
-		font-size: 0.95rem;
-		font-weight: 800;
+		font-size: 0.92rem;
+		font-weight: 700;
+		color: var(--text-primary);
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}
 
 	.pl-count {
-		font-size: 0.75rem;
+		font-size: 0.72rem;
 		color: var(--text-muted);
 	}
 
@@ -378,136 +345,67 @@
 		margin: 0;
 		font-size: 0.8rem;
 		color: var(--text-muted);
-		display: -webkit-box;
-		-webkit-line-clamp: 2;
-		line-clamp: 2;
-		-webkit-box-orient: vertical;
-		overflow: hidden;
+		line-height: 1.4;
 	}
 
 	.pl-actions {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		margin-top: auto;
-		padding-top: 0.75rem;
-		border-top: 1px solid var(--border-subtle);
+		border-top: 1px dashed var(--border-subtle);
+		padding-top: 0.65rem;
 	}
 
 	.pl-play-btn {
 		display: inline-flex;
 		align-items: center;
 		gap: 0.35rem;
-		padding: 0.45rem 0.95rem;
-		border: 1px solid var(--action);
-		border-radius: var(--radius-sm, 6px);
+		padding: 0.35rem 0.75rem;
 		background: var(--action);
 		color: var(--action-contrast);
-		font-family: ui-monospace, monospace;
-		font-size: 0.75rem;
-		font-weight: 800;
+		border: 1px solid var(--action);
+		border-radius: var(--radius-sm);
+		font-size: 0.72rem;
+		font-weight: 700;
 		cursor: pointer;
-		transition: all 0.12s ease;
+		transition: all 0.1s ease;
 	}
 
 	.pl-play-btn:hover:not(:disabled) {
-		filter: brightness(1.1);
+		background: var(--accent-gold-deep);
+		transform: scale(1.03);
 	}
 
 	.pl-play-btn:disabled {
-		opacity: 0.5;
+		opacity: 0.4;
 		cursor: not-allowed;
 	}
 
 	.pl-delete-btn {
-		display: grid;
-		place-items: center;
-		width: 2rem;
-		height: 2rem;
-		border: 1px solid var(--border-subtle);
-		border-radius: var(--radius-sm, 6px);
-		background: transparent;
+		padding: 0.35rem 0.45rem;
 		color: var(--text-muted);
+		background: transparent;
+		border: 1px solid transparent;
+		border-radius: var(--radius-sm);
 		cursor: pointer;
-		transition: all 0.12s ease;
+		transition: all 0.1s ease;
 	}
 
 	.pl-delete-btn:hover {
-		border-color: var(--danger);
 		color: var(--danger);
+		border-color: var(--danger);
 		background: var(--danger-subtle);
 	}
 
-	.create-pl-btn {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.4rem;
-		padding: 0.45rem 0.95rem;
-		border: 1px solid var(--border-strong);
-		border-radius: var(--radius-sm, 6px);
-		background: var(--surface-canvas);
-		color: var(--text-primary);
-		font-family: ui-monospace, monospace;
-		font-size: 0.75rem;
-		font-weight: 800;
-		cursor: pointer;
-		transition: all 0.12s ease;
-	}
-
-	.create-pl-btn:hover {
-		border-color: var(--action);
-		color: var(--action);
-	}
-
-	/* Mix Section */
 	.mix-section {
-		margin-bottom: var(--space-section);
-	}
-
-	.section-heading {
-		display: flex;
-		align-items: flex-end;
-		justify-content: space-between;
-		gap: 1.5rem;
-		margin-bottom: 2rem;
-		border-bottom: 1px solid var(--border-subtle);
-		padding-bottom: 1.1rem;
-	}
-
-	.section-heading h2 {
-		margin: 0;
-		font-size: clamp(1.5rem, 2.4vw, 1.95rem);
-		letter-spacing: 0.02em;
-	}
-
-	.play-mix-btn {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.5rem;
-		border: 1px solid var(--accent-gold-deep);
-		border-radius: 0;
-		background: var(--action);
-		color: var(--action-contrast);
-		padding: 0.6rem 1.3rem;
-		font: inherit;
-		font-size: 0.72rem;
-		font-weight: 700;
-		letter-spacing: 0.16em;
-		text-transform: uppercase;
-		cursor: pointer;
-		transition:
-			filter 0.14s ease,
-			box-shadow 0.14s ease;
-	}
-
-	.play-mix-btn:hover {
-		box-shadow: var(--shadow-bauhaus-hover);
+		margin-bottom: 3.5rem;
 	}
 
 	.song-cards-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(21rem, 1fr));
+		grid-template-columns: repeat(auto-fill, minmax(13.5rem, 1fr));
 		gap: 1.15rem;
+		margin-top: 1rem;
 	}
 
 	.mix-footer {
@@ -519,71 +417,53 @@
 	.mix-link {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.5rem;
-		color: var(--text-primary);
-		font-weight: 600;
-		font-size: 0.72rem;
-		text-transform: uppercase;
-		letter-spacing: 0.16em;
+		gap: 0.45rem;
+		font-size: 0.85rem;
+		font-weight: 700;
+		color: var(--action);
 		text-decoration: none;
-		border-bottom: 1px solid var(--accent-gold);
-		padding-bottom: 0.3rem;
-		transition:
-			color 0.14s ease,
-			gap 0.14s ease;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		transition: transform 0.1s ease;
 	}
 
 	.mix-link:hover {
-		color: var(--action);
-		gap: 0.75rem;
+		transform: translateX(3px);
 	}
 
 	.actions-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
-		gap: 1.75rem;
+		grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+		gap: 1.25rem;
+		margin-top: 3.5rem;
 	}
 
 	.action-card {
 		position: relative;
+		display: flex;
+		flex-direction: column;
+		gap: 0.65rem;
+		padding: 1.5rem;
 		border: 1px solid var(--border-subtle);
-		border-radius: var(--radius-lg);
 		background: var(--surface-raised);
-		padding: clamp(1.75rem, 3.5vw, 2.5rem);
-		overflow: hidden;
-		transition:
-			border-color 0.16s ease,
-			box-shadow 0.16s ease;
-	}
-
-	.action-card::before {
-		content: '';
-		position: absolute;
-		inset: 6px;
-		border: 1px solid transparent;
-		transition: border-color 0.16s ease;
-		pointer-events: none;
+		border-radius: var(--radius-md);
+		transition: all 0.14s ease;
 	}
 
 	.action-card:hover {
-		border-color: var(--accent-gold-deep);
+		border-color: var(--border-strong);
 		box-shadow: var(--shadow-bauhaus);
-	}
-
-	.action-card:hover::before {
-		border-color: color-mix(in oklab, var(--accent-gold) 24%, transparent);
+		transform: translate(-1px, -1px);
 	}
 
 	.card-indicator {
-		position: absolute;
-		top: 0;
-		left: 0;
-		right: 0;
-		height: 2px;
+		width: 2rem;
+		height: 3px;
+		border-radius: var(--radius-full);
 	}
 
 	.indicator-blue {
-		background: var(--accent-jade);
+		background: var(--bauhaus-blue);
 	}
 	.indicator-yellow {
 		background: var(--accent-gold);
@@ -593,43 +473,38 @@
 	}
 
 	.action-card h2 {
-		margin: 0.65rem 0 0.6rem;
-		font-size: 1.35rem;
-		letter-spacing: 0.02em;
+		margin: 0;
+		font-size: 1.15rem;
+		font-weight: 700;
+		color: var(--text-primary);
 	}
 
 	.action-card p {
-		margin: 0 0 1.75rem;
+		margin: 0;
 		color: var(--text-muted);
-		font-size: 0.95rem;
-		line-height: 1.6;
+		font-size: 0.88rem;
+		line-height: 1.5;
+		flex: 1;
 	}
 
 	.action-card a {
-		display: inline-flex;
-		min-height: 2.85rem;
-		align-items: center;
-		justify-content: center;
-		border: 1px solid var(--accent-gold-deep);
-		border-radius: 0;
-		background: var(--action);
-		padding: 0.65rem 1.5rem;
-		color: var(--action-contrast);
+		align-self: flex-start;
+		padding: 0.5rem 1rem;
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-sm);
+		background: var(--surface-canvas);
+		color: var(--text-primary);
+		font-size: 0.8rem;
 		font-weight: 700;
-		font-size: 0.72rem;
-		letter-spacing: 0.16em;
 		text-transform: uppercase;
+		letter-spacing: 0.06em;
 		text-decoration: none;
-		transition:
-			filter 0.14s ease,
-			box-shadow 0.14s ease;
+		transition: all 0.12s ease;
 	}
 
 	.action-card a:hover {
-		box-shadow: var(--shadow-bauhaus-hover);
-	}
-
-	.connect-card {
-		max-width: 34rem;
+		border-color: var(--action);
+		background: var(--action);
+		color: var(--action-contrast);
 	}
 </style>

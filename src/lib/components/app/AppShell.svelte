@@ -2,6 +2,7 @@
 	import type { Snippet } from 'svelte';
 	import MobileNav from './MobileNav.svelte';
 	import SideNav from './SideNav.svelte';
+	import ThemeSelector from '#lib/components/ui/ThemeSelector.svelte';
 	import type { AppBrand, AppNavigationItem } from './navigation.js';
 
 	interface Props {
@@ -36,6 +37,21 @@
 <a class="app-skip-link" href="#main-content">{skipLinkLabel}</a>
 
 <div class="min-h-[calc(100dvh-10px)] bg-[var(--surface-canvas)] text-[var(--text-primary)]">
+	<div
+		class="flex items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--surface-raised)] px-4 py-2.5 md:hidden"
+	>
+		<a
+			class="flex items-center gap-2 font-[family-name:var(--font-display)] text-lg tracking-[0.14em] uppercase"
+			href={brand.href}
+		>
+			<span class="inline-block h-2 w-2 rotate-45 bg-[var(--accent-gold)]"></span>
+			{brand.label}
+		</a>
+		<div class="w-44">
+			<ThemeSelector compact={true} id="mobile-theme-selector" />
+		</div>
+	</div>
+
 	<div class="mx-auto flex min-h-[calc(100dvh-10px)] max-w-screen-2xl">
 		<SideNav
 			{brand}

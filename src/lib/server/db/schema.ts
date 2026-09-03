@@ -101,4 +101,15 @@ export const playbackState = pgTable('playback_state', {
 	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 });
 
+/**
+ * User visual preferences and customization settings.
+ */
+export const userSettings = pgTable('user_settings', {
+	userId: text('user_id')
+		.primaryKey()
+		.references(() => user.id, { onDelete: 'cascade' }),
+	theme: text('theme').notNull().default('bauhaus-dark'),
+	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+});
+
 export * from './auth.schema';

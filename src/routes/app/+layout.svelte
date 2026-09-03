@@ -6,6 +6,7 @@
 	import PlaylistGeneratorModal from '#lib/components/music/PlaylistGeneratorModal.svelte';
 	import AddToPlaylistModal from '#lib/components/music/AddToPlaylistModal.svelte';
 	import { player } from '#lib/player/player.svelte.js';
+	import { themeManager } from '#lib/theme/theme.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import type { LayoutData } from './$types';
 
@@ -20,6 +21,7 @@
 	]);
 
 	$effect(() => {
+		themeManager.init(data.theme);
 		player.applyStreamingSettings(data.streamingSettings);
 		player.restorePlaybackState(data.playbackState);
 	});
