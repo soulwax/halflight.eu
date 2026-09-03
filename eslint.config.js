@@ -13,6 +13,7 @@ const gitignorePath = path.resolve(import.meta.dirname, '.gitignore');
 
 export default defineConfig(
 	includeIgnoreFile(gitignorePath),
+	{ ignores: ['src/lib/paraglide/**', 'storybook-static/**'] },
 	js.configs.recommended,
 	ts.configs.recommended,
 	svelte.configs.recommended,
@@ -20,11 +21,23 @@ export default defineConfig(
 	prettier,
 	svelte.configs.prettier,
 	{
-		languageOptions: { globals: { ...globals.browser, ...globals.node } },
+		languageOptions: {
+			globals: { ...globals.browser, ...globals.node },
+			parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname }
+		},
 		rules: {
 			// typescript-eslint strongly recommend that you do not use the no-undef lint rule on TypeScript projects.
 			// see: https://typescript-eslint.io/troubleshooting/faqs/eslint/#i-get-errors-from-the-no-undef-rule-about-global-variables-not-being-defined-even-though-there-are-no-typescript-errors
-			'no-undef': 'off'
+			'no-undef': 'off',
+
+			// Type-aware safety: catch the mistakes svelte-check can't.
+			'@typescript-eslint/no-floating-promises': 'error',
+			'@typescript-eslint/no-misused-promises': 'error',
+			'@typescript-eslint/await-thenable': 'error',
+			'@typescript-eslint/require-await': 'error',
+			'@typescript-eslint/switch-exhaustiveness-check': 'error',
+			'@typescript-eslint/no-explicit-any': 'error',
+			'@typescript-eslint/consistent-type-imports': ['error', { fixStyle: 'inline-type-imports' }]
 		}
 	},
 	{
@@ -35,11 +48,17 @@ export default defineConfig(
 				extraFileExtensions: ['.svelte'],
 				parser: ts.parser
 			}
+		},
+		rules: {
+			'svelte/button-has-type': 'error',
+			'svelte/require-each-key': 'error'
 		}
 	},
 	{
-		// Override or add rule settings here, such as:
-		// 'svelte/button-has-type': 'error'
-		rules: {}
+		files: ['**/*.spec.ts', '**/*.spec.js', '**/*.e2e.ts'],
+		rules: {
+			// Test doubles legitimately need `any`; assertions carry the intent.
+			'@typescript-eslint/no-explicit-any': 'off'
+		}
 	}
 );

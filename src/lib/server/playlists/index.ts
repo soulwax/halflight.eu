@@ -2,6 +2,7 @@ import { db } from '#lib/server/db';
 import { userPlaylist } from '#lib/server/db/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import type { TrackSummary } from '#lib/tidal/models';
+import { log } from '#lib/server/log';
 import { readRecord } from '#lib/server/tidal/store';
 import { getAccessToken, type TidalRequestContext } from '#lib/server/tidal/client';
 
@@ -40,7 +41,7 @@ export async function ensurePlaylistTable(): Promise<void> {
 					CREATE INDEX IF NOT EXISTS user_playlist_user_id_idx ON user_playlist(user_id);
 				`);
 			} catch (err) {
-				console.error('Failed to ensure user_playlist table:', err);
+				log.error('failed to ensure user_playlist table', { cause: err });
 			}
 		})();
 	}

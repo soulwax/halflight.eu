@@ -249,8 +249,8 @@ export class PlayerState {
 		this.schedulePersistence();
 
 		if (isBrowser) {
-			this.loadAndPlayStream(track.id);
-			this.loadLyrics(track.id);
+			void this.loadAndPlayStream(track.id);
+			void this.loadLyrics(track.id);
 		}
 	}
 
@@ -287,7 +287,7 @@ export class PlayerState {
 			this.isExpanded = true;
 		}
 		if (panel === 'lyrics' && this.isExpanded && !this.lyrics && this.currentTrack) {
-			this.loadLyrics(this.currentTrack.id);
+			void this.loadLyrics(this.currentTrack.id);
 		}
 		this.savePrefs();
 	}
@@ -423,7 +423,7 @@ export class PlayerState {
 		}
 
 		if (this.currentTrack && !this.streamUrl) {
-			this.loadAndPlayStream(this.currentTrack.id);
+			void this.loadAndPlayStream(this.currentTrack.id);
 		} else if (this.audio && this.streamUrl) {
 			if (this.isPlaying) {
 				this.audio.pause();
@@ -511,7 +511,7 @@ export class PlayerState {
 	next(auto = false): TrackSummary | null {
 		if (auto && this.repeatMode === 'one' && this.currentTrack) {
 			this.currentTime = 0;
-			if (isBrowser) this.loadAndPlayStream(this.currentTrack.id);
+			if (isBrowser) void this.loadAndPlayStream(this.currentTrack.id);
 			return this.currentTrack;
 		}
 
@@ -530,7 +530,7 @@ export class PlayerState {
 		this.currentTime = 0;
 		this.duration = nextTrack.duration || 0;
 		if (isBrowser) {
-			this.loadAndPlayStream(nextTrack.id);
+			void this.loadAndPlayStream(nextTrack.id);
 		}
 		this.schedulePersistence();
 		return nextTrack;
@@ -555,7 +555,7 @@ export class PlayerState {
 		this.currentTime = 0;
 		this.duration = prevTrack.duration || 0;
 		if (isBrowser) {
-			this.loadAndPlayStream(prevTrack.id);
+			void this.loadAndPlayStream(prevTrack.id);
 		}
 		this.schedulePersistence();
 		return prevTrack;
@@ -571,7 +571,7 @@ export class PlayerState {
 		this.currentTime = 0;
 		this.duration = targetTrack.duration || 0;
 		if (isBrowser) {
-			this.loadAndPlayStream(targetTrack.id);
+			void this.loadAndPlayStream(targetTrack.id);
 		}
 		this.schedulePersistence();
 	}

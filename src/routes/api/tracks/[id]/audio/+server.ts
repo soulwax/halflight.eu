@@ -8,6 +8,7 @@ import {
 	TidalPlaybackNotLinkedError,
 	TidalQualityDeniedError
 } from '#lib/server/tidal';
+import { log } from '#lib/server/log';
 
 /**
  * Streams media through Syn so the browser never needs access to a TIDAL CDN URL.
@@ -56,7 +57,7 @@ export const GET: RequestHandler = async (event) => {
 	try {
 		upstream = await event.fetch(stream.streamUrl, { headers, redirect: 'follow' });
 	} catch (cause) {
-		console.error(`[audio] ${trackId} CDN ${cdnHost} fetch threw: ${cause}`);
+		log.error('audio proxy: CDN fetch threw', { trackId, cdnHost, cause });
 		error(502, 'CDN unreachable');
 	}
 
@@ -66,7 +67,12 @@ export const GET: RequestHandler = async (event) => {
 			.text()
 			.then((t) => t.slice(0, 200))
 			.catch(() => '');
-		console.error(`[audio] ${trackId} CDN ${cdnHost} -> ${upstream.status}; body: ${snippet}`);
+		log.error('audio proxy: CDN returned an error', {
+			trackId,
+			cdnHost,
+			status: upstream.status,
+			body: snippet
+		});
 		error(502, `CDN error: ${upstream.status}`);
 	}
 

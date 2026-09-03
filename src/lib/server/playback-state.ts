@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { db } from '#lib/server/db';
 import { playbackState } from '#lib/server/db/schema';
+import { log } from '#lib/server/log';
 import type { AlbumReference, ArtistReference, TrackSummary } from '#lib/tidal/models';
 
 export const MAX_PLAYBACK_QUEUE_LENGTH = 100;
@@ -209,7 +210,7 @@ export async function getPlaybackState(
 	try {
 		return (await store.read(userId)) ?? EMPTY_PLAYBACK_STATE;
 	} catch (err) {
-		console.error(`[playback-state] read failed, using empty state: ${err}`);
+		log.error('playback-state read failed, using empty state', { cause: err });
 		return EMPTY_PLAYBACK_STATE;
 	}
 }

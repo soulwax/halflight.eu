@@ -4,6 +4,7 @@ import {
 	createUserPlaylist,
 	attemptTidalPlaylistSync
 } from '#lib/server/playlists';
+import { log } from '#lib/server/log';
 import type { TrackSummary } from '#lib/tidal/models';
 import type { RequestHandler } from './$types';
 
@@ -24,7 +25,7 @@ export const GET: RequestHandler = async (event) => {
 		const playlists = await getUserPlaylists(event.locals.user.id);
 		return json({ playlists });
 	} catch (err) {
-		console.error('Failed to load user playlists:', err);
+		log.error('failed to load user playlists', { cause: err });
 		return json({ error: 'failed_to_load_playlists', playlists: [] }, { status: 500 });
 	}
 };
@@ -71,7 +72,7 @@ export const POST: RequestHandler = async (event) => {
 
 		return json({ playlist: saved }, { status: 201 });
 	} catch (err) {
-		console.error('Failed to create user playlist:', err);
+		log.error('failed to create user playlist', { cause: err });
 		return json({ error: 'failed_to_create_playlist' }, { status: 500 });
 	}
 };

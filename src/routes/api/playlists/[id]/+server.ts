@@ -1,5 +1,6 @@
 import { error, json } from '@sveltejs/kit';
 import { updateUserPlaylist, deleteUserPlaylist } from '#lib/server/playlists';
+import { log } from '#lib/server/log';
 import type { TrackSummary } from '#lib/tidal/models';
 import type { RequestHandler } from './$types';
 
@@ -41,7 +42,7 @@ export const PATCH: RequestHandler = async (event) => {
 
 		return json({ playlist: updated });
 	} catch (err) {
-		console.error(`Failed to update playlist ${playlistId}:`, err);
+		log.error('failed to update playlist', { playlistId, cause: err });
 		return json({ error: 'failed_to_update_playlist' }, { status: 500 });
 	}
 };
@@ -60,7 +61,7 @@ export const DELETE: RequestHandler = async (event) => {
 		await deleteUserPlaylist(event.locals.user.id, playlistId);
 		return json({ success: true, id: playlistId });
 	} catch (err) {
-		console.error(`Failed to delete playlist ${playlistId}:`, err);
+		log.error('failed to delete playlist', { playlistId, cause: err });
 		return json({ error: 'failed_to_delete_playlist' }, { status: 500 });
 	}
 };

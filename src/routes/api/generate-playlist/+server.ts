@@ -3,6 +3,7 @@ import { getConnectionStatus, tidalApi } from '#lib/server/tidal';
 import { normaliseSearchResults } from '#lib/server/tidal/normalise';
 import type { TrackSummary } from '#lib/tidal/models';
 import { createUserPlaylist, attemptTidalPlaylistSync } from '#lib/server/playlists';
+import { log } from '#lib/server/log';
 import type { RequestHandler } from './$types';
 
 interface GeneratorRequest {
@@ -398,7 +399,7 @@ export const POST: RequestHandler = async (event) => {
 			tidalPlaylistId
 		});
 	} catch (err) {
-		console.error('Generator failed:', err);
+		log.error('playlist generator failed', { cause: err });
 		return json({ error: 'generator_failed' }, { status: 502 });
 	}
 };

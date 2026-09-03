@@ -2,6 +2,7 @@ import { getTidalConfig } from './config';
 import { TidalConfigError } from './errors';
 import { readPlaybackRecord, readRecord } from './store';
 import type { TokenRowStore } from './store';
+import { log } from '#lib/server/log';
 
 export interface TidalConnectionStatus {
 	connected: boolean;
@@ -50,9 +51,7 @@ export async function getConnectionStatus(store?: TokenRowStore): Promise<TidalC
 	} catch (err) {
 		// An unreadable playback blob just means "no full playback" — but a schema
 		// error (e.g. migration 0003 not applied) is worth surfacing in the log.
-		console.error(
-			`[tidal] could not read playback token: ${err instanceof Error ? err.message : err}`
-		);
+		log.error('tidal: could not read playback token', { cause: err });
 	}
 
 	try {

@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { db } from '#lib/server/db';
 import { streamingSettings } from '#lib/server/db/schema';
+import { log } from '#lib/server/log';
 
 export const STREAMING_QUALITIES = ['LOW', 'HIGH', 'LOSSLESS'] as const;
 export type StreamingQuality = (typeof STREAMING_QUALITIES)[number];
@@ -100,7 +101,7 @@ export async function getStreamingSettings(
 	try {
 		return (await store.read(userId)) ?? DEFAULT_STREAMING_SETTINGS;
 	} catch (err) {
-		console.error(`[streaming-settings] read failed, using defaults: ${err}`);
+		log.error('streaming-settings read failed, using defaults', { cause: err });
 		return DEFAULT_STREAMING_SETTINGS;
 	}
 }

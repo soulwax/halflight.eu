@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { db } from '#lib/server/db';
 import { userSettings } from '#lib/server/db/schema';
+import { log } from '#lib/server/log';
 import { DARK_THEMES, DEFAULT_THEME, isDarkTheme, type DarkTheme } from '#lib/theme/types';
 
 export { DARK_THEMES, DEFAULT_THEME, isDarkTheme, type DarkTheme };
@@ -59,7 +60,7 @@ export async function getUserSettings(
 	try {
 		return (await store.read(userId)) ?? DEFAULT_USER_SETTINGS;
 	} catch (err) {
-		console.error(`[user-settings] read failed, using defaults: ${err}`);
+		log.error('user-settings read failed, using defaults', { cause: err });
 		return DEFAULT_USER_SETTINGS;
 	}
 }
