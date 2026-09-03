@@ -78,11 +78,13 @@ export function parsePlaybackTrack(value: unknown): TrackSummary | null {
 	const title = requiredText(track.title, 512);
 	if (!id || !title || !Array.isArray(track.artists)) return null;
 
+	// Drop artist entries that do not validate rather than rejecting the track —
+	// TIDAL search / mix results occasionally omit an artist id.
 	const artists = track.artists
 		.map(parseArtist)
-		.filter((artist): artist is ArtistReference => Boolean(artist));
-	if (artists.length === 0 || artists.length !== track.artists.length || artists.length > 20)
-		return null;
+		.filter((artist): artist is ArtistReference => Boolean(artist))
+		.slice(0, 20);
+	if (artists.length === 0) return null;
 
 	const album = parseAlbum(track.album);
 	const duration = optionalInteger(track.duration, MAX_POSITION_SECONDS);
@@ -115,9 +117,13 @@ export function parsePlaybackTrack(value: unknown): TrackSummary | null {
 }
 
 function parseTrackList(value: unknown, maximum: number): TrackSummary[] | null {
-	if (!Array.isArray(value) || value.length > maximum) return null;
-	const tracks = value.map(parsePlaybackTrack);
-	return tracks.every((track): track is TrackSummary => track !== null) ? tracks : null;
+	if (!Array.isArray(value)) return null;
+	// Keep whatever validates, capped at the limit — one odd entry must not
+	// throw away the whole resume queue.
+	return value
+		.map(parsePlaybackTrack)
+		.filter((track): track is TrackSummary => track !== null)
+		.slice(0, maximum);
 }
 
 /** Parse the only playback-state shape accepted by the API. */

@@ -44,8 +44,31 @@ export const GET: RequestHandler = async (event) => {
 	const headers = new Headers({ Accept: '*/*', 'User-Agent': 'TIDAL_ANDROID/1039 okhttp/3.13.1' });
 	const range = event.request.headers.get('range');
 	if (range) headers.set('Range', range);
-	const upstream = await event.fetch(stream.streamUrl, { headers });
-	if (!upstream.ok && upstream.status !== 206) error(502, `CDN error: ${upstream.status}`);
+
+	let cdnHost = 'unknown';
+	try {
+		cdnHost = new URL(stream.streamUrl).host;
+	} catch {
+		/* keep the placeholder */
+	}
+
+	let upstream: Response;
+	try {
+		upstream = await event.fetch(stream.streamUrl, { headers, redirect: 'follow' });
+	} catch (cause) {
+		console.error(`[audio] ${trackId} CDN ${cdnHost} fetch threw: ${cause}`);
+		error(502, 'CDN unreachable');
+	}
+
+	if (!upstream.ok && upstream.status !== 206) {
+		const snippet = await upstream
+			.clone()
+			.text()
+			.then((t) => t.slice(0, 200))
+			.catch(() => '');
+		console.error(`[audio] ${trackId} CDN ${cdnHost} -> ${upstream.status}; body: ${snippet}`);
+		error(502, `CDN error: ${upstream.status}`);
+	}
 
 	const upstreamMimeType = upstream.headers.get('content-type');
 	const responseHeaders = new Headers({

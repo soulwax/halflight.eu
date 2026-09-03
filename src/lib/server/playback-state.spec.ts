@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
 	EMPTY_PLAYBACK_STATE,
 	MAX_PLAYBACK_HISTORY_LENGTH,
-	MAX_PLAYBACK_QUEUE_LENGTH,
 	parsePlaybackState
 } from './playback-state';
 
@@ -21,7 +20,7 @@ describe('playback state', () => {
 		).toEqual({ currentTrack: track, queue: [track], history: [], currentTime: 42 });
 	});
 
-	it('rejects malformed tracks and oversized workflow lists', () => {
+	it('rejects a malformed current track but not the whole request', () => {
 		expect(
 			parsePlaybackState({
 				currentTrack: { ...track, artists: [] },
@@ -30,21 +29,24 @@ describe('playback state', () => {
 				currentTime: 0
 			})
 		).toBeNull();
+	});
+
+	it('drops unparseable queue entries and caps oversized lists instead of rejecting', () => {
+		const bad = { kind: 'track', id: 'x', title: 'x' }; // no artists
+		const state = parsePlaybackState({
+			currentTrack: null,
+			queue: [track, bad, track],
+			history: Array.from({ length: MAX_PLAYBACK_HISTORY_LENGTH + 10 }, () => track),
+			currentTime: 0
+		});
+		expect(state).not.toBeNull();
+		expect(state?.queue).toEqual([track, track]);
+		expect(state?.history).toHaveLength(MAX_PLAYBACK_HISTORY_LENGTH);
+	});
+
+	it('still rejects a fundamentally wrong shape', () => {
 		expect(
-			parsePlaybackState({
-				currentTrack: null,
-				queue: Array.from({ length: MAX_PLAYBACK_QUEUE_LENGTH + 1 }, () => track),
-				history: [],
-				currentTime: 0
-			})
-		).toBeNull();
-		expect(
-			parsePlaybackState({
-				currentTrack: null,
-				queue: [],
-				history: Array.from({ length: MAX_PLAYBACK_HISTORY_LENGTH + 1 }, () => track),
-				currentTime: 0
-			})
+			parsePlaybackState({ currentTrack: null, queue: 'nope', history: [], currentTime: 0 })
 		).toBeNull();
 	});
 
