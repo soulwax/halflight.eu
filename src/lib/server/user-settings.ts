@@ -54,7 +54,14 @@ export async function getUserSettings(
 	userId: string,
 	store: UserSettingsStore = dbUserSettingsStore
 ): Promise<UserSettings> {
-	return (await store.read(userId)) ?? DEFAULT_USER_SETTINGS;
+	// The app shell loads this on every page — a storage hiccup (or a pending
+	// migration) must fall back to defaults, never 500 the whole app.
+	try {
+		return (await store.read(userId)) ?? DEFAULT_USER_SETTINGS;
+	} catch (err) {
+		console.error(`[user-settings] read failed, using defaults: ${err}`);
+		return DEFAULT_USER_SETTINGS;
+	}
 }
 
 export async function setUserTheme(

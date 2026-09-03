@@ -95,7 +95,14 @@ export async function getStreamingSettings(
 	userId: string,
 	store: StreamingSettingsStore = dbStreamingSettingsStore
 ): Promise<StreamingSettings> {
-	return (await store.read(userId)) ?? DEFAULT_STREAMING_SETTINGS;
+	// Loaded on every app-shell render — a storage failure falls back to
+	// defaults rather than 500-ing the page.
+	try {
+		return (await store.read(userId)) ?? DEFAULT_STREAMING_SETTINGS;
+	} catch (err) {
+		console.error(`[streaming-settings] read failed, using defaults: ${err}`);
+		return DEFAULT_STREAMING_SETTINGS;
+	}
 }
 
 export function saveStreamingSettings(

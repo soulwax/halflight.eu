@@ -204,7 +204,14 @@ export async function getPlaybackState(
 	userId: string,
 	store: PlaybackStateStore = dbPlaybackStateStore
 ): Promise<PlaybackState> {
-	return (await store.read(userId)) ?? EMPTY_PLAYBACK_STATE;
+	// Loaded on every app-shell render — a storage failure falls back to an
+	// empty state rather than 500-ing the page.
+	try {
+		return (await store.read(userId)) ?? EMPTY_PLAYBACK_STATE;
+	} catch (err) {
+		console.error(`[playback-state] read failed, using empty state: ${err}`);
+		return EMPTY_PLAYBACK_STATE;
+	}
 }
 
 export function savePlaybackState(
