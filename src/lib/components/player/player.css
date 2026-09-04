@@ -92,6 +92,14 @@
 	background: var(--border-subtle);
 	cursor: pointer;
 }
+.syn-player .seek-buffer {
+	position: absolute;
+	left: 0;
+	height: 3px;
+	background: color-mix(in oklab, var(--text-muted) 32%, transparent);
+	pointer-events: none;
+	transition: width 0.2s ease-out;
+}
 .syn-player .seek-fill {
 	position: absolute;
 	left: 0;

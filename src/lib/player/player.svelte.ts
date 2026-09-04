@@ -1,7 +1,14 @@
 import { SvelteMap } from 'svelte/reactivity';
-import type { TrackSummary } from '#lib/tidal/models';
+import type { TrackSummary } from '#lib/tidal/models.js';
 import { qualityTier, type QualityTier } from '#lib/format';
-import { assessPlayback, type PlaybackAssessment } from './playback-assessment';
+import { assessPlayback, type PlaybackAssessment } from './playback-assessment.js';
+import {
+	setupMediaSessionHandlers,
+	updateMediaMetadata,
+	updatePlaybackState,
+	updatePositionState
+} from './media-session.js';
+import { streamPreloader, type PreloadedStreamData } from './stream-preloader.js';
 
 export interface SavedPlaybackState {
 	currentTrack: TrackSummary | null;
@@ -63,6 +70,8 @@ export class PlayerState {
 	isHeadroomEnabled = $state(true);
 	maxVolume = $derived(this.isHeadroomEnabled ? 1.25 : 1);
 	volumePercent = $derived(Math.round(this.volume * 100));
+	bufferedPercent = $state(0);
+	isBuffering = $state(false);
 	streamUrl = $state<string | null>(null);
 	playbackMode = $state<'direct' | 'embed'>('direct');
 	audioQuality = $state<string | null>(null);
@@ -102,7 +111,21 @@ export class PlayerState {
 		if (isBrowser) {
 			this.loadPrefs();
 			this.initAudio();
+			this.setupMediaSession();
 		}
+	}
+
+	private setupMediaSession(): void {
+		setupMediaSessionHandlers({
+			onPlay: () => this.togglePlayPause(),
+			onPause: () => this.togglePlayPause(),
+			onPrevious: () => this.previous(),
+			onNext: () => this.next(),
+			onSeekBackward: (sec) => this.seekBy(-sec),
+			onSeekForward: (sec) => this.seekBy(sec),
+			onSeekTo: (sec) => this.seek(sec),
+			onStop: () => this.close()
+		});
 	}
 
 	private ensureAudioGraph(): void {
@@ -196,18 +219,32 @@ export class PlayerState {
 			if (this.audio && !isNaN(this.audio.duration) && this.audio.duration > 0) {
 				this.duration = this.audio.duration;
 				this.hasMediaMetadata = true;
+				this.updateBuffer();
 			}
 		};
 		this.audio.addEventListener('durationchange', onMeta);
 		this.audio.addEventListener('loadedmetadata', onMeta);
+		this.audio.addEventListener('progress', () => this.updateBuffer());
+
+		this.audio.addEventListener('waiting', () => {
+			this.isBuffering = true;
+		});
+
+		this.audio.addEventListener('playing', () => {
+			this.isBuffering = false;
+			this.isPlaying = true;
+			updatePlaybackState(true);
+		});
 
 		this.audio.addEventListener('play', () => {
 			this.isPlaying = true;
+			updatePlaybackState(true);
 			this.reportNowPlaying();
 		});
 
 		this.audio.addEventListener('pause', () => {
 			this.isPlaying = false;
+			updatePlaybackState(false);
 		});
 
 		this.audio.addEventListener('ended', () => {
@@ -219,7 +256,40 @@ export class PlayerState {
 			this.playbackMode = 'embed';
 			this.isPlaying = false;
 			this.isLoading = false;
+			this.isBuffering = false;
+			updatePlaybackState(false);
 		});
+
+		// Auto-reconnect audio context on tab wake or connection restore
+		document.addEventListener('visibilitychange', () => {
+			if (document.visibilityState === 'visible') {
+				this.resumeAudioContext();
+			}
+		});
+		window.addEventListener('online', () => {
+			this.resumeAudioContext();
+		});
+	}
+
+	private updateBuffer(): void {
+		if (!this.audio || !this.audio.duration || Number.isNaN(this.audio.duration)) return;
+		const buffered = this.audio.buffered;
+		if (buffered.length === 0) {
+			this.bufferedPercent = 0;
+			return;
+		}
+		const current = this.audio.currentTime;
+		for (let i = 0; i < buffered.length; i++) {
+			if (buffered.start(i) <= current && current <= buffered.end(i)) {
+				this.bufferedPercent = Math.min(
+					100,
+					Math.max(0, (buffered.end(i) / this.audio.duration) * 100)
+				);
+				return;
+			}
+		}
+		const lastEnd = buffered.end(buffered.length - 1);
+		this.bufferedPercent = Math.min(100, Math.max(0, (lastEnd / this.audio.duration) * 100));
 	}
 
 	/**
@@ -233,6 +303,14 @@ export class PlayerState {
 		const audio = this.audio;
 		if (!audio || Number.isNaN(audio.currentTime)) return;
 		this.currentTime = audio.currentTime;
+		this.updateBuffer();
+		updatePositionState({ duration: this.duration, position: this.currentTime });
+
+		// Preload next track when entering final 20 seconds
+		if (this.duration > 0 && this.duration - this.currentTime <= 20 && this.queue.length > 0) {
+			streamPreloader.preload(this.queue[0].id);
+		}
+
 		const elapsed = this.currentTime - this.lastObservedPlaybackTime;
 		if (elapsed > 0 && elapsed <= 5) this.listenedSeconds += elapsed;
 		this.lastObservedPlaybackTime = this.currentTime;
@@ -340,6 +418,10 @@ export class PlayerState {
 		this.requiresFullAuth = false;
 
 		this.schedulePersistence();
+		updateMediaMetadata(track);
+		if (this.queue.length > 0) {
+			streamPreloader.preload(this.queue[0].id);
+		}
 
 		if (isBrowser) {
 			void this.loadAndPlayStream(track.id);
@@ -522,8 +604,10 @@ export class PlayerState {
 		this.ensureAudioGraph();
 
 		if (this.isMuted) {
-			if (this.gainNode) {
-				this.gainNode.gain.value = 0;
+			if (this.gainNode && this.audioContext) {
+				const time = this.audioContext.currentTime;
+				this.gainNode.gain.cancelScheduledValues(time);
+				this.gainNode.gain.setTargetAtTime(0, time, 0.015);
 			}
 			this.audio.volume = 0;
 			this.audio.muted = true;
@@ -537,10 +621,12 @@ export class PlayerState {
 			effVol = Math.max(0, this.volume * multiplier);
 		}
 
-		if (this.gainNode) {
+		if (this.gainNode && this.audioContext) {
 			this.audio.volume = 1;
 			this.audio.muted = false;
-			this.gainNode.gain.value = effVol;
+			const time = this.audioContext.currentTime;
+			this.gainNode.gain.cancelScheduledValues(time);
+			this.gainNode.gain.setTargetAtTime(effVol, time, 0.015);
 		} else {
 			this.audio.volume = Math.max(0, Math.min(1, effVol));
 			this.audio.muted = false;
@@ -557,71 +643,69 @@ export class PlayerState {
 		this.audio?.pause();
 		this.isLoading = true;
 
-		// Fetch metadata from /stream endpoint
-		try {
-			const res = await fetch(`/api/tracks/${encodeURIComponent(trackId)}/stream`).catch(
-				() => null
-			);
-			if (res && res.ok) {
-				const data = (await res.json().catch(() => null)) as {
-					audioQuality?: string;
-					audioMode?: string;
-					requestedQuality?: string | null;
-					codecs?: string;
-					fileExtension?: string;
-					bitDepth?: number | null;
-					sampleRate?: number | null;
-					trackReplayGain?: number | null;
-					isPreview?: boolean;
-					requiresFullAuth?: boolean;
-				} | null;
+		// Check lookahead preloaded metadata first for zero-latency start
+		const preloaded = streamPreloader.consume(trackId);
+		let data: PreloadedStreamData | null = preloaded;
 
-				if (data && this.audio) {
-					// Store metadata
-					this.streamUrl = `/api/tracks/${encodeURIComponent(trackId)}/audio`;
-					this.audioQuality = data.audioQuality || data.audioMode || 'HIGH';
-					this.requestedQuality = data.requestedQuality ?? null;
-					this.codecs = data.codecs || null;
-					this.fileExtension = data.fileExtension || null;
-					this.bitDepth = data.bitDepth ?? null;
-					this.sampleRate = data.sampleRate ?? null;
-					this.trackReplayGain = data.trackReplayGain ?? null;
-					this.requiresFullAuth = data.requiresFullAuth ?? false;
-					this.playbackMode = 'direct';
-
-					// Syn proxies the authenticated CDN response so the browser never sees a
-					// provider URL or bearer credential.
-					this.audio.src = this.streamUrl;
-					if (startAt > 0) {
-						try {
-							this.audio.currentTime = startAt;
-						} catch {
-							// The stream may not be seekable until metadata arrives.
-						}
-					}
-					this.applyVolume();
-					await this.audio.play().catch(() => {
-						this.playbackMode = 'embed';
-					});
-					this.isPlaying = !this.audio.paused;
-					this.isLoading = false;
-					return;
+		if (!data) {
+			// Fetch metadata from /stream endpoint
+			try {
+				const res = await fetch(`/api/tracks/${encodeURIComponent(trackId)}/stream`).catch(
+					() => null
+				);
+				if (res && res.ok) {
+					data = (await res.json().catch(() => null)) as PreloadedStreamData | null;
+				} else if (res) {
+					const errData = (await res.json().catch(() => ({}))) as {
+						requiresFullAuth?: boolean;
+						reason?: string;
+					};
+					this.requiresFullAuth = errData.requiresFullAuth ?? res.status === 403;
+					this.playbackReason = errData.reason ?? `http_${res.status}`;
 				}
-			} else if (res) {
-				const errData = (await res.json().catch(() => ({}))) as {
-					requiresFullAuth?: boolean;
-					reason?: string;
-				};
-				this.requiresFullAuth = errData.requiresFullAuth ?? res.status === 403;
-				this.playbackReason = errData.reason ?? `http_${res.status}`;
+			} catch {
+				this.playbackReason = 'network_error';
 			}
-		} catch {
-			this.playbackReason = 'network_error';
 		}
 
-		// Direct playback unavailable — hand off to the TIDAL embed player, which
-		// works for previews (and full tracks when the viewer is signed in to
-		// TIDAL). Surface it immediately instead of silently doing nothing.
+		if (data && this.audio) {
+			// Store metadata
+			this.streamUrl = `/api/tracks/${encodeURIComponent(trackId)}/audio`;
+			this.audioQuality = data.audioQuality || data.audioMode || 'HIGH';
+			this.requestedQuality = data.requestedQuality ?? null;
+			this.codecs = data.codecs || null;
+			this.fileExtension = data.fileExtension || null;
+			this.bitDepth = data.bitDepth ?? null;
+			this.sampleRate = data.sampleRate ?? null;
+			this.trackReplayGain = data.trackReplayGain ?? null;
+			this.requiresFullAuth = data.requiresFullAuth ?? false;
+			this.playbackMode = 'direct';
+
+			// Syn proxies the authenticated CDN response so the browser never sees a
+			// provider URL or bearer credential.
+			this.audio.src = this.streamUrl;
+			if (startAt > 0) {
+				try {
+					this.audio.currentTime = startAt;
+				} catch {
+					// The stream may not be seekable until metadata arrives.
+				}
+			}
+			this.applyVolume();
+			await this.audio.play().catch(() => {
+				this.playbackMode = 'embed';
+			});
+			this.isPlaying = !this.audio.paused;
+			this.isLoading = false;
+
+			// Immediately preload the next track in queue
+			if (this.queue.length > 0) {
+				streamPreloader.preload(this.queue[0].id);
+			}
+			return;
+		}
+
+		// Direct playback unavailable — hand off to the TIDAL embed player
 		this.playbackMode = 'embed';
 		this.isPlaying = false;
 		this.isLoading = false;
@@ -665,6 +749,10 @@ export class PlayerState {
 		this.schedulePersistence();
 	}
 
+	seekBy(seconds: number): void {
+		this.seek(this.currentTime + seconds);
+	}
+
 	setVolume(vol: number): void {
 		const max = this.maxVolume;
 		const clamped = Math.max(0, Math.min(vol, max));
@@ -672,6 +760,10 @@ export class PlayerState {
 		this.isMuted = this.volume === 0;
 		this.applyVolume();
 		this.savePrefs();
+	}
+
+	adjustVolume(delta: number): void {
+		this.setVolume(this.volume + delta);
 	}
 
 	toggleHeadroom(): void {
@@ -702,6 +794,9 @@ export class PlayerState {
 
 	addToQueue(track: TrackSummary): void {
 		this.queue.push(track);
+		if (this.queue.length === 1) {
+			streamPreloader.preload(track.id);
+		}
 		this.schedulePersistence();
 	}
 
@@ -802,7 +897,12 @@ export class PlayerState {
 		this.isPlaying = false;
 		this.currentTime = 0;
 		this.duration = 0;
+		this.bufferedPercent = 0;
+		this.isBuffering = false;
 		this.streamUrl = null;
+		updateMediaMetadata(null);
+		updatePlaybackState(false);
+		streamPreloader.clear();
 		this.schedulePersistence();
 	}
 

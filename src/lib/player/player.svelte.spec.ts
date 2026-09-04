@@ -192,6 +192,33 @@ describe('PlayerState', () => {
 		expect(player.volume).toBe(0.8);
 	});
 
+	it('seeks by relative offset and clamps within track bounds', () => {
+		const player = new PlayerState();
+		player.duration = 200;
+		player.currentTime = 50;
+
+		player.seekBy(15);
+		expect(player.currentTime).toBe(65);
+
+		player.seekBy(-100);
+		expect(player.currentTime).toBe(0);
+
+		player.seekBy(500);
+		expect(player.currentTime).toBe(200);
+	});
+
+	it('adjusts volume by relative delta with bounds clamping', () => {
+		const player = new PlayerState();
+		player.setVolume(0.5);
+
+		player.adjustVolume(0.1);
+		expect(player.volume).toBe(0.6);
+
+		player.adjustVolume(-0.8);
+		expect(player.volume).toBe(0);
+		expect(player.isMuted).toBe(true);
+	});
+
 	it('restores a saved queue and position without starting playback', () => {
 		const player = new PlayerState();
 		player.restorePlaybackState({

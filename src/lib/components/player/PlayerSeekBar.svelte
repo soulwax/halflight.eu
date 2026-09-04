@@ -6,6 +6,7 @@
 	const fillPercent = $derived(
 		player.duration > 0 ? (player.currentTime / player.duration) * 100 : 0
 	);
+	const bufferPercent = $derived(player.bufferedPercent);
 </script>
 
 <div class="seek">
@@ -20,6 +21,9 @@
 			oninput={(e) => player.seek(parseFloat(e.currentTarget.value))}
 			aria-label={m.player_seek()}
 		/>
+		{#if bufferPercent > 0}
+			<span class="seek-buffer" style="width:{bufferPercent}%"></span>
+		{/if}
 		<span class="seek-fill" style="width:{fillPercent}%"></span>
 	</div>
 	<span class="time">{formatClock(player.duration)}</span>

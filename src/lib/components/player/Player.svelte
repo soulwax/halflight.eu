@@ -2,6 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { m } from '#lib/paraglide/messages.js';
 	import { player } from '#lib/player/player.svelte.js';
+	import { handlePlayerKeydown } from '#lib/player/shortcuts.js';
 	import PlayerSeekBar from './PlayerSeekBar.svelte';
 	import NowPlaying from './NowPlaying.svelte';
 	import PlayerTransport from './PlayerTransport.svelte';
@@ -56,16 +57,20 @@
 		(event.target as HTMLElement).releasePointerCapture?.(event.pointerId);
 	}
 
-	// --- keyboard: Space toggles play when nothing text-editable is focused ---
+	// --- listening room keyboard shortcuts ---
 	function onKeydown(event: KeyboardEvent) {
-		if (event.code !== 'Space' || !player.currentTrack) return;
-		const el = document.activeElement;
-		const editable =
-			el instanceof HTMLElement &&
-			(el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'A'].includes(el.tagName));
-		if (editable) return;
-		event.preventDefault();
-		player.togglePlayPause();
+		handlePlayerKeydown(event, {
+			hasTrack: Boolean(player.currentTrack),
+			togglePlayPause: () => player.togglePlayPause(),
+			seekBy: (sec) => player.seekBy(sec),
+			adjustVolume: (delta) => player.adjustVolume(delta),
+			setVolume: (vol) => player.setVolume(vol),
+			toggleMute: () => player.toggleMute(),
+			next: () => player.next(),
+			previous: () => player.previous(),
+			togglePanel: (panel) => player.openPanel(panel),
+			toggleDock: () => player.toggleDock()
+		});
 	}
 </script>
 
