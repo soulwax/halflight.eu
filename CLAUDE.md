@@ -45,8 +45,10 @@ pnpm test:unit -- --run --project server -t "coalesces concurrent refreshes"   #
 ```
 
 `--project server` is node-only and fast (no browser). `client` and `storybook` need
-Playwright's chromium (`pnpm test:e2e` installs it). `expect.requireAssertions` is on —
-a test with no assertion fails.
+Playwright's chromium (`pnpm test:e2e` installs it) and run in a 1280×900 viewport so
+responsive `display:none` columns still render. `expect.requireAssertions` is on — a test
+with no assertion fails; browser assertions use `vitest-browser-svelte`'s polling
+`expect.element(...)` matchers (not a bare `expect`).
 
 ## Architecture
 
@@ -151,23 +153,33 @@ store so they need no DB or network.
 Everything under `src/lib/` that is _not_ in `server/` is browser-reachable:
 
 - `components/ui/` — primitives (`Button`, `Badge`, `SectionHeader`, `ThemeSelector`).
-- `components/music/` — domain widgets (`MediaCard`, `TrackList`/`TrackRow`, `SongCard`,
-  `PageHeader`/`PageActions`, `StateCard`, `AddToPlaylistModal`, `PlaylistGeneratorModal`).
+- `components/music/` — domain widgets (`MediaCard`, `SongCard`, `PageHeader`/`PageActions`,
+  `StateCard`, `AddToPlaylistModal`, `PlaylistGeneratorModal`). Track listings render as a
+  `<table>` via `TrackTable` (configurable `album` / `date` / `duration` columns, a
+  `rowActions` snippet, `onRowActivate`) + `TrackTableRow`.
 - `components/app/` — the shell (`AppShell`, `SideNav`, `MobileNav`, `navigation.ts`);
-  `components/player/Player.svelte` is the player UI. `components/Footer.svelte` is the
-  fixed 10px footer.
+  `components/Footer.svelte` is the fixed 10px footer.
+- `components/player/` — the player UI is a **component set**: `Player.svelte` is a thin
+  orchestrator that composes `PlayerSeekBar`, `NowPlaying`, `PlayerTransport`,
+  `PlayerActions`, and `PlayerPanel` (which tabs between `panels/{Queue,Lyrics,Source}Panel`
+  and shows `AlbumArtPanel`). All player styling is in `player.css`. Components own DOM
+  wiring only; testable logic (drag clamping, quality labels, assessment) lives on the
+  `player.svelte.ts` state class.
 - `player/` — `player.svelte.ts` (the `$state` engine), `playback-assessment.ts`,
   `customPlaylists.svelte.ts`.
 - `theme/` — `types.ts` (palette names) + `theme.svelte.ts` (applies CSS vars).
 - `tidal/` — `models.ts` (display contracts), `resource.ts` (`parseTidalResource`),
   `page-state.ts`.
-- `format.ts` / `m3u.ts` / `version.ts` — shared pure helpers; `m3u.ts` is the single
+- `format.ts` / `m3u.ts` / `version.ts` — shared pure helpers (`formatDuration`,
+  `formatClock`, `formatReleaseDate`, `qualityTier`, …); `m3u.ts` is the single
   Extended-M3U builder that the server (`server/tidal/m3u.ts`) and browser
   (`utils/m3u.ts`) wrappers both call.
-- `index.ts` is the `#lib` barrel — it re-exports the UI components and theme store only.
+- `index.ts` is the `#lib` barrel — it re-exports the UI/music components and theme store only.
 
 Svelte compiles in **runes + async mode**, and SvelteKit `experimental.remoteFunctions`
-is on (`vite.config.ts`).
+is on (`vite.config.ts`). Async mode is **disabled under vitest** (`async: !process.env.VITEST`)
+because its reactivity wrapper breaks `vitest-browser-svelte`'s polling matchers on any
+component that reads a `$derived` — keep `await` out of markup.
 
 ### Routes
 
@@ -209,4 +221,7 @@ is on (`vite.config.ts`).
   or `$app/env/public`, add a placeholder to `.env.example`, never commit real values.
   Don't reach for `process.env` in app code (only `drizzle.config.ts` may).
 - Import alias is `#lib`, not `$lib` — match the surrounding code.
+- Fetch the TIDAL **media CDN** (`*.audio.tidal.com`) with the global `fetch`, never
+  `event.fetch` — SvelteKit's wrapper attaches request context the CDN 403s on. API calls
+  to `api.tidal.com` / `openapi.tidal.com` via `event.fetch` are fine.
 - Use the Svelte MCP tools (see `AGENTS.md`) when writing Svelte code.

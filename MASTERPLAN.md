@@ -2,337 +2,563 @@
 
 ## Purpose
 
-Elevate Syn from a working TIDAL API dashboard into a polished, personal music workbench that
-makes the owner's common TIDAL tasks fast, understandable, and safe.
+Syn is a personal listening room built on the owner's own TIDAL account.
 
-This plan is intentionally designed for a **single user**. It keeps the existing server-only OAuth
-and token architecture, avoids multi-user abstractions, and prioritises a small number of complete
-workflows over broad API coverage.
+**The player is the product.** Everything else — connection, search, library, detail pages, the
+normalisation layer, the taste engine — exists to put the right track into the session and to make
+the next hour of listening better than the last. A surface that does not eventually feed the player
+has to justify itself.
 
-Last reviewed: 2026-09-01.
+This plan is designed for a **single user**. It keeps the server-only OAuth and token architecture,
+avoids multi-user abstractions, and prefers a small number of complete workflows over broad API
+coverage.
+
+Last reviewed: 2026-09-04.
+
+## The listening session
+
+The unit of work in Syn is not a page view. It is a **session**: what is playing, what is queued,
+what already played, and the taste context that produced them.
+
+```text
+                       ┌──────────────────────────────┐
+   your TIDAL account  │        THE SESSION           │   what you hear
+   ──────────────────► │  now playing · queue · history│ ─────────────►
+                       └──────────────┬───────────────┘
+                                      ▲
+        ┌────────────┬────────────────┼────────────────┬──────────────┐
+        │            │                │                │              │
+     search       library         detail pages     taste engine    saved
+   (find it)   (what you own)   (context, radio)   (what's next)   playlists
+```
+
+Session invariants:
+
+- **Audio outranks UI.** No navigation, load, error, theme change, or failed side request may
+  interrupt playback. A section can fail; the music does not stop.
+- **The queue is always reachable** from anywhere in one action, and survives reload (persisted,
+  debounced, to `playback_state`).
+- **Every listable surface can feed the queue.** A track row, an album, a playlist, a mix, and a
+  generated set all offer the same verbs: play now, play next, add to queue, start radio.
+- **The session explains itself.** The player can always answer "why is this playing?" — from a
+  playlist, from an album, from artist radio, or from a generated set with a stated rationale.
 
 ## Product vision
 
-Syn should feel like a calm companion to TIDAL: a place to explore the catalogue, understand the
-personal library, and curate playlists without needing to know API paths or JSON:API.
+A good day with Syn:
 
-The finished experience should let the owner:
-
-1. Sign in and connect TIDAL with a clear explanation of what will be accessed.
-2. Land on a useful, music-first home screen rather than an API status page.
-3. Search tracks, albums, artists, and playlists and see recognisable, actionable results.
-4. Browse saved music and personal mixes with artwork, metadata, pagination, and empty states.
-5. Save or remove items and create or edit playlists through deliberate, reversible-feeling flows.
-6. Understand connection and API failures without seeing implementation details.
-7. Reach advanced diagnostics when needed without exposing dangerous tools in the main product.
+1. Open it. Something worth hearing is already queued, or one action away.
+2. Ask for a set — "an hour that sounds like me, mostly things I haven't heard" — and get back
+   something that is genuinely, specifically yours, with each pick explained.
+3. Play it in-app at full quality, scrub it, read the lyrics, see the credits.
+4. Keep the good parts. The engine notices, quietly.
+5. Never see a token, a scope, a JSON:API document, or a stack trace.
 
 ## Product boundaries
 
 ### In scope
 
-- A responsive, accessible application shell.
-- TIDAL connection, connection health, reconnection, and disconnection.
-- Dashboard, search, library, mix, artist, album, track, and playlist views.
-- Collection and playlist mutations supported by the approved API scopes.
-- Purpose-built server actions for every user-facing mutation.
+- A player that is a first-class shell region: full-track playback, queue, history, resume,
+  lyrics, credits, quality telemetry, and honest failure states.
+- A **taste engine**: a deterministic, explainable curation system that models the owner's taste
+  from the owner's own TIDAL signals and TIDAL's own similarity edges.
+- A small, Syn-owned **taste profile** (derived weights only) that improves with use.
+- Connection, connection health, reconnection, and disconnection.
+- Home, search, library, mix, artist, album, track, and playlist views — all of which feed the
+  session.
+- Collection and playlist mutations supported by the approved scopes.
 - English and German UI parity.
-- Optional playback only after an official SDK or Embed feasibility check.
 - A developer-only diagnostics area for the owner.
 
 ### Out of scope
 
 - Multi-user tenancy, teams, roles, sharing, or public profiles.
-- Recreating the full TIDAL player or competing with the TIDAL application.
+- Recommendations for anyone but the owner. The taste engine is a private curation tool, never a
+  social or platform feature.
+- **Third-party AI or LLM processing of TIDAL content.** No catalogue text, artwork, audio, lyrics,
+  or metadata is sent to an external model. The taste engine is deterministic code running on Syn's
+  own server over the owner's own derived signals. (This replaces the earlier blanket "no AI"
+  rule, which also forbade the owner analysing their own listening.)
 - Downloading, stream ripping, scraping, bulk archiving, or indefinite retention of TIDAL content.
-- AI analysis or processing of TIDAL content.
+- A shadow catalogue. Syn stores derived numbers and identifiers, never a mirror of TIDAL's data.
+- Infinite algorithmic autoplay. Generation is an act the owner initiates and reviews.
 - A generic public API client or arbitrary request builder in the primary UI.
-- Social feeds, messaging, billing, or recommendations generated by Syn.
+- Social feeds, messaging, or billing.
 
 ## Non-negotiable decisions
 
-1. **Keep tokens server-only.** The browser receives display data and action results, never access or
-   refresh tokens.
-2. **Keep the encrypted single-row token store.** The existing Postgres design matches the personal,
-   serverless deployment model.
-3. **Use least-privilege scopes.** Read-only scopes ship first. Write scopes are enabled only when the
-   related UI is implemented and verified.
-4. **Use product actions, not arbitrary API requests.** Search, save, remove, create playlist, and add
-   track become named server actions with validation.
-5. **Keep playback inside Syn.** The SvelteKit server resolves and proxies the authenticated playback
-   stream; the browser never receives provider credentials or CDN URLs. This remains playback, not a
-   download/archive pipeline.
-6. **Store owned state, not a shadow catalogue.** PostgreSQL may persist preferences and bounded
-   workflow state such as a resumable queue. Future object storage is allowed for explicitly enabled,
-   provider-permitted temporary media caching, with expiry and deletion controls; it must never become
-   implicit bulk archiving.
-7. **Keep an escape hatch for development.** Move the raw API console behind a development-only or
-   explicit advanced-tools gate, default it to read-only, and require confirmation for mutations.
-8. **Build accessible components before visual polish.** Keyboard access, focus, semantics, reduced
-   motion, and readable contrast are acceptance criteria rather than cleanup work.
+1. **Keep tokens server-only.** The browser receives display data and action results, never access
+   or refresh tokens, never a CDN URL.
+2. **Keep the encrypted single-row token store.** The two-token model (browse + playback) stays.
+3. **Use least-privilege scopes.** Read-only scopes ship first; write scopes only when their UI is
+   implemented and verified.
+4. **Use product actions, not arbitrary API requests.** Search, save, remove, create playlist, add
+   track, and generate are named server actions with validation.
+5. **Keep playback inside Syn.** The server resolves and proxies the authenticated stream; the
+   browser never receives provider credentials or CDN URLs. Playback, not a download pipeline.
+6. **Store owned state, not a shadow catalogue.** Postgres persists preferences, bounded workflow
+   state (the resumable queue), and the **derived taste profile** — weights, identifiers, and
+   tuning defaults. It never persists a track-by-track listening log, catalogue metadata, artwork,
+   or audio. Object storage is working space for the current session under the rules in **Object
+   storage**: capped, short-TTL, playback-driven, purgeable — a cache, never a collection.
+7. **The taste engine is deterministic and explainable.** Given the same profile, knobs, and
+   upstream responses it produces the same set, and every track can state why it was chosen. No
+   opaque scoring the owner cannot inspect.
+8. **Nothing is written to TIDAL without review.** A generated set is provisional until the owner
+   explicitly saves it.
+9. **Keep an escape hatch for development.** The raw API console stays behind a development-only or
+   explicit advanced gate, read-only by default.
+10. **Build accessible components before visual polish.** Keyboard access, focus, semantics, reduced
+    motion, and contrast are acceptance criteria, not cleanup.
 
-## Current-state audit
+## Current state
 
-| Area           | What already exists                                               | Main gap                                                                     |
-| -------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| Authentication | Better Auth session in `hooks.server.ts`                          | Routes and copy still look like framework demos                              |
-| TIDAL OAuth    | Authorization code, PKCE, state, refresh, encrypted persistence   | Connection UX exposes technical status and raw error text                    |
-| API client     | Authenticated fetch, pre-expiry refresh, 401 retry, typed helpers | UI consumes loose JSON:API data and `unknown` attributes                     |
-| TIDAL features | Account, collection summaries, mixes, search, mutations           | One crowded page; search renders raw JSON; no detail workflows               |
-| Navigation     | Links through `/demo`                                             | No real app shell, primary navigation, mobile navigation, or breadcrumbs     |
-| Visual design  | Tailwind is installed; basic light/dark utility classes exist     | No tokens, component language, artwork treatment, or intentional theme       |
-| i18n           | Paraglide with `en` and `de-DE`                                   | Most TIDAL and auth strings bypass the message catalogue                     |
-| Feedback       | Connection success and failure banners                            | No consistent loading, empty, retry, offline, or mutation feedback           |
-| Safety         | Secrets remain server-side; proxy host is fixed                   | Raw console supports mutations; destructive actions need stronger guardrails |
-| Testing        | Strong server tests around tokens and refresh                     | Little feature, component, accessibility, and end-to-end coverage            |
-| Home page      | Svelte starter page                                               | No product entry point or useful authenticated landing page                  |
+Much of the original plan's early phases has shipped. This is where the effort now sits.
+
+| Area                | What exists                                                                                                     | Main gap                                                                    |
+| ------------------- | --------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Playback            | Full-track streaming (BTS single-file + segmented DASH), Range/seek, quality ladder, ReplayGain, embed fallback | No gapless/crossfade; no pre-buffering of the next queue item               |
+| Player UI           | Decomposed component set, docked shell region, queue/lyrics/source panels, floating mode, self-check telemetry  | Queue editing is basic; no "why is this playing?" provenance                |
+| Session state       | Resumable queue/history/position persisted to `playback_state`                                                  | No session provenance; no per-track feedback capture                        |
+| Auth / TIDAL OAuth  | Better Auth, PKCE + state, dual-token model, encrypted persistence, rotation, single-flight refresh             | Stable                                                                      |
+| API client          | Authenticated fetch, pre-expiry refresh, 401 retry, typed helpers, JSON:API normalisers, `loadTidalPage`        | Relationship traversal helpers exist but are barely used                    |
+| Product surfaces    | Shell, home, search, library, mixes, artist/album/track/playlist detail, settings                               | Surfaces do not yet consistently offer the same queue verbs                 |
+| Playlist generation | `/api/generate-playlist` — a hardcoded vibe × era → search-query map, texture modifier, energy-arc ordering     | **Knows nothing about the owner.** This is the centre of this plan          |
+| Taste model         | None                                                                                                            | Everything below in _The taste engine_                                      |
+| Object storage      | None wired; `syn-worker` is named in config but not implemented                                                 | HiRes cold start, prebuffer, waveform, and measured loudness all wait on it |
+| Design system       | Eight dark palettes, semantic tokens, extracted `player.css`, shared badges/formatters                          | Layout tokens and the shell grid migration are partly done                  |
+| i18n                | Paraglide `en` + `de-DE`                                                                                        | Newer surfaces added strings ahead of the German catalogue                  |
+| Testing             | Strong server coverage (tokens, crypto, manifests, segmented delivery, stores); leaf component tests            | Little end-to-end; no taste-engine fixtures yet                             |
 
 ## Product principles
 
+### The session is sacred
+
+Playback continues through navigation, partial failures, theme changes, and background refreshes.
+Anything that could stop the audio needs a deliberate reason and a visible explanation.
+
 ### Music first
 
-Lead with artwork, titles, artists, release context, and useful actions. Token expiry, scopes, user IDs,
-and JSON belong in settings or diagnostics.
+Lead with artwork, titles, artists, release context, and the verbs that move music into the queue.
+Token expiry, scopes, and IDs belong in settings or diagnostics.
 
 ### One obvious next step
 
-Every state needs a primary action: sign in, connect, retry, search, view all, add to playlist, or
-reconnect. Avoid panels that merely report state.
+Every state has a primary action: connect, search, play, queue, generate, save, retry, reconnect.
+Avoid panels that merely report state.
+
+### Curation you can trust
+
+Every generated pick is explainable in one short phrase, reviewable before it is saved, and
+reversible after. The owner should never wonder why a track appeared.
+
+### It should sound like you, then nudge
+
+The engine's default posture is recognition, not surprise. Discovery is a knob the owner turns up,
+not a tax the engine charges.
 
 ### Safe by default
 
-Reads can be immediate. Writes show progress and a clear result. Destructive actions explain their
-effect and require confirmation when recovery is difficult.
-
-### Progressive disclosure
-
-The main interface uses plain language. Technical metadata, request IDs, scopes, and raw payloads
-remain available in a diagnostics view for troubleshooting.
+Reads are immediate. Writes show progress and a clear result. Destructive actions explain their
+effect and confirm when recovery is hard.
 
 ### Graceful partial failure
 
-One failed recommendation or collection request must not blank the whole page. Preserve successful
-sections and offer a local retry for the failed section.
+One failed section must not blank a page or stop the music. Preserve what worked and offer a local
+retry.
 
 ### Personal, not platform-shaped
 
-Optimise the flows and defaults for the owner. Prefer direct route code and a small component set over
-configuration systems or generic repositories.
+Optimise for the owner. Prefer direct route code and a small component set over configuration
+systems and generic repositories.
 
 ## Information architecture
 
+The player is not a route. It is a permanent shell region present on every authenticated screen;
+routes are the things that feed it.
+
 ```text
 /
-├── sign-in state or authenticated redirect
-├── home                         overview, recent entry points, mixes
-├── search?q=...                 grouped catalogue results
-├── library
-│   ├── tracks
-│   ├── albums
-│   ├── artists
-│   └── playlists
-├── mixes/[kind]                 daily, discovery, new releases
-├── artists/[id]
-├── albums/[id]
-├── tracks/[id]
-├── playlists/[id]
-├── settings/tidal               connection, permissions, disconnect
-└── advanced/tidal               status and API diagnostics; gated
+├── sign-in                       or authenticated redirect
+├── app/
+│   ├── (home)                    resume the session, mixes, recent, "generate a set"
+│   ├── search?q=…                grouped catalogue results, every row queue-able
+│   ├── library/{tracks,albums,artists,playlists}
+│   ├── mixes                     TIDAL's personal mixes
+│   ├── artists/[id] · albums/[id] · tracks/[id] · playlists/[id]
+│   ├── generate                  the taste engine: knobs, preview, provenance, save
+│   └── settings/
+│       ├── tidal                 connection, playback quality, permissions, disconnect
+│       └── taste                 your profile in plain language: view, tune, reset, export
+└── advanced/tidal                status and API diagnostics; gated
 ```
-
-The existing `/tidal` route can redirect to `/home` after the first product slice. Existing OAuth
-callback routes may keep their URLs to avoid unnecessary developer-dashboard changes.
 
 ### Application shell
 
-- Desktop: persistent left navigation, flexible content column, compact account/settings control.
-- Mobile: top bar plus bottom navigation for Home, Search, Library, and Settings.
-- Global search is easy to reach but does not compete with the page title on small screens.
-- Each route owns its heading, description, and contextual actions.
+- **Desktop**: persistent left rail, flexible content column, optional right context panel, docked
+  player row, hairline footer.
+- **Mobile**: top bar, scrolling main, mini player that expands to a full-screen sheet, bottom nav.
+- Global search is easy to reach but never competes with the page title on small screens.
 - A slim connection-health indicator appears only when attention is required.
 
-The layout system that realises these regions — the shell grid, tokens, header/toolbar, optional
-context panel, and the docked player — is specified in **Application shell and layout system** under
-Design direction.
+The grid, tokens, region contracts, and migration steps are specified in **Application shell and
+layout system**.
 
 ## Core user journeys
 
-### 1. First visit and sign-in
+### 1. Start or resume a session
 
-1. `/` explains Syn in one sentence and presents one sign-in action.
-2. Returning authenticated users go directly to `/home`.
-3. Sign-in failure stays on the form, preserves the email value, focuses the error summary, and uses
-   useful language.
-4. Demo naming and navigation are removed from the production journey.
+1. Opening `/app` shows what was playing, with position preserved, and a single Resume action.
+2. If there is nothing to resume, the home screen leads with one strong option: a generated set
+   sized to the time of day, plus TIDAL's personal mixes.
+3. Playback starts from any surface without a navigation.
 
-Success condition: the owner reaches the TIDAL connection screen without encountering framework
-demo pages.
+Success condition: from cold open to audio in one deliberate action.
 
-### 2. Connect TIDAL
+### 2. Generate a set that sounds like me
 
-1. The setup screen states what Syn can do and which data it will access.
-2. The primary button opens TIDAL authorization. A secondary link explains privacy and disconnection.
-3. On return, Syn confirms the connected account and loads the home screen.
-4. Denial, expired state, missing configuration, and token exchange failures each map to a friendly
-   message and recovery action.
-5. Reconnection is available in Settings when credentials or scopes change.
+1. `/app/generate` opens with the owner's usual knobs pre-filled from the profile.
+2. The owner adjusts intent — length, familiarity, depth, era, arc, cohesion, mood, seeds,
+   exclusions — or accepts the defaults.
+3. Generation streams progress ("reading your library… expanding 340 candidates… sequencing").
+4. The result loads into the player as a **provisional queue** with a set summary and a per-track
+   rationale, and starts playing if asked.
+5. The owner reshuffles, swaps individual tracks, nudges a knob and re-runs, or saves.
+6. Save writes a Syn playlist and, optionally, pushes it to TIDAL.
 
-Success condition: the owner always knows whether Syn is connected and what to do next.
+Success condition: the owner recognises most of the set instantly and is glad about the rest.
 
-### 3. Find and save music
+### 3. Connect TIDAL
 
-1. Search input is URL-backed (`?q=`), shareable within the personal app, and restored on navigation.
-2. Results appear in sections or tabs for top hits, tracks, albums, artists, and playlists.
-3. Result rows show artwork, title, secondary metadata, explicit marker where available, and a clear
-   action menu.
-4. Save/remove updates optimistically only when rollback is reliable; otherwise show compact pending
-   feedback and refresh the affected item after success.
-5. Empty queries show recent or suggested entry points; zero results suggest revising the query.
+1. Setup states what Syn does and what it will read.
+2. Browse authorization (PKCE) and playback authorization (TIDAL Link device flow) are explained as
+   two separate, purposeful grants.
+3. Denial, expiry, missing configuration, and exchange failure each map to a friendly message and a
+   recovery action.
+4. Reconnection is available in Settings when credentials or scopes change.
 
-Success condition: a track can be found and saved without reading JSON or leaving the search page.
+Success condition: the owner always knows whether Syn can browse, can play, or neither.
 
-### 4. Browse the library
+### 4. Find music and move it into the session
 
-1. Library tabs map to tracks, albums, artists, and playlists.
-2. Each list supports cursor pagination with a visible Load more action; infinite scroll is not
-   required.
-3. List/grid choice follows the content type: dense rows for tracks, artwork cards for albums and
-   playlists, portrait cards for artists.
-4. Empty states explain how to add the first item and link to Search.
-5. Removing an item confirms the result and makes accidental repeated clicks impossible.
+1. Search is URL-backed (`?q=`) and restored on navigation.
+2. Results group into top hits, tracks, albums, artists, playlists.
+3. Every row offers the same verbs: play now, play next, add to queue, start radio, save, add to
+   playlist.
+4. Empty queries show recent and suggested entry points; zero results suggest revising the query.
 
-Success condition: the owner can recognise and open saved content quickly on phone and desktop.
+Success condition: a track can be found and heard without reading JSON or leaving the page.
 
-### 5. Curate a playlist
+### 5. Browse the library
 
-1. Create playlist uses a short form with name, optional description, and supported visibility.
-2. Track actions include Add to playlist; a compact picker supports search/filter over personal
-   playlists.
-3. Adding multiple selected tracks is chunked to the API limit and reports partial failure clearly.
-4. Playlist details show metadata and ordered items. Editing, reordering, and removal are added only
+1. Tabs map to tracks, albums, artists, playlists, with cursor pagination and a visible Load more.
+2. Density follows content type: table rows for tracks, artwork cards for albums and playlists.
+3. Empty states explain how to add the first item and link to Search.
+4. Any list can be sent to the queue whole, or used as a generation seed.
+
+Success condition: saved content is recognisable and playable quickly on phone and desktop.
+
+### 6. Curate deliberately
+
+1. Create playlist uses a short form; Add to playlist uses a compact searchable picker.
+2. Multi-track adds are chunked to the API limit and report partial failure clearly.
+3. Playlist detail shows ordered items with the same queue verbs; edit/reorder/remove ship only
    after endpoint and scope verification.
-5. Destructive deletion, if supported, requires a confirmation dialog that names the playlist.
+4. Deletion, if supported, confirms by name.
 
-Success condition: a playlist can be created and populated through guided controls.
+Success condition: a playlist can be built by hand as easily as by engine.
 
-### 6. Recover from failure
+### 7. Recover from failure
 
-1. Connection failures show Reconnect TIDAL.
-2. Temporary API errors retain the current page and show Retry.
-3. Permission failures explain which feature needs additional access and offer Reconnect with updated
-   permissions.
-4. Rate limits show a calm retry-later state; retry logic must respect server guidance when available.
-5. Unexpected failures expose a correlation ID, not token values or raw upstream bodies.
+1. Connection failures show Reconnect TIDAL — without stopping current playback.
+2. Temporary API errors retain the page and offer Retry.
+3. Permission failures name the capability and offer Reconnect with updated permissions.
+4. Rate limits show a calm retry-later state respecting server guidance.
+5. Unexpected failures expose a correlation ID, never token values or raw upstream bodies.
 
-Success condition: no expected error state strands the owner or leaks sensitive details.
+Success condition: no expected error strands the owner, leaks details, or silences the player.
 
-### 7. Disconnect
+### 8. Disconnect
 
-1. Settings explains that disconnecting removes Syn's locally stored authorization data.
-2. Confirmation names the connected service and the immediate effect.
-3. The token row and temporary OAuth cookie are deleted, then the owner returns to the setup state.
-4. Syn stops requesting TIDAL personal data immediately.
+1. Settings explains that disconnecting removes Syn's stored authorization.
+2. Confirmation names the service and the immediate effect.
+3. Token rows and the OAuth cookie are deleted; the owner returns to setup.
+4. The taste profile is offered for export and deletion in the same flow.
 
 Success condition: disconnect is easy to find, deliberate, and complete.
 
-## Page specifications
+---
 
-### Home
+## The taste engine
 
-- Greeting or concise time-appropriate heading.
-- Continue exploring shortcuts: Search, Library, Create playlist.
-- Personal mixes as artwork cards with a View all route.
-- Small library snapshot with meaningful totals or recent samples where available.
-- Failed sections render independently.
-- Connection details do not occupy the page unless attention is needed.
+This is the centrepiece of the plan and the largest new body of work.
 
-### Search
+Today's generator maps a `vibe × era` pair to a hardcoded list of search strings. It produces
+plausible music. It cannot produce **your** music, because it has never looked at you.
 
-- Search is submitted through a SvelteKit form or URL update, not a browser-only opaque state.
-- Server load returns normalised result groups and preserves the query.
-- Each group has a count/loading/empty/error state and a View all affordance if applicable.
-- Keyboard users can move through results without losing focus context.
-- Result actions use labelled buttons and accessible menus.
+The engine replaces it with a four-stage deterministic pipeline over the owner's own signals and
+TIDAL's own similarity edges:
 
-### Library
+```text
+  SIGNALS  ───►  PROFILE  ───►  EXPANSION  ───►  CANDIDATES  ───►  SCORING  ───►  SEQUENCE
+  live reads     persisted      graph walk       pool + filter     rank vs.       arc + spacing
+  from TIDAL     weights        via TIDAL        dedupe/cooldown   profile+knobs  + explain
+```
 
-- Child routes provide stable URLs and route-level loading/error boundaries.
-- Cursor state is encoded in links or a server action, not hidden in a generic client store.
-- A reusable collection adapter resolves JSON:API relationships into display models.
-- Bulk actions wait until single-item actions are proven and covered by tests.
+No LLM. No embeddings service. No third party ever sees the catalogue. Every stage is a pure
+function over inputs the owner can inspect.
 
-### Detail pages
+### Stage 1 — Signals
 
-- Artist: identity, key metadata, top tracks, albums, similar artists, open-in-TIDAL link.
-- Album: artwork, title, artist, release metadata, ordered tracks, save/remove, open-in-TIDAL link.
-- Track: artwork, title, artist and album links, duration/quality/explicit metadata where returned,
-  save/remove, playlist action, open-in-TIDAL link.
-- Playlist: artwork or fallback, owner metadata, description, ordered items, supported edit actions,
-  open-in-TIDAL link.
-- Missing optional fields degrade cleanly without showing `undefined`, IDs, or raw objects.
+Read live from the owner's TIDAL account on each profile refresh. Nothing here is mirrored.
 
-### Settings / TIDAL
+| Signal                | Source                                               | What it tells us                                   |
+| --------------------- | ---------------------------------------------------- | -------------------------------------------------- |
+| Saved tracks          | `getFullCollection('tracks')`, `fetchUserFavorites`  | The core affinity set                              |
+| Saved albums          | `getFullCollection('albums')`                        | Commitment — a whole record, not a single          |
+| Followed artists      | `getFullCollection('artists')`                       | Explicit artist-level intent                       |
+| Own playlists + items | `getCollectionPage('playlists')`, `getPlaylistItems` | Curated context, co-occurrence                     |
+| Personal mixes        | `getMix`, `getRecommendations`                       | TIDAL's read on the owner, as one input            |
+| Album credits         | `fetchAlbumCredits`                                  | Producers, writers, engineers behind loved records |
+| Session history       | `playback_state` history + in-session keeps/skips    | What actually got played, not just saved           |
 
-- Connected account identity and last successful check.
-- Human-readable permission summary, with raw scopes in an expandable advanced block.
-- Reconnect and Disconnect actions.
-- Environment/configuration errors visible only to the owner, with secret values always redacted.
-- Link to advanced diagnostics.
+Weighting rules:
 
-### Advanced diagnostics
+- A **saved album** weighs more than a saved track by the same artist; a **followed artist** more
+  than either.
+- A track that appears in several of the owner's own playlists weighs more than one that appears in
+  none.
+- **Recency decay**: signals from the last 90 days count roughly double signals from two years ago.
+  Decay is smooth, not cliffed, so the profile drifts rather than lurching.
+- TIDAL's own recommendations are a _hint_, not ground truth — deliberately down-weighted, so the
+  engine does not simply echo TIDAL back at the owner.
 
-- Connection state, timestamps, granted scopes, and last safe error summary.
-- Read-only endpoint explorer in production, if it remains necessary.
-- Mutation methods disabled by default and available only behind a second explicit development gate.
-- Structured response viewer with size limits and automatic redaction.
-- Clear warning that this surface bypasses normal product safeguards.
+### Stage 2 — The profile
+
+A small, Syn-owned derived model. **Weights and identifiers only** — no titles, artwork, lyrics, or
+audio, and no track-by-track history.
+
+```ts
+interface TasteProfile {
+	// Weighted affinity, all normalised 0–1, each with a confidence.
+	artists: Map<ArtistId, Weight>; // direct + inferred
+	genres: Map<GenreTag, Weight>; // from TIDAL genre tags and mix membership
+	eras: Map<Decade, Weight>; // release-date distribution, not birth year
+	labels: Map<LabelName, Weight>; // catches scene/aesthetic coherence
+	contributors: Map<PersonId, Weight>; // producers/writers from credits
+	neighbours: Map<ArtistId, Weight>; // artists that co-occur with loved ones
+
+	// Distributional preferences, learned rather than declared.
+	popularityBand: Range; // do you live on hits or deep cuts?
+	trackLength: Distribution; // 2-minute punk or 11-minute ambient?
+	explicitTolerance: number;
+	instrumentalBias: number;
+
+	// Owner-set, never inferred.
+	exclusions: { artists: ArtistId[]; genres: GenreTag[]; eras: Decade[] };
+	knobDefaults: GenerationKnobs;
+
+	updatedAt: Date;
+	confidence: Record<Dimension, number>; // drives how boldly the engine acts
+}
+```
+
+Rules:
+
+- **Confidence gates behaviour.** With a thin profile the engine stays conservative and says so
+  ("I only know your taste roughly — try a few sets and I'll sharpen").
+- **The profile is legible.** `/app/settings/taste` renders it in plain language: your top artists,
+  the decades you actually live in, the labels that keep recurring, how adventurous you've been.
+  Not a chart dump — sentences.
+- **The owner can edit it.** Any inferred weight can be pinned, damped, or excluded. Owner edits
+  outrank inference permanently.
+- **It is disposable.** One button resets it; one button exports it as JSON; disconnecting offers
+  to delete it.
+
+### Stage 3 — Expansion
+
+From the seed set, walk TIDAL's own graph. Each edge type carries a weight and a provenance label
+that survives into the final explanation.
+
+| Edge                     | Helper                                          | Yields                               |
+| ------------------------ | ----------------------------------------------- | ------------------------------------ |
+| artist → similar artists | `getArtistRelationship('similar')`              | The main discovery axis              |
+| artist → albums → tracks | `getArtistRelationship`, `getAlbumRelationship` | Deep cuts from artists already loved |
+| track → radio / similar  | `getTrackRelationship('radio')`                 | Track-level neighbourhood            |
+| album → similar albums   | `getAlbumRelationship('similar')`               | Record-level aesthetic match         |
+| contributor → other work | `fetchAlbumCredits` + search                    | "Same producer" coherence            |
+| label → catalogue        | search by label                                 | Scene coherence                      |
+| personal mixes           | `getMix`, `getRecommendations`                  | TIDAL's view, down-weighted          |
+
+Expansion is **breadth-limited and budgeted**: a fixed hop count (default 2), a per-edge fan-out
+cap, a total upstream request budget, and a wall-clock ceiling. It degrades gracefully — a partial
+graph still generates, with lower stated confidence.
+
+### Stage 4 — Candidates, scoring, sequencing
+
+**Candidate pool.** Union of the expansion, deduplicated by ISRC where available (so the same
+recording does not appear as single, album, and remaster). Then filter:
+
+- Drop anything in the owner's exclusions.
+- Drop anything under a **cooldown** — appeared in a generated set in the last _N_ days — so
+  consecutive generations do not repeat.
+- Drop unavailable-in-region and non-streamable items early.
+- Apply the request's own filters (era window, explicit tolerance, instrumental bias, minimum
+  length).
+
+**Scoring.** Each surviving candidate gets a transparent score:
+
+```text
+score = affinity × w_fam
+      + novelty  × w_disc
+      + fit      × w_req      − penalty(fatigue, over-representation)
+```
+
+- **Affinity** — closeness to the profile centre across artist, neighbour, genre, era, label, and
+  contributor dimensions.
+- **Novelty** — distance from what the owner already knows, _directional_: unfamiliar but adjacent
+  scores high; unfamiliar and unrelated scores low. This is what stops "discovery" from becoming
+  "random".
+- **Fit** — how well the track matches this specific request's knobs.
+- **Penalties** — artist over-representation, tracks structurally similar to ones already picked,
+  recently played fatigue.
+
+**Sequencing.** Selection is not the end; order is most of the felt quality.
+
+- **Energy arc** shapes the run: flat, gentle build, wave, wind-down, or peak-and-release. Energy is
+  approximated from available signals (popularity, track length, genre, era, editorial-mix context)
+  — honestly labelled as an approximation, not a fake audio-feature vector.
+- **Opener and closer** are chosen deliberately: an opener with high affinity (earn trust first), a
+  closer that resolves rather than cuts off.
+- **Spacing rules**: no two tracks by the same artist adjacent unless cohesion is maxed; the same
+  album at most twice; genre drift rate bounded by the cohesion knob.
+- **Discovery placement**: unfamiliar tracks are seeded after the opener and away from each other,
+  so a set never front-loads three unknowns.
+
+### The knobs
+
+Nuance lives here. Defaults come from the profile; every knob is optional.
+
+| Knob                        | Range / values                                                                       | Effect                                                                                         |
+| --------------------------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| **Length**                  | track count or target duration (e.g. "about 90 minutes")                             | Set size; duration targeting beats count                                                       |
+| **Familiarity ↔ Discovery** | 0–100                                                                                | Share of tracks already in the profile                                                         |
+| **Depth**                   | hits ↔ deep cuts                                                                     | Popularity band of picks                                                                       |
+| **Era**                     | anchor + spread ("centred 2016, ±8y") or unconstrained                               | Release-date window and its softness                                                           |
+| **Energy arc**              | flat / build / wave / wind-down / peak-and-release                                   | Sequencing shape                                                                               |
+| **Cohesion ↔ Variety**      | 0–100                                                                                | Genre drift rate, artist repeat spacing                                                        |
+| **Context**                 | focus · driving · workout · dinner · late night · background · melancholy · euphoric | A small curated vocabulary mapped to genre, length, and popularity constraints — not free text |
+| **Seeds**                   | whole profile · an artist · an album · a playlist · up to 5 tracks · "lately"        | What the expansion starts from                                                                 |
+| **Explicit**                | allow / avoid / exclude                                                              | Filter                                                                                         |
+| **Instrumental bias**       | 0–100                                                                                | Prefers instrumental where detectable                                                          |
+| **Exclusions**              | artists, genres, eras                                                                | Hard filters, persisted to the profile                                                         |
+| **Cooldown**                | days                                                                                 | Repeat suppression across generations                                                          |
+
+Presets are just saved knob sets — "Sunday morning", "gym", "deep dive on one artist" — and the
+owner can name and pin their own.
+
+### Explainability
+
+Every track carries a short provenance chip, and the set carries a summary:
+
+```text
+SET · 28 tracks · 1h 52m · gentle build · 38% new to you · confidence: good
+
+  1  Track A          you saved this artist's last two albums
+  2  Track B          similar to [loved artist] · 2017 · deep cut
+  3  Track C          same producer as [loved album]
+  4  Track D          appears on 3 of your own playlists
+  5  Track E          from your Discovery Mix · down-weighted
+```
+
+If the engine cannot explain a pick, it does not make it.
+
+### Review and commit
+
+- The set opens in the player as a **provisional queue**, visually distinct from a saved playlist.
+- Per-track actions: keep, swap (regenerate just that slot from the same pool), remove, "more like
+  this", "never again" (writes an exclusion).
+- Set actions: reshuffle, adjust a knob and re-run (the pool is reused where valid, so re-runs are
+  fast), save to Syn, push to TIDAL.
+- Nothing reaches TIDAL until Save. Closing without saving discards cleanly.
+
+### Learning loop
+
+Bounded, derived, and always reversible.
+
+- Kept sets, per-track keeps/skips/completions, and explicit "more like this / never again" fold
+  into the profile as **small weight deltas**.
+- Deltas decay; one bad night does not permanently reshape the model.
+- The raw events are transient — they update the profile and are dropped. Syn keeps the weights,
+  not the diary.
+- The profile view shows recent movement in plain language ("you've been leaning older and
+  quieter this month") and offers undo.
+
+### What this engine is not
+
+- Not a social recommender, not "Syn Radio", not shareable.
+- Not infinite autoplay — generation is initiated and reviewed.
+- Not a replacement for deliberate hand-built playlists; it should make them easier to start.
+- Not a claim of audio analysis. Where energy or mood is approximated, the UI says approximated.
+
+### Data and privacy
+
+- The profile lives in a Syn-owned `taste_profile` table, scoped to the owner.
+- It contains derived weights, TIDAL identifiers, genre/label strings, and knob defaults. No
+  catalogue text beyond tags, no artwork, no audio, no lyrics.
+- Inputs are re-read live from TIDAL; nothing upstream is mirrored.
+- No profile content is logged, sent to analytics, or transmitted to any third party.
+- View, export, reset, and delete are first-class actions in Settings, and delete is offered on
+  disconnect.
+
+---
 
 ## Design direction
 
 Syn should be visually distinct from TIDAL while respecting TIDAL's content and attribution rules.
-Aim for a dark-first, high-contrast listening-room feel: neutral surfaces, restrained accent colour,
-generous artwork, and strong typography. Avoid copying TIDAL's interface.
+Dark-first, high-contrast listening-room feel: neutral surfaces, restrained accent, generous
+artwork, strong typography.
 
 ### Design tokens
 
-Define semantic custom properties in `src/routes/layout.css`, then consume them through Tailwind:
+Semantic custom properties in `src/routes/layout.css`, consumed through Tailwind: canvas, surface,
+elevated surface, subtle border; primary/secondary/muted text; action accent and contrast; success,
+warning, danger, information; focus ring, selected, skeleton, overlay; spacing, radii, shadows,
+content widths, motion durations.
 
-- Canvas, surface, elevated surface, subtle border.
-- Primary, secondary, and muted text.
-- Brand/action accent and accent contrast.
-- Success, warning, danger, and information.
-- Focus ring, selected state, skeleton, and overlay.
-- Spacing, radii, shadows, content widths, and motion durations.
-
-Support light and dark themes based on system preference first. A stored manual preference can be
-added only if it is genuinely useful.
+Eight named dark palettes exist and are persisted per owner. Quality badges colour by fidelity tier
+(grey lossy, cyan lossless, gold HiRes) via `qualityTier()`.
 
 ### Core component inventory
 
-- Shell: `AppShell`, `AppHeader` (+ `toolbar` slot), `AppRail` (nav), `AppAside` (context), `MobileNav`, `PageHeader`, `Footer`.
-- Player set: `Player`, `NowPlaying`, `PlayerSeekBar`, `PlayerTransport`, `PlayerActions`, `PlayerPanel`, `AlbumArtPanel`, `panels/{Queue,Lyrics,Source}Panel`.
-- `Button`, `IconButton`, `TextField`, `Select`, `Dialog`, `Menu`, `Tabs`.
-- `Notice`, `Toast`, `InlineError`, `EmptyState`, `Skeleton`, `SectionState`.
-- `Artwork`, `MediaCard`, `TrackTable` / `TrackTableRow`, `SongCard`, `ArtistCard`, `MetadataList`.
-- `SaveButton`, `PlaylistPicker`, `ConnectionBadge`, `TidalAttribution`.
+- **Shell**: `AppShell`, `AppHeader` (+ `toolbar` snippet), `AppRail`, `AppAside`, `MobileNav`,
+  `PageHeader`, `Footer`.
+- **Player set**: `Player`, `NowPlaying`, `PlayerSeekBar`, `PlayerTransport`, `PlayerActions`,
+  `PlayerPanel`, `AlbumArtPanel`, `panels/{Queue,Lyrics,Source}Panel`.
+- **Taste set** (new): `KnobPanel`, `SeedPicker`, `SetSummary`, `ProvenanceChip`, `ProfileCard`,
+  `GenerationProgress`, `ProvisionalQueue`.
+- **Primitives**: `Button`, `IconButton`, `TextField`, `Select`, `Dialog`, `Menu`, `Tabs`, `Slider`.
+- **Feedback**: `Notice`, `Toast`, `InlineError`, `EmptyState`, `Skeleton`, `SectionState`.
+- **Media**: `Artwork`, `MediaCard`, `TrackTable` / `TrackTableRow`, `SongCard`, `ArtistCard`,
+  `MetadataList`, `Badge`.
+- **Actions**: `SaveButton`, `PlaylistPicker`, `QueueVerbs`, `ConnectionBadge`, `TidalAttribution`.
 
-Keep component APIs narrow and driven by actual screens. Add Storybook stories for each state rather
-than building a generic design-system package.
+Keep component APIs narrow and driven by real screens. Storybook stories per meaningful state
+rather than a generic design-system package.
 
 ### TIDAL presentation rules
 
-- Include current TIDAL attribution and a link back to TIDAL wherever its content is presented.
-- Render metadata accurately and legibly.
-- Do not crop, alter, animate, distort, or overlay text on TIDAL artwork.
+- Include current TIDAL attribution and a link back wherever its content appears.
+- Render metadata accurately; do not crop, alter, animate, distort, or overlay text on artwork.
 - Do not imply endorsement by TIDAL or an artist.
-- Use playback only through an official, unmodified TIDAL player integration.
-- Recheck the live guidelines before the visual release; they may change independently of Syn.
+- Recheck the live guidelines before each visual release.
 
 ## Application shell and layout system
 
 The shell is the one place a deliberate layout system pays off: fixed regions that must never
-overlap, must stay put while content scrolls, and must reshape predictably across breakpoints. Inside
-those regions, page content stays ordinary document flow. Modularity here means _named, swappable
-regions with a single owner of their geometry_ — not a configurable dashboard of movable panels.
+overlap, must stay put while content scrolls, and must reshape predictably across breakpoints.
+Inside those regions, page content stays ordinary document flow. Modularity here means _named,
+swappable regions with a single owner of their geometry_ — not a configurable dashboard.
 
 ### Regions
 
@@ -359,567 +585,592 @@ Mobile (< 48rem)
 └──────────────────────────────┘
 ```
 
-- **Rail** — primary navigation, account, theme. Persisted collapsed (icon-only) state on wide
-  screens. Becomes the bottom nav below `48rem`.
-- **Header** — page identity on the left (brand on mobile, breadcrumb/title on desktop) and a
-  `toolbar` region on the right that each route fills with its contextual actions (search field,
-  filter, view toggle, play-all, export). Global search lives here on desktop; on mobile it is its
-  own route/sheet so it never competes with the page title.
-- **Main viewport** — the only always-present scroll container besides `aside`. Page bodies render
-  here as a centred `--content-max` column; they do not get their own shell.
-- **Aside** — optional right-hand context panel, off by default, route- or action-opt-in. First uses:
-  a pinned queue, album credits beside the tracklist, lyrics beside a track. A sheet, not a column,
-  below `90rem`.
+- **Rail** — primary navigation, account, theme. Persisted collapsed state on wide screens; becomes
+  the bottom nav below `48rem`.
+- **Header** — page identity left, a `toolbar` region right that each route fills with contextual
+  actions (search field, filter, view toggle, play-all, generate, export).
+- **Main viewport** — the primary scroll container. Page bodies render as a centred `--content-max`
+  column.
+- **Aside** — optional right-hand context panel, off by default. First uses: the pinned queue, album
+  credits beside the tracklist, lyrics beside a track, generation provenance beside a set.
 - **Player** — a shell region (`grid-area: player`), never `position: fixed`. Expanding grows its
-  row on desktop; on mobile it takes over as a full-screen sheet. Already decomposed into a component
-  set (`Player`, `NowPlaying`, `PlayerTransport`, `PlayerActions`, `PlayerPanel`, `AlbumArtPanel`,
-  `panels/*`).
-- **Footer** — the 10px attribution line is a single hairline grid row beneath the player.
+  row on desktop; on mobile it becomes a full-screen sheet.
+- **Footer** — the 10px attribution line, a hairline grid row beneath the player.
 
 ### How it is built
 
-- One CSS Grid on `AppShell` owns every region:
-  `grid-template-areas` for `rail / header / main / aside / player / footer`,
+- One CSS Grid on `AppShell` owns every region: `grid-template-areas` for
+  `rail / header / main / aside / player / footer`,
   `grid-template-columns: var(--shell-rail-w) minmax(0, 1fr) var(--shell-aside-w)`,
-  `grid-template-rows: var(--shell-header-h) minmax(0, 1fr) auto var(--shell-footer-h)`. Because the
-  header and player are grid rows, `main` never needs a manual `padding-bottom` reservation and the
-  player can never cover content.
-- Regions read geometry from tokens and never hard-code their own size. Collapsing the rail, opening
-  the aside, or growing the player is a change to one custom property, animated where it helps.
-- Region components take **named snippets**, nothing else: `AppShell` exposes
-  `header`, `rail`, `main`, `aside?`, `player`, `footer?`. Each region component
-  (`AppHeader`, `AppRail`, `AppAside`) has a narrow prop surface driven by real screens.
-- Flexbox inside a region (toolbars, nav lists, button clusters); Grid only for the shell and for
-  genuine 2-D content (card galleries, the track table, an album header's art-beside-metadata).
+  `grid-template-rows: var(--shell-header-h) minmax(0, 1fr) auto var(--shell-footer-h)`. Because
+  header and player are grid rows, `main` needs no manual `padding-bottom` and the player can never
+  cover content.
+- Regions read geometry from tokens and never hard-code size. Collapsing the rail, opening the
+  aside, or growing the player changes one custom property.
+- Region components take **named snippets**: `AppShell` exposes `header`, `rail`, `main`, `aside?`,
+  `player`, `footer?`.
+- Flexbox inside regions; Grid only for the shell and genuine 2-D content.
 
-### Layout tokens (add to `src/routes/layout.css`)
+### Layout tokens
 
-- `--shell-rail-w` (expanded / `--shell-rail-w-collapsed`), `--shell-aside-w`.
+- `--shell-rail-w` / `--shell-rail-w-collapsed`, `--shell-aside-w`.
 - `--shell-header-h`, `--shell-player-h` (`auto` when expanded), `--shell-footer-h`.
-- `--shell-gutter` — the main-viewport inline padding, `clamp()`-scaled.
+- `--shell-gutter` — `clamp()`-scaled main-viewport inline padding.
 - A documented z-index scale: `--z-rail`, `--z-header`, `--z-aside`, `--z-player`, `--z-overlay`,
   `--z-toast`. Nothing outside this scale sets `z-index`.
-- Named breakpoints: `48rem` (mobile ↔ tablet: rail becomes bottom nav), `64rem`
-  (toolbar gains room), `90rem` (aside column available).
+- Breakpoints: `48rem` (rail → bottom nav), `64rem` (toolbar room), `90rem` (aside available).
 
-### UX and accessibility standards this must uphold
+### Standards this must uphold
 
-- **Scroll containment**: only `main` and `aside` scroll; the page body never scrolls horizontally;
-  wide tables/code scroll inside their own `overflow-x: auto` container.
+- **Scroll containment**: only `main` and `aside` scroll; no horizontal body scroll; wide tables
+  scroll inside their own `overflow-x: auto` container.
 - **Landmarks**: `<header>`, `<nav aria-label>`, `<main id="main-content" tabindex="-1">`,
-  `<aside aria-label>`, and the player as `role="region" aria-label`. The skip link targets `main`.
-  Rail-collapse and aside-toggle are real buttons with `aria-expanded` / `aria-controls`.
-- **No layout shift**: SSR the rail-collapsed and aside-open state from a cookie (the theme pattern)
-  so the grid renders in its final shape on first paint.
-- **Container queries** for region components whose own width — not the viewport — should drive them:
-  the track table collapses its album/date columns based on the width of `main` (or the pinned
-  `aside`), so it still adapts inside a narrow panel.
-- **Motion**: rail/aside/player transitions are 150–200ms and honour `prefers-reduced-motion`.
+  `<aside aria-label>`, player as `role="region" aria-label`. Skip link targets `main`.
+- **No layout shift**: SSR the rail-collapsed and aside-open state from a cookie.
+- **Container queries** where a region's own width should drive it — the track table collapses its
+  album/date columns based on the width of `main` or the `aside`.
+- **Motion**: 150–200ms, honouring `prefers-reduced-motion`.
 - **Safe areas**: `env(safe-area-inset-*)` on the mobile player and bottom nav.
-- **State discipline**: layout state is at most two persisted booleans (rail collapsed, aside open);
-  no generic layout store, no draggable/resizable regions, no nested shells.
+- **State discipline**: at most two persisted layout booleans; no generic layout store, no
+  draggable regions, no nested shells.
 
-### Migration (each step its own PR, app looks identical after step 1)
+### Migration (each step its own PR)
 
-1. Add the layout tokens and the `AppShell` grid; keep today's children. Move `Player` out of
-   `position: fixed` into `grid-area: player`; delete `main`'s `pb-40` reservation.
-2. Extract `AppHeader` with an empty `toolbar` snippet; move brand, theme, and desktop global search
-   into it. Pages begin filling `toolbar` (search field, library view/filter, album play-all +
-   export).
-3. Add the collapsed-rail state, its toggle, and cookie persistence.
-4. Add `AppAside` as opt-in; first consumer is a pinned queue, second is album credits.
+1. Layout tokens and the `AppShell` grid; `Player` out of `position: fixed` into `grid-area`.
+2. Extract `AppHeader` with a `toolbar` snippet; pages begin filling it.
+3. Collapsed-rail state, toggle, cookie persistence.
+4. `AppAside` as opt-in; first consumer the pinned queue, second generation provenance.
 5. Convert region components to container queries.
-6. Storybook: one story per region and per shell breakpoint/collapse state; a Playwright check that
-   header, rail, and player stay in place while `main` scrolls.
+6. Storybook per region and breakpoint; a Playwright check that header, rail, and player stay put
+   while `main` scrolls.
 
 ## Technical architecture
 
 ### Route and data boundary
 
-- `+page.server.ts` loads data requiring credentials and returns purpose-built view models.
-- Named form actions handle user mutations and return typed success/failure data.
-- Client JavaScript is used for enhancement, focus management, local pending state, and optional
-  optimistic UI—not for token handling or duplicating server domain logic.
-- Server modules under `src/lib/server/tidal/` remain the only code that knows token and upstream API
-  details.
-- UI modules may know stable display-model types but not raw credentials or configuration.
+- `+page.server.ts` loads credentialed data and returns purpose-built view models.
+- Named form actions and `/api/**` handlers own mutations, returning typed success/failure data.
+- Client JavaScript handles enhancement, focus, pending state, and the player engine — never token
+  handling or duplicated server domain logic.
+- `src/lib/server/` is the only code that knows tokens and upstream API details.
 
 ### Normalisation layer
 
-Create small, pure adapters next to the TIDAL server integration:
-
 ```text
 src/lib/server/tidal/
-├── api.ts                 endpoint wrappers
-├── jsonapi.ts             protocol helpers
-├── models.ts              TrackSummary, AlbumSummary, ArtistSummary, PlaylistSummary
-├── normalise.ts           JSON:API resource -> display model
-├── capabilities.ts        granted-scope and feature checks
-└── errors.ts              safe domain error taxonomy
+├── api.ts          endpoint wrappers (incl. relationship traversal)
+├── jsonapi.ts      protocol helpers
+├── normalise.ts    JSON:API resource → display model
+├── stream.ts       manifest parsing + quality ladder
+├── segmented.ts    DASH fragment concatenation + Range
+├── load.ts         loadTidalPage() page-load wrapper
+└── errors.ts       safe domain error taxonomy
 ```
 
-The UI should receive shapes such as:
+Display contracts live in `src/lib/tidal/models.ts` (client-safe, pure types). Add a field only when
+a screen uses it and its upstream shape is verified.
 
-```ts
-interface TrackSummary {
-	id: string;
-	title: string;
-	artistNames: string[];
-	album?: { id: string; title: string };
-	artwork?: { src: string; width: number; height: number };
-	durationSeconds?: number;
-	explicit?: boolean;
-	saved?: boolean;
-	tidalUrl?: string;
-}
+### Taste engine architecture
+
+A new server module, following the established `*Store` + injected-dependency pattern so every
+stage is unit-testable with no DB and no network.
+
+```text
+src/lib/server/taste/
+├── signals.ts      live readers over the TIDAL client → raw signal set
+├── profile.ts      TasteProfileStore interface + dbTasteProfileStore + merge/decay logic
+├── graph.ts        budgeted expansion over TIDAL relationship edges
+├── candidates.ts   pool assembly, ISRC dedupe, filters, cooldown
+├── score.ts        pure scoring: affinity / novelty / fit / penalties
+├── sequence.ts     energy arc, spacing, opener/closer
+├── explain.ts      provenance labels + set summary
+└── generate.ts     the orchestrator; takes knobs + ctx, returns a provisional set
 ```
 
-These are product contracts, not a full retyping of the TIDAL API. Add fields only when a screen uses
-them.
+Rules:
+
+- `score.ts`, `sequence.ts`, and `explain.ts` are **pure** — arrays in, arrays out. They carry the
+  bulk of the test suite and need no fixtures beyond plain objects.
+- `graph.ts` and `signals.ts` take an injected TIDAL client and are tested against recorded,
+  sanitised fixtures.
+- `generate.ts` enforces the request budget and wall-clock ceiling and always returns a usable set,
+  degrading confidence rather than failing.
+- Generation runs as a server action with streamed progress; it is cancellable.
 
 ### API wrapper evolution
 
-- Keep `tidalFetch` and `tidalJson` as transport primitives.
-- Expand typed helpers only for committed product workflows.
-- Validate mutation inputs with explicit bounds before calling TIDAL: non-empty IDs, supported types,
-  maximum batch sizes, and string length limits.
-- Add request timeouts and cancellation where supported.
-- Preserve one-shot 401 refresh; do not retry non-idempotent requests automatically unless the API
-  contract makes the retry safe.
-- Translate upstream status codes and JSON:API errors into safe domain errors.
-- Forward a request/correlation ID through server logs and user-visible error states without logging
-  request bodies that may contain personal data.
-
-### Authenticated proxy
-
-The catch-all `/tidal/api/[...path]` route is useful during development but too broad for primary
-product flows.
-
-1. Migrate each visible feature to a typed page load or named server action.
-2. Add origin/CSRF protection for state-changing requests.
-3. Allowlist methods and, if retained in production, endpoint families.
-4. Apply request and response size limits.
-5. Keep `cache-control: no-store` for personal responses unless a documented, permitted cache policy
-   is introduced.
-6. Disable or remove the general mutation proxy once all product actions are migrated.
+- Keep `tidalFetch` / `tidalJson` as transport primitives.
+- Expand typed helpers only for committed workflows — the engine will drive most new ones.
+- Validate mutation inputs before calling TIDAL: non-empty IDs, supported types, batch caps, string
+  length limits.
+- Preserve one-shot 401 refresh; do not auto-retry non-idempotent requests.
+- **Fetch the media CDN with the global `fetch`, never `event.fetch`** — SvelteKit's wrapper
+  attaches request context that the CDN rejects.
+- Forward a correlation ID through logs and error states without logging bodies.
 
 ### Persistence
 
-Continue persisting only:
+Persist only:
 
-- Encrypted TIDAL authorization record.
+- The encrypted TIDAL authorization records (browse + playback).
 - Better Auth data.
-- Optional Syn-owned preferences such as theme or default library view.
-- Optional short-lived workflow data where it cannot live safely in a signed/session cookie.
+- Syn-owned preferences: theme, streaming quality, volume, normalisation, layout booleans.
+- Bounded workflow state: the resumable queue, history, and position.
+- **The derived taste profile** — weights, identifiers, knob defaults, exclusions, timestamps.
 
-Do not persist catalogue, library, playlist, artwork, or listening-history mirrors. If a performance
-problem later justifies caching, document the exact fields, TTL, invalidation, and TIDAL policy basis
-before implementation.
+Do not persist catalogue, artwork, playlist, or listening-history mirrors. Object storage is the one
+sanctioned exception, under the rules in **Object storage** below.
+
+## Object storage
+
+Prod has no persistent local filesystem, so anything larger than a database row needs a bucket. The
+bucket is not a library — it is **working space for the session**. Every object either makes the
+next few minutes of listening better, or it is derived data small enough to keep.
+
+A separate `syn-worker` service (see the `SYN_WORKER_*` variables) owns the long-running jobs; the
+SvelteKit server never blocks a request on a bucket write.
+
+### What it is for
+
+Ordered by value to the player.
+
+**1. HiRes staging — the reason the bucket exists.**
+`HI_RES_LOSSLESS` arrives as a DASH init segment plus dozens of fragments. Today `segmented.ts`
+fetches them all into memory, concatenates, and only then serves the first byte — so HiRes has a
+multi-second cold start and a 128 MB in-process cache that dies with the function. Instead: the
+worker assembles the track once into the bucket, and `/api/tracks/[id]/audio` redirects to (or
+proxies) a short-lived signed URL with native Range support. Time-to-first-audio drops to a normal
+CDN fetch, the memory cache disappears, and seeking becomes real instead of buffer-backed.
+
+**2. Next-track prebuffer.**
+While the current track plays, stage the next queue item. Transitions stop being a cold resolve →
+manifest → CDN round trip. This is what makes a generated 28-track set feel like a record rather
+than a series of requests.
+
+**3. Container normalisation.**
+Some tiers arrive in a container the browser will not decode natively (FLAC-in-fMP4 is the live
+example), and today that falls back to the TIDAL embed — losing quality telemetry, the queue, and
+the seek bar. The worker can remux (stream copy, no re-encode) into a container the `<audio>`
+element accepts, keeping playback inside Syn. Remux only; never transcode, never re-encode.
+
+**4. Waveform peaks.**
+A peaks array computed once while a track is staged, stored as a few KB of JSON. The seek bar
+becomes a real waveform instead of a plain range input — the single highest-visibility upgrade the
+player can get for the least data. Peaks are derived numbers, not content, so they outlive the audio
+object.
+
+**5. Measured loudness and dynamics.**
+While the audio is in hand, measure integrated LUFS, true peak, and dynamic range. Two payoffs:
+normalisation stops depending on whether TIDAL returned ReplayGain, and **the taste engine gets a
+real energy signal** for tracks the owner has actually played — replacing part of the honest
+"approximated from popularity and genre" caveat in _Stage 4_ with measurement. Store the numbers,
+discard the audio.
+
+**6. Generation pool snapshots.**
+A generation run produces an expansion graph and a scored candidate pool. Persisting that as one
+compressed JSON object for a short TTL makes "nudge a knob and re-run" near-instant instead of
+re-walking the graph and re-spending the upstream budget. Keyed by profile version + seed set, so a
+stale profile invalidates it.
+
+**7. Export artefacts.**
+M3U exports, taste-profile JSON exports, and owner-only diagnostic captures, served through
+short-lived signed URLs rather than streamed through the app server.
+
+### Guardrails
+
+These are the conditions under which the above is acceptable at all.
+
+- **Media objects are a cache, not a collection.** Short TTL (hours, not weeks), a hard total size
+  cap, and least-recently-used eviction. Reaching the cap evicts; it never grows the bucket.
+- **Staging is playback-driven.** The worker stages what is playing or next in the queue. There is
+  no "cache my whole library" action, no crawler, no background sweep over saved albums.
+- **Derived artefacts are the durable ones.** Peaks, loudness, and dynamics are kilobytes of
+  numbers and may persist with the profile. Audio objects are the disposable ones.
+- **Signed, short-lived, private.** No public objects, no guessable keys, no URL that outlives its
+  purpose. Bucket credentials stay server-side like every other secret.
+- **Owner-visible and purgeable.** Settings shows what the bucket currently holds — object count,
+  total size, oldest entry — with one action to purge it. Disconnect purges everything.
+- **Deletion is complete.** Disconnecting removes media objects, derived artefacts, generation
+  snapshots, and exports, not just the database rows.
+- **Compliance gate.** Before enabling media staging in production, confirm against the current
+  TIDAL Developer Terms that a short-lived, private, owner-scoped playback cache is permitted, and
+  record the finding. If it is not, uses 4–7 still stand on their own — peaks, loudness, snapshots,
+  and exports involve no stored audio.
+
+### Object lifecycle
+
+```text
+  queued ──► staging ──► ready ──► (played) ──► expired ──► purged
+     │          │           │                                  ▲
+     │          └── failed ─┴──────────────────────────────────┘
+     └── cancelled (track skipped before staging finished)
+```
+
+- The player never waits on `staging`. If a track is not `ready`, it falls back to the existing
+  direct proxy — staging is an optimisation, never a dependency.
+- `failed` is silent to the owner unless it happens repeatedly; the direct path already works.
+- Skipping a track cancels its staging job and any prebuffer that is no longer next.
+
+### Where it lives
+
+```text
+src/lib/server/media/
+├── bucket.ts        signed URL issue, put/get/delete, size accounting
+├── staging.ts       job state machine, LRU eviction, cap enforcement
+├── peaks.ts         waveform extraction (pure over a byte source)
+└── loudness.ts      LUFS / true-peak / dynamic-range measurement
+```
+
+`peaks.ts` and `loudness.ts` are pure over an input buffer and unit-testable with synthetic audio.
+`bucket.ts` follows the established `*Store` pattern so tests inject an in-memory bucket.
 
 ## Capability and scope plan
 
-Exact endpoint permissions must be checked in the live API reference before each write feature. The
-current repository exposes the following useful starting points:
+Verify each against the live API reference before shipping its feature.
 
-| Product feature                       | Existing helper                                    | Current/default scope assumption    | Delivery         |
-| ------------------------------------- | -------------------------------------------------- | ----------------------------------- | ---------------- |
-| Account identity                      | `getCurrentUser`                                   | `user.read`                         | Phase 1          |
-| Search                                | `search`                                           | `search.read`                       | Phase 1          |
-| Saved albums/artists/tracks/playlists | `getCollectionPage`                                | `collection.read`                   | Phase 1          |
-| Personal mixes                        | `getMix`, `getRecommendations`                     | `recommendations.read`              | Phase 2          |
-| Catalogue details                     | `getTrack`, `getAlbum`, `getArtist`, `getPlaylist` | Verify per endpoint                 | Phase 2          |
-| Save/remove collection item           | `addToCollection`, `removeFromCollection`          | Add and verify write scope          | Phase 3          |
-| Create playlist                       | `createPlaylist`                                   | Add and verify playlist write scope | Phase 3          |
-| Add playlist items                    | `addPlaylistItems`                                 | Add and verify playlist write scope | Phase 3          |
-| Playback/preview                      | Not integrated                                     | Official SDK/Embed rules apply      | Feasibility gate |
+| Feature                            | Helper                                          | Scope assumption             | Phase |
+| ---------------------------------- | ----------------------------------------------- | ---------------------------- | ----- |
+| Account identity                   | `getCurrentUser`                                | `user.read`                  | done  |
+| Search                             | `search`                                        | `search.read`                | done  |
+| Saved collections                  | `getCollectionPage`, `getFullCollection`        | `collection.read`            | done  |
+| Personal mixes / recommendations   | `getMix`, `getRecommendations`                  | `recommendations.read`       | done  |
+| Catalogue details                  | `getTrack/Album/Artist`                         | verify per endpoint          | done  |
+| Playback (full track)              | device-auth `r_usr` + `playbackinfopostpaywall` | TIDAL Link device grant      | done  |
+| Relationship traversal (the graph) | `getArtist/Track/AlbumRelationship`             | verify per relationship      | B–C   |
+| Album credits                      | `fetchAlbumCredits`                             | verify                       | C     |
+| Save/remove collection item        | `addToCollection`, `removeFromCollection`       | write scope, verify          | D     |
+| Create playlist / add items        | `createPlaylist`, `addPlaylistItems`            | playlist write scope, verify | D     |
 
-Do not request a broader scope until its user-facing workflow, permission explanation, and tests are
-ready to ship.
+Do not request a broader scope until its workflow, permission explanation, and tests are ready.
 
 ## Error and feedback model
 
-Define a safe UI-facing error union with categories such as:
+Safe UI-facing error union: `not_authenticated`, `not_connected`, `authorization_expired`,
+`playback_not_linked`, `permission_missing`, `rate_limited`, `not_found`, `validation_failed`,
+`upstream_unavailable`, `generation_degraded`, `configuration_error`, `unexpected`.
 
-- `not_authenticated`: Sign in again.
-- `not_connected`: Connect TIDAL.
-- `authorization_expired`: Reconnect TIDAL.
-- `permission_missing`: Explain the capability and reconnect with the needed scope.
-- `rate_limited`: Wait and retry at an appropriate time.
-- `not_found`: Return to the parent collection or search.
-- `validation_failed`: Correct highlighted fields.
-- `upstream_unavailable`: Preserve the page and retry.
-- `configuration_error`: Show owner-only setup guidance.
-- `unexpected`: Show correlation ID and a safe retry path.
+`generation_degraded` is new and deliberate: the engine hit its budget or an upstream edge failed,
+produced a smaller or less confident set, and says so rather than silently shipping filler.
 
-Error copy belongs in both Paraglide catalogues. Raw upstream payloads, client configuration, token
-details, stack traces, and database errors never reach the normal UI.
+Error copy lives in both Paraglide catalogues. Raw upstream payloads, configuration, token details,
+stack traces, and database errors never reach the normal UI.
 
 ### Feedback conventions
 
-- Skeletons for initial content that has a stable layout.
-- Inline pending state for a single control mutation.
+- Skeletons for initial content with a stable layout.
+- Inline pending state for single-control mutations.
+- Streamed progress for generation, with a cancel action.
 - Toast plus updated state for successful background mutations.
 - Inline error beside the affected section for local failures.
-- Page-level notice only when the entire route cannot function.
-- Dialog confirmation for destructive or difficult-to-reverse actions.
-- `aria-live` announcements for async results that do not move focus.
+- Page-level notice only when the whole route cannot function — never for a failure that leaves
+  playback intact.
+- Dialog confirmation for destructive or hard-to-reverse actions.
+- `aria-live` for async results that do not move focus.
 
 ## Accessibility requirements
 
-Target WCAG 2.2 AA for the application workflows.
+Target WCAG 2.2 AA.
 
-- All features work by keyboard with a visible, consistent focus indicator.
-- Every icon-only action has an accessible name and at least a comfortable touch target.
-- Dialogs trap and restore focus; menus and tabs follow expected keyboard patterns.
-- Page titles, headings, landmarks, and form labels provide a meaningful document structure.
-- Status is never communicated by colour alone.
-- Artwork has useful alternative text when informative and empty alternative text when decorative.
-- Loading and mutation states are announced without repeatedly interrupting screen readers.
-- Motion respects `prefers-reduced-motion`.
-- Layout remains usable at 320 CSS pixels and at 200% zoom.
-- English and German text expansion is checked visually.
+- Everything works by keyboard with a visible, consistent focus indicator, including all transport
+  controls, the seek bar, and every knob.
+- Sliders expose `role="slider"` with value text ("familiarity, 60 of 100").
+- Icon-only actions have accessible names and comfortable touch targets.
+- Dialogs trap and restore focus; menus and tabs follow expected patterns.
+- Track changes and generation completion are announced without interrupting continuously.
+- Status is never colour alone — quality tiers and provenance carry text.
+- Artwork has useful alt text when informative, empty when decorative.
+- Motion respects `prefers-reduced-motion`; usable at 320px and 200% zoom.
+- English and German expansion checked visually.
 
 ## Internationalisation
 
-- Move every user-facing string into `messages/en.json` and `messages/de-de.json` as screens are
-  touched.
-- Localise page titles, notices, validation, empty states, navigation, dates, durations, and counts.
-- Preserve TIDAL-provided titles and artist names exactly; do not translate catalogue metadata.
-- Derive the API locale/country context from the selected UI locale and connected account only after
-  validating the API contract.
-- Add an actually visible language control in Settings; remove the hidden link workaround once the
-  final locale strategy is implemented.
+- Every user-facing string in `messages/en.json` and `messages/de-de.json`, added in the same change
+  that introduces it.
+- Localise titles, notices, validation, empty states, navigation, dates, durations, counts, knob
+  labels, and provenance phrasing.
+- Preserve TIDAL titles and artist names exactly; never translate catalogue metadata.
+- A visible language control in Settings.
 
 ## Performance and resilience
 
-- Keep the initial shell and first useful content server-rendered.
-- Avoid loading every collection and mix on every page. Fetch only the sections needed for the route.
-- Parallelise independent home requests but set a concurrency budget to avoid unnecessary quota use.
-- Use cursor pagination and small first pages.
-- Reserve artwork dimensions to prevent layout shift.
-- Lazy-load below-the-fold artwork and optional advanced modules.
-- Define route-level performance budgets after measuring a production preview: response time, client
-  JavaScript, image weight, and layout shift.
-- Add timeouts and user-initiated retry; avoid unbounded automatic retries.
+- Server-render the shell and first useful content.
+- Fetch only what a route needs; parallelise independent requests under a concurrency budget.
+- Cursor pagination with small first pages; reserve artwork dimensions.
+- **Generation budgets**: a hard upstream request cap, a wall-clock ceiling, and a target of a
+  usable set well inside it. Partial graphs degrade confidence rather than failing.
+- **Playback budgets**: time-to-first-audio after a play action; segmented HiRes buffers the whole
+  track, so it is an opt-in tier with a stated trade-off.
+- Timeouts and user-initiated retry; no unbounded automatic retries.
 - Preserve partial content when one upstream call fails.
 
 ## Privacy, security, and compliance
 
-### Existing controls to preserve
+### Preserve
 
-- OAuth authorization code flow with PKCE and state.
-- HttpOnly, short-lived OAuth transaction cookie.
-- AES-256-GCM token encryption at rest.
-- Automatic refresh with rotation persistence and concurrent-refresh coalescing.
-- Authenticated TIDAL routes and a fixed upstream host.
-- No token logging or client exposure.
+OAuth with PKCE and state; HttpOnly short-lived transaction cookie; AES-256-GCM token encryption;
+refresh with rotation and single-flight coalescing; fixed upstream hosts; no token logging or client
+exposure.
 
-### Controls to add before write features
+### Add before write features
 
 - Same-origin/CSRF validation on every state-changing endpoint.
-- Explicit input schemas and request-size limits.
-- Rate limiting or a lightweight owner-session throttle for mutation endpoints.
+- Explicit input schemas and request-size limits, including knob bounds.
+- A lightweight owner-session throttle on mutation and generation endpoints.
 - Confirmation and duplicate-submit prevention for destructive actions.
-- Redaction tests for errors and diagnostics.
-- Security headers appropriate to artwork, TIDAL links, and any official embed/player integration.
+- Redaction tests for errors, diagnostics, and taste-profile output.
+- Security headers appropriate to artwork, TIDAL links, and the embed fallback.
 - A production check that development-only diagnostics are disabled.
-- Dependency and secret scanning in CI where practical.
 
-### TIDAL-specific compliance checkpoint
+### TIDAL compliance checkpoint
 
-Before each release that displays new TIDAL content or adds playback:
+Before each release that displays new content or changes playback:
 
-1. Review the current Developer Terms, Developer Guidelines, Design Guidelines, and endpoint reference.
+1. Review the current Developer Terms, Guidelines, Design Guidelines, and endpoint reference.
 2. Verify attribution and link-back treatment.
-3. Verify requested scopes match only implemented features.
-4. Verify Syn does not retain TIDAL content beyond what is necessary to operate the page.
-5. Verify disconnect deletes personal data held by Syn and stops further requests.
-6. Verify no TIDAL content enters AI, analytics payloads, logs, or unrelated third-party services.
+3. Verify requested scopes match implemented features only.
+4. Verify Syn retains no TIDAL content beyond operating the page — explicitly including the taste
+   profile, which must hold only derived weights and identifiers.
+5. Verify disconnect deletes Syn-held personal data and stops further requests.
+6. Verify no TIDAL content enters any external model, analytics payload, log, or third-party
+   service.
 
 ## Testing strategy
 
-### Unit tests: server project
+### Server unit tests
 
-- JSON:API relationship resolution and every normaliser.
-- Missing and malformed optional attributes.
-- Capability checks from granted scopes.
-- Mutation validation and batch chunking.
-- Safe error translation and redaction.
-- Existing crypto, token store, refresh, and retry coverage remains mandatory.
+- Existing crypto, token store, refresh, retry, manifest, and segmented-delivery coverage stays
+  mandatory.
+- JSON:API relationship resolution and every normaliser, including malformed optional attributes.
+- **Taste engine**: pure scoring, sequencing, and explanation functions against hand-written
+  profiles and candidate sets — including empty profile, single-artist profile, heavy exclusions,
+  and a candidate pool too small to satisfy the request.
+- Profile merge, decay, confidence, and owner-override precedence.
+- Graph expansion budget enforcement and graceful degradation on a failed edge.
+- Safe error translation and redaction, including profile export.
 
-### Component tests: client project
+### Component tests
 
-- Media components with complete, missing-artwork, long-title, and explicit-content states.
-- Keyboard behaviour for dialogs, menus, tabs, and playlist picker.
-- Pending, success, error, empty, and disabled states.
-- English and German rendering.
-- Accessible names and status announcements.
+- Player set: transport, seek, quality badge tiers, provenance chips, provisional-queue state.
+- Knob panel: bounds, keyboard operation, value announcements.
+- Media components with complete, missing-artwork, long-title, and explicit states.
+- Pending, success, error, empty, disabled states; English and German.
 
 ### Storybook
 
-- Every reusable component has stories for its meaningful states.
-- Run the accessibility addon in tests.
-- Maintain mobile and desktop viewport stories for app shell and high-value compositions.
+Stories for every meaningful state; accessibility addon in tests; mobile and desktop viewport
+stories for the shell and high-value compositions.
 
 ### Playwright end-to-end
 
-- Unauthenticated redirect to the real sign-in route.
-- Connect setup, OAuth callback success, denial, expired state, and reconnect using mocked boundaries.
-- Search to detail to save.
+- Unauthenticated redirect; connect, callback success, denial, reconnect against mocked boundaries.
+- Search → detail → queue → play, asserting audio actually advances.
 - Library pagination and remove.
-- Create playlist and add track.
-- Partial API failure and retry.
+- **Generate → review → swap a track → save**, against a deterministic fixture graph.
+- Partial API failure and retry with playback uninterrupted.
 - Disconnect and subsequent access prevention.
-- Mobile navigation, keyboard-only critical path, and locale switch.
+- Mobile navigation, keyboard-only critical path, locale switch.
 
-Mock TIDAL at the HTTP boundary with sanitised fixtures. Never record real tokens or personal library
-payloads in fixtures, traces, screenshots, or CI output.
+Mock TIDAL at the HTTP boundary with sanitised fixtures. Never record real tokens or personal
+library payloads in fixtures, traces, screenshots, or CI output.
 
 ### Visual regression
 
-Capture a small stable matrix rather than every screen:
-
-- Connected and disconnected shell.
-- Home with content, partial failure, and skeletons.
-- Search results and zero-results states.
-- Library on mobile and desktop.
-- Playlist dialog and destructive confirmation.
-- English/German and light/dark variants where layout materially differs.
+A small stable matrix: connected and disconnected shell; home with content, partial failure, and
+skeletons; search results and zero results; library on mobile and desktop; the generate view with
+knobs and a result set; playlist dialog and destructive confirmation.
 
 ## Observability
 
-For a personal app, useful diagnostics matter more than product analytics.
-
-- Emit structured server events for route, operation name, status category, latency, retry, and a
-  correlation ID.
-- Never include tokens, authorization headers, raw personal payloads, search queries, playlist names,
-  or item IDs unless a specific safe diagnostic need is documented.
-- Track API error category and connection health, not listening behaviour.
-- Provide an owner-only health view with the most recent safe failures.
-- Add a lightweight uptime check for the app and database; do not call personal TIDAL endpoints from a
-  public health check.
+- Structured server events for route, operation, status category, latency, retry, and correlation
+  ID.
+- Generation emits stage timings, candidate counts, budget consumption, and final confidence —
+  **counts and durations only**, never artist names, track IDs, or profile weights.
+- Never log tokens, authorization headers, raw personal payloads, search queries, or playlist names.
+- An owner-only health view with the most recent safe failures.
+- A lightweight uptime check that never calls personal TIDAL endpoints.
 
 ## Delivery roadmap
 
-Effort labels are relative: **S** is a focused change, **M** is a complete vertical slice, and **L**
-touches several routes or architectural layers. Ship each phase as a coherent, green change rather
-than one long redesign branch.
+Effort labels are relative: **S** focused, **M** a vertical slice, **L** several routes or layers.
+Ship each phase as a coherent, green change.
 
-### Phase 0 — Product and safety foundations
+### Phase A — Consolidate the session
 
-Goal: remove the sharp edges that would make a polished UI unsafe or inconsistent.
+Goal: make the player unambiguously the centre before building on top of it.
 
-- [ ] Write display-model adapters and fixtures for current user, search, collections, and mixes. (M)
-- [ ] Define the UI-safe error taxonomy and redaction boundary. (M)
-- [ ] Restrict the raw API console to advanced/development use; disable general production mutations.
-      (S)
-- [ ] Add same-origin protection and input limits for mutations. (M)
-- [ ] Inventory current scopes against the live endpoint reference. (S)
-- [ ] Record a compliance checklist and approved attribution assets. (S)
-- [ ] Decide whether `/tidal` remains the product prefix or becomes a compatibility redirect. (S)
+- [ ] Give every listable surface the same queue verbs (play now / next / add / radio). (M)
+- [ ] Session provenance: the player can state why the current track is playing. (M)
+- [ ] Finish shell migration steps 1–3 — grid regions, player as a docked row, header `toolbar`,
+      collapsible rail. (L)
+- [ ] Queue panel editing: reorder, remove, clear, save-as-playlist. (M)
+- [ ] Stand up the bucket: `bucket.ts`, `staging.ts`, the `syn-worker` job runner, size cap and LRU
+      eviction, plus the Settings panel that shows and purges it. (L)
+- [ ] HiRes staging — assemble segmented tracks in the worker and serve a signed Range-capable URL;
+      retire the in-memory segment cache. (M)
+- [ ] Pre-buffer the next queue item; measure time-to-first-audio before and after. (M)
+- [ ] Container normalisation (remux only) so unplayable tiers stop falling back to the embed. (M)
+- [ ] Bring the German catalogue level with recent surfaces. (M)
 
-Exit criteria:
+Exit: playback is uninterruptible by navigation or a failed section; any list can become the queue;
+HiRes starts in about the time a normal track does.
 
-- Normal pages no longer need raw JSON:API structures.
-- A product flow cannot issue an arbitrary destructive request.
-- Errors exposed to the UI are classified, actionable, and redacted.
+### Phase B — The profile
 
-### Phase 1 — Usable core
+Goal: Syn knows the owner, and the owner can see what it knows.
 
-Goal: deliver a coherent application that makes connection, home, search, and library useful.
+- [ ] `signals.ts` live readers with sanitised fixtures. (M)
+- [ ] `taste_profile` table, `TasteProfileStore`, merge and decay logic. (M)
+- [ ] Profile build job triggered on demand and after connection. (M)
+- [ ] `/app/settings/taste` — plain-language profile, confidence, pin/damp/exclude, export, reset,
+      delete. (L)
+- [ ] Redaction tests over profile output and logs. (S)
 
-- [ ] Replace starter/demo entry routes with real sign-in and authenticated landing routes. (M)
-- [ ] Move the app shell onto the grid layout system and semantic layout tokens — steps 1–3 of the
-      migration in _Application shell and layout system_ (grid regions, player as a docked row,
-      header + `toolbar` slot, collapsible rail). (L)
-- [ ] Build Settings / TIDAL connection, reconnect, and disconnect states. (M)
-- [ ] Build Home from normalised account, collection, and mix summaries. (M)
-- [ ] Build URL-backed Search with recognisable grouped results. (L)
-- [ ] Build read-only Library routes with cursor pagination. (L)
-- [ ] Move all touched strings into English and German catalogues. (M)
-- [ ] Add component stories and critical read-only end-to-end tests. (M)
+Exit: the owner reads their profile and says "yes, that's me" — with no generation yet.
 
-Exit criteria:
+### Phase C — Generation that works
 
-- The owner can sign in, connect, search, and browse saved music on mobile or desktop without seeing
-  JSON, scopes, token timestamps, or demo pages.
-- Loading, empty, partial-failure, and disconnected states are designed and tested.
-- Keyboard and screen-reader smoke checks pass for the critical path.
+Goal: a real set from a real profile.
 
-### Phase 2 — Music-rich exploration
+- [ ] Budgeted `graph.ts` expansion over relationship edges, with degradation. (L)
+- [ ] `candidates.ts` — pool, ISRC dedupe, filters, cooldown. (M)
+- [ ] `score.ts` — affinity / novelty / fit / penalties, fully unit-tested. (L)
+- [ ] `sequence.ts` — energy arcs, spacing, opener/closer. (M)
+- [ ] `/app/generate` with a first knob subset (length, familiarity, seeds) and streamed progress. (L)
+- [ ] Provisional queue in the player; save to Syn; optional TIDAL push. (M)
+- [ ] Retire the hardcoded `SOUNDSCAPE_QUERIES` generator. (S)
 
-Goal: make the app feel like a music product rather than a collection of API lists.
+Exit: a generated hour is better than TIDAL's own mix for the owner, and every pick is explainable.
 
-- [ ] Add compliant artwork and TIDAL attribution components. (M)
-- [ ] Build artist, album, track, playlist, and mix detail routes. (L)
-- [ ] Add linked navigation between related resources. (M)
-- [ ] Add open-in-TIDAL actions to content views. (S)
-- [ ] Finish the shell: optional `AppAside` context panel and container-query region components —
-      migration steps 4–5. (M)
-- [ ] Tune responsive density, skeletons, artwork loading, and partial retries. (M)
-- [ ] Add detail-route accessibility and visual-regression coverage. (M)
+### Phase D — Nuance
 
-Exit criteria:
+Goal: the difference between "a good playlist" and "uncannily accurate".
 
-- Search and library results lead to useful, resilient detail pages.
-- Artwork and metadata comply with the current TIDAL design rules.
-- Route performance has been measured on a production preview and obvious bottlenecks addressed.
+- [ ] The full knob set, presets, and profile-derived defaults. (L)
+- [ ] `explain.ts` provenance chips and set summary throughout. (M)
+- [ ] Per-slot swap and fast re-run over a reused pool. (M)
+- [ ] Exclusions and cooldown as first-class, persisted controls. (M)
+- [ ] Contributor and label edges (producer/writer coherence). (M)
+- [ ] Waveform peaks captured during staging; real waveform seek bar. (M)
+- [ ] Measured loudness/dynamics during staging, feeding both normalisation and the engine's energy
+      term — replacing part of the popularity-and-genre approximation with measurement. (L)
+- [ ] Generation pool snapshots in the bucket so knob re-runs skip the graph walk. (M)
+- [ ] `AppAside` as generation provenance and pinned queue — migration steps 4–5. (M)
+- [ ] Verified write scopes for save/remove and playlist creation. (M)
 
-### Phase 3 — Safe curation
+Exit: the owner reaches for Syn instead of TIDAL's own mixes.
 
-Goal: support the highest-value write workflows with explicit permissions and safeguards.
+### Phase E — Learning
 
-- [ ] Verify and enable only the required collection and playlist write scopes. (S)
-- [ ] Add save/remove controls through typed server actions. (M)
-- [ ] Add playlist creation. (M)
-- [ ] Add playlist picker and add-items flow with chunking and partial-failure handling. (L)
-- [ ] Add supported playlist edit/remove/reorder features only after endpoint verification. (L)
-- [ ] Add confirmation, duplicate-submit, error-recovery, and end-to-end coverage. (M)
+Goal: it gets better without getting weird.
 
-Exit criteria:
+- [ ] Capture keeps/skips/completions and explicit feedback in-session. (M)
+- [ ] Fold feedback into the profile as decaying weight deltas; transient events, persisted weights
+      only. (L)
+- [ ] Show recent profile movement in plain language, with undo. (M)
+- [ ] Guardrails: bounded drift per period, no runaway narrowing, a "shake it up" reset. (M)
 
-- Every write action is validated, scoped, observable, and tested.
-- Reconnecting for new permissions is understandable and preserves the owner's place where practical.
-- No user-facing write depends on the catch-all API proxy.
+Exit: three months in, sets are noticeably sharper and the profile is still legible.
 
-### Phase 4 — Playback feasibility gate
+### Phase F — Hardening
 
-Goal: decide whether playback adds enough value without compromising the architecture or terms.
+- [ ] Accessibility audit and high-impact fixes. (M)
+- [ ] Full English/German matrix. (M)
+- [ ] Production-safe diagnostics and health checks. (M)
+- [ ] Dependency, header, secret, log, and gate review. (M)
+- [ ] Cold start, token refresh, DB interruption, and upstream degradation tests. (M)
+- [ ] README and operational runbook. (S)
 
-- [ ] Prototype the official TIDAL Web SDK and TIDAL Embed approaches in an isolated branch. (M)
-- [ ] Validate subscription behaviour, authentication handoff, browser support, CSP, accessibility,
-      bundle impact, and official branding requirements. (M)
-- [ ] Decide among preview playback, embeds, open-in-TIDAL only, or no playback. (S)
-- [ ] If approved, implement the smallest official integration with dedicated tests. (L)
+Exit: `pnpm check`, `pnpm lint`, `pnpm lint:types`, and the full suite pass; critical journeys pass
+against deterministic mocks; the owner can diagnose common failures without opening the database.
 
-Exit criteria:
+## Recommended next vertical slice
 
-- A written go/no-go decision exists with measured UX, security, compliance, and maintenance impact.
-- No custom stream handling or token exposure is introduced.
+**Profile → one honest set.** Before building the full knob surface, prove the core:
 
-### Phase 5 — Hardening and release quality
+1. `signals.ts` over saved tracks, saved albums, and followed artists only.
+2. A minimal profile — artist, genre, era weights with recency decay — persisted and rendered as
+   sentences.
+3. One-hop expansion via `getArtistRelationship('similar')` and artist deep cuts.
+4. Scoring with just affinity + novelty, one knob (familiarity ↔ discovery), no sequencing beyond a
+   spacing rule.
+5. Load it into the player as a provisional queue with provenance chips.
 
-Goal: make the personal app dependable enough for daily use.
-
-- [ ] Complete the accessibility audit and resolve high-impact findings. (M)
-- [ ] Verify the full English/German matrix. (M)
-- [ ] Add production-safe structured diagnostics and health checks. (M)
-- [ ] Review dependencies, headers, secrets, logs, and development gates. (M)
-- [ ] Test Vercel/Neon cold starts, token refresh, database interruption, and upstream degradation. (M)
-- [ ] Remove obsolete demo routes, unused stories, and compatibility code after redirects settle. (S)
-- [ ] Update README with the final product routes and operational runbook. (S)
-
-Exit criteria:
-
-- `pnpm check`, `pnpm lint`, and the complete unit suite pass.
-- Critical end-to-end journeys pass against deterministic mocks.
-- Production secrets, redirects, database migration, and TIDAL configuration are verified.
-- The owner can diagnose and recover from the common failure modes without opening the database.
-
-## Recommended first vertical slice
-
-Build **Search to Track Detail** before redesigning every current panel. It exercises the visual
-language and architecture with limited mutation risk.
-
-1. Add `TrackSummary`, `AlbumSummary`, and `ArtistSummary` plus pure normalisers.
-2. Replace the current raw search result with server-loaded grouped view models at `/search?q=`.
-3. Build `Artwork`, `TrackRow`, `MediaCard`, `SectionState`, and `TidalAttribution` with stories.
-4. Add `/tracks/[id]` with related artist/album links and Open in TIDAL.
-5. Cover missing artwork, long metadata, no results, partial API errors, mobile layout, and keyboard
-   navigation.
-6. Use the resulting components and error patterns to build Library and Home.
-
-This slice creates reusable product primitives while avoiding an early all-at-once shell rewrite.
-
-## Prioritised backlog
-
-### P0 — Required for a trustworthy product
-
-- Real sign-in and home routes; remove demo navigation from the user journey.
-- Friendly connect/reconnect/disconnect flows.
-- Normalised display models and safe errors.
-- Restrict the raw mutation console.
-- Application shell and responsive navigation.
-- Search results and library browsing without raw JSON.
-- Full localisation of touched routes.
-- Accessibility basics and critical-path tests.
-
-### P1 — Required for a satisfying daily tool
-
-- Artwork, detail pages, mixes, open-in-TIDAL links.
-- Save/remove and playlist creation/add flows.
-- Partial retry, stable skeletons, and polished empty states.
-- Owner-safe diagnostics and production resilience.
-
-### P2 — Valuable after the core is dependable
-
-- Playlist reordering and richer editing if officially supported.
-- Manual theme preference.
-- Keyboard shortcuts with a discoverable help surface.
-- Playback or previews if the feasibility gate approves them.
-- Small Syn-owned preferences that demonstrably reduce friction.
+If that set is already better than the current generator, the rest of the engine is worth building.
+If it is not, the model is wrong and no amount of knobs will fix it.
 
 ## Success measures
 
-Because Syn has one user, measure task quality rather than growth:
+One user, so measure task quality rather than growth:
 
-- Connect or recover the TIDAL connection without inspecting logs.
-- Find a known track and open its details in a few deliberate actions.
-- Add a track to a playlist without entering an ID or API path.
-- Reach any primary area with one navigation action from the shell.
-- Complete critical journeys on phone and desktop using keyboard only.
-- See no token, raw JSON, stack trace, or unexplained API status in normal use.
-- Keep unexpected server errors and failed token refreshes visible in safe diagnostics.
-- Maintain green checks, lint, unit tests, and critical end-to-end tests for each release.
+- Cold open to audio in one deliberate action.
+- A generated hour that the owner keeps at least half of, without editing.
+- The owner can explain, from the UI alone, why any track is playing.
+- Adjusting one knob produces a noticeably different — and still coherent — set.
+- The profile view reads as recognisably the owner's taste.
+- Playback never stops because of a UI or API failure.
+- No token, raw JSON, stack trace, or unexplained API status in normal use.
+- Green checks, lint, type-aware lint, unit tests, and critical e2e per release.
 
-## Definition of done for every product slice
+## Definition of done for every slice
 
-A slice is complete only when:
-
-- The happy path, loading, empty, partial-failure, unauthorised, and disconnected states are handled.
-- Server inputs are validated and errors are redacted.
+- Happy path, loading, empty, partial-failure, unauthorised, and disconnected states handled.
+- Playback survives every failure mode the slice introduces.
+- Server inputs validated; errors redacted.
 - No secret or token material crosses the server boundary or enters logs/tests.
-- User-facing strings exist in English and German.
-- Keyboard, focus, screen-reader naming, contrast, reduced motion, mobile width, and zoom are checked.
-- Unit/component/e2e coverage matches the risk of the change.
+- No taste-profile content in logs, analytics, or third-party calls.
+- Strings in English and German.
+- Keyboard, focus, screen-reader naming, contrast, reduced motion, mobile width, and zoom checked.
+- Unit/component/e2e coverage matched to risk.
 - Storybook covers reusable visual states.
-- Relevant TIDAL scopes, terms, attribution, and data-retention implications are reviewed.
-- `pnpm format` has run after edits.
-- `pnpm check && pnpm lint && pnpm test:unit -- --run` passes, or any exception is reported plainly.
-- The README or runbook changes when setup or operations change.
+- TIDAL scopes, terms, attribution, and retention implications reviewed.
+- `pnpm format` run; `pnpm check && pnpm lint && pnpm test:unit -- --run` passes, or the exception
+  is reported plainly.
 
 ## Open decisions and feasibility spikes
 
-These should not block Phase 0, but each needs an explicit answer before its dependent phase:
-
-1. **Route naming:** retain `/tidal/*` everywhere or use product routes with OAuth compatibility URLs?
-2. **Authentication surface:** email/password, GitHub, or one preferred owner-only sign-in method?
-3. **Country context:** which account/API field is authoritative for catalogue availability?
-4. **Artwork:** which response fields and sizes are stable, and what remote image policy is required?
-5. **Write scopes:** exact current scope names and production approval needed for each mutation?
-6. **Playlist capabilities:** which edit, removal, deletion, and reordering operations are public and
-   stable?
-7. **Playback:** official Web SDK, Embed, open-in-TIDAL, or intentionally no playback?
-8. **Diagnostics:** entirely development-only or owner-accessible in production with read-only data?
-9. **Theme:** dark-first system theme only, or persistent manual control after core workflows ship?
+1. **Relationship coverage** — which artist/track/album relationships are public, stable, and
+   paginated? The graph's shape depends entirely on this. _Blocks Phase C._
+2. **Genre and mood tags** — does the v2 catalogue expose usable genre tags, or must genre be
+   inferred from mix membership and editorial context? _Blocks profile genre weights._
+3. **Popularity signal** — is there a stable popularity or play-count field to drive the
+   hits ↔ deep-cuts knob, or must it be approximated?
+4. **ISRC availability** — is ISRC present often enough to dedupe recordings reliably?
+5. **Listening history** — does TIDAL expose recently-played, or must session history come solely
+   from Syn's own `playback_state`?
+6. **Credits at scale** — is `fetchAlbumCredits` cheap enough to build contributor weights, or is it
+   a Phase D luxury?
+7. **Energy approximation** — which available fields correlate usefully with perceived energy, and
+   is the correlation strong enough to be worth claiming?
+8. **Write scopes** — exact scope names and approval needed for collection and playlist mutations.
+9. **Diagnostics** — development-only, or owner-accessible in production read-only?
+10. **Bucket permissibility** — do the current TIDAL Developer Terms allow a short-lived, private,
+    owner-scoped playback cache? _Blocks bucket uses 1–3; uses 4–7 store no audio and stand
+    regardless._ Record the finding either way.
+11. **Bucket provider and shape** — S3-compatible, Vercel Blob, or R2? What TTL, total cap, and
+    per-object cap? Where does `syn-worker` run for each deployment target (Vercel vs PM2)?
+12. **Remux dependency** — is shipping `ffmpeg` into the worker acceptable on both deployment
+    targets, or is container normalisation self-hosted-only?
 
 ## Risks and mitigations
 
-| Risk                               | Mitigation                                                                                   |
-| ---------------------------------- | -------------------------------------------------------------------------------------------- |
-| API beta or endpoint changes       | Keep a thin wrapper, normalise at the server boundary, and verify reference docs per feature |
-| Insufficient scopes                | Capability checks, least-privilege reconnect flow, and scope inventory before implementation |
-| Slow page from many upstream calls | Route-specific fetching, bounded concurrency, pagination, timeouts, and partial rendering    |
-| Raw API details leak into UX       | Display models, safe domain errors, and advanced-only diagnostics                            |
-| Accidental destructive request     | Typed actions, validation, same-origin checks, confirmations, and no general mutation proxy  |
-| Token refresh or key failure       | Friendly reconnect state, encrypted-store tests, and owner-safe health diagnostics           |
-| TIDAL content-policy violation     | Release checklist, current attribution assets, no catalogue mirror, official playback only   |
-| UI rebuild becomes too broad       | Deliver vertical slices starting with Search to Track Detail                                 |
-| German UI drifts behind English    | Require both catalogues and visual states in each slice's definition of done                 |
+| Risk                                           | Mitigation                                                                                                                                       |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| The graph is too thin to generate well         | Prove it in the next vertical slice before building knobs; fall back to seeded search                                                            |
+| Generation is slow                             | Hard request and wall-clock budgets, reused pools on re-run, streamed progress                                                                   |
+| The engine narrows onto a rut                  | Novelty term, artist over-representation penalty, cooldown, bounded drift, "shake it up"                                                         |
+| The profile feels wrong and opaque             | Plain-language profile view, owner overrides that outrank inference, one-click reset                                                             |
+| Taste data becomes a de-facto catalogue mirror | Derived weights and identifiers only; compliance checkpoint item 4; redaction tests                                                              |
+| The bucket drifts into an archive              | Size cap with LRU eviction, short TTL, playback-driven staging only, no bulk action, visible size + purge in Settings, full delete on disconnect |
+| Bucket cost or egress surprise                 | Hard cap, staging only what is playing or next, derived artefacts (KB) outlive audio (MB)                                                        |
+| API beta or endpoint changes                   | Thin wrapper, normalise at the boundary, verify reference docs per feature                                                                       |
+| Insufficient scopes                            | Capability checks and least-privilege reconnect before implementation                                                                            |
+| Playback regressions                           | Global-`fetch` CDN rule, segmented-delivery tests, e2e that asserts audio advances                                                               |
+| UI rebuild becomes too broad                   | Vertical slices; shell migration in six independent PRs                                                                                          |
+| German drifts behind English                   | Both catalogues required in each slice's definition of done                                                                                      |
 
 ## Source checkpoints
 
-These official sources informed the constraints in this plan and should be rechecked during delivery:
+Recheck during delivery:
 
 - [TIDAL authorization](https://developer.tidal.com/documentation/api-sdk/api-sdk-authorization)
 - [TIDAL API and SDK quick start](https://developer.tidal.com/documentation/api-sdk/api-sdk-quick-start)
