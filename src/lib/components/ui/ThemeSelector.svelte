@@ -1,7 +1,34 @@
 <script lang="ts">
-	import { Check, ChevronDown, Palette, Sparkles } from '@lucide/svelte';
+	import {
+		Box,
+		Brush,
+		Check,
+		ChevronDown,
+		Eye,
+		Flame,
+		Flower2,
+		Gem,
+		Hammer,
+		Palette,
+		Shapes,
+		Sun,
+		Zap
+	} from '@lucide/svelte';
 	import { themeManager, THEME_OPTIONS, VISUAL_STYLE_OPTIONS } from '#lib/theme/theme.svelte.js';
 	import type { DarkTheme, VisualStyle } from '#lib/theme/types';
+
+	const STYLE_ICONS = {
+		'art-deco': Gem,
+		'art-nouveau': Flower2,
+		bauhaus: Shapes,
+		'arts-and-crafts': Hammer,
+		impressionism: Sun,
+		cubism: Box,
+		surrealism: Eye,
+		expressionism: Flame,
+		'pop-art': Zap,
+		'abstract-expressionism': Brush
+	} as const;
 
 	let {
 		compact = false,
@@ -126,6 +153,7 @@
 			<div class="theme-options-list visual-style-options-list">
 				{#each VISUAL_STYLE_OPTIONS as option (option.id)}
 					{@const isSelected = option.id === themeManager.currentStyle}
+					{@const StyleIcon = STYLE_ICONS[option.id] ?? Shapes}
 					<button
 						type="button"
 						role="option"
@@ -134,7 +162,7 @@
 						class:selected={isSelected}
 						onclick={() => selectVisualStyle(option.id)}
 					>
-						<Sparkles size={15} class="shrink-0 text-[var(--action)]" />
+						<StyleIcon size={15} class="shrink-0 text-[var(--action)]" />
 						<div class="theme-option-info">
 							<strong class="theme-option-name">{option.name}</strong>
 							{#if !compact}

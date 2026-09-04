@@ -307,9 +307,41 @@
    surfaces without changing the contrast-tested palette a listener has chosen. */
 :root {
 	--style-pattern: none;
+	--style-pattern-size: 44px 44px;
+	--style-pattern-repeat: repeat;
+	--style-pattern-attachment: scroll;
+	--style-pattern-position: top left;
+
 	--style-panel-radius: var(--radius-md);
 	--style-panel-border: 1px;
 	--style-panel-shadow: var(--shadow-raised);
+
+	--style-card-radius: var(--radius-md);
+	--style-cover-radius: var(--radius-sm);
+	--style-card-border-width: 1px;
+	--style-card-border-color: var(--border-subtle);
+	--style-card-shadow: none;
+	--style-card-hover-shadow: var(--shadow-bauhaus);
+	--style-card-hover-border-color: var(--border-strong);
+	--style-card-hover-transform: translate(-1px, -1px);
+
+	--style-button-radius: var(--radius-md);
+	--style-button-border-width: 1px;
+	--style-button-shadow: none;
+	--style-button-hover-shadow: 2px 2px 0px var(--border-strong);
+	--style-button-hover-transform: translate(-1px, -1px);
+	--style-button-active-shadow: none;
+	--style-button-active-transform: translate(0, 0);
+	--style-button-spacing: 0.08em;
+	--style-button-transform: uppercase;
+
+	--style-badge-radius: var(--radius-sm);
+	--style-badge-border-width: 1px;
+	--style-badge-spacing: 0.08em;
+
+	--style-input-radius: var(--radius-md);
+	--style-input-border-width: 1px;
+
 	--style-heading-spacing: -0.025em;
 	--style-heading-transform: none;
 	--style-heading-font: var(--font-display);
@@ -317,23 +349,66 @@
 
 :root[data-style='art-deco'] {
 	--style-body-font: Optima, Candara, 'Segoe UI', sans-serif;
-	--style-heading-font: 'Marcellus', Rockwell, Georgia, serif;
+	--style-heading-font: 'Marcellus', 'Bodoni MT', Didot, 'Playfair Display', Georgia, serif;
 	--font-mono: 'SFMono-Regular', Consolas, monospace;
 	--style-pattern:
-		linear-gradient(
+		repeating-linear-gradient(
 			135deg,
-			transparent 49.75%,
-			color-mix(in oklab, var(--accent-gold) 8%, transparent) 50%,
-			transparent 50.25%
+			transparent 0 27px,
+			color-mix(in oklab, var(--accent-gold) 9%, transparent) 27px 28.5px,
+			transparent 28.5px 56px
 		),
-		linear-gradient(
+		repeating-linear-gradient(
 			45deg,
-			transparent 49.75%,
-			color-mix(in oklab, var(--accent-gold) 5%, transparent) 50%,
-			transparent 50.25%
+			transparent 0 27px,
+			color-mix(in oklab, var(--accent-gold) 6%, transparent) 27px 28.5px,
+			transparent 28.5px 56px
+		),
+		radial-gradient(
+			ellipse 80% 50% at 50% 0%,
+			color-mix(in oklab, var(--accent-gold) 13%, transparent),
+			transparent 75%
 		);
+	--style-pattern-size: 56px 56px, 56px 56px, 100% 100%;
+	--style-pattern-repeat: repeat, repeat, no-repeat;
+	--style-pattern-attachment: scroll, scroll, fixed;
+
 	--style-panel-radius: 2px;
-	--style-heading-spacing: 0.055em;
+	--style-panel-border: 1px;
+	--style-panel-shadow:
+		0 1px 0 0 color-mix(in oklab, var(--accent-gold) 20%, transparent) inset,
+		0 18px 48px -24px rgba(0, 0, 0, 0.88);
+
+	--style-card-radius: 2px;
+	--style-cover-radius: 1px;
+	--style-card-border-width: 1px;
+	--style-card-border-color: color-mix(in oklab, var(--accent-gold) 28%, var(--border-subtle));
+	--style-card-shadow:
+		0 1px 0 0 color-mix(in oklab, var(--accent-gold) 14%, transparent) inset,
+		0 14px 36px -18px rgba(0, 0, 0, 0.8);
+	--style-card-hover-shadow:
+		0 0 0 1px color-mix(in oklab, var(--accent-gold) 80%, transparent) inset,
+		0 20px 48px -16px color-mix(in oklab, var(--accent-gold) 22%, rgba(0, 0, 0, 0.95));
+	--style-card-hover-border-color: var(--accent-gold);
+	--style-card-hover-transform: translate(-1px, -2px);
+
+	--style-button-radius: 2px;
+	--style-button-border-width: 1px;
+	--style-button-shadow: 0 1px 0 0 color-mix(in oklab, var(--accent-gold) 25%, transparent) inset;
+	--style-button-hover-shadow:
+		0 0 0 1px color-mix(in oklab, var(--accent-gold) 75%, transparent) inset,
+		0 0 14px -2px color-mix(in oklab, var(--accent-gold) 40%, transparent);
+	--style-button-spacing: 0.12em;
+	--style-button-transform: uppercase;
+
+	--style-badge-radius: 2px;
+	--style-badge-border-width: 1px;
+	--style-badge-spacing: 0.14em;
+
+	--style-input-radius: 2px;
+	--style-input-border-width: 1px;
+
+	--style-heading-spacing: 0.08em;
 	--style-heading-transform: uppercase;
 }
 
@@ -341,41 +416,120 @@
 	--style-body-font: 'Gill Sans', 'Trebuchet MS', sans-serif;
 	--style-heading-font: 'Palatino Linotype', Palatino, Georgia, serif;
 	--font-mono: 'Courier New', Courier, monospace;
-	--radius-sm: 0.75rem;
-	--radius-md: 1.1rem;
-	--radius-lg: 1.5rem;
 	--style-pattern:
 		radial-gradient(
-			ellipse at 0% 100%,
-			color-mix(in oklab, var(--accent-jade) 14%, transparent),
-			transparent 38%
+			ellipse 85% 65% at 5% 100%,
+			color-mix(in oklab, var(--accent-jade) 16%, transparent),
+			transparent 55%
 		),
 		radial-gradient(
-			ellipse at 100% 0%,
-			color-mix(in oklab, var(--accent-gold) 12%, transparent),
-			transparent 34%
+			ellipse 75% 60% at 95% 0%,
+			color-mix(in oklab, var(--accent-gold) 15%, transparent),
+			transparent 52%
+		),
+		radial-gradient(
+			circle 550px at 50% 45%,
+			color-mix(in oklab, var(--accent-oxblood) 7%, transparent),
+			transparent 60%
 		);
-	--style-panel-radius: 1.1rem 0.45rem 1.1rem 0.45rem;
+	--style-pattern-size: 100% 100%, 100% 100%, 100% 100%;
+	--style-pattern-repeat: no-repeat;
+	--style-pattern-attachment: fixed;
+
+	--style-panel-radius: 1.5rem 0.45rem 1.5rem 0.45rem;
+	--style-panel-border: 1px;
+	--style-panel-shadow: 0 16px 44px -20px color-mix(in oklab, var(--accent-jade) 28%, transparent);
+
+	--style-card-radius: 1.4rem 0.4rem 1.4rem 0.4rem;
+	--style-cover-radius: 1.1rem 0.3rem 1.1rem 0.3rem;
+	--style-card-border-width: 1px;
+	--style-card-border-color: color-mix(in oklab, var(--accent-jade) 22%, var(--border-subtle));
+	--style-card-shadow: 0 12px 36px -18px color-mix(in oklab, var(--accent-jade) 25%, transparent);
+	--style-card-hover-shadow:
+		0 20px 48px -14px color-mix(in oklab, var(--accent-gold) 35%, transparent),
+		0 0 18px -4px color-mix(in oklab, var(--accent-jade) 30%, transparent);
+	--style-card-hover-border-color: var(--accent-jade);
+	--style-card-hover-transform: translate(-1px, -2px);
+
+	--style-button-radius: 9999px;
+	--style-button-border-width: 1px;
+	--style-button-shadow: 0 4px 14px -4px color-mix(in oklab, var(--accent-jade) 20%, transparent);
+	--style-button-hover-shadow: 0 6px 20px -4px
+		color-mix(in oklab, var(--accent-gold) 35%, transparent);
+	--style-button-spacing: 0.04em;
+	--style-button-transform: none;
+
+	--style-badge-radius: 9999px;
+	--style-badge-border-width: 1px;
+	--style-badge-spacing: 0.06em;
+
+	--style-input-radius: 9999px;
+	--style-input-border-width: 1px;
+
 	--style-heading-spacing: 0.025em;
+	--style-heading-transform: none;
 }
 
 :root[data-style='bauhaus'] {
 	--style-body-font: 'Avenir Next', Avenir, 'Century Gothic', Futura, sans-serif;
 	--style-heading-font: Futura, 'Avenir Next', 'Century Gothic', Arial, sans-serif;
 	--font-mono: 'SFMono-Regular', 'Roboto Mono', Consolas, monospace;
-	--radius-xs: 0px;
-	--radius-sm: 0px;
-	--radius-md: 0px;
-	--radius-lg: 0px;
-	--radius-xl: 0px;
 	--style-pattern:
 		linear-gradient(
 			90deg,
-			color-mix(in oklab, var(--accent-gold) 9%, transparent) 1px,
+			color-mix(in oklab, var(--border-strong) 14%, transparent) 1px,
 			transparent 1px
 		),
-		linear-gradient(color-mix(in oklab, var(--accent-jade) 7%, transparent) 1px, transparent 1px);
-	--style-panel-shadow: none;
+		linear-gradient(
+			0deg,
+			color-mix(in oklab, var(--border-strong) 14%, transparent) 1px,
+			transparent 1px
+		),
+		linear-gradient(
+			90deg,
+			color-mix(in oklab, var(--bauhaus-red) 18%, transparent) 1px,
+			transparent 1px
+		),
+		linear-gradient(
+			0deg,
+			color-mix(in oklab, var(--bauhaus-blue) 18%, transparent) 1px,
+			transparent 1px
+		);
+	--style-pattern-size: 32px 32px, 32px 32px, 160px 160px, 160px 160px;
+	--style-pattern-repeat: repeat;
+	--style-pattern-attachment: scroll;
+
+	--style-panel-radius: 0px !important;
+	--style-panel-border: 2px;
+	--style-panel-shadow:
+		4px 4px 0px 0px var(--surface-canvas), 4px 4px 0px 1.5px var(--border-strong);
+
+	--style-card-radius: 0px !important;
+	--style-cover-radius: 0px !important;
+	--style-card-border-width: 2px;
+	--style-card-border-color: var(--border-strong);
+	--style-card-shadow: 3px 3px 0px 0px var(--surface-canvas), 3px 3px 0px 1px var(--border-strong);
+	--style-card-hover-shadow: 5px 5px 0px 0px var(--surface-canvas), 5px 5px 0px 1.5px var(--action);
+	--style-card-hover-border-color: var(--action);
+	--style-card-hover-transform: translate(-2px, -2px);
+
+	--style-button-radius: 0px !important;
+	--style-button-border-width: 2px;
+	--style-button-shadow: 2px 2px 0px var(--border-strong);
+	--style-button-hover-shadow: 4px 4px 0px var(--action);
+	--style-button-hover-transform: translate(-2px, -2px);
+	--style-button-active-shadow: 0px 0px 0px var(--action);
+	--style-button-active-transform: translate(2px, 2px);
+	--style-button-spacing: 0.11em;
+	--style-button-transform: uppercase;
+
+	--style-badge-radius: 0px !important;
+	--style-badge-border-width: 2px;
+	--style-badge-spacing: 0.12em;
+
+	--style-input-radius: 0px !important;
+	--style-input-border-width: 2px;
+
 	--style-heading-spacing: 0.09em;
 	--style-heading-transform: uppercase;
 }
@@ -384,176 +538,433 @@
 	--style-body-font: 'Book Antiqua', Palatino, Georgia, serif;
 	--style-heading-font: 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
 	--font-mono: 'Courier New', Courier, monospace;
-	--radius-sm: 0.2rem;
-	--radius-md: 0.35rem;
-	--radius-lg: 0.5rem;
 	--style-pattern:
 		repeating-linear-gradient(
 			45deg,
-			color-mix(in oklab, var(--accent-gold) 4%, transparent) 0 1px,
-			transparent 1px 8px
+			color-mix(in oklab, var(--accent-gold) 6%, transparent) 0 1px,
+			transparent 1px 12px
 		),
 		repeating-linear-gradient(
 			-45deg,
-			color-mix(in oklab, var(--accent-jade) 4%, transparent) 0 1px,
-			transparent 1px 8px
+			color-mix(in oklab, var(--accent-jade) 5%, transparent) 0 1px,
+			transparent 1px 12px
+		),
+		radial-gradient(
+			circle at 50% 50%,
+			color-mix(in oklab, var(--accent-gold-deep) 7%, transparent),
+			transparent 75%
 		);
-	--style-panel-radius: 0.35rem;
-	--style-heading-spacing: 0.015em;
+	--style-pattern-size: 24px 24px, 24px 24px, 100% 100%;
+	--style-pattern-repeat: repeat, repeat, no-repeat;
+	--style-pattern-attachment: scroll, scroll, fixed;
+
+	--style-panel-radius: 6px;
+	--style-panel-border: 1.5px;
+	--style-panel-shadow:
+		0 4px 18px -4px rgba(0, 0, 0, 0.65),
+		0 1px 0 0 color-mix(in oklab, var(--accent-gold) 12%, transparent) inset;
+
+	--style-card-radius: 6px;
+	--style-cover-radius: 4px;
+	--style-card-border-width: 1.5px;
+	--style-card-border-color: color-mix(in oklab, var(--accent-gold) 22%, var(--border-subtle));
+	--style-card-shadow: 0 4px 14px -4px rgba(0, 0, 0, 0.6);
+	--style-card-hover-shadow: 0 8px 24px -6px
+		color-mix(in oklab, var(--accent-gold) 26%, rgba(0, 0, 0, 0.85));
+	--style-card-hover-border-color: var(--accent-gold);
+	--style-card-hover-transform: translate(-1px, -1px);
+
+	--style-button-radius: 5px;
+	--style-button-border-width: 1.5px;
+	--style-button-shadow: 0 2px 5px -1px rgba(0, 0, 0, 0.5);
+	--style-button-hover-shadow: 0 4px 12px -2px
+		color-mix(in oklab, var(--accent-gold) 30%, transparent);
+	--style-button-spacing: 0.05em;
+	--style-button-transform: none;
+
+	--style-badge-radius: 4px;
+	--style-badge-border-width: 1.5px;
+	--style-badge-spacing: 0.06em;
+
+	--style-input-radius: 5px;
+	--style-input-border-width: 1.5px;
+
+	--style-heading-spacing: 0.02em;
+	--style-heading-transform: none;
 }
 
 :root[data-style='impressionism'] {
 	--style-body-font: Georgia, 'Times New Roman', serif;
 	--style-heading-font: 'Palatino Linotype', Palatino, Georgia, serif;
 	--font-mono: 'Courier New', Courier, monospace;
-	--radius-sm: 0.75rem;
-	--radius-md: 1rem;
-	--radius-lg: 1.4rem;
 	--style-pattern:
 		radial-gradient(
-			ellipse at 15% 0%,
-			color-mix(in oklab, var(--accent-jade) 17%, transparent),
-			transparent 38%
+			ellipse 70% 50% at 18% 15%,
+			color-mix(in oklab, var(--accent-jade) 18%, transparent),
+			transparent 60%
 		),
 		radial-gradient(
-			ellipse at 85% 100%,
-			color-mix(in oklab, var(--accent-gold) 16%, transparent),
-			transparent 42%
+			ellipse 65% 55% at 82% 85%,
+			color-mix(in oklab, var(--accent-gold) 17%, transparent),
+			transparent 60%
 		),
-		linear-gradient(
-			115deg,
-			transparent 30%,
-			color-mix(in oklab, var(--accent-oxblood) 7%, transparent) 58%,
-			transparent 78%
+		radial-gradient(
+			circle 360px at 50% 40%,
+			color-mix(in oklab, var(--accent-oxblood) 10%, transparent),
+			transparent 70%
+		),
+		radial-gradient(
+			circle 2px at 16px 16px,
+			color-mix(in oklab, var(--accent-gold) 12%, transparent) 1px,
+			transparent 1.5px
 		);
-	--style-panel-radius: 1rem;
-	--style-panel-shadow: 0 18px 48px -28px color-mix(in srgb, var(--accent-jade) 42%, transparent);
+	--style-pattern-size: 100% 100%, 100% 100%, 100% 100%, 32px 32px;
+	--style-pattern-repeat: no-repeat, no-repeat, no-repeat, repeat;
+	--style-pattern-attachment: fixed, fixed, fixed, scroll;
+
+	--style-panel-radius: 18px;
+	--style-panel-border: 1px;
+	--style-panel-shadow:
+		0 20px 48px -20px color-mix(in srgb, var(--accent-jade) 36%, transparent),
+		0 0 20px -6px color-mix(in srgb, var(--accent-gold) 20%, transparent);
+
+	--style-card-radius: 18px;
+	--style-cover-radius: 14px;
+	--style-card-border-width: 1px;
+	--style-card-border-color: color-mix(in oklab, var(--accent-jade) 24%, var(--border-subtle));
+	--style-card-shadow:
+		0 18px 44px -18px color-mix(in srgb, var(--accent-jade) 32%, transparent),
+		0 0 16px -6px color-mix(in srgb, var(--accent-gold) 18%, transparent);
+	--style-card-hover-shadow:
+		0 26px 56px -16px color-mix(in srgb, var(--accent-gold) 45%, transparent),
+		0 0 26px -4px color-mix(in srgb, var(--accent-jade) 32%, transparent);
+	--style-card-hover-border-color: var(--accent-gold);
+	--style-card-hover-transform: translateY(-2px);
+
+	--style-button-radius: 14px;
+	--style-button-border-width: 1px;
+	--style-button-shadow: 0 4px 16px -4px color-mix(in oklab, var(--accent-jade) 25%, transparent);
+	--style-button-hover-shadow: 0 0 18px color-mix(in oklab, var(--action) 40%, transparent);
+	--style-button-spacing: 0.03em;
+	--style-button-transform: none;
+
+	--style-badge-radius: 12px;
+	--style-badge-border-width: 1px;
+	--style-badge-spacing: 0.04em;
+
+	--style-input-radius: 14px;
+	--style-input-border-width: 1px;
+
+	--style-heading-spacing: 0.01em;
+	--style-heading-transform: none;
 }
 
 :root[data-style='cubism'] {
 	--style-body-font: 'Arial Narrow', Arial, sans-serif;
-	--style-heading-font: 'Arial Narrow', Impact, Arial, sans-serif;
+	--style-heading-font: 'Arial Narrow', 'Franklin Gothic Medium', Impact, Arial, sans-serif;
 	--font-mono: 'SFMono-Regular', Consolas, monospace;
-	--radius-xs: 0px;
-	--radius-sm: 0px;
-	--radius-md: 0px;
-	--radius-lg: 0px;
-	--radius-xl: 0px;
 	--style-pattern:
 		linear-gradient(
 			135deg,
-			color-mix(in oklab, var(--accent-jade) 9%, transparent) 0 18%,
-			transparent 18% 42%,
-			color-mix(in oklab, var(--accent-gold) 8%, transparent) 42% 60%,
-			transparent 60%
+			color-mix(in oklab, var(--accent-jade) 13%, transparent) 0 25%,
+			transparent 25% 50%,
+			color-mix(in oklab, var(--accent-gold) 11%, transparent) 50% 75%,
+			transparent 75%
 		),
 		linear-gradient(
-			35deg,
-			transparent 0 56%,
-			color-mix(in oklab, var(--accent-oxblood) 8%, transparent) 56% 72%,
-			transparent 72%
+			45deg,
+			transparent 0 35%,
+			color-mix(in oklab, var(--accent-oxblood) 11%, transparent) 35% 55%,
+			transparent 55%
+		),
+		linear-gradient(
+			90deg,
+			color-mix(in oklab, var(--border-strong) 10%, transparent) 1px,
+			transparent 1px
 		);
-	--style-panel-radius: 0px;
-	--style-heading-spacing: -0.04em;
+	--style-pattern-size: 96px 96px, 96px 96px, 48px 48px;
+	--style-pattern-repeat: repeat;
+	--style-pattern-attachment: scroll;
+
+	--style-panel-radius: 0px !important;
+	--style-panel-border: 1.5px;
+	--style-panel-shadow:
+		-3px 3px 0 0 color-mix(in oklab, var(--accent-jade) 65%, transparent),
+		4px 4px 0 0 color-mix(in oklab, var(--accent-gold) 55%, transparent);
+
+	--style-card-radius: 0px !important;
+	--style-cover-radius: 0px !important;
+	--style-card-border-width: 1.5px;
+	--style-card-border-color: var(--border-strong);
+	--style-card-shadow:
+		-3px 3px 0 0 color-mix(in oklab, var(--accent-jade) 60%, transparent),
+		3px 3px 0 0 color-mix(in oklab, var(--accent-gold) 50%, transparent);
+	--style-card-hover-shadow: -5px 5px 0 0 var(--accent-jade), 5px 5px 0 0 var(--accent-gold);
+	--style-card-hover-border-color: var(--accent-gold);
+	--style-card-hover-transform: translate(1px, -2px);
+
+	--style-button-radius: 0px !important;
+	--style-button-border-width: 2px;
+	--style-button-shadow: -2px 2px 0 0 var(--accent-jade);
+	--style-button-hover-shadow: -4px 4px 0 0 var(--accent-jade), 4px 4px 0 0 var(--accent-gold);
+	--style-button-hover-transform: translate(1px, -2px);
+	--style-button-spacing: -0.02em;
+	--style-button-transform: uppercase;
+
+	--style-badge-radius: 0px !important;
+	--style-badge-border-width: 1.5px;
+	--style-badge-spacing: 0.02em;
+
+	--style-input-radius: 0px !important;
+	--style-input-border-width: 1.5px;
+
+	--style-heading-spacing: -0.035em;
+	--style-heading-transform: uppercase;
 }
 
 :root[data-style='surrealism'] {
 	--style-body-font: 'Trebuchet MS', 'Gill Sans', sans-serif;
-	--style-heading-font: 'Palatino Linotype', Georgia, serif;
+	--style-heading-font: 'Palatino Linotype', 'Didot', 'Bodoni MT', Georgia, serif;
 	--font-mono: 'Courier New', Courier, monospace;
-	--radius-sm: 0.9rem;
-	--radius-md: 1.2rem;
-	--radius-lg: 1.75rem;
 	--style-pattern:
 		radial-gradient(
-			circle at 78% 18%,
-			color-mix(in oklab, var(--accent-gold) 17%, transparent) 0 2%,
-			transparent 2.5%
+			circle 240px at 80% 20%,
+			color-mix(in oklab, var(--accent-gold) 24%, transparent) 0%,
+			color-mix(in oklab, var(--accent-oxblood) 15%, transparent) 45%,
+			transparent 72%
 		),
 		radial-gradient(
-			ellipse at 12% 92%,
-			color-mix(in oklab, var(--accent-jade) 15%, transparent),
-			transparent 35%
+			ellipse 90% 45% at 20% 90%,
+			color-mix(in oklab, var(--accent-jade) 18%, transparent),
+			transparent 62%
 		),
 		linear-gradient(
-			150deg,
-			transparent 45%,
-			color-mix(in oklab, var(--accent-oxblood) 7%, transparent) 72%,
-			transparent 88%
+			170deg,
+			transparent 40%,
+			color-mix(in oklab, var(--surface-canvas) 85%, transparent) 75%
+		),
+		repeating-linear-gradient(
+			90deg,
+			transparent 0 79px,
+			color-mix(in oklab, var(--accent-gold) 3.5%, transparent) 79px 80px
 		);
-	--style-panel-radius: 1.2rem 0.25rem 1.2rem 0.25rem;
+	--style-pattern-size: 100% 100%, 100% 100%, 100% 100%, 80px 80px;
+	--style-pattern-repeat: no-repeat, no-repeat, no-repeat, repeat-x;
+	--style-pattern-attachment: fixed, fixed, fixed, scroll;
+
+	--style-panel-radius: 2rem 0.35rem 2rem 0.35rem;
+	--style-panel-border: 1px;
+	--style-panel-shadow:
+		0 25px 60px -20px rgba(0, 0, 0, 0.95),
+		0 0 25px -8px color-mix(in oklab, var(--action) 24%, transparent);
+
+	--style-card-radius: 1.75rem 0.35rem 1.75rem 0.35rem;
+	--style-cover-radius: 1.4rem 0.25rem 1.4rem 0.25rem;
+	--style-card-border-width: 1px;
+	--style-card-border-color: color-mix(in oklab, var(--accent-gold) 25%, var(--border-subtle));
+	--style-card-shadow:
+		0 20px 50px -18px rgba(0, 0, 0, 0.92),
+		0 0 20px -6px color-mix(in oklab, var(--action) 20%, transparent);
+	--style-card-hover-shadow:
+		0 30px 68px -16px rgba(0, 0, 0, 0.96),
+		0 0 32px -4px color-mix(in oklab, var(--accent-gold) 42%, transparent);
+	--style-card-hover-border-color: var(--accent-gold);
+	--style-card-hover-transform: translateY(-3px) scale(1.01);
+
+	--style-button-radius: 1.5rem 0.35rem;
+	--style-button-border-width: 1px;
+	--style-button-shadow: 0 4px 18px -4px rgba(0, 0, 0, 0.7);
+	--style-button-hover-shadow: 0 0 20px -2px var(--action);
+	--style-button-hover-transform: translateY(-2px);
+	--style-button-spacing: 0.05em;
+	--style-button-transform: none;
+
+	--style-badge-radius: 1rem 0.2rem;
+	--style-badge-border-width: 1px;
+	--style-badge-spacing: 0.06em;
+
+	--style-input-radius: 1.5rem 0.35rem;
+	--style-input-border-width: 1px;
+
 	--style-heading-spacing: 0.04em;
+	--style-heading-transform: none;
 }
 
 :root[data-style='expressionism'] {
 	--style-body-font: 'Arial Narrow', Arial, sans-serif;
 	--style-heading-font: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
 	--font-mono: 'SFMono-Regular', Consolas, monospace;
-	--radius-sm: 0px;
-	--radius-md: 0px;
-	--radius-lg: 0px;
 	--style-pattern:
-		linear-gradient(
-			118deg,
-			transparent 0 42%,
-			color-mix(in oklab, var(--accent-oxblood) 15%, transparent) 42% 48%,
-			transparent 48% 100%
+		repeating-linear-gradient(
+			115deg,
+			transparent 0 16px,
+			color-mix(in oklab, var(--accent-oxblood) 14%, transparent) 16px 18px,
+			transparent 18px 36px
 		),
-		linear-gradient(
-			62deg,
-			transparent 0 52%,
-			color-mix(in oklab, var(--accent-gold) 10%, transparent) 52% 58%,
-			transparent 58% 100%
+		repeating-linear-gradient(
+			65deg,
+			transparent 0 24px,
+			color-mix(in oklab, var(--accent-gold) 8%, transparent) 24px 26px,
+			transparent 26px 48px
 		);
-	--style-panel-shadow: 7px 8px 0 -5px color-mix(in oklab, var(--accent-oxblood) 80%, transparent);
-	--style-heading-spacing: -0.035em;
+	--style-pattern-size: 48px 48px, 48px 48px;
+	--style-pattern-repeat: repeat;
+	--style-pattern-attachment: scroll;
+
+	--style-panel-radius: 0px !important;
+	--style-panel-border: 2px;
+	--style-panel-shadow: 6px 7px 0 0 color-mix(in oklab, var(--accent-oxblood) 85%, #000);
+
+	--style-card-radius: 0px !important;
+	--style-cover-radius: 0px !important;
+	--style-card-border-width: 2px;
+	--style-card-border-color: color-mix(in oklab, var(--accent-oxblood) 45%, var(--border-strong));
+	--style-card-shadow: 5px 6px 0 0 color-mix(in oklab, var(--accent-oxblood) 80%, #000);
+	--style-card-hover-shadow: 8px 9px 0 0 var(--accent-oxblood);
+	--style-card-hover-border-color: var(--accent-oxblood);
+	--style-card-hover-transform: translate(-2px, -2px);
+
+	--style-button-radius: 0px !important;
+	--style-button-border-width: 2px;
+	--style-button-shadow: 3px 4px 0 0 color-mix(in oklab, var(--accent-oxblood) 90%, #000);
+	--style-button-hover-shadow: 5px 6px 0 0 var(--accent-oxblood);
+	--style-button-hover-transform: translate(-2px, -2px);
+	--style-button-active-shadow: 0px 0px 0 0;
+	--style-button-active-transform: translate(2px, 2px);
+	--style-button-spacing: -0.03em;
+	--style-button-transform: uppercase;
+
+	--style-badge-radius: 0px !important;
+	--style-badge-border-width: 2px;
+	--style-badge-spacing: -0.02em;
+
+	--style-input-radius: 0px !important;
+	--style-input-border-width: 2px;
+
+	--style-heading-spacing: -0.04em;
+	--style-heading-transform: uppercase;
 }
 
 :root[data-style='pop-art'] {
 	--style-body-font: Arial, Helvetica, sans-serif;
-	--style-heading-font: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+	--style-heading-font: Impact, Haettenschweiler, 'Arial Black', Arial, sans-serif;
 	--font-mono: 'SFMono-Regular', Consolas, monospace;
-	--radius-xs: 0px;
-	--radius-sm: 0px;
-	--radius-md: 0px;
-	--radius-lg: 0px;
-	--radius-xl: 0px;
-	--style-pattern: radial-gradient(
-		color-mix(in oklab, var(--accent-gold) 20%, transparent) 1px,
-		transparent 1.5px
-	);
-	--style-panel-radius: 0px;
-	--style-panel-border: 2px;
+	--style-pattern:
+		radial-gradient(
+			circle 2.5px at 9px 9px,
+			color-mix(in oklab, var(--accent-gold) 28%, transparent) 2px,
+			transparent 2.5px
+		),
+		radial-gradient(
+			circle 2.5px at 18px 18px,
+			color-mix(in oklab, var(--accent-jade) 22%, transparent) 2px,
+			transparent 2.5px
+		);
+	--style-pattern-size: 18px 18px, 18px 18px;
+	--style-pattern-repeat: repeat;
+	--style-pattern-attachment: scroll;
+
+	--style-panel-radius: 4px;
+	--style-panel-border: 2.5px;
+	--style-panel-shadow: 4px 4px 0 0 #000, 4px 4px 0 1.5px var(--border-strong);
+
+	--style-card-radius: 4px;
+	--style-cover-radius: 2px;
+	--style-card-border-width: 2.5px;
+	--style-card-border-color: var(--border-strong);
+	--style-card-shadow: 4px 4px 0 0 #000, 4px 4px 0 1px var(--border-strong);
+	--style-card-hover-shadow: 6px 6px 0 0 #000, 6px 6px 0 1.5px var(--action);
+	--style-card-hover-border-color: var(--action);
+	--style-card-hover-transform: translate(-2px, -2px);
+
+	--style-button-radius: 4px;
+	--style-button-border-width: 2.5px;
+	--style-button-shadow: 3px 3px 0 0 #000, 3px 3px 0 1px var(--border-strong);
+	--style-button-hover-shadow: 5px 5px 0 0 #000, 5px 5px 0 1.5px var(--action);
+	--style-button-hover-transform: translate(-2px, -2px);
+	--style-button-active-shadow: 1px 1px 0 0 #000;
+	--style-button-active-transform: translate(1px, 1px);
+	--style-button-spacing: 0.08em;
+	--style-button-transform: uppercase;
+
+	--style-badge-radius: 4px;
+	--style-badge-border-width: 2px;
+	--style-badge-spacing: 0.09em;
+
+	--style-input-radius: 4px;
+	--style-input-border-width: 2.5px;
+
 	--style-heading-spacing: 0.06em;
 	--style-heading-transform: uppercase;
 }
 
 :root[data-style='abstract-expressionism'] {
 	--style-body-font: 'Trebuchet MS', Arial, sans-serif;
-	--style-heading-font: 'Arial Black', Impact, Arial, sans-serif;
+	--style-heading-font: 'Trebuchet MS', 'Arial Black', Arial, sans-serif;
 	--font-mono: 'SFMono-Regular', Consolas, monospace;
-	--radius-sm: 0.6rem;
-	--radius-md: 1rem;
-	--radius-lg: 1.5rem;
 	--style-pattern:
 		radial-gradient(
-			ellipse at 15% 80%,
-			color-mix(in oklab, var(--accent-oxblood) 13%, transparent),
-			transparent 36%
+			ellipse 90% 60% at 15% 75%,
+			color-mix(in oklab, var(--accent-oxblood) 20%, transparent),
+			transparent 65%
 		),
 		radial-gradient(
-			ellipse at 78% 12%,
-			color-mix(in oklab, var(--accent-jade) 15%, transparent),
-			transparent 40%
+			ellipse 80% 55% at 85% 20%,
+			color-mix(in oklab, var(--accent-jade) 18%, transparent),
+			transparent 60%
+		),
+		radial-gradient(
+			ellipse 60% 45% at 50% 50%,
+			color-mix(in oklab, var(--accent-gold) 14%, transparent),
+			transparent 55%
 		),
 		linear-gradient(
-			112deg,
-			transparent 40%,
-			color-mix(in oklab, var(--accent-gold) 10%, transparent) 58%,
-			transparent 72%
+			125deg,
+			transparent 35%,
+			color-mix(in oklab, var(--accent-oxblood) 8%, transparent) 55%,
+			transparent 75%
 		);
-	--style-panel-radius: 1rem 0.2rem 1.4rem 0.4rem;
-	--style-panel-shadow: 0 20px 46px -30px color-mix(in srgb, var(--accent-oxblood) 65%, transparent);
+	--style-pattern-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%;
+	--style-pattern-repeat: no-repeat;
+	--style-pattern-attachment: fixed;
+
+	--style-panel-radius: 1.25rem 0.35rem 1.6rem 0.5rem;
+	--style-panel-border: 1.5px;
+	--style-panel-shadow:
+		0 20px 46px -20px color-mix(in srgb, var(--accent-oxblood) 55%, transparent),
+		0 4px 12px -4px rgba(0, 0, 0, 0.5);
+
+	--style-card-radius: 1.25rem 0.35rem 1.5rem 0.45rem;
+	--style-cover-radius: 0.95rem 0.25rem 1.15rem 0.35rem;
+	--style-card-border-width: 1.5px;
+	--style-card-border-color: color-mix(in oklab, var(--accent-oxblood) 28%, var(--border-subtle));
+	--style-card-shadow:
+		0 16px 42px -18px color-mix(in srgb, var(--accent-oxblood) 42%, transparent),
+		0 4px 12px -4px rgba(0, 0, 0, 0.45);
+	--style-card-hover-shadow:
+		0 24px 55px -14px color-mix(in srgb, var(--accent-jade) 42%, transparent),
+		0 0 24px -4px color-mix(in srgb, var(--accent-gold) 25%, transparent);
+	--style-card-hover-border-color: var(--accent-oxblood);
+	--style-card-hover-transform: translate(-1px, -2px) rotate(-0.25deg);
+
+	--style-button-radius: 1rem 0.3rem 1.2rem 0.4rem;
+	--style-button-border-width: 1.5px;
+	--style-button-shadow: 0 4px 14px -4px color-mix(in srgb, var(--accent-oxblood) 35%, transparent);
+	--style-button-hover-shadow: 0 6px 20px -4px
+		color-mix(in srgb, var(--accent-jade) 40%, transparent);
+	--style-button-hover-transform: translate(-1px, -1px);
+	--style-button-spacing: 0.04em;
+	--style-button-transform: none;
+
+	--style-badge-radius: 0.8rem 0.2rem 0.9rem 0.3rem;
+	--style-badge-border-width: 1.5px;
+	--style-badge-spacing: 0.05em;
+
+	--style-input-radius: 1rem 0.3rem;
+	--style-input-border-width: 1.5px;
+
+	--style-heading-spacing: 0.01em;
+	--style-heading-transform: none;
 }
 
 /* Match the selected default until ThemeManager adds data-style after hydration. */
@@ -561,26 +972,70 @@
 	--style-body-font: 'Avenir Next', Avenir, 'Century Gothic', Futura, sans-serif;
 	--style-heading-font: Futura, 'Avenir Next', 'Century Gothic', Arial, sans-serif;
 	--font-mono: 'SFMono-Regular', 'Roboto Mono', Consolas, monospace;
-	--radius-xs: 0px;
-	--radius-sm: 0px;
-	--radius-md: 0px;
-	--radius-lg: 0px;
-	--radius-xl: 0px;
 	--style-pattern:
 		linear-gradient(
 			90deg,
-			color-mix(in oklab, var(--accent-gold) 9%, transparent) 1px,
+			color-mix(in oklab, var(--border-strong) 14%, transparent) 1px,
 			transparent 1px
 		),
-		linear-gradient(color-mix(in oklab, var(--accent-jade) 7%, transparent) 1px, transparent 1px);
-	--style-panel-shadow: none;
+		linear-gradient(
+			0deg,
+			color-mix(in oklab, var(--border-strong) 14%, transparent) 1px,
+			transparent 1px
+		),
+		linear-gradient(
+			90deg,
+			color-mix(in oklab, var(--bauhaus-red) 18%, transparent) 1px,
+			transparent 1px
+		),
+		linear-gradient(
+			0deg,
+			color-mix(in oklab, var(--bauhaus-blue) 18%, transparent) 1px,
+			transparent 1px
+		);
+	--style-pattern-size: 32px 32px, 32px 32px, 160px 160px, 160px 160px;
+	--style-pattern-repeat: repeat;
+	--style-pattern-attachment: scroll;
+
+	--style-panel-radius: 0px !important;
+	--style-panel-border: 2px;
+	--style-panel-shadow:
+		4px 4px 0px 0px var(--surface-canvas), 4px 4px 0px 1.5px var(--border-strong);
+
+	--style-card-radius: 0px !important;
+	--style-cover-radius: 0px !important;
+	--style-card-border-width: 2px;
+	--style-card-border-color: var(--border-strong);
+	--style-card-shadow: 3px 3px 0px 0px var(--surface-canvas), 3px 3px 0px 1px var(--border-strong);
+	--style-card-hover-shadow: 5px 5px 0px 0px var(--surface-canvas), 5px 5px 0px 1.5px var(--action);
+	--style-card-hover-border-color: var(--action);
+	--style-card-hover-transform: translate(-2px, -2px);
+
+	--style-button-radius: 0px !important;
+	--style-button-border-width: 2px;
+	--style-button-shadow: 2px 2px 0px var(--border-strong);
+	--style-button-hover-shadow: 4px 4px 0px var(--action);
+	--style-button-hover-transform: translate(-2px, -2px);
+	--style-button-spacing: 0.11em;
+	--style-button-transform: uppercase;
+
+	--style-badge-radius: 0px !important;
+	--style-badge-border-width: 2px;
+	--style-badge-spacing: 0.12em;
+
+	--style-input-radius: 0px !important;
+	--style-input-border-width: 2px;
+
 	--style-heading-spacing: 0.09em;
 	--style-heading-transform: uppercase;
 }
 
 .app-style-canvas {
 	background-image: var(--style-pattern);
-	background-size: 44px 44px;
+	background-size: var(--style-pattern-size, 44px 44px);
+	background-repeat: var(--style-pattern-repeat, repeat);
+	background-attachment: var(--style-pattern-attachment, scroll);
+	background-position: var(--style-pattern-position, top left);
 }
 
 :where(h1, h2, h3, .font-display) {
@@ -589,10 +1044,11 @@
 	text-transform: var(--style-heading-transform);
 }
 
-:where(.preferences-card, .info-card, .auth-card, .theme-dropdown-menu) {
-	border-radius: var(--style-panel-radius);
-	border-width: var(--style-panel-border);
-	box-shadow: var(--style-panel-shadow);
+:where(.preferences-card, .info-card, .auth-card, .state-card, .theme-dropdown-menu) {
+	border-radius: var(--style-card-radius, var(--style-panel-radius));
+	border-width: var(--style-card-border-width, var(--style-panel-border, 1px));
+	box-shadow: var(--style-card-shadow, var(--style-panel-shadow));
+	border-color: var(--style-card-border-color, var(--border-subtle));
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -938,23 +1394,29 @@
 		padding: 0.55rem 1.15rem;
 		font-size: 0.82rem;
 		font-weight: 700;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
+		letter-spacing: var(--style-button-spacing, 0.08em);
+		text-transform: var(--style-button-transform, uppercase);
 		text-decoration: none;
-		border-radius: var(--radius-md);
-		border: 1px solid var(--border-subtle);
+		border-radius: var(--style-button-radius, var(--radius-md));
+		border: var(--style-button-border-width, 1px) solid var(--border-subtle);
 		background: var(--surface-raised);
 		color: var(--text-primary);
 		cursor: pointer;
-		transition: all 0.12s ease;
+		box-shadow: var(--style-button-shadow, none);
+		transition: all 0.14s cubic-bezier(0.16, 1, 0.3, 1);
 		white-space: nowrap;
 	}
 
 	.btn-base:hover:not(:disabled) {
 		border-color: var(--border-strong);
 		background: var(--surface-selected);
-		box-shadow: 2px 2px 0px var(--border-strong);
-		transform: translate(-1px, -1px);
+		box-shadow: var(--style-button-hover-shadow, 2px 2px 0px var(--border-strong));
+		transform: var(--style-button-hover-transform, translate(-1px, -1px));
+	}
+
+	.btn-base:active:not(:disabled) {
+		box-shadow: var(--style-button-active-shadow, none);
+		transform: var(--style-button-active-transform, translate(0, 0));
 	}
 
 	.btn-base:disabled {
@@ -972,7 +1434,7 @@
 		border-color: var(--accent-gold-deep);
 		background: var(--accent-gold-deep);
 		color: var(--action-contrast);
-		box-shadow: 2px 2px 0px var(--border-strong);
+		box-shadow: var(--style-button-hover-shadow, 2px 2px 0px var(--border-strong));
 	}
 
 	.btn-danger {
@@ -997,18 +1459,20 @@
 		flex-direction: column;
 		gap: 0.55rem;
 		padding: 0.75rem;
-		border: 1px solid var(--border-subtle);
+		border: var(--style-card-border-width, 1px) solid
+			var(--style-card-border-color, var(--border-subtle));
 		background: var(--surface-raised);
-		border-radius: var(--radius-md);
+		border-radius: var(--style-card-radius, var(--radius-md));
+		box-shadow: var(--style-card-shadow, none);
 		color: inherit;
 		text-decoration: none;
-		transition: all 0.14s ease;
+		transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1);
 	}
 
 	.media-card:hover {
-		border-color: var(--border-strong);
-		box-shadow: var(--shadow-bauhaus);
-		transform: translate(-1px, -1px);
+		border-color: var(--style-card-hover-border-color, var(--border-strong));
+		box-shadow: var(--style-card-hover-shadow, var(--shadow-bauhaus));
+		transform: var(--style-card-hover-transform, translate(-1px, -1px));
 	}
 
 	.media-card-cover {
@@ -1017,12 +1481,12 @@
 		aspect-ratio: 1;
 		object-fit: cover;
 		border: 1px solid var(--border-subtle);
-		border-radius: var(--radius-sm);
+		border-radius: var(--style-cover-radius, var(--radius-sm));
 		background: var(--surface-canvas);
 	}
 
 	.media-card-cover-round {
-		border-radius: var(--radius-full);
+		border-radius: var(--radius-full) !important;
 	}
 
 	.media-card-body {
@@ -1061,8 +1525,10 @@
 		gap: 0.85rem;
 		padding: 0.65rem 0.9rem;
 		border-bottom: 1px solid var(--border-subtle);
-		border-radius: var(--radius-sm);
-		transition: background-color 0.1s ease;
+		border-radius: var(--style-card-radius, var(--radius-sm));
+		transition:
+			background-color 0.12s ease,
+			transform 0.12s ease;
 	}
 
 	.track-row:hover {
@@ -1075,11 +1541,31 @@
 		width: 1.85rem;
 		height: 1.85rem;
 		border: 1px solid var(--border-subtle);
-		border-radius: var(--radius-sm);
+		border-radius: var(--style-cover-radius, var(--radius-sm));
 		background: var(--surface-canvas);
 		color: var(--text-primary);
 		cursor: pointer;
-		transition: all 0.1s ease;
+		transition: all 0.12s ease;
+	}
+
+	/* ---- Inputs and Form Controls ---- */
+	:where(
+		input[type='search'],
+		input[type='text'],
+		input[type='email'],
+		input[type='password'],
+		select,
+		textarea
+	) {
+		border-radius: var(--style-input-radius, var(--radius-md));
+		border-width: var(--style-input-border-width, 1px);
+	}
+
+	/* ---- Unified Badges & Status Pills ---- */
+	:where(.badge, .app-badge, .status-pill) {
+		border-radius: var(--style-badge-radius, var(--radius-sm));
+		border-width: var(--style-badge-border-width, 1px);
+		letter-spacing: var(--style-badge-spacing, 0.08em);
 	}
 
 	.track-row-play:hover {
