@@ -4,6 +4,8 @@ import ts from 'typescript-eslint';
 // The full lint: everything in eslint.config.js PLUS type-aware rules that need a
 // TypeScript program. Slower (`projectService` builds the program per run), so
 // this is `pnpm lint:types` — run it before pushing and in CI, not on every save.
+// The CLI targets `src/` only (matches tsconfig `include`); root config files are
+// covered by the `ignores` block below and don't need type-aware analysis.
 export default [
 	...base,
 	// Build tooling / ambient declarations are not in tsconfig's `include`, so the
@@ -11,7 +13,14 @@ export default [
 	{ ignores: ['*.config.{js,ts,cjs,mjs}', 'vitest.shims.d.ts', 'svelte.config.js'] },
 	{
 		languageOptions: {
-			parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname }
+			parserOptions: {
+				projectService: {
+					// Never silently fall back to a default project for files not
+					// covered by tsconfig's `include`; surface the error instead.
+					maximumDefaultProjectFileMatchCount: 0
+				},
+				tsconfigRootDir: import.meta.dirname
+			}
 		},
 		rules: {
 			'@typescript-eslint/no-floating-promises': 'error',
@@ -28,7 +37,7 @@ export default [
 		files: ['**/*.svelte', '**/*.svelte.ts', '**/*.svelte.js'],
 		languageOptions: {
 			parserOptions: {
-				projectService: true,
+				projectService: { maximumDefaultProjectFileMatchCount: 0 },
 				extraFileExtensions: ['.svelte'],
 				parser: ts.parser
 			}

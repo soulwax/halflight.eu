@@ -566,9 +566,13 @@ export function normalisePlaylistDetail(document: unknown): PlaylistDetail | nul
 	const duration =
 		readNumberAttribute(resource, ['duration', 'durationSeconds']) ??
 		(tracks.length ? tracks.reduce((acc, t) => acc + (t.duration ?? 0), 0) : undefined);
+	const attrCount = readNumberAttribute(resource, ['numberOfItems', 'numberOfTracks']);
 	const numberOfItems =
-		readNumberAttribute(resource, ['numberOfItems', 'numberOfTracks']) ??
-		(tracks.length ? tracks.length : undefined);
+		attrCount !== undefined
+			? Math.max(attrCount, tracks.length)
+			: tracks.length
+				? tracks.length
+				: undefined;
 
 	let creator: { id?: string; name?: string } | undefined;
 	const creatorRel = resource.relationships.creator ?? resource.relationships.owner;

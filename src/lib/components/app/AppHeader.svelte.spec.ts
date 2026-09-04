@@ -47,5 +47,29 @@ describe('AppHeader.svelte', () => {
 		const settingsLink = page.getByRole('link', { name: 'Settings' });
 		await expect.element(settingsLink).toBeInTheDocument();
 		await expect.element(settingsLink).toHaveAttribute('href', '/app/settings/tidal');
+
+		// Admin button should NOT be present for non-admin
+		await expect
+			.element(page.getByRole('link', { name: 'Administration' }))
+			.not.toBeInTheDocument();
+	});
+
+	it('renders admin button between theme selector and settings when user is an administrator', async () => {
+		render(AppHeader, {
+			user: {
+				name: 'soulwax',
+				email: 'soulwax@example.com',
+				isAdministrator: true
+			}
+		});
+
+		// Admin icon button links to /app/admin
+		const adminLink = page.getByRole('link', { name: 'Administration' });
+		await expect.element(adminLink).toBeInTheDocument();
+		await expect.element(adminLink).toHaveAttribute('href', '/app/admin');
+
+		// Settings icon button is also present
+		const settingsLink = page.getByRole('link', { name: 'Settings' });
+		await expect.element(settingsLink).toBeInTheDocument();
 	});
 });

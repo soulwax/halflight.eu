@@ -1,8 +1,9 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { ADMIN_PASSWORD, ADMIN_USERNAME } from '$app/env/private';
-import { eq } from 'drizzle-orm';
+import { eq, asc } from 'drizzle-orm';
 import { db } from '#lib/server/db';
-import { administrator } from '#lib/server/db/schema';
+import { administrator, userStatus } from '#lib/server/db/schema';
+import { user } from '#lib/server/db/auth.schema';
 
 const normalizedAdminUsername = normalizeUsername(ADMIN_USERNAME);
 
@@ -36,25 +37,239 @@ export function hasAdministratorCredentials(username: string, password: string):
 	return isConfiguredAdministratorUsername(username) && hasAdministratorPassword(password);
 }
 
-export async function isAdministrator(userId: string): Promise<boolean> {
-	const record = await db.query.administrator.findFirst({
-		columns: { id: true },
+export async function getAdministratorRecord(userId: string) {
+	return db.query.administrator.findFirst({
 		where: eq(administrator.userId, userId)
 	});
-
-	return Boolean(record);
 }
 
 /**
- * Atomically assigns the first successfully bootstrapped account as owner. There
- * is intentionally no application path to update or delete this assignment.
+ * Checks whether this user is the primary owner / first administrator.
+ * The owner is either configured via ADMIN_USERNAME (soulwax), has role 'owner',
+ * or is the earliest granted administrator in the database.
+ */
+export async function isFirstAdministrator(
+	target: string | { id: string; name?: string | null; email?: string | null }
+): Promise<boolean> {
+	if (typeof target !== 'string') {
+		if (target.name && isConfiguredAdministratorUsername(target.name)) return true;
+		if (target.email && target.email === getAdministratorEmail()) return true;
+		return isFirstAdministrator(target.id);
+	}
+
+	const userId = target;
+	const [userRecord, adminRecord] = await Promise.all([
+		db.query.user.findFirst({ where: eq(user.id, userId) }),
+		getAdministratorRecord(userId)
+	]);
+
+	if (userRecord?.name && isConfiguredAdministratorUsername(userRecord.name)) return true;
+	if (userRecord?.email && userRecord.email === getAdministratorEmail()) return true;
+	if (adminRecord?.role === 'owner') return true;
+
+	const first = await db.query.administrator.findFirst({
+		orderBy: [asc(administrator.grantedAt), asc(administrator.id)]
+	});
+
+	return first?.userId === userId;
+}
+
+export async function isAdministrator(userId: string): Promise<boolean> {
+	const [record, isFirst] = await Promise.all([
+		db.query.administrator.findFirst({
+			columns: { id: true },
+			where: eq(administrator.userId, userId)
+		}),
+		isFirstAdministrator(userId)
+	]);
+
+	return Boolean(record) || isFirst;
+}
+
+/**
+ * Atomically assigns the first successfully bootstrapped account as owner.
  */
 export async function claimFirstAdministrator(userId: string): Promise<boolean> {
+	const isFirst = await isFirstAdministrator(userId);
+	const existingFirst = await db.query.administrator.findFirst({
+		orderBy: [asc(administrator.grantedAt), asc(administrator.id)]
+	});
+
+	if (existingFirst) {
+		if (isFirst || existingFirst.userId === userId) {
+			return true;
+		}
+		return isAdministrator(userId);
+	}
+
 	const created = await db
 		.insert(administrator)
-		.values({ userId })
-		.onConflictDoNothing({ target: administrator.id })
+		.values({ userId, role: 'owner' })
+		.onConflictDoNothing({ target: administrator.userId })
 		.returning({ userId: administrator.userId });
 
 	return created[0]?.userId === userId || (await isAdministrator(userId));
+}
+
+/**
+ * Grants administrator privileges to an existing user.
+ */
+export async function addAdministrator(userId: string): Promise<boolean> {
+	const res = await db
+		.insert(administrator)
+		.values({ userId, role: 'admin' })
+		.onConflictDoNothing({ target: administrator.userId })
+		.returning({ userId: administrator.userId });
+
+	return res.length > 0 || (await isAdministrator(userId));
+}
+
+/**
+ * Revokes administrator privileges from a user.
+ * The primary owner / first administrator can never be demoted.
+ */
+export async function removeAdministrator(userId: string): Promise<boolean> {
+	if (await isFirstAdministrator(userId)) {
+		return false; // Protect owner
+	}
+
+	const deleted = await db
+		.delete(administrator)
+		.where(eq(administrator.userId, userId))
+		.returning({ userId: administrator.userId });
+
+	return deleted.length > 0;
+}
+
+export type UserAction = 'demote' | 'kick' | 'ban' | 'archive' | 'unban' | 'promote';
+
+/**
+ * Permission check based on Syn role hierarchy:
+ * - First admin (soulwax from env): can manage everyone except themselves. Cannot demote themselves.
+ * - Admin: can manage regular users only. Cannot touch other admins or first admin.
+ * - User: cannot manage anyone.
+ */
+export async function canManageUser(
+	actorUserId: string,
+	targetUserId: string,
+	_action: UserAction
+): Promise<{ allowed: boolean; reason?: string }> {
+	if (actorUserId === targetUserId) {
+		return { allowed: false, reason: 'You cannot perform administrative actions on yourself' };
+	}
+
+	const [actorIsFirst, actorIsAdmin, targetIsFirst, targetIsAdmin] = await Promise.all([
+		isFirstAdministrator(actorUserId),
+		isAdministrator(actorUserId),
+		isFirstAdministrator(targetUserId),
+		isAdministrator(targetUserId)
+	]);
+
+	if (!actorIsAdmin && !actorIsFirst) {
+		return { allowed: false, reason: 'Only administrators can manage users' };
+	}
+
+	// First admin has universal authority over all other accounts
+	if (actorIsFirst) {
+		return { allowed: true };
+	}
+
+	// Admins cannot touch first admin
+	if (targetIsFirst) {
+		return { allowed: false, reason: 'Admins cannot modify the first administrator' };
+	}
+
+	// Admins cannot touch other admins
+	if (targetIsAdmin) {
+		return { allowed: false, reason: 'Admins cannot modify other administrators' };
+	}
+
+	// Admins can manage regular users
+	return { allowed: true };
+}
+
+export async function setUserStatus(
+	targetUserId: string,
+	status: 'active' | 'archived' | 'banned',
+	reason?: string
+): Promise<void> {
+	await db
+		.insert(userStatus)
+		.values({ userId: targetUserId, status, reason })
+		.onConflictDoUpdate({
+			target: userStatus.userId,
+			set: { status, reason, updatedAt: new Date() }
+		});
+}
+
+export async function getUserStatus(
+	targetUserId: string
+): Promise<'active' | 'archived' | 'banned'> {
+	const record = await db.query.userStatus.findFirst({
+		where: eq(userStatus.userId, targetUserId)
+	});
+	return (record?.status as 'active' | 'archived' | 'banned') ?? 'active';
+}
+
+export async function kickUser(targetUserId: string): Promise<boolean> {
+	const deleted = await db.delete(user).where(eq(user.id, targetUserId)).returning({ id: user.id });
+	return deleted.length > 0;
+}
+
+export interface ManagedUser {
+	id: string;
+	name: string;
+	email: string;
+	emailVerified: boolean;
+	createdAt: Date;
+	adminRole: 'owner' | 'admin' | null;
+	isFirstAdmin: boolean;
+	status: 'active' | 'archived' | 'banned';
+	statusReason?: string | null;
+}
+
+/**
+ * Retrieves all registered users with their administrator and moderation status.
+ */
+export async function getAllUsersWithAdminStatus(): Promise<ManagedUser[]> {
+	const [allUsers, allAdmins, allStatuses] = await Promise.all([
+		db.select().from(user).orderBy(asc(user.createdAt)),
+		db.select().from(administrator).orderBy(asc(administrator.grantedAt), asc(administrator.id)),
+		db.select().from(userStatus)
+	]);
+
+	const adminMap = new Map(allAdmins.map((a) => [a.userId, a.role]));
+	const statusMap = new Map(allStatuses.map((s) => [s.userId, s]));
+
+	let firstAdminUserId: string | null = null;
+	for (const u of allUsers) {
+		if (isConfiguredAdministratorUsername(u.name) || u.email === getAdministratorEmail()) {
+			firstAdminUserId = u.id;
+			break;
+		}
+	}
+	if (!firstAdminUserId) {
+		firstAdminUserId =
+			allAdmins.length > 0
+				? (allAdmins.find((a) => a.role === 'owner')?.userId ?? allAdmins[0].userId)
+				: null;
+	}
+
+	return allUsers.map((u) => {
+		const isFirst = u.id === firstAdminUserId;
+		const role = isFirst ? 'owner' : ((adminMap.get(u.id) as 'admin' | undefined) ?? null);
+		const s = statusMap.get(u.id);
+
+		return {
+			id: u.id,
+			name: u.name,
+			email: u.email,
+			emailVerified: u.emailVerified,
+			createdAt: u.createdAt,
+			adminRole: role,
+			isFirstAdmin: isFirst,
+			status: (s?.status as 'active' | 'archived' | 'banned') ?? 'active',
+			statusReason: s?.reason ?? null
+		};
+	});
 }

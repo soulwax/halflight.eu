@@ -87,20 +87,37 @@ export async function pullPlaylist(tidalPlaylistId: string, ctx: SyncContext): P
 		// Fetch TIDAL playlist with items included
 		const document = await tidalApi.getPlaylist(tidalPlaylistId, { include: ['items'] }, tidalCtx);
 
-		// If the initial fetch didn't include items, fetch them separately
+		// If the initial fetch didn't include items or was capped at the first page (20 tracks), fetch all items
 		let detail: PlaylistDetail | null = normalisePlaylistDetail(document);
-		if (detail && detail.items.length === 0 && (detail.numberOfItems ?? 0) > 0) {
-			const { items, included } = await tidalApi.getFullPlaylistItems(tidalPlaylistId, tidalCtx);
-			// Re-normalise with the full item set
-			const fullDoc = {
-				...document,
-				included: [
-					...((document as { included?: unknown[] }).included ?? []),
-					...items,
-					...included
-				]
-			};
-			detail = normalisePlaylistDetail(fullDoc) ?? detail;
+		const expectedCount = detail?.numberOfItems ?? 0;
+		if (detail && (detail.items.length === 0 || detail.items.length < expectedCount)) {
+			const { items, included } = await tidalApi.getFullPlaylistItems(tidalPlaylistId, tidalCtx, {
+				include: ['artists', 'albums']
+			});
+			if (items.length > 0) {
+				const relationships =
+					(document.data as { relationships?: Record<string, unknown> })?.relationships ?? {};
+				// Re-normalise with the full item set
+				const fullDoc = {
+					...document,
+					data: {
+						...(document.data as object),
+						relationships: {
+							...relationships,
+							items: {
+								...((relationships.items as object) ?? {}),
+								data: items
+							}
+						}
+					},
+					included: [
+						...((document as { included?: unknown[] }).included ?? []),
+						...items,
+						...included
+					]
+				};
+				detail = normalisePlaylistDetail(fullDoc) ?? detail;
+			}
 		}
 
 		if (!detail) {
@@ -221,6 +238,38 @@ export async function pushPlaylist(
 			try {
 				const document = await tidalApi.getPlaylist(tidalId, { include: ['items'] }, tidalCtx);
 				remoteDetail = normalisePlaylistDetail(document);
+				const expectedCount = remoteDetail?.numberOfItems ?? 0;
+				if (
+					remoteDetail &&
+					(remoteDetail.items.length === 0 || remoteDetail.items.length < expectedCount)
+				) {
+					const { items, included } = await tidalApi.getFullPlaylistItems(tidalId, tidalCtx, {
+						include: ['artists', 'albums']
+					});
+					if (items.length > 0) {
+						const relationships =
+							(document.data as { relationships?: Record<string, unknown> })?.relationships ?? {};
+						const fullDoc = {
+							...document,
+							data: {
+								...(document.data as object),
+								relationships: {
+									...relationships,
+									items: {
+										...((relationships.items as object) ?? {}),
+										data: items
+									}
+								}
+							},
+							included: [
+								...((document as { included?: unknown[] }).included ?? []),
+								...items,
+								...included
+							]
+						};
+						remoteDetail = normalisePlaylistDetail(fullDoc) ?? remoteDetail;
+					}
+				}
 			} catch {
 				// Playlist may have been deleted on TIDAL
 			}

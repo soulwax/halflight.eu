@@ -5,7 +5,7 @@ import { svelteKitHandler } from 'better-auth/svelte-kit';
 import type { Handle } from '@sveltejs/kit/hooks';
 import { getTextDirection } from '#lib/paraglide/runtime';
 import { paraglideMiddleware } from '#lib/paraglide/server';
-import { isAdministrator } from '#lib/server/admin';
+import { isAdministrator, isFirstAdministrator, getUserStatus } from '#lib/server/admin';
 
 const handleParaglide: Handle = ({ event, resolve }) =>
 	paraglideMiddleware(event.request, ({ request, locale }) => {
@@ -25,9 +25,18 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
 	const session = await auth.api.getSession({ headers: event.request.headers });
 
 	if (session) {
-		event.locals.session = session.session;
-		event.locals.user = session.user;
-		event.locals.isAdministrator = await isAdministrator(session.user.id);
+		const status = await getUserStatus(session.user.id);
+		if (status !== 'active') {
+			event.locals.session = undefined;
+			event.locals.user = undefined;
+			event.locals.isAdministrator = false;
+			event.locals.isFirstAdministrator = false;
+		} else {
+			event.locals.session = session.session;
+			event.locals.user = session.user;
+			event.locals.isAdministrator = await isAdministrator(session.user.id);
+			event.locals.isFirstAdministrator = await isFirstAdministrator(session.user);
+		}
 	}
 
 	return svelteKitHandler({ event, resolve, auth, building });

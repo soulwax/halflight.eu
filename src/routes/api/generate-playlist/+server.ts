@@ -298,7 +298,7 @@ export const POST: RequestHandler = async (event) => {
 	const energyArc = body.energyArc || 'steady';
 	const requestedSize =
 		typeof body.size === 'number' ? body.size : parseInt(body.size || '20', 10) || 20;
-	const targetCount = Math.min(Math.max(requestedSize, 8), 40);
+	const targetCount = Math.min(Math.max(requestedSize, 8), 100);
 
 	const queries = SOUNDSCAPE_QUERIES[vibe]?.[era] ?? SOUNDSCAPE_QUERIES.kinetic.contemporary;
 

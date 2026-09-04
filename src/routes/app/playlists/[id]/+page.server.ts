@@ -62,21 +62,50 @@ export const load: PageServerLoad = async (event) => {
 			const document = await tidalApi.getPlaylist(tidalId, { include: ['items'] }, ctx);
 			let playlist = normalisePlaylistDetail(document);
 
-			// A playlist can come back with an empty `items` relationship; the
-			// dedicated items endpoint is the fallback.
-			if (playlist && playlist.items.length === 0) {
+			// A playlist can come back with an empty `items` relationship, or truncated
+			// (TIDAL limits include=items to the first page, typically 20 tracks).
+			// If numberOfItems indicates more tracks exist or initial items were empty,
+			// fetch all items across pages.
+			const expectedItems = playlist?.numberOfItems ?? 0;
+			if (playlist && (playlist.items.length === 0 || playlist.items.length < expectedItems)) {
 				try {
-					const itemsDoc = await tidalApi.getPlaylistItems(tidalId, {}, ctx);
-					const detailWithItems = normalisePlaylistDetail({
-						...document,
-						included: [
-							...(document.included ?? []),
-							...(itemsDoc.included ?? []),
-							...(Array.isArray(itemsDoc.data) ? itemsDoc.data : [itemsDoc.data])
-						]
-					});
-					if (detailWithItems && detailWithItems.items.length > 0) {
-						playlist = detailWithItems;
+					let fullItems: { items: unknown[]; included?: unknown[] };
+					if (typeof tidalApi.getFullPlaylistItems === 'function') {
+						fullItems = await tidalApi.getFullPlaylistItems(tidalId, ctx, {
+							include: ['artists', 'albums']
+						});
+					} else {
+						const itemsDoc = await tidalApi.getPlaylistItems(tidalId, {}, ctx);
+						fullItems = {
+							items: Array.isArray(itemsDoc.data) ? itemsDoc.data : [itemsDoc.data],
+							included: itemsDoc.included ?? []
+						};
+					}
+
+					if (fullItems.items.length > 0) {
+						const relationships =
+							(document.data as { relationships?: Record<string, unknown> })?.relationships ?? {};
+						const detailWithItems = normalisePlaylistDetail({
+							...document,
+							data: {
+								...(document.data as object),
+								relationships: {
+									...relationships,
+									items: {
+										...((relationships.items as object) ?? {}),
+										data: fullItems.items
+									}
+								}
+							},
+							included: [
+								...(document.included ?? []),
+								...(fullItems.included ?? []),
+								...fullItems.items
+							]
+						});
+						if (detailWithItems && detailWithItems.items.length > 0) {
+							playlist = detailWithItems;
+						}
 					}
 				} catch {
 					// Ignore the sub-request error and render what we have.

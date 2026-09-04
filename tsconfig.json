@@ -6,6 +6,8 @@
 		"strict": true,
 		"noImplicitOverride": true,
 		"noFallthroughCasesInSwitch": true,
+		"incremental": true,
+		"tsBuildInfoFile": ".svelte-kit/.tsbuildinfo",
 		"paths": {
 			"#lib": ["./src/lib/index.ts"],
 			"#lib/*": ["./src/lib/*"]

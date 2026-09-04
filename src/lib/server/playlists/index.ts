@@ -255,24 +255,27 @@ export async function attemptTidalPlaylistSync(
 		const playlistUuid = createdJson.uuid || createdJson.id;
 		if (!playlistUuid) return null;
 
-		// 2. Add tracks if we have track IDs
+		// 2. Add tracks if we have track IDs (chunked to 50 per TIDAL v1 API limit)
 		if (trackIds.length > 0) {
-			const validIds = trackIds.filter(Boolean).slice(0, 50);
-			if (validIds.length > 0) {
-				await fetchFn(
-					`https://api.tidal.com/v1/playlists/${encodeURIComponent(playlistUuid)}/items`,
-					{
-						method: 'POST',
-						headers: {
-							Authorization: `Bearer ${accessToken}`,
-							'Content-Type': 'application/x-www-form-urlencoded',
-							'If-None-Match': '*'
-						},
-						body: new URLSearchParams({
-							trackIds: validIds.join(',')
-						}).toString()
-					}
-				).catch(() => null);
+			const validIds = trackIds.filter(Boolean);
+			for (let i = 0; i < validIds.length; i += 50) {
+				const batch = validIds.slice(i, i + 50);
+				if (batch.length > 0) {
+					await fetchFn(
+						`https://api.tidal.com/v1/playlists/${encodeURIComponent(playlistUuid)}/items`,
+						{
+							method: 'POST',
+							headers: {
+								Authorization: `Bearer ${accessToken}`,
+								'Content-Type': 'application/x-www-form-urlencoded',
+								'If-None-Match': '*'
+							},
+							body: new URLSearchParams({
+								trackIds: batch.join(',')
+							}).toString()
+						}
+					).catch(() => null);
+				}
 			}
 		}
 

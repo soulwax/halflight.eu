@@ -1,5 +1,5 @@
 import { page } from 'vitest/browser';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import PlayerVolume from './PlayerVolume.svelte';
 import { player } from '#lib/player/player.svelte.js';
@@ -61,5 +61,111 @@ describe('PlayerVolume.svelte', () => {
 		await readout.click();
 		expect(player.volume).toBe(1.0);
 		await expect.element(readout).toHaveTextContent('100%');
+	});
+
+	it('adjusts volume when slider is clicked with mouse', async () => {
+		player.setVolume(1.0);
+		render(PlayerVolume);
+
+		const slider = page.getByRole('slider', { name: m.player_volume() });
+		await slider.click({ position: { x: 10, y: 7 } });
+		expect(player.volume).not.toBe(1.0);
+	});
+
+	it('adjusts volume via keyboard arrow keys, home, end, and 1', async () => {
+		player.setVolume(1.0);
+		render(PlayerVolume);
+
+		const slider = page.getByRole('slider', { name: m.player_volume() });
+		const el = slider.element();
+
+		el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+		expect(player.volume).toBeCloseTo(0.95, 2);
+
+		el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+		expect(player.volume).toBeCloseTo(1.0, 2);
+
+		el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
+		expect(player.volume).toBe(0);
+
+		el.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
+		expect(player.volume).toBe(1.25);
+
+		el.dispatchEvent(new KeyboardEvent('keydown', { key: '1', bubbles: true }));
+		expect(player.volume).toBe(1.0);
+	});
+
+	it('resets volume to 100% on double click', async () => {
+		player.setVolume(0.5);
+		render(PlayerVolume);
+
+		const slider = page.getByRole('slider', { name: m.player_volume() });
+		slider.element().dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+		expect(player.volume).toBe(1.0);
+	});
+
+	it('smoothly updates volume when dragged with pointer', async () => {
+		player.setVolume(1.0);
+		render(PlayerVolume);
+
+		const track = document.querySelector('.vol-track') as HTMLElement;
+		expect(track).not.toBeNull();
+
+		vi.spyOn(track, 'getBoundingClientRect').mockReturnValue({
+			left: 100,
+			top: 200,
+			width: 100,
+			height: 14,
+			right: 200,
+			bottom: 214,
+			x: 100,
+			y: 200,
+			toJSON: () => {}
+		});
+
+		track.setPointerCapture = vi.fn();
+		track.releasePointerCapture = vi.fn();
+
+		track.dispatchEvent(
+			new PointerEvent('pointerdown', {
+				clientX: 150,
+				clientY: 207,
+				button: 0,
+				pointerId: 1,
+				bubbles: true
+			})
+		);
+		expect(track.setPointerCapture).toHaveBeenCalledWith(1);
+		expect(player.volume).toBe(0.63);
+
+		track.dispatchEvent(
+			new PointerEvent('pointermove', {
+				clientX: 180,
+				clientY: 207,
+				pointerId: 1,
+				bubbles: true
+			})
+		);
+		expect(player.volume).toBe(1.0);
+
+		track.dispatchEvent(
+			new PointerEvent('pointermove', {
+				clientX: 200,
+				clientY: 207,
+				pointerId: 1,
+				bubbles: true
+			})
+		);
+		expect(player.volume).toBe(1.25);
+
+		track.dispatchEvent(
+			new PointerEvent('pointerup', {
+				clientX: 200,
+				clientY: 207,
+				pointerId: 1,
+				bubbles: true
+			})
+		);
+		expect(track.releasePointerCapture).toHaveBeenCalledWith(1);
 	});
 });

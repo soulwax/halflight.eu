@@ -98,6 +98,44 @@ describe('/app/playlists/[id] load', () => {
 		);
 	});
 
+	it('fetches remaining items when initial playlist response has fewer items than numberOfItems', async () => {
+		mocks.getConnectionStatus.mockResolvedValue({
+			connected: true,
+			configured: true,
+			hasWriteScopes: true
+		});
+		mocks.getPlaylist.mockResolvedValue({
+			data: {
+				id: 'playlist-big',
+				type: 'playlists',
+				attributes: { title: 'Large Playlist', numberOfItems: 25 },
+				relationships: {
+					items: {
+						data: Array.from({ length: 20 }, (_, i) => ({ id: `t-${i}`, type: 'tracks' }))
+					}
+				}
+			},
+			included: Array.from({ length: 20 }, (_, i) => ({
+				id: `t-${i}`,
+				type: 'tracks',
+				attributes: { title: `Track ${i}` }
+			}))
+		});
+		mocks.getPlaylistItems.mockResolvedValue({
+			data: Array.from({ length: 25 }, (_, i) => ({ id: `t-${i}`, type: 'tracks' })),
+			included: Array.from({ length: 25 }, (_, i) => ({
+				id: `t-${i}`,
+				type: 'tracks',
+				attributes: { title: `Track ${i}` }
+			}))
+		});
+
+		const res = await load(event('playlist-big'));
+		if (!res) throw new Error('Expected load result');
+		expect(res.playlist?.items.length).toBe(25);
+		expect(mocks.getPlaylistItems).toHaveBeenCalledWith('playlist-big', {}, { fetch: fetchMock });
+	});
+
 	it('returns a local custom playlist without calling TIDAL if id matches local playlist', async () => {
 		mocks.getConnectionStatus.mockResolvedValue({
 			connected: true,

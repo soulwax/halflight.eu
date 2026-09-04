@@ -93,7 +93,8 @@
 	const SIZES = [
 		{ value: 12, label: '12 TRACKS (EP ~45m)' },
 		{ value: 20, label: '20 TRACKS (LP ~75m)' },
-		{ value: 30, label: '30 TRACKS (ODYSSEY ~2h)' }
+		{ value: 30, label: '30 TRACKS (ODYSSEY ~2h)' },
+		{ value: 50, label: '50 TRACKS (EXTENDED ~3.5h)' }
 	];
 
 	async function handleSynthesize() {

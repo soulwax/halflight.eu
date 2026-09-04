@@ -3,7 +3,8 @@ import {
 	updatePlaylist,
 	deletePlaylistRemote,
 	removePlaylistItems,
-	replacePlaylistItems
+	replacePlaylistItems,
+	getFullPlaylist
 } from './api';
 import { tidalJson, getAccessToken } from './client';
 import { TidalApiError } from './errors';
@@ -130,5 +131,76 @@ describe('TIDAL playlist API wrappers', () => {
 				]
 			})
 		});
+	});
+
+	it('getFullPlaylist returns document directly when all items are present', async () => {
+		expect.assertions(2);
+		vi.mocked(tidalJson).mockResolvedValueOnce({
+			data: {
+				id: 'p1',
+				type: 'playlists',
+				attributes: { numberOfItems: 2 },
+				relationships: {
+					items: {
+						data: [
+							{ id: 't1', type: 'tracks' },
+							{ id: 't2', type: 'tracks' }
+						]
+					}
+				}
+			},
+			included: [
+				{ id: 't1', type: 'tracks' },
+				{ id: 't2', type: 'tracks' }
+			]
+		} as any);
+
+		const res = await getFullPlaylist('p1');
+		expect(tidalJson).toHaveBeenCalledTimes(1);
+		expect((res.data as any).relationships.items.data).toHaveLength(2);
+	});
+
+	it('getFullPlaylist fetches remaining items when numberOfItems exceeds initial items', async () => {
+		expect.assertions(3);
+		// First call: initial getPlaylist with 1 item but numberOfItems is 3
+		vi.mocked(tidalJson).mockResolvedValueOnce({
+			data: {
+				id: 'p1',
+				type: 'playlists',
+				attributes: { numberOfItems: 3 },
+				relationships: {
+					items: {
+						data: [{ id: 't1', type: 'tracks' }]
+					}
+				}
+			},
+			included: [{ id: 't1', type: 'tracks' }]
+		} as any);
+
+		// Second call: getPlaylistItems returning page with t1, t2, and cursor to next
+		vi.mocked(tidalJson).mockResolvedValueOnce({
+			data: [
+				{ id: 't1', type: 'tracks' },
+				{ id: 't2', type: 'tracks' }
+			],
+			included: [
+				{ id: 't1', type: 'tracks' },
+				{ id: 't2', type: 'tracks' }
+			],
+			links: {
+				next: 'https://openapi.tidal.com/playlists/p1/relationships/items?page%5Bcursor%5D=cursor2'
+			}
+		} as any);
+
+		// Third call: getPlaylistItems returning page with t3 (no next)
+		vi.mocked(tidalJson).mockResolvedValueOnce({
+			data: [{ id: 't3', type: 'tracks' }],
+			included: [{ id: 't3', type: 'tracks' }]
+		} as any);
+
+		const res = await getFullPlaylist('p1');
+		expect(tidalJson).toHaveBeenCalledTimes(3);
+		expect((res.data as any).relationships.items.data).toHaveLength(3);
+		expect(res.included).toHaveLength(7); // initial t1 + page1/2 included (t1, t2, t3) + page1/2 items (t1, t2, t3)
 	});
 });

@@ -198,6 +198,8 @@
 						<option value={20}>20 tracks (~1.3 hours)</option>
 						<option value={25}>25 tracks (~1.7 hours)</option>
 						<option value={30}>30 tracks (~2 hours)</option>
+						<option value={40}>40 tracks (~2.7 hours)</option>
+						<option value={50}>50 tracks (~3.5 hours)</option>
 					</select>
 				</div>
 

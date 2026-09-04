@@ -145,6 +145,72 @@ export async function getFullPlaylistItems(
 	return { items, included };
 }
 
+/**
+ * Fetches a playlist and ensures all items are populated by following item pagination
+ * if the initial response was truncated (e.g. capped at 20 items by TIDAL's default include limit).
+ */
+export async function getFullPlaylist(
+	id: string,
+	opts: PageOptions = {},
+	ctx?: Ctx
+): Promise<Document<Resource>> {
+	const document = await getPlaylist(
+		id,
+		{ ...opts, include: ['items', ...(opts.include ?? [])] },
+		ctx
+	);
+	const data = document.data as Resource | undefined;
+	if (!data) return document;
+
+	const relationships = (data.relationships ?? {}) as Record<
+		string,
+		{ data?: Resource | Resource[]; links?: { next?: string } }
+	>;
+	const itemsRel = relationships.items;
+	const initialItems = itemsRel?.data
+		? Array.isArray(itemsRel.data)
+			? itemsRel.data
+			: [itemsRel.data]
+		: [];
+	const attrs = (data.attributes ?? {}) as Record<string, unknown>;
+	const numberOfItemsAttr = attrs.numberOfItems ?? attrs.numberOfTracks;
+	const expectedCount = typeof numberOfItemsAttr === 'number' ? numberOfItemsAttr : undefined;
+	const hasNext = Boolean(itemsRel?.links?.next);
+
+	if (
+		hasNext ||
+		(expectedCount !== undefined && expectedCount > initialItems.length) ||
+		initialItems.length === 0
+	) {
+		try {
+			const fullItems = await getFullPlaylistItems(id, ctx, {
+				countryCode: opts.countryCode,
+				include: ['artists', 'albums']
+			});
+			if (fullItems.items.length > 0) {
+				return {
+					...document,
+					data: {
+						...data,
+						relationships: {
+							...relationships,
+							items: {
+								...(itemsRel ?? {}),
+								data: fullItems.items
+							}
+						}
+					},
+					included: [...(document.included ?? []), ...fullItems.included, ...fullItems.items]
+				};
+			}
+		} catch {
+			// Best-effort: fall back to returning the initial document
+		}
+	}
+
+	return document;
+}
+
 /** A personalised mix set and its tracks (`include=items`). */
 export function getMix(
 	kind: MixKind,

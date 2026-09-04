@@ -10,6 +10,9 @@
 		compact?: boolean;
 	} = $props();
 
+	let trackElement = $state<HTMLDivElement | null>(null);
+	let isDragging = $state(false);
+
 	const isMuted = $derived(player.isMuted || player.volume === 0);
 	const displayVolume = $derived(isMuted ? 0 : player.volume);
 	const maxVolume = $derived(player.maxVolume);
@@ -20,25 +23,64 @@
 		displayVolume > 1.0 ? ((displayVolume - 1.0) / maxVolume) * 100 : 0
 	);
 	const notchPercent = $derived((1.0 / maxVolume) * 100);
+	const thumbPercent = $derived((displayVolume / maxVolume) * 100);
 
 	let prevVolume = player.volume;
 
-	function onRangeInput(event: Event) {
-		const target = event.currentTarget as HTMLInputElement;
-		let val = parseFloat(target.value);
-		if (Number.isNaN(val)) return;
+	function setVolumeFromPointer(clientX: number) {
+		if (!trackElement) return;
+		const rect = trackElement.getBoundingClientRect();
+		if (rect.width <= 0) return;
+		const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+		let targetVol = ratio * maxVolume;
 
-		// Magnetic snap to 100% (1.0) when dragging near reference notch
-		if (Math.abs(val - 1.0) <= 0.015 && Math.abs(prevVolume - 1.0) > 0.015) {
-			val = 1.0;
-			target.value = '1.0';
-			haptics.snap();
-		} else if ((prevVolume < 1.0 && val >= 1.0) || (prevVolume > 1.0 && val <= 1.0)) {
+		// Magnetic snap to 100% (1.0) within a forgiving notch window (+/- 2.5%)
+		if (Math.abs(targetVol - 1.0) <= 0.025) {
+			targetVol = 1.0;
+			if (Math.abs(prevVolume - 1.0) > 0.025) {
+				haptics.snap();
+			}
+		} else if ((prevVolume < 1.0 && targetVol >= 1.0) || (prevVolume > 1.0 && targetVol <= 1.0)) {
 			haptics.notch();
-		} else if (val === 0 || val === maxVolume) {
-			haptics.limit();
+		} else if (targetVol === 0 || targetVol >= maxVolume - 0.005) {
+			targetVol = targetVol === 0 ? 0 : maxVolume;
+			if (prevVolume !== targetVol) {
+				haptics.limit();
+			}
+		} else if (Math.floor(targetVol * 20) !== Math.floor(prevVolume * 20)) {
+			haptics.tick();
 		}
 
+		prevVolume = targetVol;
+		player.setVolume(targetVol);
+	}
+
+	function onPointerDown(event: PointerEvent) {
+		if (event.button !== 0) return;
+		isDragging = true;
+		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+		setVolumeFromPointer(event.clientX);
+	}
+
+	function onPointerMove(event: PointerEvent) {
+		if (!isDragging) return;
+		setVolumeFromPointer(event.clientX);
+	}
+
+	function onPointerUp(event: PointerEvent) {
+		if (!isDragging) return;
+		isDragging = false;
+		try {
+			(event.currentTarget as HTMLElement).releasePointerCapture(event.pointerId);
+		} catch {
+			// ignore if already released
+		}
+	}
+
+	function onRangeInput(event: Event) {
+		const target = event.currentTarget as HTMLInputElement;
+		const val = parseFloat(target.value);
+		if (Number.isNaN(val)) return;
 		prevVolume = val;
 		player.setVolume(val);
 	}
@@ -48,7 +90,6 @@
 		const delta = event.deltaY < 0 ? 0.02 : -0.02;
 		let targetVol = Math.max(0, Math.min(maxVolume, player.volume + delta));
 
-		// Snap to 1.0 if passing within snap threshold
 		if (Math.abs(targetVol - 1.0) < 0.015) {
 			targetVol = 1.0;
 			haptics.snap();
@@ -93,6 +134,22 @@
 			event.preventDefault();
 			player.setVolume(maxVolume);
 			haptics.limit();
+		} else if (event.key === 'ArrowRight' || event.key === 'ArrowUp') {
+			event.preventDefault();
+			player.adjustVolume(0.05);
+			haptics.tick();
+		} else if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') {
+			event.preventDefault();
+			player.adjustVolume(-0.05);
+			haptics.tick();
+		} else if (event.key === 'PageUp') {
+			event.preventDefault();
+			player.adjustVolume(0.1);
+			haptics.tick();
+		} else if (event.key === 'PageDown') {
+			event.preventDefault();
+			player.adjustVolume(-0.1);
+			haptics.tick();
 		}
 	}
 </script>
@@ -122,7 +179,18 @@
 		{/if}
 	</button>
 
-	<div class="vol-track" onwheel={onWheel}>
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div
+		bind:this={trackElement}
+		class="vol-track"
+		class:is-dragging={isDragging}
+		onpointerdown={onPointerDown}
+		onpointermove={onPointerMove}
+		onpointerup={onPointerUp}
+		onpointercancel={onPointerUp}
+		onwheel={onWheel}
+		ondblclick={onResetVolume}
+	>
 		<input
 			type="range"
 			class="vol-range"
@@ -132,7 +200,6 @@
 			value={displayVolume}
 			oninput={onRangeInput}
 			onkeydown={onKeydown}
-			ondblclick={onResetVolume}
 			aria-label={m.player_volume()}
 			aria-valuemin={0}
 			aria-valuemax={Math.round(maxVolume * 100)}
@@ -140,6 +207,7 @@
 			aria-valuetext={isMuted ? m.player_mute() : `${Math.round(player.volume * 100)}%`}
 		/>
 
+		<span class="vol-track-base"></span>
 		<span class="vol-fill-normal" style="width: {normalFillPercent}%"></span>
 		{#if maxVolume > 1}
 			<span class="vol-notch-100" style="left: {notchPercent}%"></span>
@@ -148,6 +216,7 @@
 				></span>
 			{/if}
 		{/if}
+		<span class="vol-thumb" style="left: {thumbPercent}%"></span>
 	</div>
 
 	<button

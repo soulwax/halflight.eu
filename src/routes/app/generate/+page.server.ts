@@ -61,7 +61,7 @@ export const actions: Actions = {
 		}
 
 		const data = await event.request.formData();
-		const targetCount = Math.max(5, Math.min(50, Number(data.get('targetCount') ?? 20)));
+		const targetCount = Math.max(5, Math.min(100, Number(data.get('targetCount') ?? 20)));
 		const familiarity = Math.max(0, Math.min(100, Number(data.get('familiarity') ?? 50)));
 		const seedArtistId = String(data.get('seedArtistId') ?? '').trim() || undefined;
 

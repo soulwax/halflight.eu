@@ -37,7 +37,34 @@ export const GET: RequestHandler = async (event) => {
 				{ include: ['items'] },
 				{ fetch: event.fetch, cookies: event.cookies }
 			);
-			const detail = normalisePlaylistDetail(doc);
+			let detail = normalisePlaylistDetail(doc);
+			const expectedCount = detail?.numberOfItems ?? 0;
+			if (detail && (detail.items.length === 0 || detail.items.length < expectedCount)) {
+				const { items, included } = await tidalApi.getFullPlaylistItems(
+					playlistId,
+					{ fetch: event.fetch, cookies: event.cookies },
+					{ include: ['artists', 'albums'] }
+				);
+				if (items.length > 0) {
+					const relationships =
+						(doc.data as { relationships?: Record<string, unknown> })?.relationships ?? {};
+					const fullDoc = {
+						...doc,
+						data: {
+							...(doc.data as object),
+							relationships: {
+								...relationships,
+								items: {
+									...((relationships.items as object) ?? {}),
+									data: items
+								}
+							}
+						},
+						included: [...((doc as { included?: unknown[] }).included ?? []), ...items, ...included]
+					};
+					detail = normalisePlaylistDetail(fullDoc) ?? detail;
+				}
+			}
 			if (detail) {
 				playlistTitle = detail.title;
 				tracks = detail.items || [];

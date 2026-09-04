@@ -1,11 +1,16 @@
 <script lang="ts">
-	import { LogIn, LogOut, Settings } from '@lucide/svelte';
+	import { LogIn, LogOut, Settings, Shield } from '@lucide/svelte';
 	import ThemeSelector from '#lib/components/ui/ThemeSelector.svelte';
 	import synLogo from '#lib/assets/syn-logo.svg';
 	import { m } from '#lib/paraglide/messages.js';
 
 	interface Props {
-		user?: { name?: string; email?: string } | null;
+		user?: {
+			name?: string;
+			email?: string;
+			isAdministrator?: boolean;
+			isFirstAdministrator?: boolean;
+		} | null;
 	}
 
 	let { user = null }: Props = $props();
@@ -25,11 +30,23 @@
 		</a>
 	</div>
 
-	<!-- Right: Style Chooser Dropdown, Settings Icon, and Login/Logout Button -->
+	<!-- Right: Style Chooser Dropdown, Admin Button, Settings Icon, and Login/Logout Button -->
 	<div class="flex items-center gap-2.5 sm:gap-4">
 		<div class="xs:w-44 w-36 sm:w-52">
 			<ThemeSelector compact={true} id="header-theme-selector" />
 		</div>
+
+		{#if user?.isAdministrator}
+			<a
+				href="/app/admin"
+				class="app-header-admin-btn inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-canvas)] text-[var(--text-secondary)] transition-colors hover:border-[var(--action)] hover:bg-[color-mix(in_oklab,var(--action)_12%,transparent)] hover:text-[var(--action)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--action)] sm:h-9 sm:w-9"
+				title={m.nav_admin()}
+				aria-label={m.nav_admin()}
+			>
+				<Shield size={16} class="sm:hidden" />
+				<Shield size={18} class="hidden sm:block" />
+			</a>
+		{/if}
 
 		<a
 			href="/app/settings/tidal"

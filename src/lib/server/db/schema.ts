@@ -1,4 +1,13 @@
-import { pgTable, integer, text, timestamp, boolean, check, jsonb } from 'drizzle-orm/pg-core';
+import {
+	pgTable,
+	integer,
+	text,
+	timestamp,
+	boolean,
+	check,
+	jsonb,
+	serial
+} from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { user } from './auth.schema';
 
@@ -22,19 +31,19 @@ export const tidalAuth = pgTable('tidal_auth', {
 });
 
 /**
- * The one, permanent administrator for this personal installation. Owned by Syn
- * rather than Better Auth: it maps a Better Auth user id to owner status, with no
- * application path to reassign or delete it.
+ * Administrators for this Syn installation.
+ * - The first bootstrapped administrator is assigned 'owner'.
+ * - Other administrators can be granted 'admin' status.
  */
-export const administrator = pgTable(
-	'administrator',
-	{
-		id: integer('id').primaryKey().notNull().default(1),
-		userId: text('user_id').notNull().unique(),
-		grantedAt: timestamp('granted_at', { withTimezone: true }).notNull().defaultNow()
-	},
-	(table) => [check('administrator_singleton', sql`${table.id} = 1`)]
-);
+export const administrator = pgTable('administrator', {
+	id: serial('id').primaryKey(),
+	userId: text('user_id')
+		.notNull()
+		.unique()
+		.references(() => user.id, { onDelete: 'cascade' }),
+	role: text('role').notNull().default('admin'),
+	grantedAt: timestamp('granted_at', { withTimezone: true }).notNull().defaultNow()
+});
 
 /**
  * Custom and generated playlists saved directly in the user's account.
@@ -134,6 +143,16 @@ export const lastfmConnection = pgTable('lastfm_connection', {
 	nowPlayingEnabled: boolean('now_playing_enabled').notNull().default(true),
 	lastScrobbledAt: timestamp('last_scrobbled_at', { withTimezone: true }),
 	createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+});
+
+/** Account state for moderation: active, archived, or banned. */
+export const userStatus = pgTable('user_status', {
+	userId: text('user_id')
+		.primaryKey()
+		.references(() => user.id, { onDelete: 'cascade' }),
+	status: text('status').notNull().default('active'), // 'active' | 'archived' | 'banned'
+	reason: text('reason'),
 	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 });
 
