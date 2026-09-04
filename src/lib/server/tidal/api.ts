@@ -163,10 +163,11 @@ export function search(
 	opts: SearchOptions = {},
 	ctx?: Ctx
 ): Promise<Document<Resource[]>> {
+	const types = opts.types ?? ['tracks', 'albums', 'artists'];
 	return tidalJson(
 		`/searchResults${qs({
 			'filter[query]': query,
-			include: opts.types ?? ['tracks', 'albums', 'artists'],
+			include: [...types, ...(opts.include ?? [])],
 			countryCode: opts.countryCode,
 			explicitFilter: opts.explicitFilter
 		})}`,

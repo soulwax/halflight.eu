@@ -1,0 +1,75 @@
+import { describe, expect, it } from 'vitest';
+import {
+	buildTasteProfile,
+	emptyTasteProfile,
+	recencyMultiplier,
+	rebuildTasteProfile,
+	type TasteProfile,
+	type TasteProfileStore
+} from './profile';
+import type { TasteSignals } from './signals';
+
+const now = new Date('2026-09-04T00:00:00.000Z');
+
+const signals: TasteSignals = {
+	artistSignals: [
+		{ artistId: 'playlist-artist', source: 'playlist' },
+		{ artistId: 'playlist-artist', source: 'playlist' },
+		{ artistId: 'followed-artist', source: 'followed_artist' }
+	],
+	eraSignals: [
+		{ decade: 1980, source: 'playlist' },
+		{ decade: 1990, source: 'followed_artist' }
+	]
+};
+
+function memoryStore(): TasteProfileStore {
+	const records = new Map<string, TasteProfile>();
+	return {
+		async read(userId) {
+			return records.get(userId) ?? null;
+		},
+		async write(userId, profile) {
+			records.set(userId, profile);
+			return profile;
+		},
+		async delete(userId) {
+			records.delete(userId);
+		}
+	};
+}
+
+describe('taste profile', () => {
+	it('weights explicit follows above repeated playlist membership without retaining titles', () => {
+		const profile = buildTasteProfile(signals, emptyTasteProfile(now), now);
+
+		expect(profile.artists['followed-artist']).toBe(1);
+		expect(profile.artists['playlist-artist']).toBeGreaterThan(0);
+		expect(profile.eras).toEqual({ '1980': 0.25, '1990': 1 });
+		expect(JSON.stringify(profile)).not.toContain('title');
+	});
+
+	it('preserves owner exclusions and overrides over fresh inference', () => {
+		const previous = emptyTasteProfile(now);
+		previous.exclusions.artists = ['followed-artist'];
+		previous.overrides.artists = { 'playlist-artist': 'pinned' };
+		previous.knobDefaults.familiarity = 72;
+
+		const profile = buildTasteProfile(signals, previous, now);
+
+		expect(profile.artists).toEqual({ 'playlist-artist': 1 });
+		expect(profile.knobDefaults).toEqual({ familiarity: 72 });
+	});
+
+	it('gives recent evidence a bounded, roughly twofold boost over old evidence', () => {
+		expect(recencyMultiplier(now.toISOString(), now)).toBe(2);
+		expect(recencyMultiplier('2024-09-04T00:00:00.000Z', now)).toBeCloseTo(1, 3);
+	});
+
+	it('rebuilds and persists a profile through an injected store', async () => {
+		const profile = await rebuildTasteProfile('owner-1', signals, memoryStore(), now);
+
+		expect(profile.updatedAt).toBe(now.toISOString());
+		expect(profile.confidence.artists).toBeGreaterThan(0);
+	});
+});

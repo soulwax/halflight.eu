@@ -72,6 +72,56 @@ describe('TIDAL display normalisers', () => {
 		});
 	});
 
+	it('uses the related album image and release data for a search track', () => {
+		const album = {
+			id: 'album-1',
+			type: 'albums',
+			attributes: {
+				title: 'Album One',
+				releaseDate: '2001-09-18',
+				imageLinks: { '320': 'small-cover-id', '1280': 'large-cover-id' }
+			}
+		};
+
+		expect(
+			normaliseSearchResults({
+				data: {
+					id: 'search-1',
+					type: 'searchResults',
+					relationships: { tracks: { data: [{ id: 'track-1', type: 'tracks' }] } }
+				},
+				included: [
+					{
+						id: 'track-1',
+						type: 'tracks',
+						attributes: { title: 'Track One', duration: 245 },
+						relationships: {
+							artists: { data: [{ id: 'artist-1', type: 'artists' }] },
+							albums: { data: [{ id: 'album-1', type: 'albums' }] }
+						}
+					},
+					artist,
+					album
+				]
+			})
+		).toMatchObject({
+			tracks: [
+				{
+					id: 'track-1',
+					duration: 245,
+					artists: [{ id: 'artist-1', name: 'Artist One' }],
+					album: {
+						id: 'album-1',
+						title: 'Album One',
+						releaseDate: '2001-09-18',
+						imageUrl: 'https://resources.tidal.com/images/large/cover/id/640x640.jpg'
+					},
+					imageUrl: 'https://resources.tidal.com/images/large/cover/id/640x640.jpg'
+				}
+			]
+		});
+	});
+
 	it('preserves title and name metadata exactly, with an id fallback for missing attributes', () => {
 		expect(
 			normaliseArtist({ id: 'artist-2', type: 'artists', attributes: { title: 'MiXeD Case' } })

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { m } from '#lib/paraglide/messages.js';
+	import synLogo from '#lib/assets/syn-logo.svg';
 	import type { ActionData } from './$types';
 
 	let { form }: { form: ActionData } = $props();
@@ -13,7 +14,7 @@
 
 <main class="auth-page">
 	<section class="auth-card" aria-labelledby="sign-in-title">
-		<p class="eyebrow">SYN</p>
+		<img class="brand-logo" src={synLogo} alt="Syn" />
 		<h1 id="sign-in-title">{m.sign_in_title()}</h1>
 		<p class="intro">{m.sign_in_subtitle()}</p>
 
@@ -56,12 +57,11 @@
 		box-shadow: var(--shadow-raised);
 	}
 
-	.eyebrow {
-		margin: 0 0 0.75rem;
-		color: var(--text-muted);
-		font-size: 0.75rem;
-		font-weight: 700;
-		letter-spacing: 0.18em;
+	.brand-logo {
+		display: block;
+		width: 9.5rem;
+		height: auto;
+		margin: 0 0 1.5rem;
 	}
 
 	h1 {

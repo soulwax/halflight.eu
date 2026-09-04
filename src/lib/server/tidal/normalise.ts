@@ -73,6 +73,15 @@ function formatTidalCdnImage(idOrUrl: string, size = '640x640'): string {
 	return `https://resources.tidal.com/images/${path}/${size}.jpg`;
 }
 
+function imageValue(value: unknown): string | undefined {
+	if (typeof value === 'string' && value.length > 0) return value;
+	if (!isRecord(value)) return undefined;
+
+	for (const key of ['href', 'url', 'src', 'id']) {
+		if (typeof value[key] === 'string' && value[key].length > 0) return value[key];
+	}
+}
+
 function imageUrl(resource: ResourceLike): string | undefined {
 	// 1. Direct string attribute
 	const direct = readAttribute(resource, [
@@ -88,40 +97,28 @@ function imageUrl(resource: ResourceLike): string | undefined {
 	]);
 	if (direct) return formatTidalCdnImage(direct);
 
-	// 2. imageLinks or images array in attributes
+	// 2. imageLinks or images in attributes. TIDAL returns either an array of
+	// image objects or a size-keyed object, depending on the resource endpoint.
 	for (const key of ['imageLinks', 'images', 'covers', 'artworks', 'pictures']) {
-		const arr = resource.attributes[key];
-		if (Array.isArray(arr) && arr.length > 0) {
-			for (const item of arr) {
-				if (isRecord(item)) {
-					const href =
-						typeof item.href === 'string'
-							? item.href
-							: typeof item.url === 'string'
-								? item.url
-								: undefined;
-					if (href) return formatTidalCdnImage(href);
-				} else if (typeof item === 'string') {
-					return formatTidalCdnImage(item);
-				}
-			}
+		const images = resource.attributes[key];
+		const candidates = Array.isArray(images)
+			? images
+			: isRecord(images)
+				? Object.entries(images)
+						.sort(([a], [b]) => Number(b) - Number(a))
+						.map(([, value]) => value)
+				: [];
+
+		for (const candidate of candidates) {
+			const image = imageValue(candidate);
+			if (image) return formatTidalCdnImage(image);
 		}
 	}
 
 	// 3. Object-based cover/image/artwork in attributes
 	for (const key of ['albumCover', 'cover', 'image', 'picture', 'artwork']) {
-		const obj = resource.attributes[key];
-		if (isRecord(obj)) {
-			const href =
-				typeof obj.href === 'string'
-					? obj.href
-					: typeof obj.url === 'string'
-						? obj.url
-						: typeof obj.id === 'string'
-							? obj.id
-							: undefined;
-			if (href) return formatTidalCdnImage(href);
-		}
+		const image = imageValue(resource.attributes[key]);
+		if (image) return formatTidalCdnImage(image);
 	}
 }
 

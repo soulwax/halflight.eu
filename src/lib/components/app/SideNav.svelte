@@ -2,6 +2,7 @@
 	import type { AppBrand, AppNavigationItem } from './navigation.js';
 	import { isCurrentNavigationItem } from './navigation.js';
 	import ThemeSelector from '#lib/components/ui/ThemeSelector.svelte';
+	import synLogo from '#lib/assets/syn-logo.svg';
 
 	interface Props {
 		brand: AppBrand;
@@ -37,12 +38,8 @@
 	<div
 		class="flex min-h-20 items-center justify-between border-b border-[var(--border-subtle)] px-7"
 	>
-		<a
-			class="flex items-center gap-3 font-[family-name:var(--font-display)] text-2xl tracking-[0.14em] uppercase"
-			href={brand.href}
-		>
-			<span class="inline-block h-2.5 w-2.5 rotate-45 bg-[var(--accent-gold)]"></span>
-			{brand.label}
+		<a class="block h-10 w-[9.75rem]" href={brand.href} aria-label={brand.label}>
+			<img class="h-full w-full" src={synLogo} alt="" />
 		</a>
 		<span class="font-mono text-[0.65rem] tracking-[0.3em] text-[var(--text-muted)]">I</span>
 	</div>

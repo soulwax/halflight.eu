@@ -4,6 +4,7 @@ import { normaliseSearchResults } from '#lib/server/tidal/normalise';
 import type { PageServerLoad } from './$types';
 
 const MAX_QUERY_LENGTH = 160;
+const SEARCH_INCLUDES = ['tracks.artists', 'tracks.albums', 'albums.artists'];
 
 export const load: PageServerLoad = async (event) => {
 	if (!event.locals.user) redirect(302, '/sign-in');
@@ -22,7 +23,10 @@ export const load: PageServerLoad = async (event) => {
 	try {
 		const document = await tidalApi.search(
 			query,
-			{ types: ['tracks', 'albums', 'artists', 'playlists'] },
+			{
+				types: ['tracks', 'albums', 'artists', 'playlists'],
+				include: SEARCH_INCLUDES
+			},
 			{ fetch: event.fetch, cookies: event.cookies }
 		);
 		return {

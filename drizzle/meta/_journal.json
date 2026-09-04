@@ -78,6 +78,13 @@
       "when": 1788461066895,
       "tag": "0010_hires_quality_constraint",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1788532394477,
+      "tag": "0011_next_kid_colt",
+      "breakpoints": true
     }
   ]
 }

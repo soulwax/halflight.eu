@@ -67,5 +67,13 @@ describe('GET /api/search', () => {
 		expect(data.results.tracks).toHaveLength(1);
 		expect(data.results.tracks[0].title).toBe('Dynamic Track');
 		expect(data.results.tracks[0].artists[0].name).toBe('Dynamic Artist');
+		expect(mocks.search).toHaveBeenCalledWith(
+			'Dynamic',
+			{
+				types: ['tracks', 'albums', 'artists', 'playlists'],
+				include: ['tracks.artists', 'tracks.albums', 'albums.artists']
+			},
+			expect.objectContaining({ fetch: fetchMock })
+		);
 	});
 });

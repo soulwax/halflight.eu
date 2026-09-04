@@ -4,6 +4,7 @@ import { normaliseSearchResults } from '#lib/server/tidal/normalise';
 import type { RequestHandler } from './$types';
 
 const MAX_QUERY_LENGTH = 160;
+const SEARCH_INCLUDES = ['tracks.artists', 'tracks.albums', 'albums.artists'];
 
 export const GET: RequestHandler = async (event) => {
 	if (!event.locals.user) {
@@ -29,7 +30,10 @@ export const GET: RequestHandler = async (event) => {
 	try {
 		const doc = await tidalApi.search(
 			q,
-			{ types: ['tracks', 'albums', 'artists', 'playlists'] },
+			{
+				types: ['tracks', 'albums', 'artists', 'playlists'],
+				include: SEARCH_INCLUDES
+			},
 			{ fetch: event.fetch, cookies: event.cookies }
 		);
 		const results = normaliseSearchResults(doc);

@@ -20,15 +20,35 @@
 	} = $props();
 
 	let imageError = $state(false);
+	let resolvedCover = $state<string | null>(null);
+	let coverLookupAttempted = $state(false);
 
 	const cols = $derived({
 		album: columns.includes('album'),
 		date: columns.includes('date'),
 		duration: columns.includes('duration')
 	});
-	const cover = $derived(track.imageUrl ?? track.album?.imageUrl ?? null);
+	const cover = $derived(track.imageUrl ?? track.album?.imageUrl ?? resolvedCover);
 	const releaseYear = $derived(formatReleaseDate(track.album?.releaseDate));
 	const artistLine = $derived(track.artists ?? []);
+
+	$effect(() => {
+		if ((cover && !imageError) || coverLookupAttempted) return;
+		coverLookupAttempted = true;
+
+		void fetch(`/api/tracks/${encodeURIComponent(track.id)}/cover`)
+			.then(async (response) => {
+				if (!response.ok) return null;
+				return (await response.json()) as { imageUrl?: string | null };
+			})
+			.then((result) => {
+				resolvedCover = result?.imageUrl ?? null;
+				if (resolvedCover) imageError = false;
+			})
+			.catch(() => {
+				// The placeholder remains when artwork cannot be resolved.
+			});
+	});
 </script>
 
 <div class="tt-row" role="row">

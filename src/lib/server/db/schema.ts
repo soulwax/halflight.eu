@@ -1,4 +1,4 @@
-import { pgTable, integer, text, timestamp, boolean, check } from 'drizzle-orm/pg-core';
+import { pgTable, integer, text, timestamp, boolean, check, jsonb } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { user } from './auth.schema';
 
@@ -103,6 +103,19 @@ export const userSettings = pgTable('user_settings', {
 		.primaryKey()
 		.references(() => user.id, { onDelete: 'cascade' }),
 	theme: text('theme').notNull().default('bauhaus-dark'),
+	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+});
+
+/**
+ * Syn-owned, derived listening preferences. This deliberately stores no TIDAL
+ * catalogue text, artwork, audio, or event history: only identifiers and the
+ * weights/controls calculated from the owner's live signals.
+ */
+export const tasteProfile = pgTable('taste_profile', {
+	userId: text('user_id')
+		.primaryKey()
+		.references(() => user.id, { onDelete: 'cascade' }),
+	data: jsonb('data').notNull(),
 	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 });
 
