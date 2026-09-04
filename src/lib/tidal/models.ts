@@ -32,6 +32,7 @@ export interface TrackSummary {
 	popularity?: number;
 	copyright?: string;
 	imageUrl?: string;
+	provenance?: string;
 }
 
 /**

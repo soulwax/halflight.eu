@@ -12,12 +12,15 @@ export const TIDAL_AUTHORIZE_URL = 'https://login.tidal.com/authorize';
 export const TIDAL_TOKEN_URL = 'https://auth.tidal.com/v1/oauth2/token';
 export const TIDAL_API_BASE = 'https://openapi.tidal.com/v2';
 
+export const WRITE_SCOPES = ['playlists.write'] as const;
+
 /** Scopes requested when none are configured. Read-only, broad coverage. */
 export const DEFAULT_SCOPES = [
 	'user.read',
 	'entitlements.read',
 	'collection.read',
 	'playlists.read',
+	'playlists.write',
 	'recommendations.read',
 	'search.read'
 ];

@@ -3,7 +3,8 @@
  * around {@link tidalJson}; anything not covered here is still reachable through
  * `tidalJson('/whatever')` or the `/tidal/api/*` proxy route.
  */
-import { tidalFetch, tidalJson, type TidalRequestContext } from './client';
+import { tidalFetch, tidalJson, getAccessToken, type TidalRequestContext } from './client';
+import { TIDAL_API_BASE } from './config';
 import { TidalApiError } from './errors';
 import type { Document, Resource } from './jsonapi';
 
@@ -36,6 +37,7 @@ export interface PageOptions {
 	include?: string[];
 	countryCode?: string;
 	locale?: string;
+	collapseBy?: string;
 	/** `page[cursor]` value for the next page. */
 	cursor?: string;
 }
@@ -227,7 +229,8 @@ export function getArtistRelationship(
 		`/artists/${encodeURIComponent(id)}/relationships/${relationship}${qs({
 			include: opts.include,
 			countryCode: opts.countryCode,
-			'page[cursor]': opts.cursor
+			'page[cursor]': opts.cursor,
+			collapseBy: opts.collapseBy
 		})}`,
 		{},
 		ctx
@@ -345,4 +348,105 @@ export function addPlaylistItems(
 		{ data: items.map((it) => ({ id: it.id, type: it.type ?? 'tracks' })) },
 		ctx
 	).then(() => undefined);
+}
+
+/** PATCH /playlists/{id} — update title and/or description. */
+export function updatePlaylist(
+	id: string,
+	attrs: { title?: string; description?: string },
+	ctx?: Ctx
+): Promise<Document<Resource>> {
+	return tidalJson(
+		`/playlists/${encodeURIComponent(id)}`,
+		{
+			method: 'PATCH',
+			body: JSON.stringify({
+				data: { type: 'playlists', id, attributes: attrs }
+			})
+		},
+		ctx
+	);
+}
+
+/** DELETE /playlists/{id} — permanently delete a playlist from TIDAL. */
+export async function deletePlaylistRemote(id: string, ctx?: Ctx): Promise<void> {
+	const f = ctx?.fetch ?? fetch;
+	const token = await getAccessToken(ctx);
+	const res = await f(`${TIDAL_API_BASE}/playlists/${encodeURIComponent(id)}`, {
+		method: 'DELETE',
+		headers: {
+			authorization: `Bearer ${token}`,
+			'content-type': 'application/vnd.api+json'
+		}
+	});
+	if (!res.ok && res.status !== 204) {
+		throw new TidalApiError(res.status, res.statusText, await res.text(), `/playlists/${id}`);
+	}
+}
+
+/** DELETE /playlists/{id}/relationships/items — remove specific tracks from a playlist. */
+export async function removePlaylistItems(
+	playlistId: string,
+	items: Array<{ id: string; type?: 'tracks' | 'videos' }>,
+	ctx?: Ctx
+): Promise<void> {
+	// Chunk to batches of 50
+	const BATCH_SIZE = 50;
+	for (let i = 0; i < items.length; i += BATCH_SIZE) {
+		const batch = items.slice(i, i + BATCH_SIZE);
+		const f = ctx?.fetch ?? fetch;
+		const token = await getAccessToken(ctx);
+		const res = await f(
+			`${TIDAL_API_BASE}/playlists/${encodeURIComponent(playlistId)}/relationships/items`,
+			{
+				method: 'DELETE',
+				headers: {
+					authorization: `Bearer ${token}`,
+					'content-type': 'application/vnd.api+json'
+				},
+				body: JSON.stringify({
+					data: batch.map((it) => ({ id: it.id, type: it.type ?? 'tracks' }))
+				})
+			}
+		);
+		if (!res.ok && res.status !== 204) {
+			throw new TidalApiError(
+				res.status,
+				res.statusText,
+				await res.text(),
+				`/playlists/${playlistId}/relationships/items`
+			);
+		}
+	}
+}
+
+/** PUT /playlists/{id}/relationships/items — replace all items (for reorder). */
+export async function replacePlaylistItems(
+	playlistId: string,
+	items: Array<{ id: string; type?: 'tracks' | 'videos' }>,
+	ctx?: Ctx
+): Promise<void> {
+	const f = ctx?.fetch ?? fetch;
+	const token = await getAccessToken(ctx);
+	const res = await f(
+		`${TIDAL_API_BASE}/playlists/${encodeURIComponent(playlistId)}/relationships/items`,
+		{
+			method: 'PUT',
+			headers: {
+				authorization: `Bearer ${token}`,
+				'content-type': 'application/vnd.api+json'
+			},
+			body: JSON.stringify({
+				data: items.map((it) => ({ id: it.id, type: it.type ?? 'tracks' }))
+			})
+		}
+	);
+	if (!res.ok && res.status !== 204) {
+		throw new TidalApiError(
+			res.status,
+			res.statusText,
+			await res.text(),
+			`/playlists/${playlistId}/relationships/items`
+		);
+	}
 }

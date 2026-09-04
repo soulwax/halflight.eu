@@ -17,6 +17,7 @@ export {
 	getTidalConfig,
 	resetTidalConfigCache,
 	DEFAULT_SCOPES,
+	WRITE_SCOPES,
 	TIDAL_API_BASE,
 	TIDAL_AUTHORIZE_URL,
 	TIDAL_TOKEN_URL

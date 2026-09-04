@@ -71,6 +71,7 @@ A good day with Syn:
 - A developer-only diagnostics area for the owner.
 
 ### Important Git rules
+
 - **Author every commit as the repo owner only.** Git is already configured
   (`soulwax`, GPG signing on) — never override `user.*`, committer, or signing.
 - **db migrate and push if changes on db exist, then `pnpm build && pnpm pm2:reload`**: ensure database schema is up-to-date before building and reloading the PM2-managed server.
@@ -1089,11 +1090,11 @@ HiRes starts in about the time a normal track does.
 Goal: Syn knows the owner, and the owner can see what it knows.
 
 - [x] `signals.ts` live readers with sanitised fixtures. (M)
-- [ ] `taste_profile` table, `TasteProfileStore`, merge and decay logic. (M)
-- [ ] Profile build job triggered on demand and after connection. (M)
-- [ ] `/app/settings/taste` — plain-language profile, confidence, pin/damp/exclude, export, reset,
+- [x] `taste_profile` table, `TasteProfileStore`, merge and decay logic. (M)
+- [x] Profile build job triggered on demand and after connection. (M)
+- [x] `/app/settings/taste` — plain-language profile, confidence, pin/damp/exclude, export, reset,
       delete. (L)
-- [ ] Redaction tests over profile output and logs. (S)
+- [x] Redaction tests over profile output and logs. (S)
 
 Exit: the owner reads their profile and says "yes, that's me" — with no generation yet.
 
@@ -1101,12 +1102,12 @@ Exit: the owner reads their profile and says "yes, that's me" — with no genera
 
 Goal: a real set from a real profile.
 
-- [ ] Budgeted `graph.ts` expansion over relationship edges, with degradation. (L)
-- [ ] `candidates.ts` — pool, ISRC dedupe, filters, cooldown. (M)
-- [ ] `score.ts` — affinity / novelty / fit / penalties, fully unit-tested. (L)
-- [ ] `sequence.ts` — energy arcs, spacing, opener/closer. (M)
-- [ ] `/app/generate` with a first knob subset (length, familiarity, seeds) and streamed progress. (L)
-- [ ] Provisional queue in the player; save to Syn; optional TIDAL push. (M)
+- [x] Budgeted `graph.ts` expansion over relationship edges, with degradation. (L)
+- [x] `candidates.ts` — pool, ISRC dedupe, filters, cooldown. (M)
+- [x] `score.ts` — affinity / novelty / fit / penalties, fully unit-tested. (L)
+- [x] `sequence.ts` — energy arcs, spacing, opener/closer. (M)
+- [x] `/app/generate` with a first knob subset (length, familiarity, seeds) and streamed progress. (L)
+- [x] Provisional queue in the player; save to Syn; optional TIDAL push. (M)
 - [ ] Retire the hardcoded `SOUNDSCAPE_QUERIES` generator. (S)
 
 Exit: a generated hour is better than TIDAL's own mix for the owner, and every pick is explainable.

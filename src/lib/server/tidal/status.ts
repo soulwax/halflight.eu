@@ -1,4 +1,4 @@
-import { getTidalConfig } from './config';
+import { getTidalConfig, WRITE_SCOPES } from './config';
 import { TidalConfigError } from './errors';
 import { readPlaybackRecord, readRecord } from './store';
 import type { TokenRowStore } from './store';
@@ -10,6 +10,7 @@ export interface TidalConnectionStatus {
 	configured: boolean;
 	configError?: string;
 	scopes?: string[];
+	hasWriteScopes?: boolean;
 	/** ISO timestamp; when the current access token expires. */
 	expiresAt?: string;
 	/** ISO timestamp; when the record was last obtained or refreshed. */
@@ -68,6 +69,7 @@ export async function getConnectionStatus(store?: TokenRowStore): Promise<TidalC
 			connected: true,
 			configured,
 			scopes: record.scope,
+			hasWriteScopes: WRITE_SCOPES.every((s) => record.scope.includes(s)),
 			expiresAt: new Date(record.expiresAt).toISOString(),
 			obtainedAt: new Date(record.obtainedAt).toISOString(),
 			stale: Date.now() >= record.expiresAt - 60_000,

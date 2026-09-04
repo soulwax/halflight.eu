@@ -291,3 +291,28 @@ export async function refreshTasteProfile(
 	);
 	return rebuildTasteProfile(userId, signals, options.store ?? dbTasteProfileStore, now);
 }
+
+export async function resetTasteProfile(
+	userId: string,
+	store: TasteProfileStore = dbTasteProfileStore,
+	now = new Date()
+): Promise<TasteProfile> {
+	return store.write(userId, emptyTasteProfile(now));
+}
+
+export async function deleteTasteProfile(
+	userId: string,
+	store: TasteProfileStore = dbTasteProfileStore
+): Promise<void> {
+	await store.delete(userId);
+}
+
+export async function updateTasteProfileCustomizations(
+	userId: string,
+	mutator: (profile: TasteProfile) => void,
+	store: TasteProfileStore = dbTasteProfileStore
+): Promise<TasteProfile> {
+	const current = (await store.read(userId)) ?? emptyTasteProfile();
+	mutator(current);
+	return store.write(userId, current);
+}

@@ -43,6 +43,14 @@
 				<span class="badge badge-tier-{player.qualityTier}">{player.qualityLabel}</span>
 			{/if}
 			{#if player.playbackMode === 'embed'}<span class="badge badge-embed">TIDAL</span>{/if}
+			{#if track.provenance}
+				<span
+					class="badge max-w-[180px] truncate border border-[var(--border-subtle)] bg-[var(--surface-canvas)] text-[0.65rem] text-[var(--accent-gold)]"
+					title={track.provenance}
+				>
+					{track.provenance}
+				</span>
+			{/if}
 			{#if player.assessment.warning}
 				<button
 					type="button"

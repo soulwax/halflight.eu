@@ -20,6 +20,8 @@ interface PlayerPrefs {
 	repeatMode: RepeatMode;
 	floatingPos: { x: number; y: number };
 	panel: PlayerPanel;
+	volume?: number;
+	isHeadroomEnabled?: boolean;
 }
 
 const isBrowser = typeof window !== 'undefined';
@@ -58,6 +60,9 @@ export class PlayerState {
 	duration = $state(0);
 	volume = $state(1);
 	isMuted = $state(false);
+	isHeadroomEnabled = $state(false);
+	maxVolume = $derived(this.isHeadroomEnabled ? 1.25 : 1);
+	volumePercent = $derived(Math.round(this.volume * 100));
 	streamUrl = $state<string | null>(null);
 	playbackMode = $state<'direct' | 'embed'>('direct');
 	audioQuality = $state<string | null>(null);
@@ -81,6 +86,9 @@ export class PlayerState {
 	isLyricsOpen = $derived(this.isExpanded && this.panel === 'lyrics');
 
 	private audio: HTMLAudioElement | null = null;
+	private audioContext: AudioContext | null = null;
+	private mediaSourceNode: MediaElementAudioSourceNode | null = null;
+	private gainNode: GainNode | null = null;
 	private hasRestoredPlaybackState = false;
 	private persistenceTimer: ReturnType<typeof setTimeout> | undefined;
 	private lastPersistedPosition = 0;
@@ -94,6 +102,35 @@ export class PlayerState {
 		if (isBrowser) {
 			this.loadPrefs();
 			this.initAudio();
+		}
+	}
+
+	private ensureAudioGraph(): void {
+		if (!isBrowser || !this.audio || this.gainNode) return;
+		try {
+			const AudioCtx =
+				window.AudioContext ||
+				(window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+			if (!AudioCtx) return;
+			if (!this.audioContext) {
+				this.audioContext = new AudioCtx();
+			}
+			if (!this.mediaSourceNode) {
+				this.mediaSourceNode = this.audioContext.createMediaElementSource(this.audio);
+			}
+			if (!this.gainNode) {
+				this.gainNode = this.audioContext.createGain();
+				this.mediaSourceNode.connect(this.gainNode);
+				this.gainNode.connect(this.audioContext.destination);
+			}
+		} catch {
+			// Web Audio API initialization is best-effort fallback to standard audio.volume
+		}
+	}
+
+	private resumeAudioContext(): void {
+		if (this.audioContext && this.audioContext.state === 'suspended') {
+			void this.audioContext.resume().catch(() => {});
 		}
 	}
 
@@ -115,6 +152,14 @@ export class PlayerState {
 			) {
 				this.floatingPos = p.floatingPos;
 			}
+			if (typeof p.isHeadroomEnabled === 'boolean') {
+				this.isHeadroomEnabled = p.isHeadroomEnabled;
+			}
+			if (typeof p.volume === 'number' && !isNaN(p.volume)) {
+				const max = this.isHeadroomEnabled ? 1.25 : 1;
+				this.volume = Math.max(0, Math.min(max, p.volume));
+				this.isMuted = this.volume === 0;
+			}
 		} catch {
 			// Corrupt prefs are not worth surfacing.
 		}
@@ -128,7 +173,9 @@ export class PlayerState {
 				shuffle: this.shuffle,
 				repeatMode: this.repeatMode,
 				floatingPos: this.floatingPos,
-				panel: this.panel
+				panel: this.panel,
+				volume: this.volume,
+				isHeadroomEnabled: this.isHeadroomEnabled
 			};
 			localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
 		} catch {
@@ -472,7 +519,12 @@ export class PlayerState {
 
 	private applyVolume(): void {
 		if (!this.audio) return;
+		this.ensureAudioGraph();
+
 		if (this.isMuted) {
+			if (this.gainNode) {
+				this.gainNode.gain.value = 0;
+			}
 			this.audio.volume = 0;
 			this.audio.muted = true;
 			return;
@@ -482,15 +534,22 @@ export class PlayerState {
 		if (this.isNormalizationEnabled && this.trackReplayGain != null) {
 			// Convert ReplayGain dB to linear multiplier: 10^(dB/20)
 			const multiplier = Math.pow(10, this.trackReplayGain / 20);
-			effVol = Math.max(0, Math.min(1, this.volume * multiplier));
+			effVol = Math.max(0, this.volume * multiplier);
 		}
 
-		this.audio.volume = effVol;
-		this.audio.muted = false;
+		if (this.gainNode) {
+			this.audio.volume = 1;
+			this.audio.muted = false;
+			this.gainNode.gain.value = effVol;
+		} else {
+			this.audio.volume = Math.max(0, Math.min(1, effVol));
+			this.audio.muted = false;
+		}
 	}
 
 	private async loadAndPlayStream(trackId: string): Promise<void> {
 		this.initAudio();
+		this.resumeAudioContext();
 		// Freeze the intended start position and silence the outgoing track before
 		// the async metadata fetch. `isLoading` gates `onTimeUpdate` so a late
 		// `timeupdate` from the old element can't rewrite `currentTime`.
@@ -571,6 +630,7 @@ export class PlayerState {
 
 	togglePlayPause(): void {
 		this.initAudio();
+		this.resumeAudioContext();
 
 		if (this.playbackMode === 'embed') {
 			// The TIDAL embed iframe owns its own transport; just make sure it is
@@ -606,15 +666,26 @@ export class PlayerState {
 	}
 
 	setVolume(vol: number): void {
-		const clamped = Math.max(0, Math.min(vol, 1));
-		this.volume = clamped;
-		this.isMuted = clamped === 0;
+		const max = this.maxVolume;
+		const clamped = Math.max(0, Math.min(vol, max));
+		this.volume = Number(clamped.toFixed(2));
+		this.isMuted = this.volume === 0;
 		this.applyVolume();
+		this.savePrefs();
+	}
+
+	toggleHeadroom(): void {
+		this.isHeadroomEnabled = !this.isHeadroomEnabled;
+		if (!this.isHeadroomEnabled && this.volume > 1) {
+			this.volume = 1;
+		}
+		this.applyVolume();
+		this.savePrefs();
 	}
 
 	/** Apply server-persisted listening preferences whenever the app shell loads. */
 	applyStreamingSettings(settings: { volume: number; loudnessNormalization: boolean }): void {
-		this.volume = Math.max(0, Math.min(1, settings.volume / 100));
+		this.volume = Math.max(0, Math.min(this.maxVolume, settings.volume / 100));
 		this.isMuted = this.volume === 0;
 		this.isNormalizationEnabled = settings.loudnessNormalization;
 		this.applyVolume();

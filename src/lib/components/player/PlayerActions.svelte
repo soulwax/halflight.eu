@@ -7,14 +7,13 @@
 		Mic2,
 		PictureInPicture2,
 		Plus,
-		Volume2,
-		VolumeX,
 		X
 	} from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { player } from '#lib/player/player.svelte.js';
 	import { customPlaylists } from '#lib/player/customPlaylists.svelte.js';
 	import type { TrackSummary } from '#lib/tidal/models';
+	import PlayerVolume from './PlayerVolume.svelte';
 
 	let {
 		track,
@@ -26,29 +25,7 @@
 
 <div class="actions">
 	{#if !isNarrow}
-		<div class="vol">
-			<button
-				type="button"
-				class="a-btn"
-				onclick={() => player.toggleMute()}
-				aria-label={m.player_volume()}
-			>
-				{#if player.isMuted || player.volume === 0}
-					<VolumeX size={15} />
-				{:else}
-					<Volume2 size={15} />
-				{/if}
-			</button>
-			<input
-				type="range"
-				min="0"
-				max="1"
-				step="0.02"
-				value={player.isMuted ? 0 : player.volume}
-				oninput={(e) => player.setVolume(parseFloat(e.currentTarget.value))}
-				aria-label={m.player_volume()}
-			/>
-		</div>
+		<PlayerVolume />
 	{/if}
 
 	<button

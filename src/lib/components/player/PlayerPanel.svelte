@@ -7,6 +7,7 @@
 	import QueuePanel from './panels/QueuePanel.svelte';
 	import LyricsPanel from './panels/LyricsPanel.svelte';
 	import SourcePanel from './panels/SourcePanel.svelte';
+	import PlayerVolume from './PlayerVolume.svelte';
 
 	let {
 		track,
@@ -35,6 +36,10 @@
 		<AlbumArtPanel {track} />
 
 		<div class="panel-main">
+			<div class="mobile-vol">
+				<PlayerVolume />
+			</div>
+
 			<div class="tabs" role="tablist">
 				<button
 					type="button"

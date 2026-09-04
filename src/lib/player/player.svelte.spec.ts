@@ -116,6 +116,82 @@ describe('PlayerState', () => {
 		expect(player.isNormalizationEnabled).toBe(false);
 	});
 
+	it('controls volume and clamps to standard 100% when headroom is disabled', () => {
+		const player = new PlayerState();
+		expect(player.isHeadroomEnabled).toBe(false);
+		expect(player.maxVolume).toBe(1);
+
+		player.setVolume(0.75);
+		expect(player.volume).toBe(0.75);
+		expect(player.volumePercent).toBe(75);
+		expect(player.isMuted).toBe(false);
+
+		// Setting > 1 when headroom disabled clamps to 1
+		player.setVolume(1.2);
+		expect(player.volume).toBe(1);
+		expect(player.volumePercent).toBe(100);
+
+		// Setting <= 0 mutes
+		player.setVolume(0);
+		expect(player.volume).toBe(0);
+		expect(player.isMuted).toBe(true);
+
+		// Negative clamps to 0
+		player.setVolume(-0.5);
+		expect(player.volume).toBe(0);
+	});
+
+	it('supports optional +25% overloudness headroom (up to 125%)', () => {
+		const player = new PlayerState();
+		player.toggleHeadroom();
+		expect(player.isHeadroomEnabled).toBe(true);
+		expect(player.maxVolume).toBe(1.25);
+
+		player.setVolume(1.15);
+		expect(player.volume).toBe(1.15);
+		expect(player.volumePercent).toBe(115);
+
+		// Maxes out at 1.25 (125%)
+		player.setVolume(1.5);
+		expect(player.volume).toBe(1.25);
+		expect(player.volumePercent).toBe(125);
+
+		// Toggling headroom off clamps back down to 1.0 (100%)
+		player.toggleHeadroom();
+		expect(player.isHeadroomEnabled).toBe(false);
+		expect(player.volume).toBe(1);
+		expect(player.volumePercent).toBe(100);
+	});
+
+	it('persists and restores volume and headroom preferences from localStorage', () => {
+		localStorage.setItem(
+			'syn:player:prefs',
+			JSON.stringify({
+				volume: 1.2,
+				isHeadroomEnabled: true
+			})
+		);
+
+		const player = new PlayerState();
+		expect(player.isHeadroomEnabled).toBe(true);
+		expect(player.volume).toBe(1.2);
+		expect(player.volumePercent).toBe(120);
+	});
+
+	it('toggles mute state independently', () => {
+		const player = new PlayerState();
+		player.setVolume(0.8);
+		expect(player.isMuted).toBe(false);
+
+		player.toggleMute();
+		expect(player.isMuted).toBe(true);
+		expect(player.volume).toBe(0.8);
+
+		player.toggleMute();
+		expect(player.isMuted).toBe(false);
+		expect(player.volume).toBe(0.8);
+	});
+
 	it('restores a saved queue and position without starting playback', () => {
 		const player = new PlayerState();
 		player.restorePlaybackState({

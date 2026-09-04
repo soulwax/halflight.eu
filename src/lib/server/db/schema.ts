@@ -49,7 +49,12 @@ export const userPlaylist = pgTable('user_playlist', {
 	itemsJson: text('items_json').notNull().default('[]'),
 	tidalPlaylistId: text('tidal_playlist_id'),
 	createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+	source: text('source').notNull().default('syn'),
+	syncStatus: text('sync_status').notNull().default('local_only'),
+	lastSyncedAt: timestamp('last_synced_at', { withTimezone: true }),
+	remoteEtag: text('remote_etag'),
+	syncError: text('sync_error')
 });
 
 /**

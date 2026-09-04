@@ -15,6 +15,11 @@ export interface SavedPlaylist {
 	tidalPlaylistId?: string | null;
 	createdAt: string;
 	updatedAt: string;
+	source: string;
+	syncStatus: string;
+	lastSyncedAt?: string | null;
+	remoteEtag?: string | null;
+	syncError?: string | null;
 }
 
 let tableInitPromise: Promise<void> | null = null;
@@ -36,7 +41,12 @@ export async function ensurePlaylistTable(): Promise<void> {
 						items_json TEXT NOT NULL DEFAULT '[]',
 						tidal_playlist_id TEXT,
 						created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-						updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+						updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+						source TEXT NOT NULL DEFAULT 'syn',
+						sync_status TEXT NOT NULL DEFAULT 'local_only',
+						last_synced_at TIMESTAMP WITH TIME ZONE,
+						remote_etag TEXT,
+						sync_error TEXT
 					);
 					CREATE INDEX IF NOT EXISTS user_playlist_user_id_idx ON user_playlist(user_id);
 				`);
@@ -72,7 +82,12 @@ export async function getUserPlaylists(userId: string): Promise<SavedPlaylist[]>
 		items: parseItemsJson(r.itemsJson),
 		tidalPlaylistId: r.tidalPlaylistId,
 		createdAt: r.createdAt.toISOString(),
-		updatedAt: r.updatedAt.toISOString()
+		updatedAt: r.updatedAt.toISOString(),
+		source: r.source,
+		syncStatus: r.syncStatus,
+		lastSyncedAt: r.lastSyncedAt?.toISOString() || null,
+		remoteEtag: r.remoteEtag,
+		syncError: r.syncError
 	}));
 }
 
@@ -83,6 +98,8 @@ export async function createUserPlaylist(data: {
 	description?: string;
 	items: TrackSummary[];
 	tidalPlaylistId?: string;
+	source?: string;
+	syncStatus?: string;
 }): Promise<SavedPlaylist> {
 	await ensurePlaylistTable();
 	const id = data.id || `pl_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -97,7 +114,9 @@ export async function createUserPlaylist(data: {
 		itemsJson,
 		tidalPlaylistId: data.tidalPlaylistId || null,
 		createdAt: now,
-		updatedAt: now
+		updatedAt: now,
+		source: data.source || 'syn',
+		syncStatus: data.syncStatus || 'local_only'
 	});
 
 	return {
@@ -108,7 +127,12 @@ export async function createUserPlaylist(data: {
 		items: data.items,
 		tidalPlaylistId: data.tidalPlaylistId || null,
 		createdAt: now.toISOString(),
-		updatedAt: now.toISOString()
+		updatedAt: now.toISOString(),
+		source: data.source || 'syn',
+		syncStatus: data.syncStatus || 'local_only',
+		lastSyncedAt: null,
+		remoteEtag: null,
+		syncError: null
 	};
 }
 
@@ -120,6 +144,10 @@ export async function updateUserPlaylist(
 		description?: string;
 		items?: TrackSummary[];
 		tidalPlaylistId?: string;
+		syncStatus?: string;
+		lastSyncedAt?: Date | null;
+		remoteEtag?: string | null;
+		syncError?: string | null;
 	}
 ): Promise<SavedPlaylist | null> {
 	await ensurePlaylistTable();
@@ -142,6 +170,10 @@ export async function updateUserPlaylist(
 	if (updates.items !== undefined) valuesToUpdate.itemsJson = JSON.stringify(updates.items);
 	if (updates.tidalPlaylistId !== undefined)
 		valuesToUpdate.tidalPlaylistId = updates.tidalPlaylistId || null;
+	if (updates.syncStatus !== undefined) valuesToUpdate.syncStatus = updates.syncStatus;
+	if (updates.lastSyncedAt !== undefined) valuesToUpdate.lastSyncedAt = updates.lastSyncedAt;
+	if (updates.remoteEtag !== undefined) valuesToUpdate.remoteEtag = updates.remoteEtag;
+	if (updates.syncError !== undefined) valuesToUpdate.syncError = updates.syncError;
 
 	await db
 		.update(userPlaylist)
@@ -165,7 +197,12 @@ export async function updateUserPlaylist(
 		items: parseItemsJson(r.itemsJson),
 		tidalPlaylistId: r.tidalPlaylistId,
 		createdAt: r.createdAt.toISOString(),
-		updatedAt: r.updatedAt.toISOString()
+		updatedAt: r.updatedAt.toISOString(),
+		source: r.source,
+		syncStatus: r.syncStatus,
+		lastSyncedAt: r.lastSyncedAt?.toISOString() || null,
+		remoteEtag: r.remoteEtag,
+		syncError: r.syncError
 	};
 }
 
@@ -181,6 +218,8 @@ export async function deleteUserPlaylist(userId: string, playlistId: string): Pr
  * Attempt to export / create the playlist in the connected TIDAL user account.
  * Silently catches and returns null if TIDAL account is disconnected, scopes are
  * read-only, or endpoint returns an error.
+ *
+ * @deprecated Use the background playlist sync worker instead.
  */
 export async function attemptTidalPlaylistSync(
 	title: string,
