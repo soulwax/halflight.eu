@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => {
 	return {
-		setUserTheme: vi.fn()
+		setUserTheme: vi.fn(),
+		setUserVisualStyle: vi.fn()
 	};
 });
 
@@ -12,7 +13,8 @@ vi.mock('#lib/server/user-settings', async () => {
 	);
 	return {
 		...actual,
-		setUserTheme: mocks.setUserTheme
+		setUserTheme: mocks.setUserTheme,
+		setUserVisualStyle: mocks.setUserVisualStyle
 	};
 });
 
@@ -24,6 +26,7 @@ describe('POST /api/settings/theme', () => {
 
 	beforeEach(() => {
 		mocks.setUserTheme.mockReset();
+		mocks.setUserVisualStyle.mockReset();
 		mockCookies = { set: vi.fn() };
 	});
 
@@ -50,11 +53,11 @@ describe('POST /api/settings/theme', () => {
 		expect(data.error).toBe('invalid_json');
 	});
 
-	it('returns 400 for missing theme property', async () => {
+	it('returns 400 for a request without an appearance setting', async () => {
 		const res = await POST(makeEvent({ other: 'value' }));
 		expect(res.status).toBe(400);
 		const data = await res.json();
-		expect(data.error).toBe('missing_theme');
+		expect(data.error).toBe('missing_setting');
 	});
 
 	it('returns 400 for invalid or light theme', async () => {
@@ -87,5 +90,26 @@ describe('POST /api/settings/theme', () => {
 		expect(data.theme).toBe('nord');
 		expect(mocks.setUserTheme).not.toHaveBeenCalled();
 		expect(mockCookies.set).toHaveBeenCalledWith('syn-theme', 'nord', expect.any(Object));
+	});
+
+	it('persists visual style independently', async () => {
+		mocks.setUserVisualStyle.mockResolvedValue({ theme: 'nord', visualStyle: 'cubism' });
+		const res = await POST(makeEvent({ visualStyle: 'cubism' }, { id: 'u123' }));
+		expect(res.status).toBe(200);
+		const data = await res.json();
+		expect(data).toEqual({ ok: true, visualStyle: 'cubism' });
+		expect(mocks.setUserVisualStyle).toHaveBeenCalledWith('u123', 'cubism');
+		expect(mockCookies.set).toHaveBeenCalledWith(
+			'syn-visual-style',
+			'cubism',
+			expect.objectContaining({ path: '/', httpOnly: false })
+		);
+	});
+
+	it('rejects an unknown visual style', async () => {
+		const res = await POST(makeEvent({ visualStyle: 'minimalism' }));
+		expect(res.status).toBe(400);
+		const data = await res.json();
+		expect(data.error).toBe('invalid_visual_style');
 	});
 });

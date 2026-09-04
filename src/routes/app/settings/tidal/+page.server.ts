@@ -8,7 +8,7 @@ import {
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async (event) => {
-	if (!event.locals.user || !event.locals.isAdministrator) redirect(302, '/sign-in');
+	if (!event.locals.user) redirect(302, '/sign-in');
 	const [status, streamingSettings] = await Promise.all([
 		getConnectionStatus(),
 		getStreamingSettings(event.locals.user.id)
@@ -28,7 +28,7 @@ export const load: PageServerLoad = async (event) => {
 
 export const actions: Actions = {
 	saveStreamingSettings: async (event) => {
-		if (!event.locals.user || !event.locals.isAdministrator) redirect(302, '/sign-in');
+		if (!event.locals.user) redirect(302, '/sign-in');
 
 		const formData = await event.request.formData();
 		const settings = parseStreamingSettingsInput({

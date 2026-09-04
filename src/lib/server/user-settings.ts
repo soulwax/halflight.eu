@@ -2,16 +2,34 @@ import { eq } from 'drizzle-orm';
 import { db } from '#lib/server/db';
 import { userSettings } from '#lib/server/db/schema';
 import { log } from '#lib/server/log';
-import { DARK_THEMES, DEFAULT_THEME, isDarkTheme, type DarkTheme } from '#lib/theme/types';
+import {
+	DARK_THEMES,
+	DEFAULT_THEME,
+	DEFAULT_VISUAL_STYLE,
+	isDarkTheme,
+	isVisualStyle,
+	type DarkTheme,
+	type VisualStyle
+} from '#lib/theme/types';
 
-export { DARK_THEMES, DEFAULT_THEME, isDarkTheme, type DarkTheme };
+export {
+	DARK_THEMES,
+	DEFAULT_THEME,
+	DEFAULT_VISUAL_STYLE,
+	isDarkTheme,
+	isVisualStyle,
+	type DarkTheme,
+	type VisualStyle
+};
 
 export interface UserSettings {
 	theme: DarkTheme;
+	visualStyle: VisualStyle;
 }
 
 export const DEFAULT_USER_SETTINGS: UserSettings = {
-	theme: DEFAULT_THEME
+	theme: DEFAULT_THEME,
+	visualStyle: DEFAULT_VISUAL_STYLE
 };
 
 export interface UserSettingsStore {
@@ -23,7 +41,8 @@ export const dbUserSettingsStore: UserSettingsStore = {
 	async read(userId) {
 		const rows = await db
 			.select({
-				theme: userSettings.theme
+				theme: userSettings.theme,
+				visualStyle: userSettings.visualStyle
 			})
 			.from(userSettings)
 			.where(eq(userSettings.userId, userId))
@@ -39,15 +58,20 @@ export const dbUserSettingsStore: UserSettingsStore = {
 				set: { ...settings, updatedAt: new Date() }
 			})
 			.returning({
-				theme: userSettings.theme
+				theme: userSettings.theme,
+				visualStyle: userSettings.visualStyle
 			});
 		return parseUserSettings(rows[0]);
 	}
 };
 
-export function parseUserSettings(value: { theme: string }): UserSettings {
+export function parseUserSettings(value: {
+	theme: string;
+	visualStyle?: string | null;
+}): UserSettings {
 	return {
-		theme: isDarkTheme(value.theme) ? value.theme : DEFAULT_THEME
+		theme: isDarkTheme(value.theme) ? value.theme : DEFAULT_THEME,
+		visualStyle: isVisualStyle(value.visualStyle) ? value.visualStyle : DEFAULT_VISUAL_STYLE
 	};
 }
 
@@ -70,5 +94,15 @@ export async function setUserTheme(
 	theme: DarkTheme,
 	store: UserSettingsStore = dbUserSettingsStore
 ): Promise<UserSettings> {
-	return store.write(userId, { theme });
+	const current = (await store.read(userId)) ?? DEFAULT_USER_SETTINGS;
+	return store.write(userId, { ...current, theme });
+}
+
+export async function setUserVisualStyle(
+	userId: string,
+	visualStyle: VisualStyle,
+	store: UserSettingsStore = dbUserSettingsStore
+): Promise<UserSettings> {
+	const current = (await store.read(userId)) ?? DEFAULT_USER_SETTINGS;
+	return store.write(userId, { ...current, visualStyle });
 }

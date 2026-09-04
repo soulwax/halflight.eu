@@ -28,6 +28,38 @@ export const variables = defineEnvVars({
 		description:
 			'Password for the permanent Syn administrator. Stored only as a Better Auth password hash after first use.'
 	},
+	SMTP_HOST: {
+		schema: optional,
+		description: 'Postfix SMTP host used to deliver account-verification email.'
+	},
+	SMTP_PORT: {
+		schema: optional,
+		description: 'Postfix SMTP port. Defaults to 25.'
+	},
+	SMTP_USER: { schema: optional, description: 'Optional SMTP username.' },
+	SMTP_PASSWORD: { schema: optional, description: 'Optional SMTP password.' },
+	SMTP_FROM: {
+		schema: optional,
+		description: 'Sender address for Syn account-verification email.'
+	},
+	LASTFM_API_KEY: { schema: optional, description: 'Last.fm API key.' },
+	LASTFM_APPLICATION_NAME: {
+		schema: optional,
+		description: 'Registered Last.fm application name.'
+	},
+	LASTFM_REGISTERED_TO: {
+		schema: optional,
+		description: 'Last.fm account to which the application is registered.'
+	},
+	LASTFM_SHARED_SECRET: {
+		schema: optional,
+		description: 'Last.fm API shared secret. Never expose this to the browser.'
+	},
+	LASTFM_TOKEN_ENC_KEY: {
+		schema: optional,
+		description:
+			'Optional base64-encoded 32-byte key for Last.fm session-key encryption. Defaults to a key derived from BETTER_AUTH_SECRET.'
+	},
 	TIDAL_CLIENT_ID: {
 		schema: optional,
 		description: 'TIDAL OAuth client ID from https://developer.tidal.com.'

@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { Check, ChevronDown, Palette } from '@lucide/svelte';
-	import { themeManager, THEME_OPTIONS } from '#lib/theme/theme.svelte.js';
-	import type { DarkTheme } from '#lib/theme/types';
+	import { Check, ChevronDown, Palette, Sparkles } from '@lucide/svelte';
+	import { themeManager, THEME_OPTIONS, VISUAL_STYLE_OPTIONS } from '#lib/theme/theme.svelte.js';
+	import type { DarkTheme, VisualStyle } from '#lib/theme/types';
 
 	let {
 		compact = false,
@@ -17,6 +17,10 @@
 	const activeThemeOption = $derived(
 		THEME_OPTIONS.find((t) => t.id === themeManager.current) ?? THEME_OPTIONS[0]
 	);
+	const activeStyleOption = $derived(
+		VISUAL_STYLE_OPTIONS.find((style) => style.id === themeManager.currentStyle) ??
+			VISUAL_STYLE_OPTIONS[0]
+	);
 
 	function toggleOpen() {
 		isOpen = !isOpen;
@@ -24,6 +28,11 @@
 
 	function selectTheme(themeId: DarkTheme) {
 		themeManager.setTheme(themeId);
+		isOpen = false;
+	}
+
+	function selectVisualStyle(styleId: VisualStyle) {
+		themeManager.setVisualStyle(styleId);
 		isOpen = false;
 	}
 
@@ -49,7 +58,7 @@
 		class="theme-trigger-btn"
 		aria-haspopup="listbox"
 		aria-expanded={isOpen}
-		aria-label={`Current visual theme: ${activeThemeOption.name}. Click to change theme.`}
+		aria-label={`Current colour theme: ${activeThemeOption.name}; visual style: ${activeStyleOption.name}. Click to change appearance.`}
 		onclick={toggleOpen}
 	>
 		<Palette size={compact ? 14 : 16} class="shrink-0 text-[var(--action)]" />
@@ -60,7 +69,7 @@
 			<span style="background: {activeThemeOption.swatch.accent};"></span>
 		</div>
 
-		<span class="theme-name truncate">{activeThemeOption.name}</span>
+		<span class="theme-name truncate">{activeThemeOption.name} · {activeStyleOption.name}</span>
 
 		<ChevronDown
 			size={13}
@@ -72,7 +81,7 @@
 		<div class="theme-dropdown-menu" role="listbox" aria-labelledby={id} tabindex="-1">
 			<div class="theme-dropdown-header">
 				<span class="text-[0.68rem] font-bold tracking-wider text-[var(--text-muted)] uppercase">
-					Dark Themes
+					Colour themes
 				</span>
 			</div>
 
@@ -101,6 +110,37 @@
 							{/if}
 						</div>
 
+						{#if isSelected}
+							<Check size={14} class="shrink-0 text-[var(--action)]" />
+						{/if}
+					</button>
+				{/each}
+			</div>
+
+			<div class="theme-dropdown-header style-header">
+				<span class="text-[0.68rem] font-bold tracking-wider text-[var(--text-muted)] uppercase">
+					Visual styles
+				</span>
+			</div>
+
+			<div class="theme-options-list visual-style-options-list">
+				{#each VISUAL_STYLE_OPTIONS as option (option.id)}
+					{@const isSelected = option.id === themeManager.currentStyle}
+					<button
+						type="button"
+						role="option"
+						aria-selected={isSelected}
+						class="theme-option-item visual-style-option-item"
+						class:selected={isSelected}
+						onclick={() => selectVisualStyle(option.id)}
+					>
+						<Sparkles size={15} class="shrink-0 text-[var(--action)]" />
+						<div class="theme-option-info">
+							<strong class="theme-option-name">{option.name}</strong>
+							{#if !compact}
+								<span class="theme-option-desc">{option.description}</span>
+							{/if}
+						</div>
 						{#if isSelected}
 							<Check size={14} class="shrink-0 text-[var(--action)]" />
 						{/if}
@@ -203,12 +243,13 @@
 	}
 
 	.theme-options-list {
-		max-height: 20rem;
+		max-height: 14rem;
 		overflow-y: auto;
 		padding: 0.35rem;
 		display: flex;
 		flex-direction: column;
 		gap: 0.15rem;
+		max-height: min(14rem, calc(100dvh - 8rem));
 	}
 
 	.theme-option-item {
@@ -234,6 +275,18 @@
 	.theme-option-item.selected {
 		background: var(--surface-selected);
 		border-color: var(--action);
+	}
+
+	.style-header {
+		border-top: 1px solid var(--border-subtle);
+	}
+
+	.visual-style-options-list {
+		max-height: 14rem;
+	}
+
+	.visual-style-option-item {
+		align-items: flex-start;
 	}
 
 	.theme-option-swatch {

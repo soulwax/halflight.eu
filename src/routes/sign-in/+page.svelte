@@ -12,26 +12,46 @@
 	<meta name="description" content={m.sign_in_subtitle()} />
 </svelte:head>
 
-<main class="auth-page">
+<main class="auth-page app-style-canvas">
 	<section class="auth-card" aria-labelledby="sign-in-title">
 		<img class="brand-logo" src={synLogo} alt="Syn" />
 		<h1 id="sign-in-title">{m.sign_in_title()}</h1>
 		<p class="intro">{m.sign_in_subtitle()}</p>
 
-		{#if form?.signInFailed}
+		{#if form?.signInFailed || form?.signUpFailed}
 			<p class="form-error" role="alert">{m.sign_in_error()}</p>
 		{/if}
+		{#if form?.verificationSent}
+			<p class="form-success" role="status">{m.sign_up_verification_sent()}</p>
+		{/if}
 
-		<form method="post" action="?/signInAdministrator" use:enhance class="auth-form">
+		<form method="post" action="?/signIn" use:enhance class="auth-form">
 			<label>
-				<span>{m.sign_in_username()}</span>
-				<input name="username" autocomplete="username" required />
+				<span>{m.sign_in_email()}</span>
+				<input name="email" type="email" autocomplete="email" required />
 			</label>
 			<label>
 				<span>{m.sign_in_password()}</span>
 				<input name="password" type="password" autocomplete="current-password" required />
 			</label>
 			<button type="submit">{m.sign_in_button()}</button>
+		</form>
+
+		<form method="post" action="?/signUp" use:enhance class="auth-form sign-up-form">
+			<h2>{m.sign_up_title()}</h2>
+			<label>
+				<span>{m.sign_in_name()}</span>
+				<input name="name" autocomplete="name" required />
+			</label>
+			<label>
+				<span>{m.sign_in_email()}</span>
+				<input name="email" type="email" autocomplete="email" required />
+			</label>
+			<label>
+				<span>{m.sign_in_password()}</span>
+				<input name="password" type="password" autocomplete="new-password" minlength="8" required />
+			</label>
+			<button type="submit">{m.sign_up_button()}</button>
 		</form>
 
 		<form method="post" action="?/signInSocial">
@@ -122,5 +142,24 @@
 		background: var(--danger-subtle);
 		padding: 0.75rem;
 		color: var(--danger);
+	}
+
+	.form-success {
+		margin: 0 0 1rem;
+		border-radius: 0.75rem;
+		background: var(--success-subtle);
+		padding: 0.75rem;
+		color: var(--success);
+	}
+
+	.sign-up-form {
+		margin-top: 1.5rem;
+		border-top: 1px solid var(--border-subtle);
+		padding-top: 1.5rem;
+	}
+
+	.sign-up-form h2 {
+		margin: 0;
+		font-size: 1.05rem;
 	}
 </style>

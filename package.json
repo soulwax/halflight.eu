@@ -49,6 +49,7 @@
 		"@tailwindcss/typography": "^0.5.19",
 		"@tailwindcss/vite": "^4.3.0",
 		"@types/node": "^24",
+		"@types/nodemailer": "^8.0.1",
 		"@vitest/browser-playwright": "^4.1.8",
 		"@vitest/coverage-v8": "^4.1.8",
 		"auth": "^1.6.23",
@@ -81,6 +82,7 @@
 		"#lib/*": "./src/lib/*"
 	},
 	"dependencies": {
-		"@lucide/svelte": "^1.38.0"
+		"@lucide/svelte": "^1.38.0",
+		"nodemailer": "^9.1.1"
 	}
 }

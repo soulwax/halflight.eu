@@ -15,7 +15,6 @@ import {
 	type TidalTokenRecord,
 	type TokenRowStore
 } from './store';
-import { readTokenCookie, writeTokenCookie } from './cookie';
 import type { Cookies } from '@sveltejs/kit';
 
 /** Refresh this many ms before the real expiry to absorb clock skew / latency. */
@@ -26,7 +25,7 @@ export interface TidalRequestContext {
 	fetch?: typeof fetch;
 	/** Injected row store; defaults to the Postgres-backed store. */
 	store?: TokenRowStore;
-	/** Request cookies for the encrypted, HttpOnly TIDAL session token. */
+	/** Kept for request compatibility; token material is always resolved from the user's DB row. */
 	cookies?: Cookies;
 }
 
@@ -57,7 +56,6 @@ async function refreshAndPersist(
 		});
 	}
 	const next = await inFlightRefresh;
-	if (ctx.cookies) writeTokenCookie(ctx.cookies, next);
 	return next;
 }
 
@@ -73,8 +71,7 @@ function isExpired(record: TidalTokenRecord, now = Date.now()): boolean {
  * @throws {TidalAuthError} when the refresh token is no longer accepted
  */
 export async function getAccessToken(ctx: TidalRequestContext = {}): Promise<string> {
-	let record = ctx.cookies ? readTokenCookie(ctx.cookies) : null;
-	if (!record) record = await loadRecord(ctx.store);
+	let record = await loadRecord(ctx.store);
 	if (isExpired(record)) {
 		record = await refreshAndPersist(record, ctx);
 	}

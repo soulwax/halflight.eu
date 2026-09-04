@@ -37,7 +37,9 @@
 
 <a class="app-skip-link" href="#main-content">{skipLinkLabel}</a>
 
-<div class="min-h-[calc(100dvh-10px)] bg-[var(--surface-canvas)] text-[var(--text-primary)]">
+<div
+	class="app-style-canvas min-h-[calc(100dvh-10px)] bg-[var(--surface-canvas)] text-[var(--text-primary)]"
+>
 	<div
 		class="flex items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--surface-raised)] px-4 py-2.5 md:hidden"
 	>

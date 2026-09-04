@@ -73,13 +73,14 @@ describe('/tidal/api/[...path]', () => {
 		expect(await response.json()).toEqual({ message: 'Not authenticated.' });
 	});
 
-	it('does not call TIDAL for a non-administrator session', async () => {
+	it('allows a signed-in non-administrator to use their own TIDAL connection', async () => {
 		const event = eventFor('GET', { isAdministrator: false });
+		tidal.tidalFetch.mockResolvedValue(new Response('{"data":[]}', { status: 200 }));
 
 		const response = await GET(event as unknown as Parameters<typeof GET>[0]);
 
-		expect(tidal.tidalFetch).not.toHaveBeenCalled();
-		expect(response.status).toBe(401);
+		expect(tidal.tidalFetch).toHaveBeenCalledOnce();
+		expect(response.status).toBe(200);
 	});
 
 	it('returns a safe reconnect response when no TIDAL account is connected', async () => {

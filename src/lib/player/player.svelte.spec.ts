@@ -265,6 +265,33 @@ describe('PlayerState', () => {
 		expect(fetchSpy.mock.calls.some((args) => String(args[0]).endsWith('/cover'))).toBe(false);
 	});
 
+	it('scrobbles once after enough continuous listening time', async () => {
+		const fetchSpy = vi.fn(() => Promise.resolve(new Response(JSON.stringify({ ok: true }))));
+		vi.stubGlobal('fetch', fetchSpy);
+		const player = new PlayerState();
+		player.currentTrack = {
+			...sampleTrack1,
+			duration: 100,
+			album: { id: 'album', title: 'Album' }
+		};
+		const internal = player as unknown as {
+			listenedSeconds: number;
+			trackStartedAt: number;
+			reportScrobbleWhenEligible: () => void;
+		};
+		internal.listenedSeconds = 50;
+		internal.trackStartedAt = 1_700_000_000_000;
+
+		internal.reportScrobbleWhenEligible();
+		await vi.waitFor(() =>
+			expect(fetchSpy).toHaveBeenCalledWith(
+				'/api/lastfm/scrobble',
+				expect.objectContaining({ method: 'POST' })
+			)
+		);
+		expect(fetchSpy).toHaveBeenCalledOnce();
+	});
+
 	it('dragTo clamps the floating window inside the viewport', () => {
 		const player = new PlayerState();
 

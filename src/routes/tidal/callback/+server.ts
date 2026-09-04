@@ -1,5 +1,5 @@
 import { redirect } from '@sveltejs/kit';
-import { exchangeCode, writeRecord, writeTokenCookie, TidalError } from '#lib/server/tidal';
+import { exchangeCode, writeRecord, TidalError } from '#lib/server/tidal';
 import { clearOAuthCookie, readOAuthCookie } from '../oauth-cookie';
 import type { RequestHandler } from './$types';
 
@@ -7,7 +7,7 @@ const fail = (reason: string) =>
 	redirect(303, `/app/settings/tidal?error=${encodeURIComponent(reason)}`);
 
 export const GET: RequestHandler = async (event) => {
-	if (!event.locals.user || !event.locals.isAdministrator) redirect(302, '/sign-in');
+	if (!event.locals.user) redirect(302, '/sign-in');
 
 	const params = event.url.searchParams;
 	const saved = readOAuthCookie(event.cookies);
@@ -21,11 +21,11 @@ export const GET: RequestHandler = async (event) => {
 	if (!code || !state) fail('missing_code');
 	if (!saved) fail('expired_state');
 	if (state !== saved!.state) fail('state_mismatch');
+	if (saved!.userId !== event.locals.user.id) fail('account_mismatch');
 
 	try {
 		const record = await exchangeCode({ code: code!, verifier: saved!.verifier }, event.fetch);
 		await writeRecord(record);
-		writeTokenCookie(event.cookies, record);
 	} catch (err) {
 		if (err instanceof TidalError) fail(err.message);
 		throw err;

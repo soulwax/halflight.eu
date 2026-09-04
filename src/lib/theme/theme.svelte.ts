@@ -1,11 +1,25 @@
-import { DEFAULT_THEME, isDarkTheme, type DarkTheme, type ThemeOption } from './types.js';
+import {
+	DEFAULT_THEME,
+	DEFAULT_VISUAL_STYLE,
+	isDarkTheme,
+	isVisualStyle,
+	type DarkTheme,
+	type ThemeOption,
+	type VisualStyle,
+	type VisualStyleOption
+} from './types.js';
 
 export {
 	DARK_THEMES,
 	DEFAULT_THEME,
+	DEFAULT_VISUAL_STYLE,
 	isDarkTheme,
+	isVisualStyle,
+	VISUAL_STYLES,
 	type DarkTheme,
-	type ThemeOption
+	type ThemeOption,
+	type VisualStyle,
+	type VisualStyleOption
 } from './types.js';
 
 export const THEME_OPTIONS: readonly ThemeOption[] = [
@@ -99,10 +113,40 @@ export const THEME_OPTIONS: readonly ThemeOption[] = [
 	}
 ] as const;
 
+export const VISUAL_STYLE_OPTIONS: readonly VisualStyleOption[] = [
+	{
+		id: 'art-deco',
+		name: 'Art Deco',
+		description: 'Symmetry, brass details, and streamlined luxury'
+	},
+	{ id: 'art-nouveau', name: 'Art Nouveau', description: 'Flowing curves and botanical ornament' },
+	{ id: 'bauhaus', name: 'Bauhaus', description: 'Functional geometry and primary forms' },
+	{
+		id: 'arts-and-crafts',
+		name: 'Arts and Crafts',
+		description: 'Warm materials and hand-made texture'
+	},
+	{ id: 'impressionism', name: 'Impressionism', description: 'Soft light and layered colour' },
+	{ id: 'cubism', name: 'Cubism', description: 'Faceted planes and deliberate angles' },
+	{ id: 'surrealism', name: 'Surrealism', description: 'Dreamlike depth and unexpected forms' },
+	{
+		id: 'expressionism',
+		name: 'Expressionism',
+		description: 'Emotive contrast and energetic marks'
+	},
+	{ id: 'pop-art', name: 'Pop Art', description: 'Graphic dots, bold outlines, and punch' },
+	{
+		id: 'abstract-expressionism',
+		name: 'Abstract Expressionism',
+		description: 'Gestural colour and expansive atmosphere'
+	}
+] as const;
+
 class ThemeManager {
 	current = $state<DarkTheme>(DEFAULT_THEME);
+	currentStyle = $state<VisualStyle>(DEFAULT_VISUAL_STYLE);
 
-	init(serverTheme?: string | null) {
+	init(serverTheme?: string | null, serverStyle?: string | null) {
 		if (typeof window === 'undefined') return;
 
 		let selected: DarkTheme = DEFAULT_THEME;
@@ -128,12 +172,35 @@ class ThemeManager {
 			}
 		}
 
+		let selectedStyle: VisualStyle = DEFAULT_VISUAL_STYLE;
+		if (serverStyle && isVisualStyle(serverStyle)) {
+			selectedStyle = serverStyle;
+		} else {
+			try {
+				const local = localStorage.getItem('syn-visual-style');
+				if (local && isVisualStyle(local)) {
+					selectedStyle = local;
+				} else {
+					const match = document.cookie.match(/(?:^|;\s*)syn-visual-style=([^;]+)/);
+					if (match && isVisualStyle(match[1])) selectedStyle = match[1];
+				}
+			} catch {
+				// Local storage disabled / blocked
+			}
+		}
+
 		this.apply(selected, false);
+		this.applyStyle(selectedStyle, false);
 	}
 
 	setTheme(theme: DarkTheme) {
 		if (!isDarkTheme(theme)) return;
 		this.apply(theme, true);
+	}
+
+	setVisualStyle(style: VisualStyle) {
+		if (!isVisualStyle(style)) return;
+		this.applyStyle(style, true);
 	}
 
 	private apply(theme: DarkTheme, persist: boolean) {
@@ -165,6 +232,36 @@ class ThemeManager {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ theme })
+		}).catch(() => {
+			// Best effort background sync; offline-resilient via localStorage
+		});
+	}
+
+	private applyStyle(style: VisualStyle, persist: boolean) {
+		this.currentStyle = style;
+
+		if (typeof window === 'undefined') return;
+
+		document.documentElement.dataset.style = style;
+
+		if (!persist) return;
+
+		try {
+			localStorage.setItem('syn-visual-style', style);
+		} catch {
+			// ignore storage quotas/restrictions
+		}
+
+		try {
+			document.cookie = `syn-visual-style=${style}; path=/; max-age=31536000; SameSite=Lax`;
+		} catch {
+			// ignore cookie restrictions
+		}
+
+		fetch('/api/settings/theme', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ visualStyle: style })
 		}).catch(() => {
 			// Best effort background sync; offline-resilient via localStorage
 		});

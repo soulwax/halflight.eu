@@ -1,0 +1,1 @@
+ALTER TABLE "user_settings" ADD COLUMN "visual_style" text DEFAULT 'art-deco' NOT NULL;

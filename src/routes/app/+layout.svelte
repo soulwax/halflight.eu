@@ -18,11 +18,12 @@
 		{ href: resolve('/app/search'), label: m.nav_search() },
 		{ href: resolve('/app/library'), label: m.nav_library() },
 		{ href: resolve('/app/mixes'), label: m.nav_mixes() },
+		{ href: resolve('/app/settings/lastfm'), label: m.nav_lastfm() },
 		{ href: resolve('/app/settings/tidal'), label: m.nav_settings() }
 	]);
 
 	$effect(() => {
-		themeManager.init(data.theme);
+		themeManager.init(data.theme, data.visualStyle);
 		player.applyStreamingSettings(data.streamingSettings);
 		player.restorePlaybackState(data.playbackState);
 	});

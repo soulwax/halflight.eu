@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 import { user } from './auth.schema';
 
 /**
- * Single-row store for the personal TIDAL tokens. Both columns hold AES-256-GCM
+ * Per-user store for TIDAL tokens. Both columns hold AES-256-GCM
  * ciphertext (base64 of `iv || authTag || ciphertext`) of a JSON token record;
  * plaintext never touches the database.
  *
@@ -12,16 +12,14 @@ import { user } from './auth.schema';
  * - `playbackSecret` — the TIDAL Link (device-authorization, `r_usr`) token used
  *   for the legacy `api.tidal.com/v1` playback/lyrics/credits surface.
  */
-export const tidalAuth = pgTable(
-	'tidal_auth',
-	{
-		id: integer('id').primaryKey().notNull().default(1),
-		secret: text('secret'),
-		playbackSecret: text('playback_secret'),
-		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
-	},
-	(t) => [check('tidal_auth_singleton', sql`${t.id} = 1`)]
-);
+export const tidalAuth = pgTable('tidal_auth', {
+	userId: text('user_id')
+		.primaryKey()
+		.references(() => user.id, { onDelete: 'cascade' }),
+	secret: text('secret'),
+	playbackSecret: text('playback_secret'),
+	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+});
 
 /**
  * The one, permanent administrator for this personal installation. Owned by Syn
@@ -103,6 +101,7 @@ export const userSettings = pgTable('user_settings', {
 		.primaryKey()
 		.references(() => user.id, { onDelete: 'cascade' }),
 	theme: text('theme').notNull().default('bauhaus-dark'),
+	visualStyle: text('visual_style').notNull().default('art-deco'),
 	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 });
 
@@ -116,6 +115,20 @@ export const tasteProfile = pgTable('taste_profile', {
 		.primaryKey()
 		.references(() => user.id, { onDelete: 'cascade' }),
 	data: jsonb('data').notNull(),
+	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+});
+
+/** A user's encrypted Last.fm session key and scrobbling preferences. */
+export const lastfmConnection = pgTable('lastfm_connection', {
+	userId: text('user_id')
+		.primaryKey()
+		.references(() => user.id, { onDelete: 'cascade' }),
+	username: text('username').notNull(),
+	sessionKey: text('session_key').notNull(),
+	scrobbleEnabled: boolean('scrobble_enabled').notNull().default(true),
+	nowPlayingEnabled: boolean('now_playing_enabled').notNull().default(true),
+	lastScrobbledAt: timestamp('last_scrobbled_at', { withTimezone: true }),
+	createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 });
 

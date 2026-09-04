@@ -45,6 +45,7 @@ export {
 	writePlaybackRecord,
 	clearPlaybackRecord,
 	dbTokenRowStore,
+	createDbTokenRowStore,
 	type TidalTokenRecord,
 	type TokenRowStore,
 	type TokenSlot
@@ -71,6 +72,7 @@ export {
 	type PlaybackDelivery
 } from './stream';
 export { streamSegmentedAudio, __resetSegmentCache } from './segmented';
+export { getTrackCoverId, tidalArtworkUrl, resetArtworkCache } from './artwork';
 export { getRequestedStreamQuality, type StreamingSettingsReader } from './playback';
 export {
 	requestDeviceAuthorization,

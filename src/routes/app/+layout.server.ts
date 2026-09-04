@@ -6,7 +6,7 @@ import { getUserSettings } from '#lib/server/user-settings';
 import type { LayoutServerLoad } from './$types';
 
 export const load: LayoutServerLoad = async (event) => {
-	if (!event.locals.user || !event.locals.isAdministrator) redirect(302, '/sign-in');
+	if (!event.locals.user) redirect(302, '/sign-in');
 
 	const [connection, streamingSettings, playbackState, userSettings] = await Promise.all([
 		getConnectionStatus(),
@@ -24,6 +24,7 @@ export const load: LayoutServerLoad = async (event) => {
 		},
 		streamingSettings,
 		playbackState,
-		theme: userSettings.theme
+		theme: userSettings.theme,
+		visualStyle: userSettings.visualStyle
 	};
 };

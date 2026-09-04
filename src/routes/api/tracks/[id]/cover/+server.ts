@@ -1,11 +1,10 @@
 import { error, json, type RequestHandler } from '@sveltejs/kit';
-import { getConnectionStatus, tidalApi } from '#lib/server/tidal';
-import { normaliseTrackDetail } from '#lib/server/tidal/normalise';
+import { getConnectionStatus, getTrackCoverId } from '#lib/server/tidal';
 
 /**
- * Resolve a track's artwork (and album reference) when the list it came from
- * didn't side-load it — search results and the resumed queue often arrive with
- * no `imageUrl`. Small, cacheable, no audio/token material.
+ * Resolve a player-safe, same-origin artwork URL when the list it came from
+ * carries no cover. TIDAL v2 omits cover identifiers, so this uses the legacy
+ * playback metadata endpoint without returning its CDN URL to the browser.
  */
 export const GET: RequestHandler = async (event) => {
 	if (!event.locals.user) error(401, 'Unauthorized');
@@ -16,14 +15,14 @@ export const GET: RequestHandler = async (event) => {
 	if (!connection.connected) return json({ imageUrl: null, album: null }, { status: 200 });
 
 	try {
-		const document = await tidalApi.getTrack(
-			trackId,
-			{ include: ['albums', 'artists'] },
-			{ fetch: event.fetch, cookies: event.cookies }
-		);
-		const track = normaliseTrackDetail(document);
+		const coverId = await getTrackCoverId(trackId, {
+			ctx: { fetch: event.fetch, cookies: event.cookies }
+		});
 		return json(
-			{ imageUrl: track?.imageUrl ?? null, album: track?.album ?? null },
+			{
+				imageUrl: coverId ? `/api/tracks/${encodeURIComponent(trackId)}/artwork` : null,
+				album: null
+			},
 			{ headers: { 'cache-control': 'private, max-age=3600' } }
 		);
 	} catch {

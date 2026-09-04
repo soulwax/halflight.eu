@@ -84,6 +84,11 @@ export class PlayerState {
 	private hasRestoredPlaybackState = false;
 	private persistenceTimer: ReturnType<typeof setTimeout> | undefined;
 	private lastPersistedPosition = 0;
+	private trackStartedAt = 0;
+	private lastObservedPlaybackTime = 0;
+	private listenedSeconds = 0;
+	private reportedNowPlaying = false;
+	private scrobbledCurrentTrack = false;
 
 	constructor() {
 		if (isBrowser) {
@@ -151,6 +156,7 @@ export class PlayerState {
 
 		this.audio.addEventListener('play', () => {
 			this.isPlaying = true;
+			this.reportNowPlaying();
 		});
 
 		this.audio.addEventListener('pause', () => {
@@ -180,6 +186,10 @@ export class PlayerState {
 		const audio = this.audio;
 		if (!audio || Number.isNaN(audio.currentTime)) return;
 		this.currentTime = audio.currentTime;
+		const elapsed = this.currentTime - this.lastObservedPlaybackTime;
+		if (elapsed > 0 && elapsed <= 5) this.listenedSeconds += elapsed;
+		this.lastObservedPlaybackTime = this.currentTime;
+		this.reportScrobbleWhenEligible();
 		if (Math.abs(this.currentTime - this.lastPersistedPosition) >= 15) {
 			this.lastPersistedPosition = this.currentTime;
 			this.schedulePersistence();
@@ -261,6 +271,11 @@ export class PlayerState {
 	private switchToTrack(track: TrackSummary): void {
 		this.currentTrack = track;
 		this.currentTime = 0;
+		this.trackStartedAt = Date.now();
+		this.lastObservedPlaybackTime = 0;
+		this.listenedSeconds = 0;
+		this.reportedNowPlaying = false;
+		this.scrobbledCurrentTrack = false;
 		this.duration = track.duration || 0;
 		this.hasMediaMetadata = false;
 		this.streamUrl = null;
@@ -284,6 +299,59 @@ export class PlayerState {
 			void this.loadLyrics(track.id);
 			void this.resolveCover(track);
 		}
+	}
+
+	private lastfmPayload():
+		| { artist: string; track: string; album?: string; duration?: number; trackNumber?: number }
+		| undefined {
+		const track = this.currentTrack;
+		const artist = track?.artists[0]?.name?.trim();
+		if (!track || !artist || !track.title.trim()) return undefined;
+		return {
+			artist,
+			track: track.title,
+			...(track.album?.title ? { album: track.album.title } : {}),
+			...(track.duration ? { duration: track.duration } : {}),
+			...(track.trackNumber ? { trackNumber: track.trackNumber } : {})
+		};
+	}
+
+	private reportNowPlaying(): void {
+		if (!isBrowser || this.reportedNowPlaying || !this.currentTrack) return;
+		const payload = this.lastfmPayload();
+		if (!payload) return;
+		this.reportedNowPlaying = true;
+		void fetch('/api/lastfm/now-playing', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify(payload)
+		}).catch(() => {
+			// Last.fm now-playing is intentionally best-effort.
+		});
+	}
+
+	private reportScrobbleWhenEligible(): void {
+		const track = this.currentTrack;
+		if (
+			!isBrowser ||
+			!track ||
+			this.scrobbledCurrentTrack ||
+			!track.duration ||
+			track.duration <= 30
+		) {
+			return;
+		}
+		if (this.listenedSeconds < Math.min(track.duration / 2, 4 * 60)) return;
+		const payload = this.lastfmPayload();
+		if (!payload) return;
+		this.scrobbledCurrentTrack = true;
+		void fetch('/api/lastfm/scrobble', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ ...payload, playedAt: this.trackStartedAt })
+		}).catch(() => {
+			// The next playback is independent of a temporary Last.fm outage.
+		});
 	}
 
 	private coverCache = new SvelteMap<string, string>();

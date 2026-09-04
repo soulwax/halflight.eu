@@ -1,48 +1,43 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { APIError } from 'better-auth/api';
 import { auth } from '#lib/server/auth';
-import {
-	claimFirstAdministrator,
-	getAdministratorEmail,
-	hasAdministratorCredentials
-} from '#lib/server/admin';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = (event) => {
-	if (event.locals.isAdministrator) redirect(302, '/app');
+	if (event.locals.user) redirect(302, '/app');
 	return {};
 };
 
 export const actions: Actions = {
-	signInAdministrator: async (event) => {
+	signIn: async (event) => {
 		const formData = await event.request.formData();
-		const username = formData.get('username')?.toString() ?? '';
+		const email = formData.get('email')?.toString().trim() ?? '';
 		const password = formData.get('password')?.toString() ?? '';
-		if (!hasAdministratorCredentials(username, password)) return fail(400, { signInFailed: true });
-
-		const email = getAdministratorEmail();
+		if (!email || !password) return fail(400, { signInFailed: true });
 
 		try {
-			const result = await auth.api.signInEmail({
+			await auth.api.signInEmail({
 				body: { email, password, callbackURL: '/app' }
 			});
-			if (!(await claimFirstAdministrator(result.user.id)))
-				return fail(403, { signInFailed: true });
-		} catch (error) {
-			if (!(error instanceof APIError)) return fail(500, { signInFailed: true });
-
-			try {
-				const result = await auth.api.signUpEmail({
-					body: { email, password, name: username, callbackURL: '/app' }
-				});
-				if (!(await claimFirstAdministrator(result.user.id)))
-					return fail(403, { signInFailed: true });
-			} catch {
-				return fail(400, { signInFailed: true });
-			}
+		} catch {
+			return fail(400, { signInFailed: true });
 		}
 
 		redirect(302, '/app');
+	},
+	signUp: async (event) => {
+		const formData = await event.request.formData();
+		const name = formData.get('name')?.toString().trim() ?? '';
+		const email = formData.get('email')?.toString().trim() ?? '';
+		const password = formData.get('password')?.toString() ?? '';
+		if (!name || !email || !password) return fail(400, { signUpFailed: true });
+
+		try {
+			await auth.api.signUpEmail({ body: { name, email, password, callbackURL: '/app' } });
+			return { verificationSent: true };
+		} catch (error) {
+			return fail(error instanceof APIError ? 400 : 500, { signUpFailed: true });
+		}
 	},
 	signInSocial: async () => {
 		let authorizeUrl: string | undefined;

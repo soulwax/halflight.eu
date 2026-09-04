@@ -16,6 +16,7 @@ export function oauthCookieOptions(url: URL) {
 export interface OAuthCookiePayload {
 	state: string;
 	verifier: string;
+	userId: string;
 }
 
 export function readOAuthCookie(cookies: Cookies): OAuthCookiePayload | null {
@@ -23,7 +24,12 @@ export function readOAuthCookie(cookies: Cookies): OAuthCookiePayload | null {
 	if (!raw) return null;
 	try {
 		const parsed = JSON.parse(raw) as OAuthCookiePayload;
-		if (typeof parsed.state === 'string' && typeof parsed.verifier === 'string') return parsed;
+		if (
+			typeof parsed.state === 'string' &&
+			typeof parsed.verifier === 'string' &&
+			typeof parsed.userId === 'string'
+		)
+			return parsed;
 	} catch {
 		/* fall through */
 	}

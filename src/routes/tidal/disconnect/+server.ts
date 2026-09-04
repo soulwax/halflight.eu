@@ -4,7 +4,7 @@ import { clearOAuthCookie } from '../oauth-cookie';
 import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async (event) => {
-	if (!event.locals.user || !event.locals.isAdministrator) redirect(302, '/sign-in');
+	if (!event.locals.user) redirect(302, '/sign-in');
 
 	// TIDAL exposes no token-revocation endpoint, so disconnecting is a local
 	// wipe: remove both encrypted tokens and any in-flight cookies.

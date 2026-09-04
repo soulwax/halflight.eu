@@ -274,11 +274,11 @@
 		<div class="card-indicator indicator-yellow"></div>
 		<div class="mb-2 flex items-center gap-2">
 			<Palette size={20} class="text-[var(--action)]" />
-			<h2 id="theme-settings-title" class="text-xl font-bold">Visual Theme</h2>
+			<h2 id="theme-settings-title" class="text-xl font-bold">Appearance</h2>
 		</div>
 		<p class="mb-4 text-sm text-[var(--text-muted)]">
-			Select from several well-known dark themes. Your choice is persisted to local storage and
-			synchronized to your account.
+			Pair a colour theme with an art direction. Both choices are persisted locally and synchronized
+			to your account.
 		</p>
 		<div class="max-w-xs">
 			<ThemeSelector id="settings-theme-dropdown" />

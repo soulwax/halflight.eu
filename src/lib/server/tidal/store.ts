@@ -32,54 +32,79 @@ export interface TokenRowStore {
 	clear(slot?: TokenSlot): Promise<void>;
 }
 
+/** Build a token store isolated to one Syn account. */
+export function createDbTokenRowStore(userId: string): TokenRowStore {
+	return {
+		async read(slot = 'primary') {
+			const [{ db }, { tidalAuth }, { eq }] = await Promise.all([
+				import('#lib/server/db'),
+				import('#lib/server/db/schema'),
+				import('drizzle-orm')
+			]);
+			const column = slot === 'playback' ? tidalAuth.playbackSecret : tidalAuth.secret;
+			const rows = await db
+				.select({ secret: column })
+				.from(tidalAuth)
+				.where(eq(tidalAuth.userId, userId))
+				.limit(1);
+			return rows[0]?.secret ?? null;
+		},
+		async write(secret, slot = 'primary') {
+			const [{ db }, { tidalAuth }] = await Promise.all([
+				import('#lib/server/db'),
+				import('#lib/server/db/schema')
+			]);
+			const now = new Date();
+			const insert =
+				slot === 'playback'
+					? { userId, playbackSecret: secret, updatedAt: now }
+					: { userId, secret, updatedAt: now };
+			const update =
+				slot === 'playback'
+					? { playbackSecret: secret, updatedAt: now }
+					: { secret, updatedAt: now };
+			await db
+				.insert(tidalAuth)
+				.values(insert)
+				.onConflictDoUpdate({ target: tidalAuth.userId, set: update });
+		},
+		async clear(slot = 'primary') {
+			const [{ db }, { tidalAuth }, { eq }] = await Promise.all([
+				import('#lib/server/db'),
+				import('#lib/server/db/schema'),
+				import('drizzle-orm')
+			]);
+			const set =
+				slot === 'playback'
+					? { playbackSecret: null, updatedAt: new Date() }
+					: { secret: null, updatedAt: new Date() };
+			await db.update(tidalAuth).set(set).where(eq(tidalAuth.userId, userId));
+		}
+	};
+}
+
+async function requestTokenRowStore(): Promise<TokenRowStore> {
+	const { getRequestEvent } = await import('$app/server');
+	const userId = getRequestEvent().locals.user?.id;
+	if (!userId)
+		throw new TidalStoreError('A signed-in Syn user is required to access TIDAL tokens.');
+	return createDbTokenRowStore(userId);
+}
+
 /**
- * Default {@link TokenRowStore}: the `tidal_auth` singleton row via Drizzle. The
- * database module is imported lazily so that importing this file (e.g. in a unit
- * test with an injected store) does not require `DATABASE_URL`.
+ * Request-scoped default token store. A server request can only reach the row
+ * belonging to its authenticated Syn user; tests and background code inject a
+ * store explicitly.
  */
 export const dbTokenRowStore: TokenRowStore = {
 	async read(slot = 'primary') {
-		const [{ db }, { tidalAuth }, { eq }] = await Promise.all([
-			import('#lib/server/db'),
-			import('#lib/server/db/schema'),
-			import('drizzle-orm')
-		]);
-		const column = slot === 'playback' ? tidalAuth.playbackSecret : tidalAuth.secret;
-		const rows = await db
-			.select({ secret: column })
-			.from(tidalAuth)
-			.where(eq(tidalAuth.id, 1))
-			.limit(1);
-		return rows[0]?.secret ?? null;
+		return (await requestTokenRowStore()).read(slot);
 	},
 	async write(secret, slot = 'primary') {
-		const [{ db }, { tidalAuth }] = await Promise.all([
-			import('#lib/server/db'),
-			import('#lib/server/db/schema')
-		]);
-		const now = new Date();
-		const insert =
-			slot === 'playback'
-				? { id: 1, playbackSecret: secret, updatedAt: now }
-				: { id: 1, secret, updatedAt: now };
-		const update =
-			slot === 'playback' ? { playbackSecret: secret, updatedAt: now } : { secret, updatedAt: now };
-		await db
-			.insert(tidalAuth)
-			.values(insert)
-			.onConflictDoUpdate({ target: tidalAuth.id, set: update });
+		await (await requestTokenRowStore()).write(secret, slot);
 	},
 	async clear(slot = 'primary') {
-		const [{ db }, { tidalAuth }, { eq }] = await Promise.all([
-			import('#lib/server/db'),
-			import('#lib/server/db/schema'),
-			import('drizzle-orm')
-		]);
-		const set =
-			slot === 'playback'
-				? { playbackSecret: null, updatedAt: new Date() }
-				: { secret: null, updatedAt: new Date() };
-		await db.update(tidalAuth).set(set).where(eq(tidalAuth.id, 1));
+		await (await requestTokenRowStore()).clear(slot);
 	}
 };
 
