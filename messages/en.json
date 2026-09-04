@@ -349,5 +349,8 @@
 	"admin_name_label": "Display Name",
 	"admin_email_label": "Email Address",
 	"admin_password_label": "Password",
-	"admin_make_admin_label": "Grant Administrator Rights"
+	"admin_make_admin_label": "Grant Administrator Rights",
+	"admin_close": "Close",
+	"admin_submit_create": "Submit & Create",
+	"admin_no_users": "No users found"
 }

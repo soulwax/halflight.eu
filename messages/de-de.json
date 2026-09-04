@@ -349,5 +349,8 @@
 	"admin_name_label": "Anzeigename",
 	"admin_email_label": "E-Mail-Adresse",
 	"admin_password_label": "Passwort",
-	"admin_make_admin_label": "Administratorrechte vergeben"
+	"admin_make_admin_label": "Administratorrechte vergeben",
+	"admin_close": "Schließen",
+	"admin_submit_create": "Erstellen",
+	"admin_no_users": "Keine Benutzer gefunden"
 }

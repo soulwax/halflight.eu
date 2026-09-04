@@ -23,7 +23,7 @@
 
 	$effect(() => {
 		if (customPlaylists.isImportOpen) {
-			loadPlaylists();
+			void loadPlaylists();
 		} else {
 			// Reset state on close
 			playlists = [];

@@ -59,7 +59,7 @@
 		player.play(target, summaries);
 	}
 
-	async function saveToPlaylists() {
+	function saveToPlaylists() {
 		if (!currentSet || currentSet.tracks.length === 0) return;
 		const summaries = currentSet.tracks.map(toTrackSummary);
 		const now = new Date();

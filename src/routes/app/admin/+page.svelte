@@ -237,6 +237,9 @@
 								class="flex items-center gap-1.5 font-mono {data.globalInfo.dbLatencyMs >= 0
 									? 'text-[var(--accent-jade)]'
 									: 'text-[var(--danger)]'}"
+								title={data.globalInfo.dbLatencyMs >= 0
+									? `${data.globalInfo.dbLatencyMs} ms query latency`
+									: 'Database query error'}
 							>
 								<span
 									class="h-2 w-2 rounded-full {data.globalInfo.dbLatencyMs >= 0
@@ -326,7 +329,7 @@
 							class="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]"
 							onclick={() => (showCreateModal = false)}
 						>
-							Close
+							{m.admin_close()}
 						</button>
 					</div>
 
@@ -397,7 +400,7 @@
 								<span>{m.admin_make_admin_label()}</span>
 							</label>
 
-							<Button type="submit" variant="primary" size="sm">Submit & Create</Button>
+							<Button type="submit" variant="primary" size="sm">{m.admin_submit_create()}</Button>
 						</div>
 					</form>
 				</div>
@@ -526,6 +529,7 @@
 														variant="ghost"
 														size="sm"
 														title={m.admin_action_demote()}
+														ariaLabel={m.admin_action_demote()}
 													>
 														<UserX size={14} class="text-[var(--danger)]" />
 													</Button>
@@ -538,13 +542,14 @@
 														variant="ghost"
 														size="sm"
 														title={m.admin_action_promote()}
+														ariaLabel={m.admin_action_promote()}
 													>
 														<UserCheck size={14} class="text-[var(--action)]" />
 													</Button>
 												</form>
 											{/if}
 
-											<!-- Status toggles: Ban / Unban / Archive -->
+											<!-- Status toggles: Ban / Unban / Archive / Unarchive -->
 											{#if user.status === 'banned'}
 												<form method="POST" action="?/unban" use:enhance class="inline">
 													<input type="hidden" name="targetUserId" value={user.id} />
@@ -553,6 +558,7 @@
 														variant="ghost"
 														size="sm"
 														title={m.admin_action_unban()}
+														ariaLabel={m.admin_action_unban()}
 													>
 														<RefreshCw size={14} class="text-[var(--accent-jade)]" />
 													</Button>
@@ -565,6 +571,7 @@
 														variant="ghost"
 														size="sm"
 														title={m.admin_action_ban()}
+														ariaLabel={m.admin_action_ban()}
 													>
 														<ShieldAlert size={14} class="text-[var(--danger)]" />
 													</Button>
@@ -572,13 +579,14 @@
 											{/if}
 
 											{#if user.status === 'archived'}
-												<form method="POST" action="?/unban" use:enhance class="inline">
+												<form method="POST" action="?/unarchive" use:enhance class="inline">
 													<input type="hidden" name="targetUserId" value={user.id} />
 													<Button
 														type="submit"
 														variant="ghost"
 														size="sm"
 														title={m.admin_action_unarchive()}
+														ariaLabel={m.admin_action_unarchive()}
 													>
 														<RefreshCw size={14} class="text-amber-400" />
 													</Button>
@@ -591,6 +599,7 @@
 														variant="ghost"
 														size="sm"
 														title={m.admin_action_archive()}
+														ariaLabel={m.admin_action_archive()}
 													>
 														<Archive size={14} class="text-amber-400" />
 													</Button>
@@ -619,6 +628,7 @@
 													variant="ghost"
 													size="sm"
 													title={m.admin_action_kick()}
+													ariaLabel={m.admin_action_kick()}
 												>
 													<Trash2 size={14} class="text-[var(--danger)]" />
 												</Button>
@@ -628,6 +638,16 @@
 								</td>
 							</tr>
 						{/each}
+						{#if filteredUsers.length === 0}
+							<tr>
+								<td
+									colspan="5"
+									class="px-5 py-10 text-center text-sm text-[var(--text-muted)] italic"
+								>
+									{m.admin_no_users()}
+								</td>
+							</tr>
+						{/if}
 					</tbody>
 				</table>
 			</div>

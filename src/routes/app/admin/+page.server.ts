@@ -1,5 +1,5 @@
 import { error, fail } from '@sveltejs/kit';
-import { count, sql } from 'drizzle-orm';
+import { count } from 'drizzle-orm';
 import { db } from '#lib/server/db';
 import { user } from '#lib/server/db/auth.schema';
 import { administrator, userPlaylist, tidalAuth } from '#lib/server/db/schema';
@@ -21,30 +21,33 @@ export const load: PageServerLoad = async (event) => {
 		throw error(403, 'Forbidden: Administrator access required');
 	}
 
-	const startTime = performance.now();
-	let dbLatencyMs: number;
-	let userCount = 0;
-	let adminCount = 0;
-	let playlistCount = 0;
-	let tidalAuthCount = 0;
+	const dbStats = await (async () => {
+		const startTime = performance.now();
+		try {
+			const [uCount, aCount, pCount, tCount] = await Promise.all([
+				db.select({ value: count() }).from(user),
+				db.select({ value: count() }).from(administrator),
+				db.select({ value: count() }).from(userPlaylist),
+				db.select({ value: count() }).from(tidalAuth)
+			]);
 
-	try {
-		const [uCount, aCount, pCount, tCount] = await Promise.all([
-			db.select({ value: count() }).from(user),
-			db.select({ value: count() }).from(administrator),
-			db.select({ value: count() }).from(userPlaylist),
-			db.select({ value: count() }).from(tidalAuth),
-			db.execute(sql`SELECT 1`)
-		]);
-
-		dbLatencyMs = Math.round((performance.now() - startTime) * 10) / 10;
-		userCount = Number(uCount[0]?.value ?? 0);
-		adminCount = Number(aCount[0]?.value ?? 0);
-		playlistCount = Number(pCount[0]?.value ?? 0);
-		tidalAuthCount = Number(tCount[0]?.value ?? 0);
-	} catch {
-		dbLatencyMs = -1;
-	}
+			return {
+				dbLatencyMs: Math.round((performance.now() - startTime) * 10) / 10,
+				userCount: Number(uCount[0]?.value ?? 0),
+				adminCount: Number(aCount[0]?.value ?? 0),
+				playlistCount: Number(pCount[0]?.value ?? 0),
+				tidalAuthCount: Number(tCount[0]?.value ?? 0)
+			};
+		} catch {
+			return {
+				dbLatencyMs: -1,
+				userCount: 0,
+				adminCount: 0,
+				playlistCount: 0,
+				tidalAuthCount: 0
+			};
+		}
+	})();
 
 	const mem = process.memoryUsage();
 	const tidalConn = await getConnectionStatus().catch(() => ({
@@ -63,11 +66,11 @@ export const load: PageServerLoad = async (event) => {
 			memoryRssMb: Math.round(mem.rss / 1024 / 1024),
 			memoryHeapUsedMb: Math.round(mem.heapUsed / 1024 / 1024),
 			memoryHeapTotalMb: Math.round(mem.heapTotal / 1024 / 1024),
-			dbLatencyMs,
-			userCount,
-			adminCount,
-			playlistCount,
-			tidalAuthCount,
+			dbLatencyMs: dbStats.dbLatencyMs,
+			userCount: dbStats.userCount,
+			adminCount: dbStats.adminCount,
+			playlistCount: dbStats.playlistCount,
+			tidalAuthCount: dbStats.tidalAuthCount,
 			tidal: {
 				configured: tidalConn.configured,
 				connected: tidalConn.connected,
@@ -201,6 +204,25 @@ export const actions: Actions = {
 
 		await setUserStatus(targetUserId, 'active');
 		return { success: true, message: 'User status restored to active' };
+	},
+
+	unarchive: async (event) => {
+		const currentUser = event.locals.user;
+		if (!currentUser || !event.locals.isAdministrator) {
+			throw error(403, 'Forbidden');
+		}
+
+		const data = await event.request.formData();
+		const targetUserId = String(data.get('targetUserId') ?? '').trim();
+		if (!targetUserId) return fail(400, { error: 'Missing target user ID' });
+
+		const check = await canManageUser(currentUser.id, targetUserId, 'unban');
+		if (!check.allowed) {
+			return fail(403, { error: check.reason ?? 'Action not permitted' });
+		}
+
+		await setUserStatus(targetUserId, 'active');
+		return { success: true, message: 'User account unarchived' };
 	},
 
 	createUser: async (event) => {

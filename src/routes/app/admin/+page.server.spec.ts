@@ -206,6 +206,17 @@ describe('/app/admin +page.server', () => {
 			expect(res).toEqual({ success: true, message: 'User status restored to active' });
 		});
 
+		it('unarchive restores user status to active', async () => {
+			expect.assertions(2);
+			mocks.canManageUser.mockResolvedValue({ allowed: true });
+
+			const event = createEvent({ formData: { targetUserId: 'u-2' } });
+			const res = await (actions.unarchive as any)(event);
+
+			expect(mocks.setUserStatus).toHaveBeenCalledWith('u-2', 'active');
+			expect(res).toEqual({ success: true, message: 'User account unarchived' });
+		});
+
 		it('createUser signs up a user and adds admin privileges when makeAdmin is checked', async () => {
 			expect.assertions(3);
 			mocks.signUpEmail.mockResolvedValue({ user: { id: 'new-u' } });
