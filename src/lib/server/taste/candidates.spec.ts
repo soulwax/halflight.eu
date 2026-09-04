@@ -55,11 +55,39 @@ describe('candidates filtering', () => {
 		expect(result.map((r) => r.id)).toEqual(['t1']);
 	});
 
-	it('drops cooldown track IDs', () => {
+	it('checks every credited artist and keeps an eligible duplicate variant', () => {
+		const profile = emptyTasteProfile();
+		profile.exclusions.artists = ['excluded-feature'];
+		const variants: GraphCandidateTrack[] = [
+			{
+				id: 'ineligible-variant',
+				title: 'Same recording',
+				isrc: 'ISRC-ELIGIBLE-VARIANT',
+				artists: [
+					{ id: 'anchor', name: 'Anchor Artist' },
+					{ id: 'excluded-feature', name: 'Excluded Feature' }
+				],
+				provenance: { edge: 'anchor', seedArtistId: 'anchor' }
+			},
+			{
+				id: 'eligible-variant',
+				title: 'Same recording (solo)',
+				isrc: 'ISRC-ELIGIBLE-VARIANT',
+				artists: [{ id: 'anchor', name: 'Anchor Artist' }],
+				provenance: { edge: 'anchor', seedArtistId: 'anchor' }
+			}
+		];
+
+		const result = filterCandidates(variants, profile);
+
+		expect(result.map((track) => track.id)).toEqual(['eligible-variant']);
+	});
+
+	it('drops cooldown track IDs without suppressing an eligible recording variant', () => {
 		const profile = emptyTasteProfile();
 		const cooldown = new Set(['t1']);
 
 		const result = filterCandidates(dummyTracks, profile, cooldown);
-		expect(result.map((r) => r.id)).toEqual(['t3', 't4']);
+		expect(result.map((r) => r.id)).toEqual(['t2', 't3', 't4']);
 	});
 });

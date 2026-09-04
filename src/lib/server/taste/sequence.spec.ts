@@ -66,4 +66,20 @@ describe('set sequencing', () => {
 		const sequenced = sequenceCandidates(candidates, { targetCount: 2 });
 		expect(sequenced.length).toBe(2);
 	});
+
+	it('applies repeat penalties while selecting and is stable regardless of input order', () => {
+		const repeatHeavy: ScoredCandidate[] = [
+			{ ...candidates[0], id: 'a-first', score: 1, affinity: 1 },
+			{ ...candidates[1], id: 'a-second', score: 0.99, affinity: 0.7 },
+			{ ...candidates[1], id: 'a-third', score: 0.98, affinity: 0.6 },
+			{ ...candidates[2], id: 'b-first', score: 0.8, affinity: 0.5 },
+			{ ...candidates[3], id: 'c-first', score: 0.79, affinity: 0.4 }
+		];
+
+		const selected = sequenceCandidates(repeatHeavy, { targetCount: 3 });
+		const reversed = sequenceCandidates([...repeatHeavy].reverse(), { targetCount: 3 });
+
+		expect(selected.map((track) => track.id)).toEqual(['a-first', 'b-first', 'c-first']);
+		expect(reversed.map((track) => track.id)).toEqual(selected.map((track) => track.id));
+	});
 });

@@ -26,22 +26,12 @@ export function filterCandidates(
 		// 1. Basic validity
 		if (!track.id || !track.title) continue;
 
-		// 2. ID deduplication
-		if (seenTrackIds.has(track.id)) continue;
-
-		// 3. ISRC deduplication (recording-level dedupe across remasters/singles)
-		if (track.isrc) {
-			if (seenIsrcs.has(track.isrc)) continue;
-			seenIsrcs.add(track.isrc);
-		}
-		seenTrackIds.add(track.id);
-
-		// 4. Cooldown suppression
+		// 2. Eligibility must happen before recording-level deduplication. An
+		// ineligible variant must not suppress an eligible remaster or release.
 		if (cooldownTrackIds.has(track.id)) continue;
+		if (track.artists.some((artist) => excludedArtists.has(artist.id))) continue;
 
-		// 5. Exclusions filter
 		const primaryArtist = track.artists[0] ?? { id: '', name: '' };
-		if (excludedArtists.has(primaryArtist.id)) continue;
 
 		let decade: number | undefined;
 		if (track.releaseDate) {
@@ -51,6 +41,13 @@ export function filterCandidates(
 				if (excludedEras.has(decade)) continue;
 			}
 		}
+
+		// 3. ID and ISRC deduplication apply only to candidates that are eligible
+		// for this set. This keeps fallback variants available.
+		if (seenTrackIds.has(track.id)) continue;
+		if (track.isrc && seenIsrcs.has(track.isrc)) continue;
+		seenTrackIds.add(track.id);
+		if (track.isrc) seenIsrcs.add(track.isrc);
 
 		filtered.push({
 			...track,

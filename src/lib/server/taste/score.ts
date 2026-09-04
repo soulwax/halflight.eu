@@ -1,6 +1,8 @@
 import type { FilteredCandidate } from './candidates';
 import type { TasteProfile } from './profile';
 
+export const ARTIST_REPEAT_PENALTY = 0.35;
+
 export interface ScoredCandidate extends FilteredCandidate {
 	affinity: number;
 	novelty: number;
@@ -41,7 +43,7 @@ export function scoreCandidate(
 
 	// 3. Penalty for artist over-representation
 	const count = options.artistCounts?.get(candidate.primaryArtistId) ?? 0;
-	const penalty = count * 0.35;
+	const penalty = count * ARTIST_REPEAT_PENALTY;
 
 	// 4. Combined transparent score
 	const score = Number((affinity * wFam + novelty * wDisc - penalty).toFixed(4));
