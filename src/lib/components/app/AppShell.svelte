@@ -2,9 +2,7 @@
 	import type { Snippet } from 'svelte';
 	import MobileNav from './MobileNav.svelte';
 	import SideNav from './SideNav.svelte';
-	import ThemeSelector from '#lib/components/ui/ThemeSelector.svelte';
 	import type { AppBrand, AppNavigationItem } from './navigation.js';
-	import synLogo from '#lib/assets/syn-logo.svg';
 
 	interface Props {
 		children: Snippet;
@@ -40,17 +38,6 @@
 <div
 	class="app-style-canvas min-h-[calc(100dvh-10px)] bg-[var(--surface-canvas)] text-[var(--text-primary)]"
 >
-	<div
-		class="flex items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--surface-raised)] px-4 py-2.5 md:hidden"
-	>
-		<a class="block h-8 w-[7.75rem]" href={brand.href} aria-label={brand.label}>
-			<img class="h-full w-full" src={synLogo} alt="" />
-		</a>
-		<div class="w-44">
-			<ThemeSelector compact={true} id="mobile-theme-selector" />
-		</div>
-	</div>
-
 	<div class="mx-auto flex min-h-[calc(100dvh-10px)] max-w-screen-2xl">
 		<SideNav
 			{brand}

@@ -9,7 +9,8 @@ const SEARCH_INCLUDES = ['tracks.artists', 'tracks.albums', 'albums.artists'];
 export const load: PageServerLoad = async (event) => {
 	if (!event.locals.user) redirect(302, '/sign-in');
 
-	const query = event.url.searchParams.get('q')?.trim() ?? '';
+	const query =
+		(event.url.searchParams.get('search') ?? event.url.searchParams.get('q'))?.trim() ?? '';
 	const connection = await getConnectionStatus();
 
 	if (!connection.connected || !query) {

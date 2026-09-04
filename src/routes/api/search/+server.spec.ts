@@ -76,4 +76,22 @@ describe('GET /api/search', () => {
 			expect.objectContaining({ fetch: fetchMock })
 		);
 	});
+
+	it('accepts search query parameter ?search= as alternative to ?q=', async () => {
+		mocks.getConnectionStatus.mockResolvedValue({ connected: true });
+		mocks.search.mockResolvedValue({
+			data: [],
+			included: []
+		});
+
+		const res = await GET(event('http://localhost/api/search?search=Aphex+Twin'));
+		const data = await res.json();
+		expect(data.results).toEqual({
+			tracks: [],
+			albums: [],
+			artists: [],
+			playlists: []
+		});
+		expect(mocks.search).toHaveBeenCalledWith('Aphex Twin', expect.any(Object), expect.any(Object));
+	});
 });

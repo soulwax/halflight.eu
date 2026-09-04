@@ -11,7 +11,7 @@ export const GET: RequestHandler = async (event) => {
 		error(401, 'Unauthorized');
 	}
 
-	const q = event.url.searchParams.get('q')?.trim() ?? '';
+	const q = (event.url.searchParams.get('search') ?? event.url.searchParams.get('q'))?.trim() ?? '';
 	if (!q) {
 		return json({
 			results: { tracks: [], albums: [], artists: [], playlists: [] }

@@ -19,11 +19,49 @@
 	let isSearching = $state(false);
 	let urlDetected = $state<string | null>(null);
 	let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+	let activeAbortController: AbortController | null = null;
+	let lastPropQuery = $state<string | undefined>(undefined);
 
-	$effect(() => {
-		searchQuery = data.query;
-		liveResults = data.results;
+	$effect.pre(() => {
+		if (data.query !== lastPropQuery) {
+			lastPropQuery = data.query;
+			searchQuery = data.query ?? '';
+			liveResults = data.results ?? null;
+		}
 	});
+
+	function updateUrl(query: string) {
+		if (typeof window === 'undefined') return;
+		const url = new URL(window.location.href);
+		if (query) {
+			url.searchParams.set('search', query);
+			url.searchParams.delete('q');
+		} else {
+			url.searchParams.delete('search');
+			url.searchParams.delete('q');
+		}
+		window.history.replaceState(window.history.state, '', url.toString());
+	}
+
+	function handlePopState() {
+		if (typeof window === 'undefined') return;
+		const url = new URL(window.location.href);
+		const q = (url.searchParams.get('search') ?? url.searchParams.get('q') ?? '').trim();
+		if (q !== searchQuery) {
+			searchQuery = q;
+			clearTimeout(debounceTimer);
+			if (activeAbortController) {
+				activeAbortController.abort();
+				activeAbortController = null;
+			}
+			if (q) {
+				void runLiveSearch(q);
+			} else {
+				liveResults = { tracks: [], albums: [], artists: [], playlists: [] };
+				isSearching = false;
+			}
+		}
+	}
 
 	const currentResults = $derived(liveResults ?? data.results);
 	const activeQuery = $derived(searchQuery.trim());
@@ -42,8 +80,13 @@
 		const query = target.value;
 		searchQuery = query;
 
+		const trimmed = query.trim();
+
+		// Keep ?search=<typed in search result> updated in the URL
+		updateUrl(trimmed);
+
 		// Check if user pasted a TIDAL URL or shorthand
-		const parsed = parseTidalResource(query.trim());
+		const parsed = parseTidalResource(trimmed);
 		if (parsed) {
 			urlDetected = parsed.appPath;
 		} else {
@@ -51,37 +94,59 @@
 		}
 
 		clearTimeout(debounceTimer);
-		if (!query.trim()) {
+		if (!trimmed) {
+			if (activeAbortController) {
+				activeAbortController.abort();
+				activeAbortController = null;
+			}
 			liveResults = { tracks: [], albums: [], artists: [], playlists: [] };
 			isSearching = false;
 			return;
 		}
 
 		if (parsed) {
+			if (activeAbortController) {
+				activeAbortController.abort();
+				activeAbortController = null;
+			}
 			isSearching = false;
 			return;
 		}
 
 		isSearching = true;
-		const q = query.trim();
 		debounceTimer = setTimeout(() => {
-			void runLiveSearch(q);
-		}, 280);
+			void runLiveSearch(trimmed);
+		}, 250);
 	}
 
 	async function runLiveSearch(q: string) {
+		if (activeAbortController) {
+			activeAbortController.abort();
+		}
+		const controller = new AbortController();
+		activeAbortController = controller;
+		isSearching = true;
+
 		try {
-			const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+			const res = await fetch(`/api/search?search=${encodeURIComponent(q)}`, {
+				signal: controller.signal
+			});
 			if (res.ok) {
 				const body = await res.json();
-				if (body.results) {
+				if (!controller.signal.aborted && body.results) {
 					liveResults = body.results;
 				}
 			}
-		} catch {
+		} catch (err: unknown) {
+			if (err instanceof DOMException && err.name === 'AbortError') {
+				return;
+			}
 			// retain existing results on network failure
 		} finally {
-			isSearching = false;
+			if (activeAbortController === controller) {
+				isSearching = false;
+				activeAbortController = null;
+			}
 		}
 	}
 
@@ -93,13 +158,26 @@
 
 	function handleSubmit(event: SubmitEvent) {
 		event.preventDefault();
+		clearTimeout(debounceTimer);
 
 		const query = searchQuery.trim();
-		void goto(query ? `/app/search?q=${encodeURIComponent(query)}` : '/app/search', {
-			invalidateAll: true
-		});
+		updateUrl(query);
+
+		if (urlDetected) {
+			navigateToResource();
+			return;
+		}
+
+		if (query) {
+			void runLiveSearch(query);
+		} else {
+			liveResults = { tracks: [], albums: [], artists: [], playlists: [] };
+			isSearching = false;
+		}
 	}
 </script>
+
+<svelte:window onpopstate={handlePopState} />
 
 <svelte:head>
 	<title>{m.search_title()} — Syn</title>
@@ -120,7 +198,7 @@
 				<span class="search-icon"><Search size={18} /></span>
 				<input
 					id="search-query"
-					name="q"
+					name="search"
 					type="search"
 					value={searchQuery}
 					oninput={handleInput}
