@@ -108,6 +108,7 @@ navigation and partial failures. Queue and position are debounced to `/api/playb
   `lib/player`.
 - Svelte code should use the available Svelte MCP documentation and autofixer when those
   tools are present.
+- Maintain CHANGELOG.md - rules for versioning: follow [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) conventions.
 
 ## Environment and database
 

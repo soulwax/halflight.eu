@@ -225,3 +225,4 @@ component that reads a `$derived` — keep `await` out of markup.
   `event.fetch` — SvelteKit's wrapper attaches request context the CDN 403s on. API calls
   to `api.tidal.com` / `openapi.tidal.com` via `event.fetch` are fine.
 - Use the Svelte MCP tools (see `AGENTS.md`) when writing Svelte code.
+- Maintain CHANGELOG.md - rules for versioning: follow [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) conventions.
