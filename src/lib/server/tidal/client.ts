@@ -48,7 +48,12 @@ async function refreshAndPersist(
 ): Promise<TidalTokenRecord> {
 	if (!inFlightRefresh) {
 		inFlightRefresh = (async () => {
-			const next = await refreshTokens(record.refreshToken, ctx.fetch ?? fetch, record.scope);
+			const next = await refreshTokens(
+				record.refreshToken,
+				ctx.fetch ?? fetch,
+				record.scope,
+				record.countryCode
+			);
 			await writeRecord(next, ctx.store);
 			return next;
 		})().finally(() => {
@@ -96,7 +101,11 @@ export async function getPlaybackToken(ctx: TidalRequestContext = {}): Promise<s
 
 	if (!inFlightPlaybackRefresh) {
 		inFlightPlaybackRefresh = (async () => {
-			const next = await refreshDeviceToken(record.refreshToken, ctx.fetch ?? fetch);
+			const next = await refreshDeviceToken(
+				record.refreshToken,
+				ctx.fetch ?? fetch,
+				record.countryCode
+			);
 			await writePlaybackRecord(next, ctx.store);
 			return next;
 		})().finally(() => {
@@ -104,6 +113,13 @@ export async function getPlaybackToken(ctx: TidalRequestContext = {}): Promise<s
 		});
 	}
 	return (await inFlightPlaybackRefresh).accessToken;
+}
+
+/** Read the stored market for legacy API endpoints that require one. */
+export async function getPlaybackCountryCode(
+	ctx: TidalRequestContext = {}
+): Promise<string | undefined> {
+	return (await readPlaybackRecord(ctx.store))?.countryCode;
 }
 
 function resolveUrl(path: string): string {

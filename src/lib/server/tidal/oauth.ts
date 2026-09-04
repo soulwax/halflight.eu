@@ -134,10 +134,11 @@ import { refreshDeviceToken } from './device-auth';
 export async function refreshTokens(
 	refreshToken: string,
 	fetchImpl: FetchLike = fetch,
-	scope?: string[]
+	scope?: string[],
+	countryCode?: string
 ): Promise<TidalTokenRecord> {
 	if (scope?.includes('r_usr')) {
-		return refreshDeviceToken(refreshToken, fetchImpl);
+		return refreshDeviceToken(refreshToken, fetchImpl, countryCode);
 	}
 
 	try {
@@ -149,7 +150,7 @@ export async function refreshTokens(
 	} catch (err) {
 		if (err instanceof TidalAuthError) {
 			try {
-				return await refreshDeviceToken(refreshToken, fetchImpl);
+				return await refreshDeviceToken(refreshToken, fetchImpl, countryCode);
 			} catch {
 				throw err;
 			}

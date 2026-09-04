@@ -147,7 +147,8 @@ export async function pollDeviceToken(
 			? String(data.user_id)
 			: data.user?.userId
 				? String(data.user.userId)
-				: undefined
+				: undefined,
+		countryCode: data.user?.countryCode
 	};
 
 	return {
@@ -162,7 +163,8 @@ export async function pollDeviceToken(
  */
 export async function refreshDeviceToken(
 	refreshToken: string,
-	fetchImpl: typeof fetch = fetch
+	fetchImpl: typeof fetch = fetch,
+	countryCode?: string
 ): Promise<TidalTokenRecord> {
 	const body = new URLSearchParams({
 		client_id: TIDAL_DEVICE_CLIENT_ID,
@@ -207,6 +209,7 @@ export async function refreshDeviceToken(
 		tokenType: data.token_type || 'Bearer',
 		scope: (data.scope || TIDAL_DEVICE_SCOPE).split(/[+ ]/),
 		obtainedAt: Date.now(),
-		userId: data.user_id ? String(data.user_id) : undefined
+		userId: data.user_id ? String(data.user_id) : undefined,
+		countryCode
 	};
 }

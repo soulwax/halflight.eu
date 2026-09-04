@@ -23,6 +23,7 @@ export {
 } from './config';
 export {
 	getAccessToken,
+	getPlaybackCountryCode,
 	getPlaybackToken,
 	tidalFetch,
 	tidalJson,

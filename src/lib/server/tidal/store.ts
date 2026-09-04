@@ -13,6 +13,8 @@ export interface TidalTokenRecord {
 	obtainedAt: number;
 	/** TIDAL user id from the token response, when present. */
 	userId?: string;
+	/** ISO 3166-1 alpha-2 market code from device authorization. */
+	countryCode?: string;
 }
 
 /**

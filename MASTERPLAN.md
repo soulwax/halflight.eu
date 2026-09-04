@@ -316,15 +316,15 @@ Read live from the owner's TIDAL account on each profile refresh. Nothing here i
 assumed: saved tracks and saved albums are **empty**, and only five artists are followed. The
 owner's own playlists carry essentially all of the affinity signal.
 
-| Signal                | Source                                               | Measured   | Weight  |
-| --------------------- | ---------------------------------------------------- | ---------- | ------- |
-| Own playlists + items | `getCollectionPage('playlists')`, `getPlaylistItems` | 20 lists, ~300+ items | **primary** |
-| Followed artists      | `getFullCollection('artists')`                       | 5          | high (explicit intent, low volume) |
-| Session history       | `playback_state` history + in-session keeps/skips     | empty, will grow | high once populated |
-| Saved tracks          | `getFullCollection('tracks')`, `fetchUserFavorites`  | **0**      | supported, currently silent |
-| Saved albums          | `getFullCollection('albums')`                        | **0**      | supported, currently silent |
-| Personal mixes        | `getMix`, `getRecommendations`                       | available  | low — a hint, deliberately down-weighted |
-| Album credits         | `fetchAlbumCredits` (v1)                             | available, 1 call/album | Phase D only |
+| Signal                | Source                                               | Measured                | Weight                                   |
+| --------------------- | ---------------------------------------------------- | ----------------------- | ---------------------------------------- |
+| Own playlists + items | `getCollectionPage('playlists')`, `getPlaylistItems` | 20 lists, ~300+ items   | **primary**                              |
+| Followed artists      | `getFullCollection('artists')`                       | 5                       | high (explicit intent, low volume)       |
+| Session history       | `playback_state` history + in-session keeps/skips    | empty, will grow        | high once populated                      |
+| Saved tracks          | `getFullCollection('tracks')`, `fetchUserFavorites`  | **0**                   | supported, currently silent              |
+| Saved albums          | `getFullCollection('albums')`                        | **0**                   | supported, currently silent              |
+| Personal mixes        | `getMix`, `getRecommendations`                       | available               | low — a hint, deliberately down-weighted |
+| Album credits         | `fetchAlbumCredits` (v1)                             | available, 1 call/album | Phase D only                             |
 
 Weighting rules:
 
@@ -335,7 +335,7 @@ Weighting rules:
   weight — they are the highest-confidence anchors available.
 - **Recency decay**: signals from the last 90 days count roughly double signals from two years ago.
   Smooth, not cliffed, so the profile drifts rather than lurching. Note the sampled playlists all
-  date from 2023 — decay must not flatten the only signal there is, so decay applies *within* a
+  date from 2023 — decay must not flatten the only signal there is, so decay applies _within_ a
   source, never across sources.
 - TIDAL's own recommendations are a _hint_, not ground truth — deliberately down-weighted, so the
   engine does not simply echo TIDAL back at the owner.
@@ -424,17 +424,17 @@ that survives into the final explanation.
 
 Edges verified against the live API, 2026-09-04. Status is what the endpoint actually returned.
 
-| Edge                     | Relationship                              | Verified                       | Yields                               |
-| ------------------------ | ----------------------------------------- | ------------------------------ | ------------------------------------ |
-| artist → similar artists | `artists/{id}/similarArtists`             | ✅ 20/page, paginated          | The main discovery axis              |
-| artist → albums          | `artists/{id}/albums`                     | ✅ 20/page, paginated          | Deep cuts from anchor artists        |
-| album → items            | `albums/{id}/items`                       | ✅ side-loads tracks           | The tracks themselves                |
-| artist → tracks          | `artists/{id}/tracks`                     | ✅ **requires `collapseBy`**   | Artist top tracks without the album hop |
-| track → similar tracks   | `tracks/{id}/similarTracks`               | ✅ 20/page, paginated          | Track-level neighbourhood            |
-| track / artist → radio   | `.../radio`                               | ⚠️ returns a mix ref (n=1), not tracks | Needs a second hop through the mix |
-| album → similar albums   | `albums/{id}/similarAlbums`               | ⚠️ returned empty for the sampled album | Sparse; treat as optional      |
-| contributor → other work | `fetchAlbumCredits` (v1) + search         | available, 1 call/album        | "Same producer" coherence — Phase D  |
-| personal mixes           | `getMix`, `getRecommendations`            | available                      | TIDAL's view, down-weighted          |
+| Edge                     | Relationship                      | Verified                                | Yields                                  |
+| ------------------------ | --------------------------------- | --------------------------------------- | --------------------------------------- |
+| artist → similar artists | `artists/{id}/similarArtists`     | ✅ 20/page, paginated                   | The main discovery axis                 |
+| artist → albums          | `artists/{id}/albums`             | ✅ 20/page, paginated                   | Deep cuts from anchor artists           |
+| album → items            | `albums/{id}/items`               | ✅ side-loads tracks                    | The tracks themselves                   |
+| artist → tracks          | `artists/{id}/tracks`             | ✅ **requires `collapseBy`**            | Artist top tracks without the album hop |
+| track → similar tracks   | `tracks/{id}/similarTracks`       | ✅ 20/page, paginated                   | Track-level neighbourhood               |
+| track / artist → radio   | `.../radio`                       | ⚠️ returns a mix ref (n=1), not tracks  | Needs a second hop through the mix      |
+| album → similar albums   | `albums/{id}/similarAlbums`       | ⚠️ returned empty for the sampled album | Sparse; treat as optional               |
+| contributor → other work | `fetchAlbumCredits` (v1) + search | available, 1 call/album                 | "Same producer" coherence — Phase D     |
+| personal mixes           | `getMix`, `getRecommendations`    | available                               | TIDAL's view, down-weighted             |
 
 Two API facts the implementation must carry:
 

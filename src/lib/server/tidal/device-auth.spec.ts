@@ -93,6 +93,7 @@ describe('device-auth module (translated from tiddl)', () => {
 			expect(res.record.accessToken).toBe('acc-token-xyz');
 			expect(res.record.refreshToken).toBe('ref-token-xyz');
 			expect(res.record.scope).toContain('r_usr');
+			expect(res.record.countryCode).toBe('DE');
 			expect(res.countryCode).toBe('DE');
 		}
 	});
@@ -112,9 +113,14 @@ describe('device-auth module (translated from tiddl)', () => {
 			json: async () => mockTokenData
 		});
 
-		const record = await refreshDeviceToken('old-ref-token', fetchMock as unknown as typeof fetch);
+		const record = await refreshDeviceToken(
+			'old-ref-token',
+			fetchMock as unknown as typeof fetch,
+			'DE'
+		);
 		expect(record.accessToken).toBe('new-acc-token');
 		expect(record.refreshToken).toBe('new-ref-token');
+		expect(record.countryCode).toBe('DE');
 		expect(fetchMock).toHaveBeenCalledWith(
 			'https://auth.tidal.com/v1/oauth2/token',
 			expect.objectContaining({

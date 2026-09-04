@@ -40,7 +40,7 @@ describe('TIDAL artwork metadata', () => {
 		expect(second).toBe(COVER_ID);
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 		expect(fetchMock).toHaveBeenCalledWith(
-			'https://api.tidal.com/v1/tracks/12345',
+			'https://api.tidal.com/v1/tracks/12345?countryCode=DE',
 			expect.objectContaining({
 				headers: { authorization: 'Bearer test-playback-token', accept: 'application/json' }
 			})
@@ -61,6 +61,25 @@ describe('TIDAL artwork metadata', () => {
 			'https://resources.tidal.com/images/a0b1c2d3/e4f5/6789/abcd/ef0123456789/640x640.jpg'
 		);
 		expect(() => tidalArtworkUrl('not-a-cover')).toThrow('Invalid TIDAL artwork identifier.');
+	});
+
+	it('uses the stored market supplied by the caller', async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValue(
+				new Response(JSON.stringify({ album: { cover: COVER_ID } }), { status: 200 })
+			);
+
+		await getTrackCoverId('12345', {
+			accessToken: 'test-playback-token',
+			countryCode: 'NL',
+			ctx: { fetch: fetchMock }
+		});
+
+		expect(fetchMock).toHaveBeenCalledWith(
+			'https://api.tidal.com/v1/tracks/12345?countryCode=NL',
+			expect.anything()
+		);
 	});
 
 	it('preserves upstream failure status for the route to translate safely', async () => {

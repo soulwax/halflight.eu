@@ -1,9 +1,10 @@
-import { getPlaybackToken, type TidalRequestContext } from './client';
+import { getPlaybackCountryCode, getPlaybackToken, type TidalRequestContext } from './client';
 import { TidalApiError } from './errors';
 
 const COVER_ID_PATTERN = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 const COVER_CACHE_TTL_MS = 60 * 60 * 1000;
 const MAX_COVER_CACHE_ENTRIES = 200;
+const DEFAULT_COUNTRY_CODE = 'DE';
 
 interface LegacyTrackMetadata {
 	album?: { cover?: unknown };
@@ -33,7 +34,12 @@ export function tidalArtworkUrl(coverId: string, size = '640x640'): string {
  */
 export async function getTrackCoverId(
 	trackId: string | number,
-	options: { ctx?: TidalRequestContext; accessToken?: string; now?: number } = {}
+	options: {
+		ctx?: TidalRequestContext;
+		accessToken?: string;
+		countryCode?: string;
+		now?: number;
+	} = {}
 ): Promise<string | null> {
 	const id = String(trackId);
 	if (!/^\d+$/.test(id)) return null;
@@ -43,7 +49,13 @@ export async function getTrackCoverId(
 
 	const token = options.accessToken ?? (await getPlaybackToken(options.ctx));
 	const fetchImpl = options.ctx?.fetch ?? fetch;
-	const url = `https://api.tidal.com/v1/tracks/${encodeURIComponent(id)}`;
+	// The legacy endpoint requires a market. New device authorization records it;
+	// DE bridges device tokens created before that field was retained.
+	const countryCode =
+		options.countryCode ??
+		(options.accessToken ? undefined : await getPlaybackCountryCode(options.ctx)) ??
+		DEFAULT_COUNTRY_CODE;
+	const url = `https://api.tidal.com/v1/tracks/${encodeURIComponent(id)}?countryCode=${encodeURIComponent(countryCode)}`;
 	const response = await fetchImpl(url, {
 		headers: {
 			authorization: `Bearer ${token}`,
