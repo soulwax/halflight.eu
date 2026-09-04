@@ -1,8 +1,10 @@
-# Syn master plan
+# Halflight master plan — a private streaming service
 
 ## Purpose
 
-Syn is a personal listening room built on the owner's own TIDAL account.
+Halflight is a private, owner-operated streaming service built on the owner's own TIDAL account. It
+should feel as immediate, confident, and complete as the best consumer streaming products — but
+without becoming a platform, a social network, or a mirror of TIDAL's catalogue.
 
 **The player is the product.** Everything else — connection, search, library, detail pages, the
 normalisation layer, the taste engine — exists to put the right track into the session and to make
@@ -10,14 +12,141 @@ the next hour of listening better than the last. A surface that does not eventua
 has to justify itself.
 
 This plan is designed for a **single user**. It keeps the server-only OAuth and token architecture,
-avoids multi-user abstractions, and prefers a small number of complete workflows over broad API
-coverage.
+avoids multi-user abstractions, and prefers a small number of complete listening workflows over
+broad API coverage. It has two purpose-built sites sharing one listening identity and one session:
+the full **Listening Room** on desktop and the focused **Halflight Now** mobile site.
 
 Last reviewed: 2026-09-04.
 
+## The big bet: a service, not a catalogue browser
+
+Halflight must not feel like a set of TIDAL pages with a player attached. It is the place the owner opens
+to listen: it remembers where the night stopped, makes an opinionated next choice, starts quickly,
+and stays present while everything else changes. Search, library, editorial context, and the taste
+engine are service capabilities in support of that promise.
+
+```text
+                         one private streaming service
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ account · entitlement · taste profile · queue · history · playback position  │
+│                 secure server-side TIDAL connection and audio proxy           │
+└───────────────────────┬──────────────────────────────────┬───────────────────┘
+                        │                                  │
+              ┌─────────▼──────────┐             ┌─────────▼──────────┐
+              │ Listening Room     │             │ Halflight Now       │
+              │ desktop site       │             │ separate mobile site │
+              │ depth · curation   │             │ immediacy · control  │
+              └────────────────────┘             └────────────────────┘
+```
+
+The service standard is deliberately high:
+
+- **Start anywhere, hear music immediately.** A resume action, a dependable home recommendation,
+  and every relevant object can start or reshape the queue.
+- **A continuous listening world.** The player, queue, history, handoff, quality, and context are
+  first-class product surfaces, not utility controls at the edge of pages.
+- **Taste with agency.** Halflight creates sets that feel authored for the owner, explains them, and lets
+  the owner revise every decision before it becomes a playlist.
+- **Native to the moment.** Desktop is a generous place to discover and curate. Mobile is a
+  different, session-first site made for one hand, interruptions, and the lock-screen-adjacent
+  reality of listening away from a desk.
+- **Quietly premium.** Fast starts, seamless transitions where the source permits, legible audio
+  quality, humane failures, and no operational clutter in the listening path.
+
+This is still a personal product. “Streaming service-like” describes the quality of the experience,
+not a plan for public accounts, subscription billing, social features, or a hosted catalogue.
+
+## Rebrand: Halflight
+
+**Halflight is the product name and `halflight.eu` is its canonical public home.** The name fits the
+product’s intended mood: private, nocturnal, warm, and attentive — a place for the time between
+daylight and dark, when choosing what to hear matters. It is not a generic audio utility and should
+never be presented as a TIDAL clone or a TIDAL product.
+
+```text
+halflight.eu              Listening Room — desktop-first discovery, curation, and deep context
+m.halflight.eu            Halflight Now — the distinct mobile listening site
+accounts.halflight.eu     Optional future identity entry point; do not introduce until needed
+```
+
+Until a separately scoped technical rename is complete, **Syn is the internal project and code
+name**: existing package names, database tables, environment variables, worker names, and API paths
+remain stable. New customer-facing copy, page titles, metadata, email copy, artwork-free wordmarks,
+and product documentation use Halflight. Do not perform a blind search-and-replace through security
+or deployment identifiers.
+
+Brand expression:
+
+- **Wordmark:** `halflight` in lowercase in the interface; `Halflight` in prose and page titles.
+- **Voice:** spare, assured, observant, and musically literate. It suggests rather than shouts;
+  never calls a queue a “content feed” or a set a “growth feature.”
+- **Visual mood:** darkness with air, deep ink surfaces, softened light, restrained colour, and
+  artwork allowed to carry emotional colour. Avoid neon “hi-fi” clichés, black-on-black heaviness,
+  and faux-luxury ornament.
+- **Promise:** _music, held in the right light._ This is a working brand line, not mandatory UI copy.
+- **Provider clarity:** TIDAL attribution and link-back remain visible wherever required. Halflight
+  is an independent personal client powered by the owner’s authorised TIDAL account.
+
+### Transactional email
+
+`noreply@mail.halflight.eu` is Halflight’s sole transactional sender: sign-in confirmation links,
+account verification, and security-relevant account notices come from this address. It is not a
+marketing channel and never sends listening activity, taste-profile detail, catalogue information,
+or routine engagement mail.
+
+The production app sends through the **local Postfix relay on this machine**, operated by the owner
+for this service. Keep email delivery server-side and narrowly scoped:
+
+- Postfix accepts mail submission only from the local application / authenticated local path; it is
+  never an open relay and has no general-purpose sending endpoint.
+- The envelope sender, visible From address, HELO/EHLO identity, reverse DNS, SPF, DKIM, and DMARC
+  alignment are configured for `mail.halflight.eu` before live confirmation mail is enabled.
+- Confirmation links are single-use, short-lived, HTTPS-only, and point to the canonical Halflight
+  domain. Do not place tokens, TIDAL state, or personal listening data in subjects, recipients,
+  bodies, logs, or URLs beyond the purpose-limited confirmation token.
+- The application records only delivery category, safe outcome, and correlation ID. Recipient
+  addresses, message bodies, and raw SMTP responses are not written to application logs.
+- SMTP host, port, and any credentials are declared in `src/env.ts` and `.env.example`; real values
+  stay in the host environment, never in the repository or browser bundle.
+
+## Design north star: Apple Music, interpreted for Halflight
+
+**Apple Music is the single primary reference.** It is the most elegant model for what Halflight needs to
+feel like: music is the hero; albums, artists, lyrics, credits, and queue belong to one calm
+listening experience; playback is treated as a destination in its own right; and personalisation
+does not turn every screen into a noisy feed. Its current product also makes high-quality playback,
+curated playlists, lyrics, and cross-device listening feel like parts of one service rather than
+separate tools. [Apple Music](https://www.apple.com/apple-music/)
+
+This is a design decision, not an instruction to clone it. Halflight keeps its own dark, intimate
+listening-room visual language, its TIDAL attribution, and its explainable private taste engine.
+It does **not** copy Apple’s branding, artwork treatment, icons, layouts, copy, motion, or any
+proprietary interaction verbatim.
+
+The resulting design rules are:
+
+- **Album-first, not dashboard-first.** Artwork, artist, title, release context, and the act of
+  listening lead. Metrics, large utility panels, and sprawling recommendation shelves recede.
+- **Now Playing is a place.** On both sites it is a composed, immersive destination with transport,
+  queue, lyrics, credits, provenance, and quality — not a modal afterthought.
+- **One decisive action per view.** Play, resume, continue this set, or add this work to the session.
+  Secondary actions live in a restrained menu or contextual panel.
+- **Editorial rhythm over algorithmic noise.** Home is a small sequence of intentional listening
+  invitations, not an endlessly changing grid. Halflight’s generated sets are presented with the care of
+  a human-made programme and the honesty of their provenance.
+- **Typography, spacing, and motion carry the luxury.** Large type where music needs presence,
+  quiet metadata, generous rhythm, tactile but brief transitions, and no ornamental clutter.
+- **Every device gets its own composition.** The reference is a coherent service across contexts,
+  not a desktop canvas squeezed into a narrow viewport.
+
+Spotify remains a useful negative boundary: do not import its dense, feed-like visual language,
+social mechanics, or endless recommendation loops. TIDAL remains the catalogue and playback
+provider, while Halflight surfaces its audio-quality strengths clearly and honestly. [TIDAL audio
+quality](https://support.tidal.com/hc/en-us/articles/17412130162961-HiRes-FLAC-audio)
+
 ## The listening session
 
-The unit of work in Syn is not a page view. It is a **session**: what is playing, what is queued,
+The unit of work in Halflight is not a page view. It is a **session**: what is playing, what is queued,
 what already played, and the taste context that produced them.
 
 ```text
@@ -45,7 +174,7 @@ Session invariants:
 
 ## Product vision
 
-A good day with Syn:
+A good day with Halflight:
 
 1. Open it. Something worth hearing is already queued, or one action away.
 2. Ask for a set — "an hour that sounds like me, mostly things I haven't heard" — and get back
@@ -60,9 +189,11 @@ A good day with Syn:
 
 - A player that is a first-class shell region: full-track playback, queue, history, resume,
   lyrics, credits, quality telemetry, and honest failure states.
+- Two intentional product surfaces: the desktop **Listening Room** and the separate mobile
+  **Halflight Now** site, sharing one service state without sharing a compromised responsive shell.
 - A **taste engine**: a deterministic, explainable curation system that models the owner's taste
   from the owner's own TIDAL signals and TIDAL's own similarity edges.
-- A small, Syn-owned **taste profile** (derived weights only) that improves with use.
+- A small, Halflight-owned **taste profile** (derived weights only) that improves with use.
 - Connection, connection health, reconnection, and disconnection.
 - Home, search, library, mix, artist, album, track, and playlist views — all of which feed the
   session.
@@ -91,14 +222,15 @@ A good day with Syn:
 - Recommendations for anyone but the owner. The taste engine is a private curation tool, never a
   social or platform feature.
 - **Third-party AI or LLM processing of TIDAL content.** No catalogue text, artwork, audio, lyrics,
-  or metadata is sent to an external model. The taste engine is deterministic code running on Syn's
+  or metadata is sent to an external model. The taste engine is deterministic code running on Halflight's
   own server over the owner's own derived signals. (This replaces the earlier blanket "no AI"
   rule, which also forbade the owner analysing their own listening.)
 - Downloading, stream ripping, scraping, bulk archiving, or indefinite retention of TIDAL content.
-- A shadow catalogue. Syn stores derived numbers and identifiers, never a mirror of TIDAL's data.
+- A shadow catalogue. Halflight stores derived numbers and identifiers, never a mirror of TIDAL's data.
 - Infinite algorithmic autoplay. Generation is an act the owner initiates and reviews.
 - A generic public API client or arbitrary request builder in the primary UI.
 - Social feeds, messaging, or billing.
+- A single responsive site that asks mobile to behave like a shrunken desktop application.
 
 ## Non-negotiable decisions
 
@@ -109,7 +241,7 @@ A good day with Syn:
    implemented and verified.
 4. **Use product actions, not arbitrary API requests.** Search, save, remove, create playlist, add
    track, and generate are named server actions with validation.
-5. **Keep playback inside Syn.** The server resolves and proxies the authenticated stream; the
+5. **Keep playback inside Halflight.** The server resolves and proxies the authenticated stream; the
    browser never receives provider credentials or CDN URLs. Playback, not a download pipeline.
 6. **Store owned state, not a shadow catalogue.** Postgres persists preferences, bounded workflow
    state (the resumable queue), and the **derived taste profile** — weights, identifiers, and
@@ -125,25 +257,32 @@ A good day with Syn:
    explicit advanced gate, read-only by default.
 10. **Build accessible components before visual polish.** Keyboard access, focus, semantics, reduced
     motion, and contrast are acceptance criteria, not cleanup.
+11. **Design from the Apple Music north star.** Calm hierarchy, album and artist primacy, and an
+    immersive Now Playing destination govern every product decision; Halflight remains visually and
+    behaviourally original.
+12. **Mobile is a separate site, not a breakpoint.** It shares identity, playback state, and server
+    capabilities with the Listening Room, but has its own routes, navigation, layouts, interaction
+    contracts, and release acceptance tests.
 
 ## Current state
 
 Much of the original plan's early phases has shipped. This is where the effort now sits.
 
-| Area                | What exists                                                                                                     | Main gap                                                                    |
-| ------------------- | --------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| Playback            | Full-track streaming (BTS single-file + segmented DASH), Range/seek, quality ladder, ReplayGain, embed fallback | No gapless/crossfade; no pre-buffering of the next queue item               |
-| Player UI           | Decomposed component set, docked shell region, queue/lyrics/source panels, floating mode, self-check telemetry  | Queue editing is basic; no "why is this playing?" provenance                |
-| Session state       | Resumable queue/history/position persisted to `playback_state`                                                  | No session provenance; no per-track feedback capture                        |
-| Auth / TIDAL OAuth  | Better Auth, PKCE + state, dual-token model, encrypted persistence, rotation, single-flight refresh             | Stable                                                                      |
-| API client          | Authenticated fetch, pre-expiry refresh, 401 retry, typed helpers, JSON:API normalisers, `loadTidalPage`        | Relationship traversal helpers exist but are barely used                    |
-| Product surfaces    | Shell, home, search, library, mixes, artist/album/track/playlist detail, settings                               | Surfaces do not yet consistently offer the same queue verbs                 |
-| Playlist generation | `/api/generate-playlist` — a hardcoded vibe × era → search-query map, texture modifier, energy-arc ordering     | **Knows nothing about the owner.** This is the centre of this plan          |
-| Taste model         | None                                                                                                            | Everything below in _The taste engine_                                      |
-| Object storage      | None wired; `syn-worker` is named in config but not implemented                                                 | HiRes cold start, prebuffer, waveform, and measured loudness all wait on it |
-| Design system       | Eight dark palettes, semantic tokens, extracted `player.css`, shared badges/formatters                          | Layout tokens and the shell grid migration are partly done                  |
-| i18n                | Paraglide `en` + `de-DE`                                                                                        | Newer surfaces added strings ahead of the German catalogue                  |
-| Testing             | Strong server coverage (tokens, crypto, manifests, segmented delivery, stores); leaf component tests            | Little end-to-end; no taste-engine fixtures yet                             |
+| Area                | What exists                                                                                                     | Main gap                                                                     |
+| ------------------- | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Service experience  | Strong player foundation and all major browse routes                                                            | No single product model yet; home and routes still read like separate pages  |
+| Playback            | Full-track streaming (BTS single-file + segmented DASH), Range/seek, quality ladder, ReplayGain, embed fallback | No gapless/crossfade; no pre-buffering of the next queue item                |
+| Player UI           | Decomposed component set, docked shell region, queue/lyrics/source panels, floating mode, self-check telemetry  | Queue editing is basic; no "why is this playing?" provenance                 |
+| Session state       | Resumable queue/history/position persisted to `playback_state`                                                  | No session provenance; no per-track feedback capture                         |
+| Auth / TIDAL OAuth  | Better Auth, PKCE + state, dual-token model, encrypted persistence, rotation, single-flight refresh             | Stable                                                                       |
+| API client          | Authenticated fetch, pre-expiry refresh, 401 retry, typed helpers, JSON:API normalisers, `loadTidalPage`        | Relationship traversal helpers exist but are barely used                     |
+| Product surfaces    | Shell, home, search, library, mixes, artist/album/track/playlist detail, settings                               | Surfaces do not yet consistently offer the same queue verbs                  |
+| Playlist generation | `/api/generate-playlist` — a hardcoded vibe × era → search-query map, texture modifier, energy-arc ordering     | **Knows nothing about the owner.** This is the centre of this plan           |
+| Taste model         | None                                                                                                            | Everything below in _The taste engine_                                       |
+| Object storage      | None wired; `syn-worker` is named in config but not implemented                                                 | HiRes cold start, prebuffer, waveform, and measured loudness all wait on it  |
+| Design system       | Eight dark palettes, semantic tokens, extracted `player.css`, shared badges/formatters                          | Apple Music-level hierarchy and two deliberate site compositions are missing |
+| i18n                | Paraglide `en` + `de-DE`                                                                                        | Newer surfaces added strings ahead of the German catalogue                   |
+| Testing             | Strong server coverage (tokens, crypto, manifests, segmented delivery, stores); leaf component tests            | Little end-to-end; no taste-engine fixtures yet                              |
 
 ## Product principles
 
@@ -189,11 +328,12 @@ systems and generic repositories.
 
 ## Information architecture
 
-The player is not a route. It is a permanent shell region present on every authenticated screen;
-routes are the things that feed it.
+The player is not a route. It is a permanent service capability. The Listening Room renders it as a
+shell region; Halflight Now renders it as the centre of a mobile-first Now Playing world. Routes on
+both sites are the things that feed one canonical session.
 
 ```text
-/
+halflight.eu — Listening Room (desktop)
 ├── sign-in                       or authenticated redirect
 ├── app/
 │   ├── (home)                    resume the session, mixes, recent, "generate a set"
@@ -206,18 +346,32 @@ routes are the things that feed it.
 │       ├── tidal                 connection, playback quality, permissions, disconnect
 │       └── taste                 your profile in plain language: view, tune, reset, export
 └── advanced/tidal                status and API diagnostics; gated
+
+m.halflight.eu — Halflight Now (mobile)
+├── sign-in                       same owner identity; return to the intended mobile route
+├── now                            full-screen Now Playing, queue, lyrics, credits, provenance
+├── home                           resume, one primary set, recent, a compact mix rail
+├── search                         search first; results open as mobile detail sheets
+├── library                        saved work and playlists; quick play and queue verbs
+└── settings                       playback, connection, and essential personal controls only
 ```
 
-### Application shell
+### Site responsibilities
 
-- **Desktop**: persistent left rail, flexible content column, optional right context panel, docked
-  player row, hairline footer.
-- **Mobile**: top bar, scrolling main, mini player that expands to a full-screen sheet, bottom nav.
-- Global search is easy to reach but never competes with the page title on small screens.
+- **Listening Room (`halflight.eu`)** is desktop-first: deliberate discovery, full collection and
+  playlist management, profile tuning, generation controls, credits, lyrics, diagnostics, and an
+  always-visible docked player. It earns complexity with space and supports long listening sessions.
+- **Halflight Now (`m.halflight.eu`)** is mobile-first: continue, choose, search, queue, play, and
+  make small in-the-moment corrections. It never exposes a squeezed three-column shell, a desktop
+  table, or the entire generator control surface.
+- Mobile can start a generated set from a concise intent/preset, then edit it deeply in the
+  Listening Room. It can save, play next, remove, and give feedback without needing the desktop.
+- Global search is instant and visually primary on Halflight Now; it is easy to reach but secondary
+  to page identity in the Listening Room.
 - A slim connection-health indicator appears only when attention is required.
 
-The grid, tokens, region contracts, and migration steps are specified in **Application shell and
-layout system**.
+The desktop grid is specified in **Application shell and layout system**. Halflight Now has its own
+composition and interaction system in **The mobile site: Halflight Now**.
 
 ## Core user journeys
 
@@ -239,20 +393,20 @@ Success condition: from cold open to audio in one deliberate action.
 4. The result loads into the player as a **provisional queue** with a set summary and a per-track
    rationale, and starts playing if asked.
 5. The owner reshuffles, swaps individual tracks, nudges a knob and re-runs, or saves.
-6. Save writes a Syn playlist and, optionally, pushes it to TIDAL.
+6. Save writes a Halflight playlist and, optionally, pushes it to TIDAL.
 
 Success condition: the owner recognises most of the set instantly and is glad about the rest.
 
 ### 3. Connect TIDAL
 
-1. Setup states what Syn does and what it will read.
+1. Setup states what Halflight does and what it will read.
 2. Browse authorization (PKCE) and playback authorization (TIDAL Link device flow) are explained as
    two separate, purposeful grants.
 3. Denial, expiry, missing configuration, and exchange failure each map to a friendly message and a
    recovery action.
 4. Reconnection is available in Settings when credentials or scopes change.
 
-Success condition: the owner always knows whether Syn can browse, can play, or neither.
+Success condition: the owner always knows whether Halflight can browse, can play, or neither.
 
 ### 4. Find music and move it into the session
 
@@ -271,7 +425,8 @@ Success condition: a track can be found and heard without reading JSON or leavin
 3. Empty states explain how to add the first item and link to Search.
 4. Any list can be sent to the queue whole, or used as a generation seed.
 
-Success condition: saved content is recognisable and playable quickly on phone and desktop.
+Success condition: saved content is recognisable and playable quickly in the Listening Room and
+Halflight Now.
 
 ### 6. Curate deliberately
 
@@ -295,7 +450,7 @@ Success condition: no expected error strands the owner, leaks details, or silenc
 
 ### 8. Disconnect
 
-1. Settings explains that disconnecting removes Syn's stored authorization.
+1. Settings explains that disconnecting removes Halflight's stored authorization.
 2. Confirmation names the service and the immediate effect.
 3. Token rows and the OAuth cookie are deleted; the owner returns to setup.
 4. The taste profile is offered for export and deletion in the same flow.
@@ -360,7 +515,7 @@ Weighting rules:
 
 ### Stage 2 — The profile
 
-A small, Syn-owned derived model. **Weights and identifiers only** — no titles, artwork, lyrics, or
+A small, Halflight-owned derived model. **Weights and identifiers only** — no titles, artwork, lyrics, or
 audio, and no track-by-track history.
 
 The dimensions below are the ones the API actually supports; see _What the API does and does not
@@ -550,7 +705,7 @@ If the engine cannot explain a pick, it does not make it.
 - Per-track actions: keep, swap (regenerate just that slot from the same pool), remove, "more like
   this", "never again" (writes an exclusion).
 - Set actions: reshuffle, adjust a knob and re-run (the pool is reused where valid, so re-runs are
-  fast), save to Syn, push to TIDAL.
+  fast), save to Halflight, push to TIDAL.
 - Nothing reaches TIDAL until Save. Closing without saving discards cleanly.
 
 ### Learning loop
@@ -560,21 +715,21 @@ Bounded, derived, and always reversible.
 - Kept sets, per-track keeps/skips/completions, and explicit "more like this / never again" fold
   into the profile as **small weight deltas**.
 - Deltas decay; one bad night does not permanently reshape the model.
-- The raw events are transient — they update the profile and are dropped. Syn keeps the weights,
+- The raw events are transient — they update the profile and are dropped. Halflight keeps the weights,
   not the diary.
 - The profile view shows recent movement in plain language ("you've been leaning older and
   quieter this month") and offers undo.
 
 ### What this engine is not
 
-- Not a social recommender, not "Syn Radio", not shareable.
+- Not a social recommender, not “Halflight Radio”, not shareable.
 - Not infinite autoplay — generation is initiated and reviewed.
 - Not a replacement for deliberate hand-built playlists; it should make them easier to start.
 - Not a claim of audio analysis. Where energy or mood is approximated, the UI says approximated.
 
 ### Data and privacy
 
-- The profile lives in a Syn-owned `taste_profile` table, scoped to the owner.
+- The profile lives in a Halflight-owned `taste_profile` table, scoped to the owner.
 - It contains derived weights, TIDAL identifiers, genre/label strings, and knob defaults. No
   catalogue text beyond tags, no artwork, no audio, no lyrics.
 - Inputs are re-read live from TIDAL; nothing upstream is mirrored.
@@ -586,9 +741,10 @@ Bounded, derived, and always reversible.
 
 ## Design direction
 
-Syn should be visually distinct from TIDAL while respecting TIDAL's content and attribution rules.
-Dark-first, high-contrast listening-room feel: neutral surfaces, restrained accent, generous
-artwork, strong typography.
+Halflight should be visually distinct from TIDAL while respecting TIDAL's content and attribution
+rules. Apple Music’s calm, album-forward hierarchy is the north star; Halflight translates it into
+a dark, high-contrast half-light world: inked neutral surfaces, softened illumination, restrained
+accent, generous artwork, and strong, spacious typography.
 
 ### Design tokens
 
@@ -597,13 +753,27 @@ elevated surface, subtle border; primary/secondary/muted text; action accent and
 warning, danger, information; focus ring, selected, skeleton, overlay; spacing, radii, shadows,
 content widths, motion durations.
 
-Eight named dark palettes exist and are persisted per owner. Quality badges colour by fidelity tier
-(grey lossy, cyan lossless, gold HiRes) via `qualityTier()`.
+Eight named dark palettes exist and are persisted per owner. The default Halflight palette must be
+the reference composition; alternative palettes are personal atmosphere, not competing themes.
+Quality badges colour by fidelity tier (grey lossy, cyan lossless, gold HiRes) via `qualityTier()`.
+
+Typography and hierarchy rules:
+
+- The work currently playing gets the largest, most breathable type and most generous artwork.
+  Artist and release context are intimate secondary information; diagnostic detail never competes.
+- Home sections are few, named like listening invitations, and terminate. No infinite shelves, no
+  tiny repeated cards, and no engagement-oriented “because you played” clutter.
+- Use a restrained luminance ladder — canvas, surface, elevated surface, then one warm focal light —
+  so the eye lands on music before controls. Gradients imply changing light, never decoration.
+- Motion is spatial and functional: artwork settles, panels reveal context, the mini player grows
+  into Now Playing. It never bounces, loops, or asks for attention while music is playing.
 
 ### Core component inventory
 
-- **Shell**: `AppShell`, `AppHeader` (+ `toolbar` snippet), `AppRail`, `AppAside`, `MobileNav`,
+- **Listening Room shell**: `AppShell`, `AppHeader` (+ `toolbar` snippet), `AppRail`, `AppAside`,
   `PageHeader`, `Footer`.
+- **Halflight Now shell** (new, separate site): `NowShell`, `NowHeader`, `NowTabBar`, `MiniPlayer`,
+  `NowPlayingScreen`, `QueueSheet`, `MobileSearch`, `MobileDetailSheet`.
 - **Player set**: `Player`, `NowPlaying`, `PlayerSeekBar`, `PlayerTransport`, `PlayerActions`,
   `PlayerPanel`, `AlbumArtPanel`, `panels/{Queue,Lyrics,Source}Panel`.
 - **Taste set** (new): `KnobPanel`, `SeedPicker`, `SetSummary`, `ProvenanceChip`, `ProfileCard`,
@@ -624,12 +794,13 @@ rather than a generic design-system package.
 - Do not imply endorsement by TIDAL or an artist.
 - Recheck the live guidelines before each visual release.
 
-## Application shell and layout system
+## Application shell and layout system — Listening Room
 
-The shell is the one place a deliberate layout system pays off: fixed regions that must never
-overlap, must stay put while content scrolls, and must reshape predictably across breakpoints.
-Inside those regions, page content stays ordinary document flow. Modularity here means _named,
-swappable regions with a single owner of their geometry_ — not a configurable dashboard.
+The desktop Listening Room is the one place a deliberate layout system pays off: fixed regions that
+must never overlap, must stay put while content scrolls, and must reshape predictably across desktop
+widths. Inside those regions, page content stays ordinary document flow. Modularity here means
+_named, swappable regions with a single owner of their geometry_ — not a configurable dashboard.
+Mobile is intentionally absent from this shell.
 
 ### Regions
 
@@ -643,21 +814,10 @@ Desktop (>= 90rem — context panel available)     Laptop / desktop (64-90rem)
 ├─────────┴───────────────────────┴──────────┤    ├─────────┴──────────────────────────┤
 │ player  (docked, full width)               │    │ player  (docked, full width)       │
 └────────────────────────────────────────────┘    └────────────────────────────────────┘
-
-Mobile (< 48rem)
-┌──────────────────────────────┐
-│ header (brand · one action)  │
-├──────────────────────────────┤
-│ main viewport (scrolls)      │
-├──────────────────────────────┤
-│ mini player                  │  ← tap expands to a full-screen sheet
-├──────────────────────────────┤
-│ bottom nav (Home/Search/…)   │
-└──────────────────────────────┘
 ```
 
-- **Rail** — primary navigation, account, theme. Persisted collapsed state on wide screens; becomes
-  the bottom nav below `48rem`.
+- **Rail** — primary navigation, account, theme. Persisted collapsed state on wide screens; it
+  never turns into a mobile bottom nav because mobile is Halflight Now.
 - **Header** — page identity left, a `toolbar` region right that each route fills with contextual
   actions (search field, filter, view toggle, play-all, generate, export).
 - **Main viewport** — the primary scroll container. Page bodies render as a centred `--content-max`
@@ -665,7 +825,7 @@ Mobile (< 48rem)
 - **Aside** — optional right-hand context panel, off by default. First uses: the pinned queue, album
   credits beside the tracklist, lyrics beside a track, generation provenance beside a set.
 - **Player** — a shell region (`grid-area: player`), never `position: fixed`. Expanding grows its
-  row on desktop; on mobile it becomes a full-screen sheet.
+  desktop row and reveals richer context in the aside.
 - **Footer** — the 10px attribution line, a hairline grid row beneath the player.
 
 ### How it is built
@@ -689,7 +849,9 @@ Mobile (< 48rem)
 - `--shell-gutter` — `clamp()`-scaled main-viewport inline padding.
 - A documented z-index scale: `--z-rail`, `--z-header`, `--z-aside`, `--z-player`, `--z-overlay`,
   `--z-toast`. Nothing outside this scale sets `z-index`.
-- Breakpoints: `48rem` (rail → bottom nav), `64rem` (toolbar room), `90rem` (aside available).
+- Breakpoints: `64rem` (toolbar room), `90rem` (aside available). Below the supported Listening
+  Room width, direct the owner to `m.halflight.eu` rather than maintaining a third, compromised
+  layout.
 
 ### Standards this must uphold
 
@@ -701,7 +863,6 @@ Mobile (< 48rem)
 - **Container queries** where a region's own width should drive it — the track table collapses its
   album/date columns based on the width of `main` or the `aside`.
 - **Motion**: 150–200ms, honouring `prefers-reduced-motion`.
-- **Safe areas**: `env(safe-area-inset-*)` on the mobile player and bottom nav.
 - **State discipline**: at most two persisted layout booleans; no generic layout store, no
   draggable regions, no nested shells.
 
@@ -712,10 +873,116 @@ Mobile (< 48rem)
 3. Collapsed-rail state, toggle, cookie persistence.
 4. `AppAside` as opt-in; first consumer the pinned queue, second generation provenance.
 5. Convert region components to container queries.
-6. Storybook per region and breakpoint; a Playwright check that header, rail, and player stay put
+6. Storybook per region and desktop breakpoint; a Playwright check that header, rail, and player stay put
    while `main` scrolls.
 
+## The mobile site: Halflight Now
+
+Halflight Now is a different site because mobile listening is a different activity. It is designed
+from the full-screen player outward, not from the desktop route tree inward. Its job is to make the
+next musical decision effortless while walking, travelling, cooking, or briefly checking in — and
+to preserve the exact session when the owner returns to the Listening Room.
+
+```text
+Halflight Now
+┌──────────────────────────────┐
+│ compact header                │
+│ Home / Search / Library       │
+│                              │
+│ one scrollable scene          │
+│                              │
+├──────────────────────────────┤
+│ mini player — always visible │
+├──────────────────────────────┤
+│ Home · Search · Library · Now│
+└──────────────────────────────┘
+
+Now Playing (a destination, not a modal)
+┌──────────────────────────────┐
+│ dismiss · output / quality    │
+│                              │
+│         large artwork         │
+│                              │
+│ title · artist · provenance   │
+│ progress · transport          │
+│ queue · lyrics · credits      │
+└──────────────────────────────┘
+```
+
+### Halflight Now contracts
+
+- **Four destinations only:** Home, Search, Library, and Now Playing. Queue, lyrics, credits, and
+  item detail are layered destinations reached from the current listening context, not permanent
+  tabs.
+- **Now Playing owns the device.** It is full-screen, thumb-friendly, and immediate. Artwork is
+  dominant; transport is stable; the queue opens without losing playback; a swipe or explicit close
+  returns to the prior scene. Respect reduced motion and never make a gesture the only control.
+- **Home is one decision deep.** Resume first; otherwise one personalised set, one recent return
+  path, and one compact personal-mix rail. It is not a desktop home page restacked vertically.
+- **Search is action-oriented.** Type, see the best results, play or queue in one tap, and open
+  enough album/artist context to decide. Long discographies and deep metadata hand off to desktop.
+- **Library privileges recognition.** Large artwork and short lists replace dense tables. Filtering,
+  bulk editing, and generator tuning remain desktop work.
+- **Session handoff is invisible.** The same canonical queue, order, current item, position,
+  provisional-set state, and feedback appear on both sites. A state write includes a monotonic
+  revision and origin so the most recent deliberate action wins without corrupting the queue.
+- **Device-aware quality is explicit.** Mobile defaults and Wi-Fi/cellular behaviour are owner-set;
+  the UI says what actually plays. It does not promise offline playback or background capabilities
+  that the browser cannot provide.
+- **It is a website, not a disguised native app.** Installability, media-session integration, and
+  safe-area polish are welcome where reliable, but every critical journey works in the browser
+  without an install prompt or a fragile PWA-only dependency.
+
+### Halflight Now acceptance bar
+
+- From a cold mobile open to audible music in one deliberate action.
+- One-thumb access to pause, skip, seek, queue, play next, remove, and save.
+- At 320px width, 200% zoom, landscape, interrupted network, and device rotation, no control is
+  obscured by the browser chrome, safe area, mini player, or tab bar.
+- Mobile and desktop can take turns controlling a live session without a reload, surprise playback
+  restart, or ambiguous queue state.
+- Its home and Now Playing screen feel composed in their own right; no CSS rule imports the desktop
+  grid, rail, table, or aside.
+
 ## Technical architecture
+
+### One service, two site deployments
+
+`halflight.eu` and `m.halflight.eu` are independently deployed SvelteKit front ends over the same
+owner account, Postgres state, TIDAL access layer, and purpose-built server capabilities. This is a
+product boundary, not two competing back ends. The first implementation may keep the current Syn
+repository and extract shared modules incrementally; it must not pause product work for an eager
+monorepo rewrite.
+
+```text
+Listening Room                  Halflight Now
+halflight.eu                    m.halflight.eu
+      │                                 │
+      └──────────────┬──────────────────┘
+                     ▼
+          shared Halflight server boundary
+  owner auth · session arbitration · taste · TIDAL · stream proxy
+                     │
+              Postgres + short-lived bucket working state
+```
+
+- **Share domain logic, never whole layouts.** Display models, player/session protocol, server
+  actions, i18n messages, tokens, and accessible primitives may be shared. Shells, routes,
+  navigation, responsive CSS, page compositions, and interaction state are site-owned.
+- **Keep trust boundaries intact.** Both hosts authenticate on the server; neither receives TIDAL
+  tokens, stream URLs, or bucket credentials. OAuth transaction and encrypted TIDAL cookies remain
+  narrow, HttpOnly, Secure, SameSite=Strict, and explicitly expired. Establish session continuity
+  across the two hosts deliberately, with tests, rather than widening token-cookie scope by habit.
+- **Make session changes ordered.** Add a server-assigned session revision plus action origin to
+  `playback_state`. Updates use optimistic concurrency: accept the next revision, return the latest
+  session on conflict, and let the client reconcile visibly only when necessary. This protects a
+  queue edited on desktop while the phone is open.
+- **Deep links are host-aware.** Catalogue and product objects retain canonical identifiers. Each
+  host renders its best available view; a mobile page can offer “Open in Listening Room” for deep
+  curation without breaking a shared session.
+- **Deploy and observe separately.** Each site gets its own performance budgets, error boundary,
+  analytics-free safe operational events, release smoke tests, and rollback path. Service health,
+  persistence, and provider access are shared and measured once.
 
 ### Route and data boundary
 
@@ -785,7 +1052,7 @@ Persist only:
 
 - The encrypted TIDAL authorization records (browse + playback).
 - Better Auth data.
-- Syn-owned preferences: theme, streaming quality, volume, normalisation, layout booleans.
+- Halflight-owned preferences: theme, streaming quality, volume, normalisation, layout booleans.
 - Bounded workflow state: the resumable queue, history, and position.
 - **The derived taste profile** — weights, identifiers, knob defaults, exclusions, timestamps.
 
@@ -822,7 +1089,7 @@ than a series of requests.
 Some tiers arrive in a container the browser will not decode natively (FLAC-in-fMP4 is the live
 example), and today that falls back to the TIDAL embed — losing quality telemetry, the queue, and
 the seek bar. The worker can remux (stream copy, no re-encode) into a container the `<audio>`
-element accepts, keeping playback inside Syn. Remux only; never transcode, never re-encode.
+element accepts, keeping playback inside Halflight. Remux only; never transcode, never re-encode.
 
 **4. Waveform peaks.**
 A peaks array computed once while a track is staged, stored as a few KB of JSON. The seek bar
@@ -999,9 +1266,9 @@ Before each release that displays new content or changes playback:
 1. Review the current Developer Terms, Guidelines, Design Guidelines, and endpoint reference.
 2. Verify attribution and link-back treatment.
 3. Verify requested scopes match implemented features only.
-4. Verify Syn retains no TIDAL content beyond operating the page — explicitly including the taste
+4. Verify Halflight retains no TIDAL content beyond operating the page — explicitly including the taste
    profile, which must hold only derived weights and identifiers.
-5. Verify disconnect deletes Syn-held personal data and stops further requests.
+5. Verify disconnect deletes Halflight-held personal data and stops further requests.
 6. Verify no TIDAL content enters any external model, analytics payload, log, or third-party
    service.
 
@@ -1028,8 +1295,8 @@ Before each release that displays new content or changes playback:
 
 ### Storybook
 
-Stories for every meaningful state; accessibility addon in tests; mobile and desktop viewport
-stories for the shell and high-value compositions.
+Stories for every meaningful state; accessibility addon in tests; separate Listening Room and
+Halflight Now compositions. A mobile story is never a narrow viewport of a desktop-shell story.
 
 ### Playwright end-to-end
 
@@ -1039,16 +1306,21 @@ stories for the shell and high-value compositions.
 - **Generate → review → swap a track → save**, against a deterministic fixture graph.
 - Partial API failure and retry with playback uninterrupted.
 - Disconnect and subsequent access prevention.
-- Mobile navigation, keyboard-only critical path, locale switch.
+- Listening Room and Halflight Now sign-in/session continuity, including an ordered simultaneous
+  queue edit from both sites.
+- Halflight Now navigation, full-screen Now Playing, queue verbs, keyboard-only critical path,
+  rotation, safe-area, locale switch, and mobile interruption recovery.
 
 Mock TIDAL at the HTTP boundary with sanitised fixtures. Never record real tokens or personal
 library payloads in fixtures, traces, screenshots, or CI output.
 
 ### Visual regression
 
-A small stable matrix: connected and disconnected shell; home with content, partial failure, and
-skeletons; search results and zero results; library on mobile and desktop; the generate view with
-knobs and a result set; playlist dialog and destructive confirmation.
+A small stable matrix per site: connected and disconnected Listening Room; its home with content,
+partial failure, and skeletons; search, library, generate, playlist dialog, and destructive
+confirmation; then Halflight Now home, search, library, mini player, full-screen Now Playing,
+queue, lyrics, safe-area, and interrupted-state compositions. Review visual regressions against
+the Halflight hierarchy, not generic responsive parity.
 
 ## Observability
 
@@ -1063,7 +1335,69 @@ knobs and a result set; playlist dialog and destructive confirmation.
 ## Delivery roadmap
 
 Effort labels are relative: **S** focused, **M** a vertical slice, **L** several routes or layers.
-Ship each phase as a coherent, green change.
+Ship each phase as a coherent, green change. The three launch tracks below establish Halflight as a
+service; they are the priority framing for every existing capability phase that follows.
+
+### Launch track 0 — Halflight identity and service spine
+
+Goal: turn the existing product into a coherent Halflight service before multiplying surfaces.
+
+- [ ] Establish `halflight.eu` as the canonical production domain, redirects from the prior public
+      hostname, canonical URLs, CSP/origin configuration, and a rollback plan. (M)
+- [ ] Apply the Halflight name, wordmark treatment, metadata, Open Graph, sign-in, empty/error,
+      settings, and TIDAL-attribution copy across customer-facing surfaces. (M)
+- [ ] Enable transactional confirmation email from `noreply@mail.halflight.eu` through the local
+      Postfix relay; verify non-open-relay policy, DNS alignment, single-use expiry, redacted logs,
+      and delivery/failure states with a real mailbox before enabling sign-in links. (M)
+- [ ] Define the default Halflight palette, type scale, luminance ladder, and Apple Music-inspired
+      hierarchy as tokens and Storybook reference compositions. (M)
+- [ ] Audit every current route against the service standard: a clear listening invitation, one
+      primary action, queue verbs, calm error recovery, and no operational jargon. (L)
+- [ ] Add canonical session revision/origin handling and an explicit session-conflict contract
+      before a second site can control the queue. (M)
+- [ ] Record the domain/cookie/auth design for `halflight.eu` and `m.halflight.eu`; test both hosts
+      without widening OAuth or encrypted-TIDAL cookie scope. (M)
+
+Exit: the owner sees one named, composed service with a reliable session contract — not a collection
+of routes under an old project name.
+
+### Launch track 1 — Listening Room
+
+Goal: make `halflight.eu` the beautiful, desktop-first place for long listening and considered
+curation.
+
+- [ ] Finish shell migration steps 1–3 — grid regions, player as a docked row, header `toolbar`,
+      collapsible rail. (L)
+- [ ] Recompose Home around resume, one considered set, a small return path, and personal mixes;
+      remove generic dashboard density. (M)
+- [ ] Make Now Playing, queue, provenance, lyrics, credits, and quality feel like one immersive
+      listening destination across the shell and aside. (L)
+- [ ] Finish the desktop Apple Music north-star review at real laptop and wide-desktop widths;
+      document every intentional departure in the component stories. (M)
+
+Exit: Halflight’s desktop experience feels calm, complete, and unmistakably music-first.
+
+### Launch track 2 — Halflight Now
+
+Goal: release `m.halflight.eu` as a real mobile site with the same session, not a responsive
+afterthought.
+
+- [ ] Create an independently deployed mobile SvelteKit entry point with its own route tree, shell,
+      CSS entry, error boundary, and release pipeline. (L)
+- [ ] Share only display contracts, player/session protocol, authenticated server capabilities,
+      i18n, and accessible primitives; do not import `AppShell`, `MobileNav`, desktop tables, or
+      desktop page CSS. (M)
+- [ ] Build Home, Search, Library, Mini Player, and full-screen Now Playing with queue, lyrics,
+      credits, provenance, and all essential queue verbs. (L)
+- [ ] Add live session handoff, conflict reconciliation, Media Session integration, and explicit
+      Wi-Fi/cellular quality preferences. (L)
+- [ ] Add mobile-only Playwright, visual, accessibility, rotation, safe-area, keyboard, and
+      interrupted-network coverage. (M)
+- [ ] Make the desktop-to-mobile handoff respectful: explicit “Open in Halflight Now” where useful,
+      deep-link continuity, and no forced cross-site redirect during active playback. (M)
+
+Exit: the owner can leave the desk, open Halflight Now, and continue the exact moment of listening
+without thinking about the technology underneath it.
 
 ### Phase A — Consolidate the session
 
@@ -1071,8 +1405,6 @@ Goal: make the player unambiguously the centre before building on top of it.
 
 - [ ] Give every listable surface the same queue verbs (play now / next / add / radio). (M)
 - [ ] Session provenance: the player can state why the current track is playing. (M)
-- [ ] Finish shell migration steps 1–3 — grid regions, player as a docked row, header `toolbar`,
-      collapsible rail. (L)
 - [ ] Queue panel editing: reorder, remove, clear, save-as-playlist. (M)
 - [ ] Stand up the bucket: `bucket.ts`, `staging.ts`, the `syn-worker` job runner, size cap and LRU
       eviction, plus the Settings panel that shows and purges it. (L)
@@ -1087,7 +1419,7 @@ HiRes starts in about the time a normal track does.
 
 ### Phase B — The profile
 
-Goal: Syn knows the owner, and the owner can see what it knows.
+Goal: Halflight knows the owner, and the owner can see what it knows.
 
 - [x] `signals.ts` live readers with sanitised fixtures. (M)
 - [x] `taste_profile` table, `TasteProfileStore`, merge and decay logic. (M)
@@ -1107,7 +1439,7 @@ Goal: a real set from a real profile.
 - [x] `score.ts` — affinity / novelty / fit / penalties, fully unit-tested. (L)
 - [x] `sequence.ts` — energy arcs, spacing, opener/closer. (M)
 - [x] `/app/generate` with a first knob subset (length, familiarity, seeds) and streamed progress. (L)
-- [x] Provisional queue in the player; save to Syn; optional TIDAL push. (M)
+- [x] Provisional queue in the player; save to Halflight; optional TIDAL push. (M)
 - [ ] Retire the hardcoded `SOUNDSCAPE_QUERIES` generator. (S)
 
 Exit: a generated hour is better than TIDAL's own mix for the owner, and every pick is explainable.
@@ -1128,7 +1460,7 @@ Goal: the difference between "a good playlist" and "uncannily accurate".
 - [ ] `AppAside` as generation provenance and pinned queue — migration steps 4–5. (M)
 - [ ] Verified write scopes for save/remove and playlist creation. (M)
 
-Exit: the owner reaches for Syn instead of TIDAL's own mixes.
+Exit: the owner reaches for Halflight instead of TIDAL's own mixes.
 
 ### Phase E — Learning
 
@@ -1156,18 +1488,19 @@ against deterministic mocks; the owner can diagnose common failures without open
 
 ## Recommended next vertical slice
 
-**Profile → one honest set.** Before building the full knob surface, prove the core:
+**One Halflight moment across two sites.** Prove the new service promise before a full mobile
+catalogue build:
 
-1. `signals.ts` over saved tracks, saved albums, and followed artists only.
-2. A minimal profile — artist, genre, era weights with recency decay — persisted and rendered as
-   sentences.
-3. One-hop expansion via `getArtistRelationship('similar')` and artist deep cuts.
-4. Scoring with just affinity + novelty, one knob (familiarity ↔ discovery), no sequencing beyond a
-   spacing rule.
-5. Load it into the player as a provisional queue with provenance chips.
+1. Establish `halflight.eu` and the Halflight identity on the existing Home and player surfaces.
+2. Add server-issued `playback_state` revision and action origin, with unit tests for conflict and
+   reconciliation.
+3. Build `m.halflight.eu/now` plus a minimal Home: resume or start one existing generated set.
+4. Open the same session on both sites; play, seek, queue next, and remove an item from either one.
+5. Assert that the other site receives the new state without restarting audio, leaking a secret, or
+   losing provenance.
 
-If that set is already better than the current generator, the rest of the engine is worth building.
-If it is not, the model is wrong and no amount of knobs will fix it.
+If this feels like one private streaming service in two perfect contexts, the rest of Halflight Now
+is worth building. If it does not, fix the session and the composition before adding route breadth.
 
 ## Success measures
 
@@ -1179,6 +1512,12 @@ One user, so measure task quality rather than growth:
 - Adjusting one knob produces a noticeably different — and still coherent — set.
 - The profile view reads as recognisably the owner's taste.
 - Playback never stops because of a UI or API failure.
+- The owner can move from Listening Room to Halflight Now (and back) mid-session with the current
+  track, position, queue, provenance, and quality state intact.
+- Halflight Now reaches sound, essential queue control, and Now Playing in one hand at 320px; the
+  Listening Room remains composed and productive at laptop and wide-desktop widths.
+- The product looks and sounds like Halflight everywhere: calm Apple Music-level hierarchy, original
+  dark half-light character, correct TIDAL clarity, and no remnant of “Syn” in customer-facing copy.
 - No token, raw JSON, stack trace, or unexplained API status in normal use.
 - Green checks, lint, type-aware lint, unit tests, and critical e2e per release.
 
@@ -1190,7 +1529,11 @@ One user, so measure task quality rather than growth:
 - No secret or token material crosses the server boundary or enters logs/tests.
 - No taste-profile content in logs, analytics, or third-party calls.
 - Strings in English and German.
-- Keyboard, focus, screen-reader naming, contrast, reduced motion, mobile width, and zoom checked.
+- Keyboard, focus, screen-reader naming, contrast, reduced motion, and zoom checked. For a change
+  touching a site shell, verify the Listening Room at its supported desktop widths and Halflight Now
+  independently at mobile width, landscape, rotation, safe areas, and browser-chrome constraints.
+- A customer-facing change uses the Halflight name, voice, canonical metadata, and applicable TIDAL
+  attribution; technical `syn_*` identifiers change only in a separately approved migration.
 - Unit/component/e2e coverage matched to risk.
 - Storybook covers reusable visual states.
 - TIDAL scopes, terms, attribution, and retention implications reviewed.
@@ -1207,7 +1550,7 @@ One user, so measure task quality rather than growth:
    hits ↔ deep-cuts knob, or must it be approximated?
 4. **ISRC availability** — is ISRC present often enough to dedupe recordings reliably?
 5. **Listening history** — does TIDAL expose recently-played, or must session history come solely
-   from Syn's own `playback_state`?
+   from Halflight's own `playback_state`?
 6. **Credits at scale** — is `fetchAlbumCredits` cheap enough to build contributor weights, or is it
    a Phase D luxury?
 7. **Energy approximation** — which available fields correlate usefully with perceived energy, and
