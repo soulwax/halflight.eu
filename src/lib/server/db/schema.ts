@@ -6,6 +6,8 @@ import {
 	boolean,
 	check,
 	jsonb,
+	index,
+	primaryKey,
 	serial
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
@@ -133,6 +135,27 @@ export const tasteProfile = pgTable('taste_profile', {
 	data: jsonb('data').notNull(),
 	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 });
+
+/**
+ * A bounded, owner-owned suppression list for recently accepted generated
+ * tracks. It deliberately holds identifiers and expiry only — no provider
+ * display data, playback history, or generated-set payload.
+ */
+export const generationCooldown = pgTable(
+	'generation_cooldown',
+	{
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		trackId: text('track_id').notNull(),
+		expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+	},
+	(table) => [
+		primaryKey({ columns: [table.userId, table.trackId] }),
+		index('generation_cooldown_user_expiry_idx').on(table.userId, table.expiresAt)
+	]
+);
 
 /** A user's encrypted Last.fm session key and scrobbling preferences. */
 export const lastfmConnection = pgTable('lastfm_connection', {

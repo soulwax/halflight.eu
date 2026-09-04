@@ -3,6 +3,7 @@ import { resolve } from '$app/paths';
 import { getTasteProfile } from '#lib/server/taste/profile';
 import { generateTasteSet, type ProvisionalSet } from '#lib/server/taste/generate';
 import { parseGenerateTasteSetInput } from '#lib/server/taste/generate-input';
+import { getGenerationCooldownTrackIds } from '#lib/server/taste/cooldown';
 import { createLiveGraphClient } from '#lib/server/taste/graph';
 import { getConnectionStatus } from '#lib/server/tidal';
 import { getArtist } from '#lib/server/tidal/api';
@@ -58,7 +59,7 @@ export const actions: Actions = {
 
 		const connection = await getConnectionStatus();
 		if (!connection.connected) {
-			return fail(409, { error: 'TIDAL connection required to generate from your taste graph.' });
+			return fail(409, { errorCode: 'generation_connection_required' });
 		}
 
 		const data = await event.request.formData();
@@ -67,12 +68,16 @@ export const actions: Actions = {
 			return fail(400, { errorCode: 'invalid_generation_input' });
 		}
 
-		const profile = await getTasteProfile(user.id);
+		const [profile, cooldownTrackIds] = await Promise.all([
+			getTasteProfile(user.id),
+			getGenerationCooldownTrackIds(user.id)
+		]);
 		const client = createLiveGraphClient({ fetch: event.fetch, cookies: event.cookies });
 
 		try {
 			const set: ProvisionalSet = await generateTasteSet(profile, {
 				knobs: input.output,
+				cooldownTrackIds,
 				client
 			});
 
@@ -80,9 +85,8 @@ export const actions: Actions = {
 				success: true,
 				set
 			};
-		} catch (err) {
-			const message = err instanceof Error ? err.message : 'Generation failed.';
-			return fail(500, { error: message });
+		} catch {
+			return fail(502, { errorCode: 'generation_unavailable' });
 		}
 	}
 };

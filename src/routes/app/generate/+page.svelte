@@ -47,10 +47,24 @@
 		};
 	}
 
+	async function recordAcceptedSet(): Promise<void> {
+		if (!currentSet || currentSet.tracks.length === 0) return;
+		try {
+			await fetch('/api/generation-cooldown', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ trackIds: currentSet.tracks.map((track) => track.id) })
+			});
+		} catch {
+			// Accepting a set must not delay local playback or saving it.
+		}
+	}
+
 	function playWholeSet() {
 		if (!currentSet || currentSet.tracks.length === 0) return;
 		const summaries = currentSet.tracks.map(toTrackSummary);
 		player.play(summaries[0], summaries);
+		void recordAcceptedSet();
 	}
 
 	function playSingleTrack(t: ProvisionalTrack) {
@@ -69,6 +83,7 @@
 
 		customPlaylists.createPlaylist(title, desc, summaries);
 		saveSuccess = true;
+		void recordAcceptedSet();
 		setTimeout(() => {
 			saveSuccess = false;
 		}, 3500);
@@ -113,14 +128,18 @@
 		</p>
 	</header>
 
-	{#if form?.error || form?.errorCode}
+	{#if form?.errorCode}
 		<div
 			class="flex items-center gap-3 border border-[var(--danger)] bg-[var(--danger-subtle)] p-4 text-sm text-[var(--text-primary)]"
 			role="alert"
 		>
 			<AlertCircle size={18} class="shrink-0 text-[var(--danger)]" />
 			<p>
-				{form.errorCode === 'invalid_generation_input' ? m.generate_invalid_input() : form.error}
+				{form.errorCode === 'invalid_generation_input'
+					? m.generate_invalid_input()
+					: form.errorCode === 'generation_connection_required'
+						? m.generate_connection_required()
+						: m.generate_unavailable()}
 			</p>
 		</div>
 	{/if}
@@ -240,9 +259,7 @@
 				</Button>
 
 				{#if !data.connection.connected}
-					<span class="text-xs text-[var(--danger)]">
-						TIDAL connection required to expand taste graph.
-					</span>
+					<span class="text-xs text-[var(--danger)]">{m.generate_connection_required()}</span>
 				{/if}
 			</div>
 		</form>
@@ -263,6 +280,11 @@
 						<h2 id="provisional-set-heading" class="mt-2 text-xl font-bold tracking-tight">
 							{currentSet.summary}
 						</h2>
+						{#if currentSet.degraded}
+							<p class="mt-2 max-w-xl text-sm text-[var(--text-muted)]">
+								{m.generate_degraded()}
+							</p>
+						{/if}
 					</div>
 
 					<div class="flex flex-wrap items-center gap-2">
