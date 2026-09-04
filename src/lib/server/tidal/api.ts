@@ -121,6 +121,28 @@ export function getPlaylistItems(
 	);
 }
 
+/** Every item in one playlist, following its cursor until exhaustion. */
+export async function getFullPlaylistItems(
+	id: string,
+	ctx?: Ctx,
+	opts: PageOptions = {}
+): Promise<{ items: Resource[]; included: Resource[] }> {
+	const items: Resource[] = [];
+	const included: Resource[] = [];
+	let cursor = opts.cursor;
+	for (let guard = 0; guard < 50; guard++) {
+		const page = await getPlaylistItems(id, { ...opts, cursor }, ctx);
+		items.push(...(Array.isArray(page.data) ? page.data : [page.data]));
+		included.push(...(page.included ?? []));
+		const next = page.links?.next;
+		if (!next) break;
+		const parsed = new URL(next, 'https://openapi.tidal.com');
+		cursor = parsed.searchParams.get('page[cursor]') ?? undefined;
+		if (!cursor) break;
+	}
+	return { items, included };
+}
+
 /** A personalised mix set and its tracks (`include=items`). */
 export function getMix(
 	kind: MixKind,

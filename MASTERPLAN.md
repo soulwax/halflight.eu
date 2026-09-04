@@ -1074,7 +1074,7 @@ HiRes starts in about the time a normal track does.
 
 Goal: Syn knows the owner, and the owner can see what it knows.
 
-- [ ] `signals.ts` live readers with sanitised fixtures. (M)
+- [x] `signals.ts` live readers with sanitised fixtures. (M)
 - [ ] `taste_profile` table, `TasteProfileStore`, merge and decay logic. (M)
 - [ ] Profile build job triggered on demand and after connection. (M)
 - [ ] `/app/settings/taste` — plain-language profile, confidence, pin/damp/exclude, export, reset,

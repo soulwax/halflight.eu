@@ -1,7 +1,15 @@
 import { eq } from 'drizzle-orm';
 import { db } from '#lib/server/db';
 import { tasteProfile } from '#lib/server/db/schema';
-import type { TasteSignals, TasteSignalSource } from './signals';
+import { getPlaybackState, type PlaybackState } from '#lib/server/playback-state';
+import {
+	readTasteSignals,
+	tidalTasteSignalReader,
+	type TasteSignalReader,
+	type TasteSignals,
+	type TasteSignalSource
+} from './signals';
+import type { TidalRequestContext } from '#lib/server/tidal';
 
 export const TASTE_PROFILE_VERSION = 1;
 
@@ -254,4 +262,32 @@ export async function rebuildTasteProfile(
 ): Promise<TasteProfile> {
 	const previous = (await store.read(userId)) ?? emptyTasteProfile(now);
 	return store.write(userId, buildTasteProfile(signals, previous, now));
+}
+
+/**
+ * Rebuild the owner's disposable, derived profile from live TIDAL collections
+ * and the bounded resumable session. Neither source payload is persisted.
+ */
+export async function refreshTasteProfile(
+	userId: string,
+	options: {
+		ctx?: TidalRequestContext;
+		reader?: TasteSignalReader;
+		store?: TasteProfileStore;
+		playbackState?: PlaybackState;
+		now?: Date;
+	} = {}
+): Promise<TasteProfile> {
+	const now = options.now ?? new Date();
+	const playback = options.playbackState ?? (await getPlaybackState(userId));
+	const sessionTracks = [playback.currentTrack, ...playback.history].filter(
+		(track): track is NonNullable<typeof track> => track !== null
+	);
+	const signals = await readTasteSignals(
+		options.ctx,
+		options.reader ?? tidalTasteSignalReader,
+		now,
+		sessionTracks
+	);
+	return rebuildTasteProfile(userId, signals, options.store ?? dbTasteProfileStore, now);
 }

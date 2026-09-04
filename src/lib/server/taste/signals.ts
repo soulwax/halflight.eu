@@ -1,6 +1,6 @@
 import type { AlbumSummary, ArtistSummary, TrackSummary } from '#lib/tidal/models';
 import { tidalApi, type TidalRequestContext } from '#lib/server/tidal';
-import { normaliseArtist } from '#lib/server/tidal/normalise';
+import { normaliseCollectionPage } from '#lib/server/tidal/normalise';
 
 export type TasteSignalSource =
 	'playlist' | 'followed_artist' | 'saved_track' | 'saved_album' | 'session';
@@ -33,6 +33,16 @@ export interface TasteSignalInput {
 
 export interface TasteSignalReader {
 	getFollowedArtists(ctx?: TidalRequestContext): Promise<ArtistSummary[]>;
+	getSavedTracks?(ctx?: TidalRequestContext): Promise<TrackSummary[]>;
+	getSavedAlbums?(ctx?: TidalRequestContext): Promise<AlbumSummary[]>;
+	getPlaylists?(ctx?: TidalRequestContext): Promise<Array<{ id: string }>>;
+	getPlaylistTracks?(playlistId: string, ctx?: TidalRequestContext): Promise<TrackSummary[]>;
+}
+
+const PROFILE_PLAYLIST_REQUEST_BUDGET = 16;
+
+function normaliseCollection(document: { items: unknown[]; included: unknown[] }) {
+	return normaliseCollectionPage({ data: document.items, included: document.included });
 }
 
 /**
@@ -41,8 +51,28 @@ export interface TasteSignalReader {
  */
 export const tidalTasteSignalReader: TasteSignalReader = {
 	async getFollowedArtists(ctx) {
-		const { items } = await tidalApi.getFullCollection('artists', ctx);
-		return items.map(normaliseArtist).filter((artist): artist is ArtistSummary => artist !== null);
+		const collection = await tidalApi.getFullCollection('artists', ctx);
+		return normaliseCollection(collection).artists;
+	},
+	async getSavedTracks(ctx) {
+		const collection = await tidalApi.getFullCollection('tracks', ctx, {
+			include: ['artists', 'albums']
+		});
+		return normaliseCollection(collection).tracks;
+	},
+	async getSavedAlbums(ctx) {
+		const collection = await tidalApi.getFullCollection('albums', ctx, { include: ['artists'] });
+		return normaliseCollection(collection).albums;
+	},
+	async getPlaylists(ctx) {
+		const collection = await tidalApi.getFullCollection('playlists', ctx);
+		return normaliseCollection(collection).playlists.map(({ id }) => ({ id }));
+	},
+	async getPlaylistTracks(playlistId, ctx) {
+		const collection = await tidalApi.getFullPlaylistItems(playlistId, ctx, {
+			include: ['artists', 'albums']
+		});
+		return normaliseCollection(collection).tracks;
 	}
 };
 
@@ -101,8 +131,52 @@ export function deriveTasteSignals(input: TasteSignalInput): TasteSignals {
 export async function readTasteSignals(
 	ctx: TidalRequestContext = {},
 	reader: TasteSignalReader = tidalTasteSignalReader,
-	now = new Date()
+	now = new Date(),
+	sessionTracks: TrackSummary[] = []
 ): Promise<TasteSignals> {
-	const followedArtists = await reader.getFollowedArtists(ctx);
-	return deriveTasteSignals({ followedArtists, observedAt: now.toISOString() });
+	const readOrEmpty = async <T>(read: (() => Promise<T>) | undefined, empty: T): Promise<T> => {
+		if (!read) return empty;
+		try {
+			return await read();
+		} catch {
+			// A profile remains useful when one collection is temporarily unavailable.
+			return empty;
+		}
+	};
+
+	const [followedArtists, savedTracks, savedAlbums, playlists] = await Promise.all([
+		readOrEmpty(() => reader.getFollowedArtists(ctx), [] as ArtistSummary[]),
+		readOrEmpty(
+			reader.getSavedTracks ? () => reader.getSavedTracks!(ctx) : undefined,
+			[] as TrackSummary[]
+		),
+		readOrEmpty(
+			reader.getSavedAlbums ? () => reader.getSavedAlbums!(ctx) : undefined,
+			[] as AlbumSummary[]
+		),
+		readOrEmpty(
+			reader.getPlaylists ? () => reader.getPlaylists!(ctx) : undefined,
+			[] as Array<{ id: string }>
+		)
+	]);
+
+	const playlistTracks: TrackSummary[] = [];
+	if (reader.getPlaylistTracks) {
+		for (const playlist of playlists.slice(0, PROFILE_PLAYLIST_REQUEST_BUDGET)) {
+			const tracks = await readOrEmpty(
+				() => reader.getPlaylistTracks!(playlist.id, ctx),
+				[] as TrackSummary[]
+			);
+			playlistTracks.push(...tracks);
+		}
+	}
+
+	return deriveTasteSignals({
+		followedArtists,
+		playlistTracks,
+		savedTracks,
+		savedAlbums,
+		sessionTracks,
+		observedAt: now.toISOString()
+	});
 }

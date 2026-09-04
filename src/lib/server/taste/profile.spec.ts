@@ -4,6 +4,7 @@ import {
 	emptyTasteProfile,
 	recencyMultiplier,
 	rebuildTasteProfile,
+	refreshTasteProfile,
 	type TasteProfile,
 	type TasteProfileStore
 } from './profile';
@@ -71,5 +72,33 @@ describe('taste profile', () => {
 
 		expect(profile.updatedAt).toBe(now.toISOString());
 		expect(profile.confidence.artists).toBeGreaterThan(0);
+	});
+
+	it('rebuilds from live signals and bounded playback history without persisting tracks', async () => {
+		const profile = await refreshTasteProfile('owner-1', {
+			store: memoryStore(),
+			reader: {
+				getFollowedArtists: async () => [
+					{ kind: 'artist', id: 'followed-artist', name: 'Display data is discarded' }
+				]
+			},
+			playbackState: {
+				currentTrack: null,
+				queue: [],
+				history: [
+					{
+						kind: 'track',
+						id: 'session-track',
+						title: 'Display data is discarded',
+						artists: [{ id: 'session-artist', name: 'Display data is discarded' }]
+					}
+				],
+				currentTime: 0
+			},
+			now
+		});
+
+		expect(profile.artists).toMatchObject({ 'followed-artist': 1, 'session-artist': 0.5 });
+		expect(JSON.stringify(profile)).not.toContain('Display data is discarded');
 	});
 });
