@@ -3,7 +3,6 @@
 	import { page } from '$app/state';
 	import AppShell from '#lib/components/app/AppShell.svelte';
 	import Player from '#lib/components/player/Player.svelte';
-	import PlaylistGeneratorModal from '#lib/components/music/PlaylistGeneratorModal.svelte';
 	import AddToPlaylistModal from '#lib/components/music/AddToPlaylistModal.svelte';
 	import { player } from '#lib/player/player.svelte.js';
 	import { themeManager } from '#lib/theme/theme.svelte.js';
@@ -43,5 +42,4 @@
 </AppShell>
 
 <Player />
-<PlaylistGeneratorModal />
 <AddToPlaylistModal />

@@ -77,18 +77,15 @@
 						{m.playlist_sync_all()}
 					</Button>
 				{/if}
-				<Button variant="primary" onclick={() => customPlaylists.openGenerator()}>
+				<Button href={resolve('/app/generate')} variant="primary">
 					<Sparkles size={14} />
-					COMPOSE ON THE FLY
+					{m.nav_generate()}
 				</Button>
 			{/snippet}
 		</SectionHeader>
 
 		{#if customPlaylists.playlists.length === 0}
-			<p class="group-empty">
-				No custom playlists created yet. Click "Compose On The Fly" or add tracks from any song card
-				with (+).
-			</p>
+			<p class="group-empty">{m.library_custom_empty()}</p>
 		{:else}
 			<div class="custom-grid">
 				{#each customPlaylists.playlists as playlist (playlist.id)}

@@ -15,4 +15,3 @@ export { default as PageHeader } from './components/music/PageHeader.svelte';
 export { default as PageActions } from './components/music/PageActions.svelte';
 export { default as SongCard } from './components/music/SongCard.svelte';
 export { default as AddToPlaylistModal } from './components/music/AddToPlaylistModal.svelte';
-export { default as PlaylistGeneratorModal } from './components/music/PlaylistGeneratorModal.svelte';

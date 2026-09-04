@@ -118,6 +118,7 @@
 	"tidal_attribution": "Music data provided by TIDAL",
 	"library_title": "Your library",
 	"library_subtitle": "The albums, artists, tracks, and playlists saved to your TIDAL collection.",
+	"library_custom_empty": "No custom playlists created yet. Generate a set or add tracks from any song card.",
 	"library_has_more": "more available",
 	"library_section_empty": "Nothing saved here yet.",
 	"library_section_error": "This part of your library could not be loaded. Please try again.",

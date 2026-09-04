@@ -118,6 +118,7 @@
 	"tidal_attribution": "Musikdaten bereitgestellt von TIDAL",
 	"library_title": "Deine Mediathek",
 	"library_subtitle": "Die Alben, Künstler, Titel und Playlists in deiner TIDAL-Sammlung.",
+	"library_custom_empty": "Noch keine eigenen Playlists erstellt. Erstelle ein Set oder füge Titel über eine Songkarte hinzu.",
 	"library_has_more": "weitere verfügbar",
 	"library_section_empty": "Hier ist noch nichts gespeichert.",
 	"library_section_error": "Dieser Teil deiner Mediathek konnte nicht geladen werden. Bitte versuche es erneut.",

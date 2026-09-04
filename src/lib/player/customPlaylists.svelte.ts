@@ -23,7 +23,6 @@ const STORAGE_KEY = 'syn_custom_playlists';
 
 export class CustomPlaylistsManager {
 	playlists = $state<CustomPlaylist[]>([]);
-	isGeneratorOpen = $state(false);
 	isImportOpen = $state(false);
 	selectedTrackForPlaylist = $state<TrackSummary | null>(null);
 	isSyncing = $state(false);
@@ -230,14 +229,6 @@ export class CustomPlaylistsManager {
 		if (!playlist || playlist.items.length === 0) return;
 
 		player.play(playlist.items[0], playlist.items);
-	}
-
-	openGenerator(): void {
-		this.isGeneratorOpen = true;
-	}
-
-	closeGenerator(): void {
-		this.isGeneratorOpen = false;
 	}
 
 	openImport(): void {
