@@ -1,7 +1,6 @@
 <script lang="ts">
 	import type { AppBrand, AppNavigationItem } from './navigation.js';
 	import { isCurrentNavigationItem } from './navigation.js';
-	import ThemeSelector from '#lib/components/ui/ThemeSelector.svelte';
 	import synLogo from '#lib/assets/syn-logo.svg';
 
 	interface Props {
@@ -63,9 +62,6 @@
 	</nav>
 
 	<div class="mt-auto border-t-2 border-[var(--border-subtle)] bg-[var(--surface-canvas)] p-4">
-		<div class="mb-3">
-			<ThemeSelector compact={true} id="sidenav-theme-selector" />
-		</div>
 		{#if accountHref && accountLabel}
 			<a class="app-account-link" href={accountHref}>
 				{#if userName}<span class="truncate font-bold">{userName}</span>{/if}

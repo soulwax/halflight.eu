@@ -60,7 +60,7 @@ export class PlayerState {
 	duration = $state(0);
 	volume = $state(1);
 	isMuted = $state(false);
-	isHeadroomEnabled = $state(false);
+	isHeadroomEnabled = $state(true);
 	maxVolume = $derived(this.isHeadroomEnabled ? 1.25 : 1);
 	volumePercent = $derived(Math.round(this.volume * 100));
 	streamUrl = $state<string | null>(null);

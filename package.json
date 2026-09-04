@@ -84,6 +84,7 @@
 	},
 	"dependencies": {
 		"@lucide/svelte": "^1.38.0",
-		"nodemailer": "^9.1.1"
+		"nodemailer": "^9.1.1",
+		"web-haptics": "^0.0.6"
 	}
 }

@@ -22,6 +22,11 @@ describe('AppHeader.svelte', () => {
 		// Style/Theme selector trigger is present
 		const themeTrigger = page.getByRole('button', { name: /Current colour theme:/ });
 		await expect.element(themeTrigger).toBeInTheDocument();
+
+		// Settings icon button links to /app/settings/tidal
+		const settingsLink = page.getByRole('link', { name: 'Settings' });
+		await expect.element(settingsLink).toBeInTheDocument();
+		await expect.element(settingsLink).toHaveAttribute('href', '/app/settings/tidal');
 	});
 
 	it('renders logo linking to /app and sign-out form when user is logged in', async () => {
@@ -37,5 +42,10 @@ describe('AppHeader.svelte', () => {
 
 		// Login link should not be present
 		await expect.element(page.getByRole('link', { name: 'Sign in' })).not.toBeInTheDocument();
+
+		// Settings icon button links to /app/settings/tidal
+		const settingsLink = page.getByRole('link', { name: 'Settings' });
+		await expect.element(settingsLink).toBeInTheDocument();
+		await expect.element(settingsLink).toHaveAttribute('href', '/app/settings/tidal');
 	});
 });

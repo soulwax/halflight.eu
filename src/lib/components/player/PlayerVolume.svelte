@@ -2,6 +2,7 @@
 	import { Volume1, Volume2, VolumeX } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { player } from '#lib/player/player.svelte.js';
+	import { haptics } from '#lib/player/haptics.js';
 
 	let {
 		compact = false
@@ -13,42 +14,85 @@
 	const displayVolume = $derived(isMuted ? 0 : player.volume);
 	const maxVolume = $derived(player.maxVolume);
 
-	// Calculate track fill percentages
-	const totalPercent = $derived(Math.min(100, Math.max(0, (displayVolume / maxVolume) * 100)));
-	const normalPercent = $derived(
-		player.isHeadroomEnabled ? Math.min((1 / 1.25) * 100, totalPercent) : totalPercent
+	// VLC-like continuous track metrics (0..1.25 where 1.0 sits at 80% track width)
+	const normalFillPercent = $derived((Math.min(1.0, displayVolume) / maxVolume) * 100);
+	const headroomFillPercent = $derived(
+		displayVolume > 1.0 ? ((displayVolume - 1.0) / maxVolume) * 100 : 0
 	);
-	const headroomPercent = $derived(
-		player.isHeadroomEnabled && displayVolume > 1
-			? Math.min(100, totalPercent) - (1 / 1.25) * 100
-			: 0
-	);
+	const notchPercent = $derived((1.0 / maxVolume) * 100);
+
+	let prevVolume = player.volume;
 
 	function onRangeInput(event: Event) {
 		const target = event.currentTarget as HTMLInputElement;
-		player.setVolume(parseFloat(target.value));
+		let val = parseFloat(target.value);
+		if (Number.isNaN(val)) return;
+
+		// Magnetic snap to 100% (1.0) when dragging near reference notch
+		if (Math.abs(val - 1.0) <= 0.015 && Math.abs(prevVolume - 1.0) > 0.015) {
+			val = 1.0;
+			target.value = '1.0';
+			haptics.snap();
+		} else if ((prevVolume < 1.0 && val >= 1.0) || (prevVolume > 1.0 && val <= 1.0)) {
+			haptics.notch();
+		} else if (val === 0 || val === maxVolume) {
+			haptics.limit();
+		}
+
+		prevVolume = val;
+		player.setVolume(val);
 	}
 
 	function onWheel(event: WheelEvent) {
 		event.preventDefault();
 		const delta = event.deltaY < 0 ? 0.02 : -0.02;
-		player.setVolume(player.volume + delta);
+		let targetVol = Math.max(0, Math.min(maxVolume, player.volume + delta));
+
+		// Snap to 1.0 if passing within snap threshold
+		if (Math.abs(targetVol - 1.0) < 0.015) {
+			targetVol = 1.0;
+			haptics.snap();
+		} else if (
+			(player.volume < 1.0 && targetVol >= 1.0) ||
+			(player.volume > 1.0 && targetVol <= 1.0)
+		) {
+			haptics.notch();
+		} else if (targetVol === 0 || targetVol === maxVolume) {
+			haptics.limit();
+		} else {
+			haptics.tick();
+		}
+
+		player.setVolume(targetVol);
+		prevVolume = targetVol;
 	}
 
-	function onDoubleClick() {
-		player.setVolume(1);
+	function onResetVolume() {
+		player.setVolume(1.0);
+		prevVolume = 1.0;
+		haptics.snap();
 	}
 
 	function onKeydown(event: KeyboardEvent) {
 		if (event.key === 'm' || event.key === 'M') {
 			event.preventDefault();
 			player.toggleMute();
+			haptics.tick();
+		} else if (event.key === '0') {
+			event.preventDefault();
+			player.setVolume(0);
+			haptics.limit();
+		} else if (event.key === '1') {
+			event.preventDefault();
+			onResetVolume();
 		} else if (event.key === 'Home') {
 			event.preventDefault();
 			player.setVolume(0);
+			haptics.limit();
 		} else if (event.key === 'End') {
 			event.preventDefault();
 			player.setVolume(maxVolume);
+			haptics.limit();
 		}
 	}
 </script>
@@ -56,13 +100,16 @@
 <div
 	class="vol"
 	class:compact
-	class:has-headroom={player.isHeadroomEnabled}
+	class:has-headroom={maxVolume > 1}
 	class:in-headroom={!isMuted && player.volume > 1}
 >
 	<button
 		type="button"
 		class="a-btn vol-mute-btn"
-		onclick={() => player.toggleMute()}
+		onclick={() => {
+			player.toggleMute();
+			haptics.tick();
+		}}
 		aria-label={isMuted ? m.player_unmute() : m.player_mute()}
 		title={isMuted ? m.player_unmute() : m.player_mute()}
 	>
@@ -75,17 +122,17 @@
 		{/if}
 	</button>
 
-	<div class="vol-track-wrap" onwheel={onWheel}>
+	<div class="vol-track" onwheel={onWheel}>
 		<input
 			type="range"
-			class="vol-slider"
+			class="vol-range"
 			min="0"
 			max={maxVolume}
 			step="0.01"
 			value={displayVolume}
 			oninput={onRangeInput}
 			onkeydown={onKeydown}
-			ondblclick={onDoubleClick}
+			ondblclick={onResetVolume}
 			aria-label={m.player_volume()}
 			aria-valuemin={0}
 			aria-valuemax={Math.round(maxVolume * 100)}
@@ -93,37 +140,23 @@
 			aria-valuetext={isMuted ? m.player_mute() : `${Math.round(player.volume * 100)}%`}
 		/>
 
-		<div class="vol-track-visual" aria-hidden="true">
-			<div class="vol-fill-normal" style="width: {normalPercent}%"></div>
-			{#if player.isHeadroomEnabled}
-				<div class="vol-notch-100" style="left: 80%"></div>
-				{#if headroomPercent > 0}
-					<div class="vol-fill-headroom" style="left: 80%; width: {headroomPercent}%"></div>
-				{/if}
+		<span class="vol-fill-normal" style="width: {normalFillPercent}%"></span>
+		{#if maxVolume > 1}
+			<span class="vol-notch-100" style="left: {notchPercent}%"></span>
+			{#if headroomFillPercent > 0}
+				<span class="vol-fill-headroom" style="left: {notchPercent}%; width: {headroomFillPercent}%"
+				></span>
 			{/if}
-		</div>
+		{/if}
 	</div>
 
 	<button
 		type="button"
 		class="vol-readout"
-		onclick={onDoubleClick}
+		onclick={onResetVolume}
 		aria-label={m.player_volume_reset()}
 		title={m.player_volume_reset()}
 	>
 		{isMuted ? '0%' : `${Math.round(player.volume * 100)}%`}
-	</button>
-
-	<button
-		type="button"
-		class="vol-headroom-toggle"
-		class:active={player.isHeadroomEnabled}
-		class:boosted={!isMuted && player.volume > 1}
-		onclick={() => player.toggleHeadroom()}
-		aria-pressed={player.isHeadroomEnabled}
-		aria-label={player.isHeadroomEnabled ? m.player_headroom_disable() : m.player_headroom_enable()}
-		title={player.isHeadroomEnabled ? m.player_headroom_disable() : m.player_headroom_enable()}
-	>
-		{m.player_headroom_toggle()}
 	</button>
 </div>

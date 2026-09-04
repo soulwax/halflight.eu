@@ -20,8 +20,7 @@
 		{ href: resolve('/app/library'), label: m.nav_library() },
 		{ href: resolve('/app/mixes'), label: m.nav_mixes() },
 		{ href: resolve('/app/settings/taste'), label: m.nav_taste() },
-		{ href: resolve('/app/settings/lastfm'), label: m.nav_lastfm() },
-		{ href: resolve('/app/settings/tidal'), label: m.nav_settings() }
+		{ href: resolve('/app/settings/lastfm'), label: m.nav_lastfm() }
 	]);
 
 	$effect(() => {
@@ -38,8 +37,6 @@
 	skipLinkLabel={m.skip_to_content()}
 	navigationLabel={m.nav_primary()}
 	userName={data.user.name}
-	accountHref={resolve('/app/settings/tidal')}
-	accountLabel={m.nav_settings()}
 	signOutAction={resolve('/logout')}
 	signOutLabel={m.sign_out()}
 >

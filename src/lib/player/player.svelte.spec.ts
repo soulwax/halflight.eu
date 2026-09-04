@@ -116,20 +116,25 @@ describe('PlayerState', () => {
 		expect(player.isNormalizationEnabled).toBe(false);
 	});
 
-	it('controls volume and clamps to standard 100% when headroom is disabled', () => {
+	it('supports VLC-style +25% overloudness headroom (up to 125%) by default', () => {
 		const player = new PlayerState();
-		expect(player.isHeadroomEnabled).toBe(false);
-		expect(player.maxVolume).toBe(1);
+		expect(player.isHeadroomEnabled).toBe(true);
+		expect(player.maxVolume).toBe(1.25);
 
 		player.setVolume(0.75);
 		expect(player.volume).toBe(0.75);
 		expect(player.volumePercent).toBe(75);
 		expect(player.isMuted).toBe(false);
 
-		// Setting > 1 when headroom disabled clamps to 1
-		player.setVolume(1.2);
-		expect(player.volume).toBe(1);
-		expect(player.volumePercent).toBe(100);
+		// Allows setting up to 1.25 (125%)
+		player.setVolume(1.15);
+		expect(player.volume).toBe(1.15);
+		expect(player.volumePercent).toBe(115);
+
+		// Clamps to max 1.25 (125%)
+		player.setVolume(1.5);
+		expect(player.volume).toBe(1.25);
+		expect(player.volumePercent).toBe(125);
 
 		// Setting <= 0 mutes
 		player.setVolume(0);
@@ -141,24 +146,19 @@ describe('PlayerState', () => {
 		expect(player.volume).toBe(0);
 	});
 
-	it('supports optional +25% overloudness headroom (up to 125%)', () => {
+	it('clamps volume to standard 100% when headroom is toggled off', () => {
 		const player = new PlayerState();
-		player.toggleHeadroom();
-		expect(player.isHeadroomEnabled).toBe(true);
-		expect(player.maxVolume).toBe(1.25);
-
-		player.setVolume(1.15);
-		expect(player.volume).toBe(1.15);
-		expect(player.volumePercent).toBe(115);
-
-		// Maxes out at 1.25 (125%)
-		player.setVolume(1.5);
+		player.setVolume(1.25);
 		expect(player.volume).toBe(1.25);
-		expect(player.volumePercent).toBe(125);
 
-		// Toggling headroom off clamps back down to 1.0 (100%)
 		player.toggleHeadroom();
 		expect(player.isHeadroomEnabled).toBe(false);
+		expect(player.maxVolume).toBe(1);
+		expect(player.volume).toBe(1);
+		expect(player.volumePercent).toBe(100);
+
+		// Setting > 1 when headroom disabled clamps to 1
+		player.setVolume(1.2);
 		expect(player.volume).toBe(1);
 		expect(player.volumePercent).toBe(100);
 	});
