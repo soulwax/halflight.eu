@@ -1,3 +1,4 @@
+import { SvelteMap } from 'svelte/reactivity';
 import type { TrackSummary } from '#lib/tidal/models';
 import { qualityTier, type QualityTier } from '#lib/format';
 import { assessPlayback, type PlaybackAssessment } from './playback-assessment';
@@ -137,15 +138,7 @@ export class PlayerState {
 		this.audio = new Audio();
 		this.audio.preload = 'auto';
 
-		this.audio.addEventListener('timeupdate', () => {
-			if (this.audio && !isNaN(this.audio.currentTime)) {
-				this.currentTime = this.audio.currentTime;
-				if (Math.abs(this.currentTime - this.lastPersistedPosition) >= 15) {
-					this.lastPersistedPosition = this.currentTime;
-					this.schedulePersistence();
-				}
-			}
-		});
+		this.audio.addEventListener('timeupdate', () => this.onTimeUpdate());
 
 		const onMeta = () => {
 			if (this.audio && !isNaN(this.audio.duration) && this.audio.duration > 0) {
@@ -174,6 +167,23 @@ export class PlayerState {
 			this.isPlaying = false;
 			this.isLoading = false;
 		});
+	}
+
+	/**
+	 * Mirror the `<audio>` position into reactive state — but never while a new
+	 * track is still loading. The outgoing track keeps firing `timeupdate` during
+	 * the async metadata fetch, and letting it write `currentTime` makes the next
+	 * track inherit the old progress.
+	 */
+	private onTimeUpdate(): void {
+		if (this.isLoading) return;
+		const audio = this.audio;
+		if (!audio || Number.isNaN(audio.currentTime)) return;
+		this.currentTime = audio.currentTime;
+		if (Math.abs(this.currentTime - this.lastPersistedPosition) >= 15) {
+			this.lastPersistedPosition = this.currentTime;
+			this.schedulePersistence();
+		}
 	}
 
 	hasNext = $derived(this.queue.length > 0);
@@ -228,18 +238,6 @@ export class PlayerState {
 		if (this.currentTrack && this.currentTrack.id !== track.id) {
 			this.history.push(this.currentTrack);
 		}
-		this.currentTrack = track;
-		this.currentTime = 0;
-		this.duration = track.duration || 0;
-		this.hasMediaMetadata = false;
-		this.requestedQuality = null;
-		this.audioQuality = null;
-		this.codecs = null;
-		this.lyrics = null;
-		this.lyricsCues = [];
-		this.playbackMode = 'direct';
-		this.playbackReason = null;
-		this.requiresFullAuth = false;
 
 		if (contextTracks && contextTracks.length > 0) {
 			if (this.shuffle) {
@@ -249,12 +247,74 @@ export class PlayerState {
 				this.queue = at === -1 ? [...contextTracks] : contextTracks.slice(at + 1);
 			}
 		}
+
+		this.switchToTrack(track);
+	}
+
+	/**
+	 * Make `track` the current track and reset every piece of per-track playback
+	 * and display state, then kick off the stream, lyrics and artwork loads. The
+	 * caller owns queue/history bookkeeping; this owns "everything about the old
+	 * track must be gone" so next/previous/playFromQueue can't leave stale
+	 * position, quality, codecs, lyrics or embed state on screen.
+	 */
+	private switchToTrack(track: TrackSummary): void {
+		this.currentTrack = track;
+		this.currentTime = 0;
+		this.duration = track.duration || 0;
+		this.hasMediaMetadata = false;
+		this.streamUrl = null;
+		this.requestedQuality = null;
+		this.audioQuality = null;
+		this.codecs = null;
+		this.fileExtension = null;
+		this.bitDepth = null;
+		this.sampleRate = null;
+		this.trackReplayGain = null;
+		this.lyrics = null;
+		this.lyricsCues = [];
+		this.playbackMode = 'direct';
+		this.playbackReason = null;
+		this.requiresFullAuth = false;
+
 		this.schedulePersistence();
 
 		if (isBrowser) {
 			void this.loadAndPlayStream(track.id);
 			void this.loadLyrics(track.id);
+			void this.resolveCover(track);
 		}
+	}
+
+	private coverCache = new SvelteMap<string, string>();
+
+	/**
+	 * Backfill artwork for a track that came from a list which didn't side-load it
+	 * (search results, the resumed queue). Patches every copy of the track in
+	 * player state so the mini-bar, large cover and queue row all update.
+	 */
+	private async resolveCover(track: TrackSummary): Promise<void> {
+		if (!isBrowser || track.imageUrl) return;
+		let url = this.coverCache.get(track.id) ?? null;
+		if (!url) {
+			try {
+				const res = await fetch(`/api/tracks/${encodeURIComponent(track.id)}/cover`);
+				const data = res.ok
+					? ((await res.json().catch(() => null)) as { imageUrl?: string | null } | null)
+					: null;
+				url = data?.imageUrl ?? null;
+			} catch {
+				url = null;
+			}
+		}
+		if (!url) return;
+		this.coverCache.set(track.id, url);
+
+		const patched = (t: TrackSummary): TrackSummary =>
+			t.id === track.id && !t.imageUrl ? { ...t, imageUrl: url } : t;
+		if (this.currentTrack) this.currentTrack = patched(this.currentTrack);
+		this.queue = this.queue.map(patched);
+		this.history = this.history.map(patched);
 	}
 
 	async loadLyrics(trackId: string): Promise<void> {
@@ -363,6 +423,11 @@ export class PlayerState {
 
 	private async loadAndPlayStream(trackId: string): Promise<void> {
 		this.initAudio();
+		// Freeze the intended start position and silence the outgoing track before
+		// the async metadata fetch. `isLoading` gates `onTimeUpdate` so a late
+		// `timeupdate` from the old element can't rewrite `currentTime`.
+		const startAt = this.currentTime;
+		this.audio?.pause();
 		this.isLoading = true;
 
 		// Fetch metadata from /stream endpoint
@@ -400,9 +465,9 @@ export class PlayerState {
 					// Syn proxies the authenticated CDN response so the browser never sees a
 					// provider URL or bearer credential.
 					this.audio.src = this.streamUrl;
-					if (this.currentTime > 0) {
+					if (startAt > 0) {
 						try {
-							this.audio.currentTime = this.currentTime;
+							this.audio.currentTime = startAt;
 						} catch {
 							// The stream may not be seekable until metadata arrives.
 						}
@@ -550,13 +615,7 @@ export class PlayerState {
 		if (this.currentTrack) this.history.push(this.currentTrack);
 		const index = this.shuffle ? Math.floor(Math.random() * this.queue.length) : 0;
 		const [nextTrack] = this.queue.splice(index, 1);
-		this.currentTrack = nextTrack;
-		this.currentTime = 0;
-		this.duration = nextTrack.duration || 0;
-		if (isBrowser) {
-			void this.loadAndPlayStream(nextTrack.id);
-		}
-		this.schedulePersistence();
+		this.switchToTrack(nextTrack);
 		return nextTrack;
 	}
 
@@ -575,13 +634,7 @@ export class PlayerState {
 		if (this.currentTrack) {
 			this.queue.unshift(this.currentTrack);
 		}
-		this.currentTrack = prevTrack;
-		this.currentTime = 0;
-		this.duration = prevTrack.duration || 0;
-		if (isBrowser) {
-			void this.loadAndPlayStream(prevTrack.id);
-		}
-		this.schedulePersistence();
+		this.switchToTrack(prevTrack);
 		return prevTrack;
 	}
 
@@ -591,13 +644,7 @@ export class PlayerState {
 			this.history.push(this.currentTrack);
 		}
 		const [targetTrack] = this.queue.splice(index, 1);
-		this.currentTrack = targetTrack;
-		this.currentTime = 0;
-		this.duration = targetTrack.duration || 0;
-		if (isBrowser) {
-			void this.loadAndPlayStream(targetTrack.id);
-		}
-		this.schedulePersistence();
+		this.switchToTrack(targetTrack);
 	}
 
 	toggleExpanded(): void {
@@ -636,6 +683,8 @@ export class PlayerState {
 		this.currentTime = Math.max(0, Math.floor(state.currentTime));
 		this.lastPersistedPosition = this.currentTime;
 		this.duration = state.currentTrack?.duration || 0;
+
+		if (this.currentTrack) void this.resolveCover(this.currentTrack);
 	}
 
 	private snapshotPlaybackState(): SavedPlaybackState {

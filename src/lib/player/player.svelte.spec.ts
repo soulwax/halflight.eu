@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PlayerState } from './player.svelte';
 import type { TrackSummary } from '#lib/tidal/models';
 
@@ -9,6 +9,14 @@ beforeEach(() => {
 	} catch {
 		/* no storage in this environment */
 	}
+});
+
+// Restore the setup file's "offline" fetch after any test that overrides it.
+afterEach(() => {
+	vi.stubGlobal(
+		'fetch',
+		vi.fn(() => Promise.reject(new Error('fetch disabled in component tests')))
+	);
 });
 
 const sampleTrack1: TrackSummary = {
@@ -186,6 +194,75 @@ describe('PlayerState', () => {
 		expect(player.panel).toBe('queue');
 		player.openPanel('queue');
 		expect(player.isExpanded).toBe(false);
+	});
+
+	it('advancing to the next track clears every trace of the previous one', () => {
+		const player = new PlayerState();
+		player.play(sampleTrack1, [sampleTrack1, sampleTrack2]);
+
+		// Simulate a partly-played track with resolved stream + lyrics state.
+		player.currentTime = 47;
+		player.audioQuality = 'LOSSLESS';
+		player.codecs = 'flac';
+		player.lyrics = 'previous words';
+		player.lyricsCues = [{ time: 1, text: 'previous' }];
+		player.playbackMode = 'embed';
+
+		player.next();
+
+		expect(player.currentTrack?.id).toBe('track-2');
+		expect(player.currentTime).toBe(0);
+		expect(player.streamUrl).toBeNull();
+		expect(player.audioQuality).toBeNull();
+		expect(player.codecs).toBeNull();
+		expect(player.lyrics).toBeNull();
+		expect(player.lyricsCues).toEqual([]);
+		expect(player.playbackMode).toBe('direct');
+		// The load guard is armed synchronously so a late `timeupdate` from the
+		// outgoing <audio> can't rewrite the position mid-fetch.
+		expect(player.isLoading).toBe(true);
+	});
+
+	it('ignores audio position updates while a track is loading', () => {
+		const player = new PlayerState();
+		const tick = player as unknown as { onTimeUpdate: () => void };
+
+		player.isLoading = true;
+		player.currentTime = 10;
+		tick.onTimeUpdate();
+		expect(player.currentTime).toBe(10);
+	});
+
+	it('backfills missing artwork through the cover endpoint', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn((url: string) => {
+				if (String(url).endsWith('/cover')) {
+					return Promise.resolve(
+						new Response(JSON.stringify({ imageUrl: 'https://img.test/c.jpg', album: null }), {
+							status: 200
+						})
+					);
+				}
+				return Promise.reject(new Error('offline'));
+			})
+		);
+
+		const player = new PlayerState();
+		player.play({ ...sampleTrack1, imageUrl: undefined });
+
+		await vi.waitFor(() => expect(player.currentTrack?.imageUrl).toBe('https://img.test/c.jpg'));
+	});
+
+	it('does not fetch a cover when the track already has artwork', async () => {
+		const fetchSpy = vi.fn((_url: string) => Promise.reject(new Error('offline')));
+		vi.stubGlobal('fetch', fetchSpy);
+
+		const player = new PlayerState();
+		player.play({ ...sampleTrack1, imageUrl: 'https://img.test/existing.jpg' });
+		await Promise.resolve();
+
+		expect(fetchSpy.mock.calls.some((args) => String(args[0]).endsWith('/cover'))).toBe(false);
 	});
 
 	it('dragTo clamps the floating window inside the viewport', () => {
