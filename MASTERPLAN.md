@@ -288,22 +288,22 @@ Much of the original plan's early phases has shipped. This inventory reflects so
 not a claim that every capability has been validated in production. Existing roadmap checkmarks
 record implementation milestones; the acceptance gaps below still need delivery work.
 
-| Area                | What exists                                                                                                     | Main gap                                                                                                |
-| ------------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Service experience  | Strong player foundation and all major browse routes                                                            | No single product model yet; home and routes still read like separate pages                             |
-| Playback            | Full-track streaming (BTS single-file + segmented DASH), Range/seek, quality ladder, ReplayGain, embed fallback | No gapless/crossfade; no pre-buffering of the next queue item                                           |
-| Player UI           | Decomposed component set, docked shell region, queue/lyrics/source panels, floating mode, self-check telemetry  | Queue editing is basic; no "why is this playing?" provenance                                            |
-| Session state       | Resumable queue/history/position, revision/origin fields, conditional writes, and HTTP 409 conflicts            | Client reconciliation, live updates, and active playback ownership remain incomplete                    |
-| Auth / TIDAL OAuth  | Better Auth, PKCE + state, dual-token model, encrypted persistence, rotation, single-flight refresh             | Stable                                                                                                  |
-| API client          | Authenticated fetch, pre-expiry refresh, 401 retry, typed helpers, JSON:API normalisers, `loadTidalPage`        | Relationship traversal helpers exist but are barely used                                                |
-| Product surfaces    | Shell, home, search, library, mixes, artist/album/track/playlist detail, settings                               | Surfaces do not yet consistently offer the same queue verbs                                             |
-| Playlist generation | Legacy `/api/generate-playlist` plus profile-based `/app/generate` and a deterministic pipeline                 | Consolidate entry points; add real progress/cancellation, richer scoring, and per-slot review           |
-| Taste model         | `taste_profile`, signal readers, artist/era weights, owner overrides, Settings, and server tests                | Target profile dimensions, enrichment, learning, and confidence calibration are only partly implemented |
-| Transactional mail  | `nodemailer` and `src/lib/server/email.ts` submit verification email over SMTP                                  | Verify deployment reachability, delivery, localisation, and safe failures                               |
-| Object storage      | None wired; `syn-worker` is named in config but not implemented                                                 | Optional experiments need permission and measured benefit; no launch dependency                         |
-| Design system       | Eight dark palettes, semantic tokens, extracted `player.css`, shared badges/formatters                          | Apple Music-level hierarchy and two deliberate site compositions are missing                            |
-| i18n                | Paraglide `en` + `de-DE`                                                                                        | Newer surfaces added strings ahead of the German catalogue                                              |
-| Testing             | Server and component suites, including taste profile, graph, scoring, sequencing, and redaction tests           | Cross-site session and complete generation journeys need acceptance coverage                            |
+| Area                | What exists                                                                                                                         | Main gap                                                                                                |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Service experience  | Strong player foundation and all major browse routes                                                                                | No single product model yet; home and routes still read like separate pages                             |
+| Playback            | Full-track streaming (BTS single-file + segmented DASH), Range/seek, quality ladder, ReplayGain, embed fallback                     | No gapless/crossfade; no pre-buffering of the next queue item                                           |
+| Player UI           | Decomposed component set, docked shell region, queue/lyrics/source panels, floating mode, self-check telemetry                      | Queue editing is basic; no "why is this playing?" provenance                                            |
+| Session state       | Resumable queue/history/position, revision/origin fields, conditional writes, and HTTP 409 conflicts                                | Client reconciliation, live updates, and active playback ownership remain incomplete                    |
+| Auth / TIDAL OAuth  | Better Auth, PKCE + state, dual-token model, encrypted persistence, rotation, single-flight refresh                                 | Stable                                                                                                  |
+| API client          | Authenticated fetch, pre-expiry refresh, 401 retry, typed helpers, JSON:API normalisers, `loadTidalPage`                            | Relationship traversal helpers exist but are barely used                                                |
+| Product surfaces    | Shell, home, search, library, mixes, artist/album/track/playlist detail, settings                                                   | Surfaces do not yet consistently offer the same queue verbs                                             |
+| Playlist generation | Single entry point: profile-based `/app/generate`. The legacy `/api/generate-playlist` and its `PlaylistGeneratorModal` are retired | Add real progress/cancellation, richer scoring, and per-slot review                                     |
+| Taste model         | `taste_profile`, signal readers, artist/era weights, owner overrides, Settings, and server tests                                    | Target profile dimensions, enrichment, learning, and confidence calibration are only partly implemented |
+| Transactional mail  | `nodemailer` and `src/lib/server/email.ts` submit verification email over SMTP                                                      | Verify deployment reachability, delivery, localisation, and safe failures                               |
+| Object storage      | None wired; `syn-worker` is named in config but not implemented                                                                     | Optional experiments need permission and measured benefit; no launch dependency                         |
+| Design system       | Eight dark palettes, semantic tokens, extracted `player.css`, shared badges/formatters                                              | Apple Music-level hierarchy and two deliberate site compositions are missing                            |
+| i18n                | Paraglide `en` + `de-DE`                                                                                                            | Newer surfaces added strings ahead of the German catalogue                                              |
+| Testing             | Server and component suites, including taste profile, graph, scoring, sequencing, and redaction tests                               | Cross-site session and complete generation journeys need acceptance coverage                            |
 
 ## Product principles
 
@@ -2344,10 +2344,12 @@ WebView is suspended or recreated. A wrapper that only loads the website does no
 
 ### Infrastructure slice — use local Redis deliberately
 
-- [ ] Declare `REDIS_CACHE`, add `redis`, and implement a server-only injected adapter with bounded
+- [x] Declare `REDIS_CACHE`, add `redis`, and implement a server-only injected adapter with bounded
       connection/command behaviour, safe health reporting, and no disconnected-command replay. (M)
 - [ ] Use Redis for bounded derived generation-pool reuse, with profile/auth version invalidation,
-      strict payload allowlists, TTL/size checks, and cache-miss fallback. (M)
+      strict payload allowlists, TTL/size checks, and cache-miss fallback. `getTasteProfile` now
+      reads/writes through the same bounded cache (5-minute TTL, invalidated on profile
+      write/delete) as an early consumer; `generate.ts`/`candidates.ts` pool reuse is still open. (M)
 - [ ] Verify instance configuration, then add atomic `rate-limiter-flexible` admission alongside
       the local `p-queue`; reserve playback capacity and test Redis loss/restart. (M)
 - [ ] After measuring mobile polling, add revision-only Pub/Sub hints to authenticated SSE clients;

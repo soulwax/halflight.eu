@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import type { EphemeralCache } from '#lib/server/cache';
 import {
 	buildTasteProfile,
 	emptyTasteProfile,
+	getTasteProfile,
 	recencyMultiplier,
 	rebuildTasteProfile,
 	refreshTasteProfile,
@@ -72,6 +74,54 @@ describe('taste profile', () => {
 
 		expect(profile.updatedAt).toBe(now.toISOString());
 		expect(profile.confidence.artists).toBeGreaterThan(0);
+	});
+
+	it('uses a valid cached derived profile before reading the store', async () => {
+		const cachedProfile = buildTasteProfile(signals, emptyTasteProfile(now), now);
+		const cache: EphemeralCache = {
+			get: async () => JSON.stringify(cachedProfile),
+			set: async () => {},
+			delete: async () => {}
+		};
+		const store: TasteProfileStore = {
+			read: async () => {
+				throw new Error('The cached profile should avoid this read.');
+			},
+			write: async (_userId, profile) => profile,
+			delete: async () => {}
+		};
+
+		const profile = await getTasteProfile('owner-1', store, cache);
+
+		expect(profile).toEqual(cachedProfile);
+	});
+
+	it('replaces an invalid cache entry from the profile store', async () => {
+		const profile = buildTasteProfile(signals, emptyTasteProfile(now), now);
+		const writes: Array<{ key: string; value: string; ttlSeconds: number }> = [];
+		const cache: EphemeralCache = {
+			get: async () => '{not JSON',
+			set: async (key, value, ttlSeconds) => {
+				writes.push({ key, value, ttlSeconds });
+			},
+			delete: async () => {}
+		};
+		const store: TasteProfileStore = {
+			read: async () => profile,
+			write: async (_userId, persisted) => persisted,
+			delete: async () => {}
+		};
+
+		const result = await getTasteProfile('owner-1', store, cache);
+
+		expect(result).toEqual(profile);
+		expect(writes).toEqual([
+			{
+				key: expect.stringMatching(/^taste-profile:[a-f0-9]{64}$/),
+				value: JSON.stringify(profile),
+				ttlSeconds: 300
+			}
+		]);
 	});
 
 	it('rebuilds from live signals and bounded playback history without persisting tracks', async () => {

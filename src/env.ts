@@ -42,6 +42,11 @@ export const variables = defineEnvVars({
 		schema: optional,
 		description: 'Sender address for Halflight account-verification email.'
 	},
+	REDIS_CACHE: {
+		schema: optional,
+		description:
+			'Optional Redis URL for short-lived server-side derived caches and coordination. It is never browser-reachable.'
+	},
 	LASTFM_API_KEY: { schema: optional, description: 'Last.fm API key.' },
 	LASTFM_APPLICATION_NAME: {
 		schema: optional,

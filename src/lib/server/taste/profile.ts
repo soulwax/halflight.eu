@@ -1,4 +1,6 @@
 import { eq } from 'drizzle-orm';
+import { createHash } from 'node:crypto';
+import { redisCache, unavailableCache, type EphemeralCache } from '#lib/server/cache';
 import { db } from '#lib/server/db';
 import { tasteProfile } from '#lib/server/db/schema';
 import { getPlaybackState, type PlaybackState } from '#lib/server/playback-state';
@@ -35,6 +37,7 @@ export interface TasteProfileStore {
 }
 
 const DEFAULT_KNOB_DEFAULTS: GenerationDefaults = { familiarity: 50 };
+const TASTE_PROFILE_CACHE_TTL_SECONDS = 5 * 60;
 const SOURCE_WEIGHT: Record<TasteSignalSource, number> = {
 	playlist: 1,
 	followed_artist: 4,
@@ -123,6 +126,47 @@ function parseProfile(value: unknown): TasteProfile | null {
 		},
 		updatedAt: raw.updatedAt
 	};
+}
+
+function tasteProfileCacheKey(userId: string): string {
+	return `taste-profile:${createHash('sha256').update(userId).digest('hex')}`;
+}
+
+async function readCachedTasteProfile(
+	userId: string,
+	cache: EphemeralCache
+): Promise<TasteProfile | null> {
+	try {
+		const encoded = await cache.get(tasteProfileCacheKey(userId));
+		if (!encoded) return null;
+		return parseProfile(JSON.parse(encoded));
+	} catch {
+		return null;
+	}
+}
+
+async function cacheTasteProfile(
+	userId: string,
+	profile: TasteProfile,
+	cache: EphemeralCache
+): Promise<void> {
+	try {
+		await cache.set(
+			tasteProfileCacheKey(userId),
+			JSON.stringify(profile),
+			TASTE_PROFILE_CACHE_TTL_SECONDS
+		);
+	} catch {
+		// Cache failure must never change profile reads or writes.
+	}
+}
+
+async function invalidateCachedTasteProfile(userId: string, cache: EphemeralCache): Promise<void> {
+	try {
+		await cache.delete(tasteProfileCacheKey(userId));
+	} catch {
+		// Cache failure must never change profile reads or writes.
+	}
 }
 
 export function emptyTasteProfile(now = new Date()): TasteProfile {
@@ -240,18 +284,26 @@ export const dbTasteProfileStore: TasteProfileStore = {
 			.returning({ data: tasteProfile.data });
 		const persisted = parseProfile(rows[0]?.data);
 		if (!persisted) throw new Error('Persisted taste profile is invalid.');
+		await invalidateCachedTasteProfile(userId, redisCache);
 		return persisted;
 	},
 	async delete(userId) {
 		await db.delete(tasteProfile).where(eq(tasteProfile.userId, userId));
+		await invalidateCachedTasteProfile(userId, redisCache);
 	}
 };
 
 export async function getTasteProfile(
 	userId: string,
-	store: TasteProfileStore = dbTasteProfileStore
+	store: TasteProfileStore = dbTasteProfileStore,
+	cache: EphemeralCache = store === dbTasteProfileStore ? redisCache : unavailableCache
 ): Promise<TasteProfile> {
-	return (await store.read(userId)) ?? emptyTasteProfile();
+	const cached = await readCachedTasteProfile(userId, cache);
+	if (cached) return cached;
+
+	const profile = (await store.read(userId)) ?? emptyTasteProfile();
+	await cacheTasteProfile(userId, profile, cache);
+	return profile;
 }
 
 export async function rebuildTasteProfile(
