@@ -49,7 +49,7 @@
 			url.searchParams.delete('q');
 			url.searchParams.delete('search');
 		}
-		window.history.replaceState(window.history.state, '', url.toString());
+		void goto(url, { state: {}, shallow: true, replace: true });
 	}
 
 	function cancelLiveSearch() {

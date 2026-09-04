@@ -174,6 +174,7 @@ export async function tidalFetch(
 			} catch (reason) {
 				if (
 					attempt === retries ||
+					init.signal?.aborted ||
 					(reason instanceof DOMException && reason.name === 'AbortError')
 				) {
 					throw reason;
