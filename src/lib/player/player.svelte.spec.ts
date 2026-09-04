@@ -51,6 +51,24 @@ describe('PlayerState', () => {
 		expect(player.hasPrevious).toBe(false);
 	});
 
+	it('keeps the source provenance with the current track and queue', () => {
+		const player = new PlayerState();
+
+		player.play(sampleTrack1, [sampleTrack1, sampleTrack2], 'Playlist · Night Drive');
+
+		expect(player.currentTrack?.provenance).toBe('Playlist · Night Drive');
+		expect(player.queue[0]?.provenance).toBe('Playlist · Night Drive');
+	});
+
+	it('preserves a track-specific provenance over a generic source label', () => {
+		const player = new PlayerState();
+		const generated = { ...sampleTrack1, provenance: 'Appears on three of your playlists' };
+
+		player.play(generated, [generated], 'Playlist · Night Drive');
+
+		expect(player.currentTrack?.provenance).toBe('Appears on three of your playlists');
+	});
+
 	it('adds tracks to queue and removes by index', () => {
 		const player = new PlayerState();
 		player.addToQueue(sampleTrack1);

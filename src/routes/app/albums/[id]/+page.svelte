@@ -22,6 +22,9 @@
 	const tidalAlbumUrl = $derived(
 		data.album ? `https://tidal.com/browse/album/${encodeURIComponent(data.album.id)}` : ''
 	);
+	const albumProvenance = $derived(
+		data.album ? `${m.album_label()} · ${data.album.title}` : undefined
+	);
 
 	function formatTotalDuration(seconds: number): string {
 		const hours = Math.floor(seconds / 3600);
@@ -84,7 +87,7 @@
 				{#if data.album.items.length}
 					<Button
 						variant="primary"
-						onclick={() => player.play(data.album!.items[0], data.album!.items)}
+						onclick={() => player.play(data.album!.items[0], data.album!.items, albumProvenance)}
 					>
 						<Play size={14} fill="currentColor" />
 						{m.player_play_all()}
@@ -117,6 +120,7 @@
 				<TrackTable
 					tracks={data.album.items}
 					contextTracks={data.album.items}
+					provenance={albumProvenance}
 					columns={['duration']}
 				/>
 			</section>

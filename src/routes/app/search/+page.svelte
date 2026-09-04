@@ -295,6 +295,7 @@
 				<TrackTable
 					tracks={currentResults.tracks}
 					contextTracks={currentResults.tracks}
+					provenance={m.search_title()}
 					columns={['album', 'date', 'duration']}
 				/>
 			</section>

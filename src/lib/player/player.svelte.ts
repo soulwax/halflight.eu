@@ -377,21 +377,26 @@ export class PlayerState {
 		return 0;
 	});
 
-	play(track: TrackSummary, contextTracks?: TrackSummary[]): void {
+	play(track: TrackSummary, contextTracks?: TrackSummary[], provenance?: string): void {
+		const withProvenance = (candidate: TrackSummary): TrackSummary =>
+			provenance && !candidate.provenance ? { ...candidate, provenance } : candidate;
+		const selectedTrack = withProvenance(track);
+		const contextualTracks = contextTracks?.map(withProvenance);
+
 		if (this.currentTrack && this.currentTrack.id !== track.id) {
 			this.history.push(this.currentTrack);
 		}
 
-		if (contextTracks && contextTracks.length > 0) {
+		if (contextualTracks && contextualTracks.length > 0) {
 			if (this.shuffle) {
-				this.queue = shuffled(contextTracks.filter((t) => t.id !== track.id));
+				this.queue = shuffled(contextualTracks.filter((candidate) => candidate.id !== track.id));
 			} else {
-				const at = contextTracks.findIndex((t) => t.id === track.id);
-				this.queue = at === -1 ? [...contextTracks] : contextTracks.slice(at + 1);
+				const at = contextualTracks.findIndex((candidate) => candidate.id === track.id);
+				this.queue = at === -1 ? [...contextualTracks] : contextualTracks.slice(at + 1);
 			}
 		}
 
-		this.switchToTrack(track);
+		this.switchToTrack(selectedTrack);
 	}
 
 	/**

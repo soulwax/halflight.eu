@@ -12,12 +12,14 @@
 	let {
 		tracks,
 		contextTracks,
+		provenance,
 		columns = ['album', 'date', 'duration'],
 		rowActions,
 		onRowActivate
 	}: {
 		tracks: TrackSummary[];
 		contextTracks?: TrackSummary[];
+		provenance?: string;
 		columns?: TrackColumn[];
 		rowActions?: Snippet<[TrackSummary, number]>;
 		onRowActivate?: (track: TrackSummary, index: number) => void;
@@ -30,7 +32,7 @@
 	});
 	const activeContext = $derived(contextTracks ?? tracks);
 	const activate = $derived(
-		onRowActivate ?? ((track: TrackSummary) => player.play(track, activeContext))
+		onRowActivate ?? ((track: TrackSummary) => player.play(track, activeContext, provenance))
 	);
 
 	const gridTemplate = $derived(

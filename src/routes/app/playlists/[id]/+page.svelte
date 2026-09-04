@@ -41,6 +41,9 @@
 			? `https://tidal.com/browse/playlist/${encodeURIComponent(tidalPlaylistId)}`
 			: ''
 	);
+	const playlistProvenance = $derived(
+		data.playlist ? `${m.playlist_label()} · ${data.playlist.title}` : undefined
+	);
 
 	function formatTotalDuration(seconds: number): string {
 		const hours = Math.floor(seconds / 3600);
@@ -234,7 +237,8 @@
 					{#if data.playlist?.items.length}
 						<Button
 							variant="primary"
-							onclick={() => player.play(data.playlist!.items[0], data.playlist!.items)}
+							onclick={() =>
+								player.play(data.playlist!.items[0], data.playlist!.items, playlistProvenance)}
 						>
 							<Play size={14} fill="currentColor" />
 							{m.player_play_all()}
@@ -298,6 +302,7 @@
 				<TrackTable
 					tracks={data.playlist.items}
 					contextTracks={data.playlist.items}
+					provenance={playlistProvenance}
 					columns={['album', 'date', 'duration']}
 				/>
 			</section>
