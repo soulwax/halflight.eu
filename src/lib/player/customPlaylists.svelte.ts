@@ -12,6 +12,11 @@ export interface CustomPlaylist {
 	updatedAt: string;
 	items: TrackSummary[];
 	tidalPlaylistId?: string | null;
+	source?: string;
+	syncStatus?: string;
+	lastSyncedAt?: string | null;
+	remoteEtag?: string | null;
+	syncError?: string | null;
 }
 
 const STORAGE_KEY = 'syn_custom_playlists';
@@ -19,6 +24,7 @@ const STORAGE_KEY = 'syn_custom_playlists';
 export class CustomPlaylistsManager {
 	playlists = $state<CustomPlaylist[]>([]);
 	isGeneratorOpen = $state(false);
+	isImportOpen = $state(false);
 	selectedTrackForPlaylist = $state<TrackSummary | null>(null);
 	isSyncing = $state(false);
 
@@ -221,6 +227,67 @@ export class CustomPlaylistsManager {
 
 	closeGenerator(): void {
 		this.isGeneratorOpen = false;
+	}
+
+	openImport(): void {
+		this.isImportOpen = true;
+	}
+
+	closeImport(): void {
+		this.isImportOpen = false;
+	}
+
+	async syncPlaylist(playlistId: string): Promise<boolean> {
+		if (!isBrowser) return false;
+		this.isSyncing = true;
+		try {
+			const res = await fetch('/api/playlists/sync', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ action: 'push', playlistId })
+			});
+			if (res.ok) {
+				await this.syncWithServer();
+				return true;
+			}
+			return false;
+		} catch {
+			return false;
+		} finally {
+			this.isSyncing = false;
+		}
+	}
+
+	async syncAll(): Promise<{ totalSynced: number; totalErrors: number } | null> {
+		if (!isBrowser) return null;
+		this.isSyncing = true;
+		try {
+			// First push local changes, then pull remote updates
+			const pushRes = await fetch('/api/playlists/sync', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ action: 'push_all' })
+			});
+			const pullRes = await fetch('/api/playlists/sync', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ action: 'pull_all' })
+			});
+
+			await this.syncWithServer();
+
+			const pushData = pushRes.ok ? await pushRes.json() : null;
+			const pullData = pullRes.ok ? await pullRes.json() : null;
+
+			return {
+				totalSynced: (pushData?.totalSynced ?? 0) + (pullData?.totalSynced ?? 0),
+				totalErrors: (pushData?.totalErrors ?? 0) + (pullData?.totalErrors ?? 0)
+			};
+		} catch {
+			return null;
+		} finally {
+			this.isSyncing = false;
+		}
 	}
 
 	promptAddToPlaylist(track: TrackSummary): void {

@@ -121,6 +121,10 @@
 			<h2 id="connected-title">{m.tidal_settings_connected_title()}</h2>
 			<p>{m.tidal_settings_connected_description()}</p>
 
+			{#if !status.hasWriteScopes}
+				<p class="notice notice-warning" role="alert">{m.playlist_reconnect_write()}</p>
+			{/if}
+
 			{#if status.stale}
 				<p class="refresh-note">{m.tidal_settings_refreshing()}</p>
 			{/if}

@@ -58,9 +58,6 @@
 	class:compact
 	class:has-headroom={player.isHeadroomEnabled}
 	class:in-headroom={!isMuted && player.volume > 1}
-	onwheel={onWheel}
-	ondblclick={onDoubleClick}
-	title={m.player_volume_reset()}
 >
 	<button
 		type="button"
@@ -78,7 +75,7 @@
 		{/if}
 	</button>
 
-	<div class="vol-track-wrap">
+	<div class="vol-track-wrap" onwheel={onWheel}>
 		<input
 			type="range"
 			class="vol-slider"
@@ -88,6 +85,7 @@
 			value={displayVolume}
 			oninput={onRangeInput}
 			onkeydown={onKeydown}
+			ondblclick={onDoubleClick}
 			aria-label={m.player_volume()}
 			aria-valuemin={0}
 			aria-valuemax={Math.round(maxVolume * 100)}
@@ -106,9 +104,15 @@
 		</div>
 	</div>
 
-	<span class="vol-readout" aria-hidden="true">
+	<button
+		type="button"
+		class="vol-readout"
+		onclick={onDoubleClick}
+		aria-label={m.player_volume_reset()}
+		title={m.player_volume_reset()}
+	>
 		{isMuted ? '0%' : `${Math.round(player.volume * 100)}%`}
-	</span>
+	</button>
 
 	<button
 		type="button"

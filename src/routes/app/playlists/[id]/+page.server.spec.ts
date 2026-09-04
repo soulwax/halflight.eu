@@ -4,7 +4,8 @@ import { TidalApiError, TidalAuthError } from '#lib/server/tidal/errors';
 const mocks = vi.hoisted(() => ({
 	getConnectionStatus: vi.fn(),
 	getPlaylist: vi.fn(),
-	getPlaylistItems: vi.fn()
+	getPlaylistItems: vi.fn(),
+	getUserPlaylists: vi.fn()
 }));
 
 vi.mock('#lib/server/tidal', () => ({
@@ -13,6 +14,10 @@ vi.mock('#lib/server/tidal', () => ({
 		getPlaylist: mocks.getPlaylist,
 		getPlaylistItems: mocks.getPlaylistItems
 	}
+}));
+
+vi.mock('#lib/server/playlists', () => ({
+	getUserPlaylists: mocks.getUserPlaylists
 }));
 
 import { load } from './+page.server';
@@ -32,11 +37,17 @@ describe('/app/playlists/[id] load', () => {
 		mocks.getConnectionStatus.mockReset();
 		mocks.getPlaylist.mockReset();
 		mocks.getPlaylistItems.mockReset();
+		mocks.getUserPlaylists.mockReset();
+		mocks.getUserPlaylists.mockResolvedValue([]);
 		fetchMock.mockReset();
 	});
 
-	it('returns a normalised playlist and items', async () => {
-		mocks.getConnectionStatus.mockResolvedValue({ connected: true, configured: true });
+	it('returns a normalised playlist and items from TIDAL', async () => {
+		mocks.getConnectionStatus.mockResolvedValue({
+			connected: true,
+			configured: true,
+			hasWriteScopes: true
+		});
 		mocks.getPlaylist.mockResolvedValue({
 			data: {
 				id: 'playlist-1',
@@ -57,6 +68,10 @@ describe('/app/playlists/[id] load', () => {
 			id: 'playlist-1',
 			configured: true,
 			state: null,
+			localPlaylist: null,
+			isLocal: false,
+			syncStatus: null,
+			hasWriteScopes: true,
 			playlist: {
 				kind: 'playlist',
 				id: 'playlist-1',
@@ -83,11 +98,44 @@ describe('/app/playlists/[id] load', () => {
 		);
 	});
 
-	it('returns a safe connection state without calling TIDAL when disconnected', async () => {
+	it('returns a local custom playlist without calling TIDAL if id matches local playlist', async () => {
+		mocks.getConnectionStatus.mockResolvedValue({
+			connected: true,
+			configured: true,
+			hasWriteScopes: true
+		});
+		mocks.getUserPlaylists.mockResolvedValue([
+			{
+				id: 'pl_local_1',
+				userId: 'user-1',
+				title: 'My Custom List',
+				description: 'Hand-picked',
+				items: [{ kind: 'track', id: 'trk-1', title: 'Local Song', artists: [] }],
+				tidalPlaylistId: 't-123',
+				source: 'syn',
+				syncStatus: 'synced',
+				createdAt: '2026-09-04T00:00:00Z',
+				updatedAt: '2026-09-04T00:00:00Z'
+			}
+		]);
+
+		const res = await load(event('pl_local_1'));
+		if (!res) throw new Error('Expected load result');
+		expect(res.isLocal).toBe(true);
+		expect(res.playlist?.title).toBe('My Custom List');
+		expect(res.syncStatus).toBe('synced');
+		expect(mocks.getPlaylist).not.toHaveBeenCalled();
+	});
+
+	it('returns a safe connection state without calling TIDAL when disconnected and not local', async () => {
 		mocks.getConnectionStatus.mockResolvedValue({ connected: false, configured: true });
 
 		await expect(load(event())).resolves.toEqual({
 			playlist: null,
+			localPlaylist: null,
+			isLocal: false,
+			syncStatus: null,
+			hasWriteScopes: false,
 			state: 'not_connected',
 			configured: true,
 			id: 'playlist-1'
@@ -117,6 +165,10 @@ describe('/app/playlists/[id] load', () => {
 	it('rejects an overlong id before reading connection', async () => {
 		await expect(load(event('x'.repeat(161)))).resolves.toEqual({
 			playlist: null,
+			localPlaylist: null,
+			isLocal: false,
+			syncStatus: null,
+			hasWriteScopes: false,
 			state: 'invalid_id',
 			configured: true,
 			id: undefined

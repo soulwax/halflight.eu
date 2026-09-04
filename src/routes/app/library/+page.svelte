@@ -1,13 +1,23 @@
 <script lang="ts">
-	import { Download, ListMusic, Play, Sparkles, Trash2 } from '@lucide/svelte';
+	import {
+		ArrowDownToLine,
+		Download,
+		ListMusic,
+		Play,
+		RefreshCw,
+		Sparkles,
+		Trash2
+	} from '@lucide/svelte';
 
 	import SongCard from '#lib/components/music/SongCard.svelte';
+	import PlaylistImportModal from '#lib/components/music/PlaylistImportModal.svelte';
 	import { customPlaylists } from '#lib/player/customPlaylists.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import Button from '#lib/components/ui/Button.svelte';
 	import SectionHeader from '#lib/components/ui/SectionHeader.svelte';
 	import MediaCard from '#lib/components/music/MediaCard.svelte';
 	import StateCard from '#lib/components/music/StateCard.svelte';
+	import { resolve } from '$app/paths';
 	import type { PageData } from './$types';
 	import type { TrackSummary } from '#lib/tidal/models';
 
@@ -51,6 +61,22 @@
 			count={customPlaylists.playlists.length}
 		>
 			{#snippet actions()}
+				{#if data.connected}
+					<Button variant="secondary" onclick={() => customPlaylists.openImport()}>
+						<ArrowDownToLine size={14} />
+						{m.playlist_import()}
+					</Button>
+					<Button
+						variant="secondary"
+						disabled={customPlaylists.isSyncing}
+						onclick={async () => {
+							await customPlaylists.syncAll();
+						}}
+					>
+						<RefreshCw size={14} class={customPlaylists.isSyncing ? 'animate-spin' : ''} />
+						{m.playlist_sync_all()}
+					</Button>
+				{/if}
 				<Button variant="primary" onclick={() => customPlaylists.openGenerator()}>
 					<Sparkles size={14} />
 					COMPOSE ON THE FLY
@@ -70,10 +96,27 @@
 						<div class="card-top">
 							<ListMusic size={22} class="text-[var(--action)]" />
 							<div class="min-w-0 flex-1">
-								<strong class="block truncate">{playlist.title}</strong>
-								<span class="font-mono text-xs text-[var(--text-muted)]"
-									>{playlist.items.length} tracks</span
+								<a
+									class="block truncate hover:text-[var(--action)] hover:underline"
+									href={resolve('/app/playlists/[id]', { id: playlist.id })}
 								>
+									<strong class="truncate">{playlist.title}</strong>
+								</a>
+								<div class="card-meta-row">
+									<span class="font-mono text-xs text-[var(--text-muted)]"
+										>{playlist.items.length} tracks</span
+									>
+									{#if playlist.syncStatus === 'synced'}
+										<span class="sync-dot sync-synced" title={m.playlist_synced()}></span>
+									{:else if playlist.syncStatus === 'pending_push'}
+										<span class="sync-dot sync-pending" title={m.playlist_pending_push()}></span>
+									{:else if playlist.syncStatus === 'error'}
+										<span
+											class="sync-dot sync-error"
+											title={playlist.syncError || m.playlist_sync_error()}
+										></span>
+									{/if}
+								</div>
 							</div>
 						</div>
 						<div class="card-bottom">
@@ -86,6 +129,17 @@
 								<Play size={12} fill="currentColor" />
 								PLAY
 							</button>
+							{#if playlist.tidalPlaylistId || playlist.source === 'syn'}
+								<button
+									type="button"
+									class="card-sync-btn"
+									disabled={customPlaylists.isSyncing}
+									title={m.playlist_sync()}
+									onclick={() => customPlaylists.syncPlaylist(playlist.id)}
+								>
+									<RefreshCw size={12} class={customPlaylists.isSyncing ? 'animate-spin' : ''} />
+								</button>
+							{/if}
 							<button
 								type="button"
 								class="card-export-btn"
@@ -163,6 +217,8 @@
 	<p class="attribution">
 		<a href="https://tidal.com" rel="noreferrer">{m.tidal_attribution()}</a>
 	</p>
+
+	<PlaylistImportModal />
 </section>
 
 <style>
@@ -281,6 +337,55 @@
 		color: var(--danger);
 		border-color: var(--danger);
 		background: var(--danger-subtle);
+	}
+
+	.card-sync-btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0.35rem 0.45rem;
+		font-size: 0.72rem;
+		border-radius: var(--radius-sm);
+		border: 1px solid var(--border-subtle);
+		background: var(--surface-raised);
+		color: var(--text-muted);
+		cursor: pointer;
+		transition: all 0.1s ease;
+	}
+
+	.card-sync-btn:hover:not(:disabled) {
+		color: var(--action);
+		border-color: var(--action);
+	}
+
+	.card-meta-row {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		margin-top: 0.15rem;
+	}
+
+	.sync-dot {
+		width: 0.45rem;
+		height: 0.45rem;
+		border-radius: 9999px;
+		display: inline-block;
+		flex-shrink: 0;
+	}
+
+	.sync-synced {
+		background: #22c55e;
+		box-shadow: 0 0 4px rgba(34, 197, 94, 0.5);
+	}
+
+	.sync-pending {
+		background: #f59e0b;
+		box-shadow: 0 0 4px rgba(245, 158, 11, 0.5);
+	}
+
+	.sync-error {
+		background: #ef4444;
+		box-shadow: 0 0 4px rgba(239, 68, 68, 0.5);
 	}
 
 	.result-group {

@@ -21,3 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Loudness normalization (ReplayGain telemetry) integration in the audio engine.
 - Direct Server-Side Audio Streaming Proxy (`/api/tracks/[id]/audio`) with HTTP Range support to bypass TIDAL CDN CORS restrictions on HTML5 `<audio>`.
 - Graceful preview fallback (`previewUrl`) in the streaming endpoint with clear UI prompts for Device Authorization.
+- Two-way TIDAL playlist synchronization engine (`/api/playlists/sync`, `/api/playlists/import`) with change detection (`diffPlaylistItems`), pull/push, and batch operations.
+- TIDAL write operations in `api.ts`: `updatePlaylist`, `deletePlaylistRemote`, `removePlaylistItems`, `replacePlaylistItems` with automatic 50-track chunking and `playlists.write` OAuth scope detection.
+- Database schema migration for `user_playlist` with sync tracking columns (`source`, `sync_status`, `last_synced_at`, `remote_etag`, `sync_error`).
+- Interactive Playlist Import Modal (`PlaylistImportModal.svelte`) to selectively import remote TIDAL playlists.
+- Unified playlist page with dual-resolution (local vs remote), inline title/description editing, sync status pills, and deletion confirmation with TIDAL remote cleanup option.

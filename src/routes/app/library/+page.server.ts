@@ -37,6 +37,7 @@ export const load: PageServerLoad = async (event) => {
 
 	return {
 		connected: true,
+		hasWriteScopes: Boolean(connection.hasWriteScopes),
 		sections: results.map((result) => {
 			if (!result.ok) return { kind: result.kind, ok: false as const };
 			const items = result.page[result.kind];
