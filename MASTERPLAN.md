@@ -27,6 +27,8 @@ planned work; the product sections describe the intended finished experience.
 
 Mobile planning: [website](#the-mobile-site-halflight-now), [PWA](#the-installed-pwa),
 [later Tauri client](#later-tauri-native-client), and [release gates](#mobile-pwa-and-native-release-gates).
+Server coordination: [local Redis](#local-redis-cache-and-coordination) complements Postgres and
+supports all clients without exposing Redis to the browser, PWA, or native app.
 
 Planning vocabulary: **implemented** means code exists, **accepted** means the named workflow has
 passed its checks, and **conditional** means a measured need or feasibility decision must precede
@@ -975,15 +977,15 @@ The mobile website is a complete daily listening surface. The PWA is the same si
 components, and release artifact presented in an installed window; it is not another frontend.
 The later native client shares these presentation components where useful, with a separate runtime.
 
-| Journey | Mobile behaviour | Completion condition |
-| --- | --- | --- |
-| Start the day | Home opens with Resume; if there is no session, one set or saved playlist leads | One deliberate play action, a truthful pending state, and audible progress |
-| Leave the desk | Now shows the canonical track/position and the device currently playing | "Play here" deliberately takes over; merely opening the phone never interrupts desktop audio |
-| Find and queue | Search retains `q`, cancels obsolete requests, and exposes play/next/add on each result | Returning from detail restores the query, scroll, and pending queue state |
-| Change the next hour | Queue permits reorder, remove, clear, and save; all operations use stable entry IDs | Duplicate tracks remain distinguishable and remote conflicts preserve deliberate intent |
-| Start a generated set | Choose a named preset, a duration/count, and optionally an artist seed; review a short explanation | Generate → review → play works; replace an existing queue only on an explicit action |
-| Save a good run | Save locally with a short name; TIDAL publishing remains a separate reviewed action | Pending/partial/success state names the destination and never duplicates a submit |
-| Recover on the move | An interruption keeps the current in-memory scene and explains what can be retried | Reconnect reconciles state before writes resume; no stale queue overwrites the server |
+| Journey               | Mobile behaviour                                                                                   | Completion condition                                                                         |
+| --------------------- | -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Start the day         | Home opens with Resume; if there is no session, one set or saved playlist leads                    | One deliberate play action, a truthful pending state, and audible progress                   |
+| Leave the desk        | Now shows the canonical track/position and the device currently playing                            | "Play here" deliberately takes over; merely opening the phone never interrupts desktop audio |
+| Find and queue        | Search retains `q`, cancels obsolete requests, and exposes play/next/add on each result            | Returning from detail restores the query, scroll, and pending queue state                    |
+| Change the next hour  | Queue permits reorder, remove, clear, and save; all operations use stable entry IDs                | Duplicate tracks remain distinguishable and remote conflicts preserve deliberate intent      |
+| Start a generated set | Choose a named preset, a duration/count, and optionally an artist seed; review a short explanation | Generate → review → play works; replace an existing queue only on an explicit action         |
+| Save a good run       | Save locally with a short name; TIDAL publishing remains a separate reviewed action                | Pending/partial/success state names the destination and never duplicates a submit            |
+| Recover on the move   | An interruption keeps the current in-memory scene and explains what can be retried                 | Reconnect reconciles state before writes resume; no stale queue overwrites the server        |
 
 Full profile editing, bulk collection operations, contributor research, and the complete generator
 knob panel stay in Listening Room initially. Mobile can give explicit feedback, exclude an artist,
@@ -991,17 +993,17 @@ choose quality, reconnect, and manage its current session without a desktop visi
 
 ### Route and navigation contract
 
-| Route | Composition | Primary action |
-| --- | --- | --- |
-| `/home` | Resume, one set invitation, a bounded recent section, a short mixes rail | Resume or start the highlighted work |
-| `/now` | Artwork, track identity, transport, seek, quality, playback location | Play/pause or Play here |
-| `/now/queue` | Current entry followed by editable upcoming entries; no second mini player | Edit the next tracks |
-| `/now/lyrics` · `/now/credits` | Focused reading view with access to transport | Return to Now Playing |
-| `/search?q=…` | Sticky search input, grouped results, local loading/error states | Play or queue a result |
-| `/library?tab=…` | Artwork lists, saved playlists, visible pagination | Resume a saved work |
-| `/albums/[id]` · `/artists/[id]` · `/playlists/[id]` · `/tracks/[id]` | Mobile detail composition, brief context, consistent track actions | Play or add to the session |
-| `/generate` | Preset/length/seed, real progress, compact preview and rationale | Review then play/save |
-| `/settings` | Account/connection, playback/data preference, language, installation/help | Adjust one setting |
+| Route                                                                 | Composition                                                                | Primary action                       |
+| --------------------------------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------ |
+| `/home`                                                               | Resume, one set invitation, a bounded recent section, a short mixes rail   | Resume or start the highlighted work |
+| `/now`                                                                | Artwork, track identity, transport, seek, quality, playback location       | Play/pause or Play here              |
+| `/now/queue`                                                          | Current entry followed by editable upcoming entries; no second mini player | Edit the next tracks                 |
+| `/now/lyrics` · `/now/credits`                                        | Focused reading view with access to transport                              | Return to Now Playing                |
+| `/search?q=…`                                                         | Sticky search input, grouped results, local loading/error states           | Play or queue a result               |
+| `/library?tab=…`                                                      | Artwork lists, saved playlists, visible pagination                         | Resume a saved work                  |
+| `/albums/[id]` · `/artists/[id]` · `/playlists/[id]` · `/tracks/[id]` | Mobile detail composition, brief context, consistent track actions         | Play or add to the session           |
+| `/generate`                                                           | Preset/length/seed, real progress, compact preview and rationale           | Review then play/save                |
+| `/settings`                                                           | Account/connection, playback/data preference, language, installation/help  | Adjust one setting                   |
 
 There are still only four primary tabs: Home, Search, Library, Now. Other routes are reached from
 those contexts. A detail route may appear as a full-height sheet when opened from a list; opening
@@ -1009,7 +1011,8 @@ the same URL directly must render a complete page with a safe Home/Back destinat
 
 - Use SvelteKit navigation and supported shallow-routing state for overlays. Browser/Android Back
   closes the top layer before leaving its parent; Close provides the same action. Never maintain
-  an unrelated homemade history stack or call raw history APIs around the router.
+  an unrelated homemade history stack or call raw push/replace APIs around the router.
+  [SvelteKit shallow routing](https://svelte.dev/docs/kit/shallow-routing)
 - Preserve scroll per primary tab and query/filter state in the URL. Keep sheet return targets
   internal and validated; do not place tokens, profile data, or queue snapshots in URLs.
 - Mount one player in the mobile root layout, outside route content and sheet transitions. Hide
@@ -1050,18 +1053,18 @@ Keep connection, playback, and session-sync status separate: a connection hint i
 server is reachable, a loaded track is not proof it is playing, and local playback is not proof a
 queue edit has been persisted.
 
-| Situation | Expected behaviour |
-| --- | --- |
-| Browser rejects autoplay | Keep the selected track and offer an explicit Play control; do not loop retries |
-| Track resolution or buffering | Keep transport stable, show bounded pending/retry state, and preserve the current queue |
-| Network disappears mid-track | Allow already-buffered audio to continue naturally; show connection trouble when a request fails |
-| A new track cannot start | Preserve its place, offer retry or explicit skip, and avoid an unbounded automatic skip chain |
-| Offline queue edit in an open page | Keep only a bounded volatile pending intent marked unsaved; reconcile on reconnect; reload may discard it |
-| Offline save/publish/generate | Explain that connection is required; do not queue durable writes or replay them in the background |
-| Page is hidden or screen locks | Let the browser manage existing audio; suspend decorative work and unnecessary polling |
-| Page resumes or is restored from navigation cache | Read the real media-element state and current server revision before enabling stale writes |
-| App is killed and reopened | Restore server-accepted state after authentication/network recovery; require a deliberate resume |
-| Headphones disconnect or another app interrupts | Reflect actual playback state and avoid surprising automatic audio from the speaker |
+| Situation                                         | Expected behaviour                                                                                        |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Browser rejects autoplay                          | Keep the selected track and offer an explicit Play control; do not loop retries                           |
+| Track resolution or buffering                     | Keep transport stable, show bounded pending/retry state, and preserve the current queue                   |
+| Network disappears mid-track                      | Allow already-buffered audio to continue naturally; show connection trouble when a request fails          |
+| A new track cannot start                          | Preserve its place, offer retry or explicit skip, and avoid an unbounded automatic skip chain             |
+| Offline queue edit in an open page                | Keep only a bounded volatile pending intent marked unsaved; reconcile on reconnect; reload may discard it |
+| Offline save/publish/generate                     | Explain that connection is required; do not queue durable writes or replay them in the background         |
+| Page is hidden or screen locks                    | Let the browser manage existing audio; suspend decorative work and unnecessary polling                    |
+| Page resumes or is restored from navigation cache | Read the real media-element state and current server revision before enabling stale writes                |
+| App is killed and reopened                        | Restore server-accepted state after authentication/network recovery; require a deliberate resume          |
+| Headphones disconnect or another app interrupts   | Reflect actual playback state and avoid surprising automatic audio from the speaker                       |
 
 Reuse `src/lib/player/media-session.ts`. Register supported OS actions, clear stale metadata on
 logout/stop, and derive position from the player rather than a background timer. Test both installed
@@ -1104,6 +1107,313 @@ Do not convert the production service to a static SPA in anticipation of Tauri.
 - Its home and Now Playing screen feel composed in their own right; no CSS rule imports the desktop
   grid, rail, table, or aside.
 
+## The installed PWA
+
+The PWA is **Halflight Now installed from `m.halflight.eu`**. It improves launching, full-window
+presentation, system integration where supported, and recovery when the network is unavailable.
+It does not add an offline catalogue, downloadable music, or a second session store. Installation
+is optional and never gates listening in the website.
+
+### Manifest, identity, and installation
+
+Proposed manifest contract; validate the final artwork and browser behaviour in the PWA slice:
+
+| Field / asset         | Choice                                                                                   |
+| --------------------- | ---------------------------------------------------------------------------------------- |
+| `id`                  | Stable `/halflight-now`; do not change it for a release or locale                        |
+| `name` / `short_name` | `Halflight Now` / `Halflight`                                                            |
+| `start_url`           | `/home`, with server-side sign-in redirect and no account data or tracking parameters    |
+| `scope`               | `/` on `m.halflight.eu`; it does not extend to the desktop host                          |
+| `display`             | `standalone`; keep ordinary browser presentation working                                 |
+| Colours               | Brand-owned default canvas/theme colours, legible launch state                           |
+| Icons                 | Owned 192px/512px raster icons, a separately checked maskable icon, and Apple touch icon |
+| Shortcuts             | Home, Now Playing, Search; each opens a route without starting playback                  |
+| Orientation           | Unrestricted; landscape and rotation are supported                                       |
+
+Do not use provider album artwork for the app icon or cache private screenshots as install assets.
+Treat manifest data as public. Use one stable installation identity across locale changes and
+detect standalone display only to adjust chrome/help, never as authentication or device ownership.
+
+Installation UI lives in Settings, with a quiet contextual invitation after a successful listening
+session. Honour dismissal and avoid repeated prompts. Where `beforeinstallprompt` is available,
+retain its event until an explicit Install action; elsewhere provide concise browser-specific
+instructions. Do not render a button that cannot invoke anything, or claim installation succeeded
+just because the help panel closed. Test the actual OS flow: installability and prompting vary by
+browser. [PWA installation](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Guides/Making_PWAs_installable),
+[install prompt event](https://developer.mozilla.org/en-US/docs/Web/API/Window/beforeinstallprompt_event)
+
+### Service-worker implementation and dependency choice
+
+Evaluate **`@vite-pwa/sveltekit` with `injectManifest`** in the mobile build. Use Workbox for precache
+revisioning and explicit route handling; Halflight supplies the small cache policy and update UI.
+Use a single registration path, and disable duplicate SvelteKit registration when the integration
+owns it. Prove compatibility with this repository's SvelteKit `next`/Vite configuration before
+adoption. Keep worker generation and registration out of unit/Storybook development by default;
+test the built worker in a dedicated production-preview suite.
+[SvelteKit PWA integration](https://vite-pwa-org.netlify.app/frameworks/sveltekit)
+
+Explicitly inspect the generated precache manifest. The plugin's default file patterns are not
+the application's privacy policy: include only approved public client assets and the neutral
+offline page, not every image, prerendered page, or `__data.json` in the output tree. Start with a
+proposed 2 MiB compressed app-shell precache budget; measure and reduce the set before raising it.
+Do not precache the full route graph or optional waveform/diagnostic/native code.
+
+Use `workbox-precaching` and `workbox-routing` where the custom worker needs them, with versions
+compatible with the selected integration. Add [`@vite-pwa/assets-generator`](https://vite-pwa-org.netlify.app/assets-generator/)
+only if a repeatable brand-icon pipeline is useful. No IndexedDB abstraction, offline database, or background-sync
+library is required for this scope. Workbox handles the cache mechanics; keep the policy explicit.
+[Workbox precaching](https://developer.chrome.com/docs/workbox/modules/workbox-precaching),
+[Workbox routing](https://developer.chrome.com/docs/workbox/modules/workbox-routing)
+
+### Cache and offline policy
+
+| Request / data                                                 | Strategy                                                   | Offline behaviour                                                           |
+| -------------------------------------------------------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Allowlisted content-hashed JS/CSS, owned font/icon files       | Revisioned public precache with an explicit size budget    | Available after a successful prior install/load                             |
+| Neutral offline page with EN/DE recovery copy                  | Public precache, no authenticated loader or account data   | Explain connection requirements and offer Retry                             |
+| Authenticated HTML and SvelteKit data requests                 | Network only; no SW or HTTP storage of private responses   | A failed page navigation may show the neutral fallback                      |
+| Product JSON, queue/profile state, generation streams          | Network only; server `private, no-store` where appropriate | Existing in-memory view may remain; cold launch has no cached personal data |
+| Audio, stream manifests, Range/206 requests                    | Explicit worker bypass before cache routing                | Only the media element's existing buffer may continue                       |
+| Provider artwork, lyrics, credits, and proxied provider images | No service-worker persistence                              | Placeholder or unavailable state after the in-memory content is gone        |
+| Sign-in, verification, OAuth callback, logout, disconnect      | Explicit bypass; preserve normal server responses          | No cached login, callback success, or logout confirmation                   |
+| Mutations and third-party requests                             | Never enqueue, cache, or silently replay                   | Connection-required result or explicit unsaved in-memory intent             |
+
+Set explicit server/CDN cache headers too; a worker route exclusion does not configure HTTP caches.
+Conversely, `no-store` headers alone do not replace an explicit prohibition on putting private
+responses in Cache Storage. Include non-GET, opaque, error, and partial responses in the tests.
+
+The offline fallback is only for a failed GET **navigation**, not a replacement JSON/audio response.
+Do not mask a 401, 403, 404, or a provider failure with HTTP 200 offline HTML. Return the original
+status while online. Browser `online` events are retry hints; confirm reachability with a bounded
+service request before announcing reconnection.
+
+Cold offline launch shows the neutral shell, not a fictional restored session. In an already open
+page, retain volatile state and allow pause; new playback needs an available source. Nothing in
+Cache Storage, IndexedDB, or local storage becomes the authority for queue or position. Reloading
+may lose unsaved offline edits, and the UI says so before a voluntary reload.
+
+Logout clears in-memory personal state and any accidental private cache entries, releases the
+device's active playback claim, and invalidates the server session. The public shell may stay
+installed. Offline logout stops local playback and clears local display immediately, but must not
+claim server revocation succeeded; report pending revocation and retry through the normal online
+flow. Disconnect remains a server-authorised operation with its existing deletion contract.
+
+### Updates must preserve the listening session
+
+Use the integration's **prompt-for-update** strategy, not automatic reload. A newly downloaded
+worker may wait while the old app keeps playing. Do not call `skipWaiting()` automatically or
+reload unconditionally on `controllerchange`; replacing the worker while clients use old assets
+can break an active page. [Update prompt](https://vite-pwa-org.netlify.app/guide/prompt-for-update),
+[service-worker lifecycle](https://developer.chrome.com/docs/workbox/service-worker-lifecycle)
+
+```text
+new version downloaded → waiting → owner chooses a safe update → session flush acknowledged
+                              └→ later                          → activate → reload → restore paused
+```
+
+- Show a quiet "Update available" state. If audio or a save/generation action is active, default
+  to Later. The owner can explicitly pause and update; installation is never a reason to stop audio.
+- Before activation, resolve or surface pending writes and save the accepted resume position.
+  If saving fails, defer reload rather than silently discarding the session.
+- Coordinate readiness among controlled windows on the same origin. A playing or unresponsive
+  client defers activation; cross-host audio ownership is handled by the session service.
+- After an agreed activation, reload once, restore server state, and offer Resume. Do not try to
+  defeat browser autoplay restrictions. New tabs and standalone windows must not enter reload loops.
+- Keep service contracts compatible with at least the current and previous released client during
+  rollout. Validate the protocol version before writes; a very old client can retain its view but
+  must update before making incompatible changes.
+- Retain the previous release's immutable assets for the supported client window. Treat worker
+  cache cleanup and server asset retirement as separate operations; stale tabs may lazy-load a route.
+- Test a production rollback with an installed newer worker. Provide a same-scope worker recovery
+  release and cleanup of Halflight-owned caches; never unregister unrelated workers or clear all
+  origin storage indiscriminately. A web rollback does not instantly replace an installed worker.
+
+### PWA platform expectations
+
+| Capability                       | Browser / installed PWA commitment                                                                 | Later native opportunity                                                  |
+| -------------------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Launch and navigation            | Works in the browser; installed launch has owned identity and no browser toolbar where supported   | Signed app bundle and verified deep links                                 |
+| Lock-screen / Bluetooth controls | Feature-detected Media Session actions, tested per device/context                                  | Platform media-session integration independent of WebView lifetime        |
+| Background playback              | Observe and document actual browser behaviour; no promise that timers or a worker keep audio alive | Dedicated native playback session/service                                 |
+| Offline launch                   | Neutral public shell after prior caching; no downloaded music                                      | Bundled UI still needs server access for music and accepted session state |
+| Notifications / push             | Not in the first PWA release; no permission prompt on launch                                       | Add only for a named useful action, not routine engagement                |
+| Audio route selection            | Use browser/OS controls where available; no universal custom output picker                         | Platform route controls after a focused spike                             |
+| Background sync                  | No generation, TIDAL mutations, or position replay while the app is closed                         | Native lifecycle support still obeys reviewed actions and revision checks |
+
+Home-screen web apps on supported iOS/iPadOS versions can support push, but that capability does
+not create a product need for it. Do not use push, silent audio, wake locks, or service workers to
+simulate an always-running native player. [WebKit home-screen capabilities](https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/)
+
+## Later Tauri native client
+
+Start Tauri after the mobile website and installed PWA meet their acceptance gates. The native
+client should earn its maintenance cost through playback continuity and OS integration. Initial
+planning assumes iOS/Android as the mobile continuation; desktop packaging is an optional later
+track, using Listening Room compositions rather than stretching the phone layout.
+
+### Shared code and runtime separation
+
+Tauri hosts a bundled frontend and native code; it does not run SvelteKit server loads/actions in
+the app. Create a separate static frontend entry using the documented SvelteKit static-adapter
+approach or a small Svelte/Vite entry if that proves simpler. Keep both production web sites on
+their existing server-capable adapters. [Tauri SvelteKit integration](https://v2.tauri.app/start/frontend/sveltekit/)
+
+```text
+Listening Room web       Halflight Now web/PWA       Tauri bundled frontend
+        │                        │                    │ named IPC commands
+        │                        │                    ▼
+        │                        │              native host / audio adapter
+        └────────────────────────┴────────────────────┘
+                                 │
+                 authenticated Halflight service
+                 owner · session revision/lease · taste
+                 encrypted TIDAL tokens · audio proxy
+                                 │
+                              TIDAL
+```
+
+Share client-safe display types, command/reason schemas, pure session reconciliation, presentation
+components, localisation, and design tokens. Keep provider access, taste computation, database,
+email, and TIDAL token rotation on the server. Rust must not become a second TIDAL integration.
+Do not bundle `#lib/server`, environment secrets, an embedded database mirror, or a Node server.
+
+Extract a small playback interface when the native spike starts: load an entry, play, pause, seek,
+stop, receive observed state, and report supported capabilities. The web implementation wraps the
+existing media element; the native implementation invokes one platform engine. Components consume
+observed state and commands, not the concrete `<audio>` element. Avoid building speculative
+platform adapters before the native consumer exists.
+
+On native, the platform engine alone owns audio position and OS media commands. The WebView can
+be recreated without starting a second player. The same entry IDs, operation IDs, revisions, and
+active-device epoch apply. A native session coordinator must continue the minimum required queue
+advance, authentication, and server reconciliation while the WebView is suspended; a JS timer or
+IPC bridge dependent on a live page cannot provide native background playback.
+
+### Native authentication and trust boundary
+
+Use the system browser for account authentication. Do not ask for TIDAL credentials in the app or
+copy a browser's provider cookies. Evaluate Better Auth's existing **Device Authorization** plugin
+for first-party device sign-in: the native host requests a short-lived code, the owner approves
+the matching code in an authenticated Halflight page, and native polling completes the session.
+Restrict issuance/approval to this client and the configured owner, respect polling/expiry/denial,
+and regenerate the auth schema plus migration when adopting it. This is Halflight device sign-in,
+separate from TIDAL's playback device grant.
+[Better Auth device authorization](https://better-auth.com/docs/plugins/device-authorization)
+
+The resulting credential is a **Halflight session**, never either TIDAL token. Keep it inside the
+native authentication/network layer and, if persistent sign-in is enabled, an audited OS-backed
+credential store; never expose it to WebView state, JavaScript storage, URLs, logs, or plugin-store
+JSON. Verify the chosen credential-store integration on each OS before enabling persistent login;
+start with memory-only native sessions during the spike. Do not invent an encryption format or
+embed a decryption key in the app. Server-side owner checks still apply on every request.
+
+Expose narrow commands such as `loadSession`, `appendTrack`, and `playEntry`, returning normalised
+data and safe errors. The native network boundary authenticates these requests against a fixed
+Halflight origin; it is not an unrestricted URL fetch or filesystem/shell interface. Authentication
+loss revokes playback access and returns to sign-in without leaking a raw provider error.
+
+Restrict Tauri capabilities to the bundled application window and the exact commands/plugins
+needed on each platform. Do not grant a remote website or provider embed access to native IPC.
+Validate command payloads in native/server code as well as the UI, constrain external navigation,
+and keep CSP/connect/media origins explicit. [Tauri capabilities](https://v2.tauri.app/security/capabilities/)
+
+### Native audio feasibility comes before packaging polish
+
+| Platform         | Preferred existing foundation                                                            | Required integration                                                                                                                 |
+| ---------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Android          | AndroidX Media3 ExoPlayer + `MediaSessionService`                                        | Background service lifecycle, audio focus, interruptions, route changes, system controls, queue progression, authenticated requests  |
+| iOS              | AVPlayer/AVQueuePlayer + AVAudioSession and system Now Playing/remote commands           | Playback audio-session configuration, background audio mode, interruptions, route changes, queue progression, authenticated requests |
+| Optional desktop | Start by measuring the system WebView engine; add platform integration only where needed | Media keys, suspend/resume, window-close versus quit, output support, OS-specific codec behaviour                                    |
+
+Media3 supplies an established background media-service architecture; Apple's media frameworks
+provide the playback/session foundations. Tauri's mobile plugin mechanism bridges Kotlin/Swift
+implementations to the shared frontend. These reuse platform audio engines rather than implement
+codecs or decoding in Rust/JavaScript. [Android background playback](https://developer.android.com/media/media3/session/background-playback),
+[Apple media playback configuration](https://developer.apple.com/documentation/avfoundation/configuring-your-app-for-media-playback),
+[Tauri mobile plugins](https://v2.tauri.app/develop/plugins/develop-mobile/)
+
+The first native spike must play a synthetic stream and an owner-tested permitted TIDAL stream
+through Halflight's authenticated proxy, seek with Range, survive lock/background, advance to the
+next track while the WebView is suspended, and handle credential expiry. Prove a supported native
+HTTP authentication path for both platforms before promising production playback; do not solve
+cookie/header difficulties by putting a token in a media URL or exposing a provider CDN address.
+
+The native layer requests track identifiers and receives playback through the fixed Halflight
+service. Bound in-memory buffers, retain the existing quality fallback, and report the format
+actually decoded. Native codec support is not identical to browser support. If direct playback
+cannot be supported, show an honest reconnect/open-in-TIDAL fallback; a browser embed is not a
+transparent substitute for native background audio. No downloads, durable audio cache, background
+library syncing, or offline catalogue are added by this phase.
+
+### Native packages, deep links, and releases
+
+| Dependency                                         | Adoption purpose                                                | Boundary                                                                                  |
+| -------------------------------------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `@tauri-apps/api`, `@tauri-apps/cli`, Rust `tauri` | Tauri host, IPC, builds                                         | Pin compatible versions in pnpm/Cargo lockfiles; separate native build output             |
+| `@sveltejs/adapter-static`                         | Bundle a client-only SvelteKit frontend if that entry is chosen | Native entry only; no server loads or secrets in its output                               |
+| `@tauri-apps/plugin-deep-link`                     | Verified app links and cold/warm route delivery                 | Parse allowed hosts/paths/IDs; opening a link never authorises a write or starts playback |
+| `@tauri-apps/plugin-opener`                        | Open sign-in/help/provider destinations in the system browser   | Explicit HTTPS destination allowlist; no arbitrary command execution                      |
+| `@tauri-apps/plugin-haptics`                       | Optional feedback matching mobile web actions                   | Capability-gated; never required to understand an action                                  |
+| `@tauri-apps/plugin-updater`                       | Evaluate for a later signed desktop distribution                | Mobile release channels are planned separately; no universal updater assumption           |
+| AndroidX Media3 / Apple media frameworks           | Native playback mechanics and OS controls                       | Integrate behind the small player interface; no second source of queue truth              |
+
+Use the corresponding Rust plugin crates with compatible versions. Verify target support and
+permissions for each plugin during adoption, including credential storage; do not choose an
+unmaintained community player wrapper just because its demo plays one URL.
+[Deep-link plugin](https://v2.tauri.app/plugin/deep-linking/),
+[Opener](https://v2.tauri.app/plugin/opener/), [Haptics](https://v2.tauri.app/plugin/haptics/),
+[Updater](https://v2.tauri.app/plugin/updater/)
+
+Keep HTTPS mobile routes as canonical links. When native linking ships, serve verified Android
+App Links and Apple Universal Links association files for the approved paths, with the website as
+fallback when the app is absent. Test cold launch, already-running app, cancelled sign-in, and
+malformed links. A deep link carries an object identifier, not a session credential or executable
+action; use the authenticated app to resolve it.
+
+Build and sign on the appropriate platform toolchains. Start with owner-only internal/test
+distribution, then choose a maintained delivery channel per OS; public store listing is not a
+prerequisite for this single-owner product. Document signing-key custody, provisioning expiry,
+version/build numbers, rollback, supported OS versions, and at least previous-client API
+compatibility. OS/toolchain/store requirements must be rechecked at release, not frozen from this
+planning document. Never make a web deployment silently replace privileged native executable code.
+
+For optional desktop delivery, reuse Listening Room where it fits, define whether closing a window
+continues playback, reserve explicit Quit to stop/release it, and test suspend/resume and one
+instance per device. Global shortcuts, tray controls, autostart, and updater each need a named
+owner workflow; mobile release does not wait for desktop packaging.
+
+## Mobile, PWA, and native release gates
+
+Plan device coverage as Safari on iPhone and Chrome on Android for the initial web/PWA release,
+plus a small iPad/tablet sanity pass. At delivery, record actual OS/browser versions, physical
+devices, quality tiers, and known limitations; feature-detect rather than infer support from a UA.
+
+| Gate                          | Deliverable                                                                                       | Evidence required                                                                                                               |
+| ----------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| M0 — session contract         | Stable entries, conflict reconciliation, active-device semantics, same-origin mobile backend path | Two-client race, duplicate response, takeover, auth expiry, Range/seek tests                                                    |
+| M1 — mobile website           | Home, Now, queue, search, library, mobile details, concise generation/review, Settings            | Full touch/keyboard journey; EN/DE; 320px, zoom, landscape, virtual keyboard; physical-phone audio smoke                        |
+| P0 — installable shell        | Manifest, owned icons, install/help UI, allowlisted worker caches, neutral offline route          | Real installation on both targets; inspect caches; cold offline start; logout/relogin; API/audio bypass tests                   |
+| P1 — PWA updates and recovery | Waiting-worker UI, save-before-update, safe resume, stale-client handling, rollback               | Deploy v1→v2 while playing in multiple windows; defer/apply; rejected save; offline and rollback scenarios                      |
+| N0 — native feasibility       | Bundled entry, narrow bridge, native authentication and one audio engine per platform             | Background/lock, next-track advance with suspended WebView, seek, expiry, reconnect, device takeover, no credential/CDN leakage |
+| N1 — native daily use         | Shared mobile journeys with OS playback controls, deep links, signed internal distribution        | Calls/audio focus/headphone changes; process death; upgrade; logout/revoke; real devices and native UI tests                    |
+| N2 — optional desktop         | Desktop composition, media keys, window lifecycle, signed update path                             | Target-OS codec/playback, suspend/resume, close/quit semantics, signed update/recovery                                          |
+
+Automate mobile layouts and service-worker policy with Playwright against a built production
+preview. Use synthetic fixtures to assert that Cache Storage contains only allowlisted assets and
+that no authenticated route is served offline. Test the media element actually advancing, not
+just an icon changing. Use VoiceOver/TalkBack and actual install/lock-screen flows manually on
+physical phones; desktop WebKit emulation does not prove iOS PWA or native lifecycle behaviour.
+
+For native, reuse Vitest for pure shared logic and UI state, add Rust tests for validated IPC and
+service contracts, and use platform tests for audio/background lifecycle. Keep separate web/PWA
+and native release acceptance records. Do not turn emulator success into a guarantee about
+battery, interruptions, codecs, or background execution on real devices.
+
+Operational acceptance includes play-to-audio and seek latency by quality, resume correctness,
+worker update outcome, bounded cache size, long-session memory/battery observation, and redacted
+failure counts. A worker/package/native experiment is successful only if it improves one of these
+outcomes without violating the session, accessibility, or provider boundaries.
+
 ## Technical architecture
 
 ### One service, two site deployments
@@ -1127,7 +1437,7 @@ halflight.eu                    m.halflight.eu
 ```
 
 - **Share domain logic, never whole layouts.** Display models, player/session protocol, server
-  actions, i18n messages, tokens, and accessible primitives may be shared. Shells, routes,
+  implementations between server deployments, i18n messages, design tokens, and accessible primitives may be shared. Shells, routes,
   navigation, responsive CSS, page compositions, and interaction state are site-owned.
 - **Keep trust boundaries intact.** Both hosts authenticate on the server; neither receives TIDAL
   tokens, stream URLs, or bucket credentials. OAuth transaction and encrypted TIDAL cookies remain
@@ -1224,6 +1534,161 @@ Persist only:
 Do not persist catalogue, artwork, playlist, or listening-history mirrors. Optional storage experiments must satisfy the gates in **Object storage** below; they do not
 create a general retention exception.
 
+## Local Redis cache and coordination
+
+**Use the existing `REDIS_CACHE` service.** The local environment contains an authenticated
+loopback Redis URL; source inspection found no application declaration/client yet. This is a
+configuration observation, not a Redis connectivity, version, persistence, or capacity test.
+Do not copy the URL into documentation, logs, command arguments, or generated artifacts.
+
+Redis is shared, disposable server working memory. Postgres remains authoritative for the owner,
+encrypted TIDAL tokens, accepted playback session, operation deduplication, profile versions,
+exclusions, and local playlists. A Redis restart must not lose any accepted user action.
+
+### Integration and topology
+
+- Declare `REDIS_CACHE` in `src/env.ts` using the existing optional-variable pattern, import it
+  from `$app/env/private` only in `src/lib/server/`, and add a non-secret placeholder to
+  `.env.example` in the implementation slice. Missing configuration disables optimisations with
+  an honest health state; it must not stop the shell or existing direct playback.
+- The key is literally `REDIS_CACHE`; Markdown backslashes are not part of the key or URL.
+  Validate connection-string parsing with synthetic credentials containing Unicode and reserved
+  characters. Percent-encode the credential component when required by URL syntax, never the
+  whole URL, and never double-encode an already escaped password or print a parse failure's input.
+- Adopt the **`redis` package (node-redis)** as the single Redis client. Create a lazy, reused
+  connection per long-lived server process with an error listener and a shared connection promise.
+  Avoid connecting on every request, at build time, or from browser-reachable modules.
+  [Official Node client](https://redis.io/docs/latest/develop/clients/nodejs/)
+- Keep the Redis server local to the shared Node/PM2 service. `localhost` inside another machine,
+  container, or Vercel function is not this Redis instance. Route remote web deployments through
+  the authenticated Halflight backend, or explicitly provision a private network path. No public
+  Redis port and no credential in mobile/native configuration.
+- Apply short connect/command deadlines and bounded backoff with jitter. Proposed local targets:
+  500 ms to connect and 100 ms for ordinary cache operations, tuned after measurement. Disable
+  disconnected-command queuing so a recovered connection cannot replay stale coordination work.
+  Verify the exact selected client's timeout/abort behaviour; `Promise.race` alone does not cancel
+  a command. [Node Redis production usage](https://redis.io/docs/latest/develop/clients/nodejs/produsage/)
+- Use one additional connection for a subscriber only when server-sent session notifications ship.
+  Set connection limits and close owned connections on graceful shutdown. Never delay an audio
+  byte stream on cache work or issue Redis commands per audio chunk/timeupdate event.
+
+```text
+web / installed PWA / later native
+               │ HTTPS product commands and audio
+               ▼
+       shared Halflight Node service
+          ├── Postgres: authority, durable state, token rotation
+          ├── REDIS_CACHE: derived cache, request limits, revision hints
+          └── TIDAL: server-only access and proxied playback
+```
+
+### First consumers, keys, and bounds
+
+Use an explicit namespace such as `syn:<environment>:v1:<owner-key>:…`, with separate prefixes
+for cache, admission, and notifications. Do not encode email addresses, search queries, titles,
+tokens, or the Redis URL in keys. The owner key is an internal opaque identifier, not a tenancy
+feature. Payloads have a schema/version and are validated on both write and read.
+
+| Consumer                             | Stored value                                                                                                       | Initial bound / invalidation                                                                             |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| Generation pool reuse                | Track/artist IDs, derived scores, reason codes, coverage, profile revision, input digest, authorization generation | 5-minute TTL, maximum 3 pools and 256 KiB serialized per pool; profile/exclusion/auth changes invalidate |
+| Request admission                    | Counters and reset time for provider-wide and optional-work limits                                                 | Short windows aligned with the generation budget; explicit expiry; no catalogue data                     |
+| Provider cooldown                    | Safe retry-until time derived from a 429 response                                                                  | Fixed expiry, capped by the operation policy; never reset by each request                                |
+| Duplicate generation suppression     | Random holder ID and run ID for identical in-flight requests                                                       | Short lease bounded by the run deadline; cache optimisation only, never proof of mutation ownership      |
+| Session revision notification        | Owner key, committed revision, safe origin, message schema version                                                 | Pub/Sub event only; no queue, title, playback credential, or durable event history                       |
+| Optional derived profile computation | Versioned derived weights for an already-authorised operation                                                      | At most one short-lived entry per profile revision; re-read the authoritative revision for mutations     |
+
+Do not cache TIDAL API documents, rendered catalogue pages, search results, artwork, lyrics, audio,
+stream URLs, HTTP auth sessions, OAuth transactions, or token material in Redis. Keep provider
+display enrichment request-scoped and live. Pool reuse saves expansion/scoring work; its IDs still
+need live display/availability resolution within the request budget before review/play/save.
+
+A pool key covers algorithm version, profile content revision, canonical seeds/knobs, region or
+availability context, and authorization generation. Invalidation follows the **Postgres commit**.
+Versioned keys prevent a late writer from making an old result current; expired/invalid payloads
+are a cache miss, never a reason to serve stale exclusions or authorization.
+
+### Shared admission without sacrificing playback
+
+Pair `p-queue` for local pacing/concurrency/priority with **`rate-limiter-flexible`'s atomic Redis
+limiter** for shared request admission. Use its node-redis integration, not the non-atomic variant;
+verify scripts and minimal ACL commands against the installed Redis version. These tools serve
+different purposes: neither a local queue nor a shared counter alone is a complete scheduler.
+[Redis limiter integration](https://github.com/animir/node-rate-limiter-flexible/wiki/Redis)
+
+Count requests at the shared provider boundary, including pagination, retry, and enrichment. An
+overall account limit includes playback-related API resolution, while a stricter optional-work
+limit leaves headroom for user playback. Audio bytes themselves bypass the limiter. Budget expiry
+or denied admission produces a bounded partial generation, not a growing queue of delayed jobs.
+
+Limiter keys must not be casually evicted: disappearing counters can admit a fresh burst. Before
+shared admission goes live, inspect the existing instance's memory/eviction/persistence policy
+without changing it blindly. A separate Redis logical database does not isolate memory eviction.
+If the instance is shared or evicts all keys, keep correctness-independent caches there and retain
+admission in the single service/Postgres fallback until a suitable isolated instance is available.
+For a dedicated instance, prefer `noeviction` with explicit application cache caps and expiry;
+handle refused writes as degraded operation. [Redis eviction policies](https://redis.io/docs/latest/develop/reference/eviction/)
+
+Redis admission is still a best-effort external-API protection mechanism across server restarts.
+On a cold restart, begin conservatively rather than spending a fresh burst immediately. Respect
+upstream 429/Retry-After independently. If Redis is unavailable, suspend new optional expansion,
+use valid request-local candidates, and keep only the centrally paced essential playback path.
+Multiple disconnected processes must not each invent their own full fallback allowance.
+
+### Session notifications and loss recovery
+
+After a successful Postgres session commit, publish the new revision. A server subscriber may
+notify authenticated SSE clients to refetch or reconcile that revision; initial mobile delivery
+can keep polling until this reduces measured latency/load. A publish failure must not turn a
+successful database write into a failed user action or trigger a duplicate mutation.
+
+Redis Pub/Sub is **at-most-once**, so use it as an invalidation hint, never as an authoritative
+queue-command stream. A client connects, subscribes, reads a current snapshot, and applies only
+newer revisions; it periodically reconciles and always refetches on reconnect/focus. Lost events
+or Redis restart fall back to polling Postgres. No event replay guarantee is needed for the initial
+single-owner product. [Redis Pub/Sub delivery semantics](https://redis.io/docs/latest/develop/pubsub/)
+
+Playback-device leases, revocation, duplicate write detection, and rotating-token safety stay in
+the existing authoritative service/Postgres transaction boundary. An expiring Redis lock is not
+sufficient for these: it can expire while its holder is still working. For optional computation
+suppression, compare the holder ID before releasing a lease, bound the wait, and tolerate duplicate
+calculation. Never use a Redis cache lock to justify concurrent refresh of either rotating TIDAL token.
+
+### Operations, failure behaviour, and adoption sequence
+
+Inspect server version, authentication, reachability from the app process, memory ceiling, eviction,
+ACL permissions, and snapshot/AOF retention in a read-only deployment check. Redis may be durable
+on disk even when used as a cache: TTL is not proof that values vanish from backups immediately.
+The owner-data deletion runbook must account for any retained snapshots; avoid unnecessary derived
+profile copies and never introduce Redis copies of provider secrets.
+
+Keep cleanup limited to Halflight's exact namespace with bounded scanning/deletion. No `KEYS *`,
+`FLUSHDB`, `FLUSHALL`, broad config changes, or debug payload dumps on the shared service. Log only
+safe operation category, latency, hit/miss/error counts, and aggregate bytes; never keys or values.
+
+| Failure                                     | Behaviour                                                                                                    |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Redis unavailable / command times out       | Skip caches, stop new optional provider expansion, retain DB session writes and essential paced playback     |
+| Corrupt, expired, or oversized pool         | Drop it and recompute within budget; no partial deserialization into UI                                      |
+| Memory cap / refused cache write            | Return the successfully computed result without caching; no increased memory ceiling                         |
+| Lost notification / subscriber reconnect    | Re-read authoritative session state and resume polling                                                       |
+| Disconnect races a pending cache write      | New authorization generation makes it unreadable; delete namespace entries asynchronously with bounded retry |
+| Postgres unavailable while Redis is healthy | Do not acknowledge durable writes or use stale Redis as authorization; existing buffered audio may continue  |
+
+First implementation slice: add the server-only client and injected cache interface, then one
+generation-pool consumer with TTL/size/invalidation tests. Second: shared admission with failure
+policy and synthetic multi-process concurrency tests. Third, only after mobile polling measurements:
+revision Pub/Sub → authenticated SSE, with dropped-event and reconnect tests.
+
+Use an isolated disposable Redis instance for integration tests of expiry, script atomicity,
+restart, and refused writes; unit tests inject an in-memory adapter and fake clock. Do not flush or
+reconfigure the owner's `REDIS_CACHE` to test outages. Document commands/config keys, not live values.
+
+Do not add BullMQ merely because Redis now exists. The local cache's durability/eviction contract
+is not automatically suitable for jobs; BullMQ expects its Redis storage not to evict queue keys.
+Keep `pg-boss` the conditional durable-job choice for now, and reassess one job system only when a
+real job requires it. [BullMQ connection and eviction requirements](https://docs.bullmq.io/guide/connections)
+
 ## Third-party packages and reuse decisions
 
 Use established packages for interaction mechanics, validation, scheduling, and test infrastructure.
@@ -1267,6 +1732,11 @@ another runtime. [Nodemailer SMTP documentation](https://nodemailer.com/smtp)
 Bits UI's current component model targets Svelte 5; use its current documentation and snippets,
 not examples from the old v0 API. Keep Halflight's visual design in semantic tokens and small local
 wrappers. Adopt one primitive at a time rather than replacing the whole UI. [Bits UI migration guide](https://www.bits-ui.com/docs/migration-guide)
+
+Redis/PWA additions now have named consumers: `redis` and `rate-limiter-flexible` support the
+[local Redis slice](#local-redis-cache-and-coordination); `@vite-pwa/sveltekit` and the needed Workbox
+modules support the [installed PWA](#the-installed-pwa). Tauri dependencies remain in the
+[later native plan](#later-tauri-native-client) until N0 begins. Do not install these all at once.
 
 ### Conditional additions
 
@@ -1374,8 +1844,9 @@ the remaining deadline. Re-tune from observed safe timings and 429 responses.
 
 - Use `p-queue` for pacing and priority. The account's browse and enrichment traffic must share
   admission control; playback resolution gets priority. A module-local queue only governs one
-  process. Before two deployments call TIDAL independently, centralise scheduling at the shared
-  service or coordinate admission in Postgres; do not assume a global limit from local instances.
+  process. Centralise provider scheduling at the shared service and use Redis admission only under
+  the memory/failure contract in **Local Redis cache and coordination**; do not assume a global
+  limit from local instances. Postgres remains the fallback for correctness-sensitive coordination.
 - Charge pagination, enrichment, retries, and extra relationship hops to the budget. Keep OAuth
   refresh in its existing single-flight flow and reserve capacity for playback. Abort fetches when
   the run is cancelled or its deadline expires; a queue timeout alone does not stop network I/O.
@@ -1756,8 +2227,9 @@ the Halflight hierarchy, not generic responsive parity.
 ## Delivery roadmap
 
 Effort labels are relative: **S** focused, **M** a vertical slice, **L** several routes or layers.
-Ship each phase as a coherent, green change. The three launch tracks below establish Halflight as a
-service; they are the priority framing for every existing capability phase that follows.
+Ship each phase as a coherent, green change. Launch tracks 0–2 establish the web service; track 3
+adds the installed PWA; track 4 is the later native programme. The mobile/PWA/native release gates
+define acceptance, while the capability phases below describe the domain work they consume.
 
 ### Delivery priorities
 
@@ -1823,8 +2295,8 @@ afterthought.
       desktop page CSS. (M)
 - [ ] Build Home, Search, Library, Mini Player, and full-screen Now Playing with queue, lyrics,
       credits, provenance, and all essential queue verbs. (L)
-- [ ] Add live session handoff, conflict reconciliation, Media Session integration, and explicit
-      Wi-Fi/cellular quality preferences. (L)
+- [ ] Add live session handoff, conflict reconciliation, Media Session integration, and manual
+      data/quality preferences with optional network hints. (L)
 - [ ] Add mobile-only Playwright, visual, accessibility, rotation, safe-area, keyboard, and
       interrupted-network coverage. (M)
 - [ ] Make the desktop-to-mobile handoff respectful: explicit “Open in Halflight Now” where useful,
@@ -1832,6 +2304,58 @@ afterthought.
 
 Exit: the owner can leave the desk, open Halflight Now, and continue the exact moment of listening
 without thinking about the technology underneath it.
+
+### Launch track 3 — Installed Halflight Now PWA
+
+Depends on M1 mobile website acceptance. Installation uses the same mobile build and routes.
+
+- [ ] Adopt the tested SvelteKit PWA integration and Workbox policy; declare exactly one worker
+      registration path and inspect the generated public precache list. (M)
+- [ ] Add the stable manifest, owned icons, Settings installation/help flow, and neutral EN/DE
+      offline navigation fallback; test actual iOS/Android installation. (M)
+- [ ] Implement waiting-worker updates, cross-window readiness, save-before-reload, paused restore,
+      previous-client API compatibility, and a worker rollback/recovery procedure. (L)
+- [ ] Verify all authenticated data, provider assets, audio/Range, OAuth, and mutations bypass
+      persistent worker caches; no offline write queue or fake offline music. (M)
+- [ ] Complete P0/P1 release gates: cache inspection, network loss, auth/logout, real-device media
+      controls, and v1→v2 update while music plays. (M)
+
+Exit: the owner installs and uses Halflight Now daily, can defer an update safely, and understands
+what works offline without losing accepted session state.
+
+### Launch track 4 — Tauri after the PWA
+
+Depends on accepted mobile/PWA behaviour and a named native benefit. Default sequencing is mobile
+first; desktop remains a separate optional target until the owner chooses its priority.
+
+- [ ] Prove a bundled frontend, narrow validated IPC, and first-party system-browser sign-in with
+      native-only Halflight credentials; preserve the server's TIDAL boundary. (L)
+- [ ] Complete N0 separately on Android and iOS: native audio engine, authenticated proxy/Range,
+      screen lock, next-track progression while the WebView is suspended, and credential expiry. (L)
+- [ ] Share mobile presentation and session contracts; implement native observed playback state,
+      interruptions/audio focus, platform media controls, and explicit device takeover. (L)
+- [ ] Add verified deep links, owner-only signed distribution, native logout/revocation, API version
+      compatibility, and actual-device N1 acceptance. (L)
+- [ ] Optional N2: desktop composition, window/quit lifecycle, media keys, and signed updates after
+      the mobile/native product demonstrates its value. (L)
+
+Exit: native playback provides a measured improvement over the PWA and remains correct when its
+WebView is suspended or recreated. A wrapper that only loads the website does not meet this gate.
+
+### Infrastructure slice — use local Redis deliberately
+
+- [ ] Declare `REDIS_CACHE`, add `redis`, and implement a server-only injected adapter with bounded
+      connection/command behaviour, safe health reporting, and no disconnected-command replay. (M)
+- [ ] Use Redis for bounded derived generation-pool reuse, with profile/auth version invalidation,
+      strict payload allowlists, TTL/size checks, and cache-miss fallback. (M)
+- [ ] Verify instance configuration, then add atomic `rate-limiter-flexible` admission alongside
+      the local `p-queue`; reserve playback capacity and test Redis loss/restart. (M)
+- [ ] After measuring mobile polling, add revision-only Pub/Sub hints to authenticated SSE clients;
+      dropped events recover by reading Postgres. (M)
+
+Exit: repeated generation uses less upstream work and concurrent clients share the same request
+budget; a Redis outage neither loses accepted state nor stops already-buffered audio. This slice
+does not migrate TIDAL tokens, auth sessions, durable jobs, or the canonical queue into Redis.
 
 ### Phase A — Consolidate the session
 
@@ -1881,7 +2405,7 @@ Goal: a real set from a real profile.
 - [x] `/app/generate` with a first knob subset (length, familiarity, seeds). (L)
 - [ ] Actual progress streaming, deadline enforcement, pacing, cancellation, and stale-run protection. (M)
 - [x] Provisional queue in the player; save to Halflight; optional TIDAL push. (M)
-- [ ] Retire the hardcoded `SOUNDSCAPE_QUERIES` generator. (S)
+- [x] Retire the hardcoded `SOUNDSCAPE_QUERIES` generator. (S)
 
 Exit: a generated hour is better than TIDAL's own mix for the owner, and every pick is explainable.
 
@@ -2001,20 +2525,20 @@ Each spike ends with a recorded finding, a small reproducible check, and a proce
 Historical account observations from 2026-09-04 are evidence for the original sample, not an API
 stability guarantee or a reason to probe the live account during documentation work.
 
-| Question                                      | Existing evidence / next check                                                                                                                                       | Blocks                                                      |
-| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| Relationship coverage                         | Similar artists and artist tracks were observed; validate normalised relationships, pagination, and regional gaps per feature                                        | Additional expansion edges, not the existing engine         |
-| Genre/mood taxonomy                           | The recorded sample found none; keep genre out of schemas and UI until an explicit reliable source is verified                                                       | No current milestone                                        |
-| Popularity, ISRC, BPM/key/ReplayGain coverage | Fields were observed; measure missingness and scale differences in the intended shortlist workflow                                                                   | Depth and sonic controls, not initial artist/era generation |
-| Cooldown and feedback retention               | Use bounded ID/expiry state and weight deltas; define deletion and undo before collection                                                                            | Learning loop                                               |
-| Write capability and uncertain outcomes       | Verify exact scopes, limits, ordering, conflict tokens, and reconciliation per named action                                                                          | Each new TIDAL mutation                                     |
-| Two-host authentication                       | Choose host-only authenticated sessions or a deliberately tested Better Auth sharing configuration; preserve narrowly scoped TIDAL cookies and exact trusted origins | Mobile release                                              |
-| Active-device ownership                       | Test takeover, stale position writes, sleep/wake, and disconnected buffered audio                                                                                    | Honest cross-site handoff                                   |
-| Provider request coordination                 | Confirm both sites use one scheduling authority, or prove cross-process admission control                                                                            | Concurrent multi-deployment generation                      |
-| Durable job runtime                           | Prove worker restart, Neon connection budget, migrations, and job expiry for the selected adapter                                                                    | First durable background job                                |
-| Media permission and usefulness               | Record an explicit permission finding and measured benefit before staging, remux, peaks, or loudness processing; otherwise defer them                                | Optional media experiments only                             |
-| Component compatibility                       | Verify exact Bits UI / drag action / optional virtualizer releases against current runes, SSR, async mode, and browser tests                                         | Their individual adoption slices                            |
-| Diagnostics exposure                          | Keep developer tools gated; settle whether safe read-only owner diagnostics ship in production                                                                       | Diagnostics release only                                    |
+| Question                                      | Existing evidence / next check                                                                                                                   | Blocks                                                      |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------- |
+| Relationship coverage                         | Similar artists and artist tracks were observed; validate normalised relationships, pagination, and regional gaps per feature                    | Additional expansion edges, not the existing engine         |
+| Genre/mood taxonomy                           | The recorded sample found none; keep genre out of schemas and UI until an explicit reliable source is verified                                   | No current milestone                                        |
+| Popularity, ISRC, BPM/key/ReplayGain coverage | Fields were observed; measure missingness and scale differences in the intended shortlist workflow                                               | Depth and sonic controls, not initial artist/era generation |
+| Cooldown and feedback retention               | Use bounded ID/expiry state and weight deltas; define deletion and undo before collection                                                        | Learning loop                                               |
+| Write capability and uncertain outcomes       | Verify exact scopes, limits, ordering, conflict tokens, and reconciliation per named action                                                      | Each new TIDAL mutation                                     |
+| Two-host authentication                       | Prove the chosen host-only sign-in on both sites and in installed PWA contexts; preserve narrowly scoped TIDAL cookies and exact trusted origins | Mobile release                                              |
+| Active-device ownership                       | Test takeover, stale position writes, sleep/wake, and disconnected buffered audio                                                                | Honest cross-site handoff                                   |
+| Provider request coordination                 | Confirm both sites use one scheduling authority, or prove cross-process admission control                                                        | Concurrent multi-deployment generation                      |
+| Durable job runtime                           | Prove worker restart, Neon connection budget, migrations, and job expiry for the selected adapter                                                | First durable background job                                |
+| Media permission and usefulness               | Record an explicit permission finding and measured benefit before staging, remux, peaks, or loudness processing; otherwise defer them            | Optional media experiments only                             |
+| Component compatibility                       | Verify exact Bits UI / drag action / optional virtualizer releases against current runes, SSR, async mode, and browser tests                     | Their individual adoption slices                            |
+| Diagnostics exposure                          | Keep developer tools gated; settle whether safe read-only owner diagnostics ship in production                                                   | Diagnostics release only                                    |
 
 ## Risks and mitigations
 
