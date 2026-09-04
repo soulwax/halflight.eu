@@ -43,6 +43,6 @@ describe('TrackTable.svelte', () => {
 		});
 		const acts = page.getByRole('button', { name: 'Act' });
 		await expect.element(acts.first()).toBeInTheDocument();
-		expect(await acts.all()).toHaveLength(2);
+		expect(acts.all()).toHaveLength(2);
 	});
 });

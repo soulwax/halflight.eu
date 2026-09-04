@@ -29,7 +29,7 @@ describe('TrackTableRow.svelte', () => {
 
 	it('points the title, artist and album at their pages', async () => {
 		render(TrackTableRow, { track, columns: ['album'], onActivate: () => {} });
-		const links = await page.getByRole('link').all();
+		const links = page.getByRole('link').all();
 		const hrefs = links.map((l) => l.element().getAttribute('href'));
 		expect(hrefs).toContain('/app/tracks/55');
 		expect(hrefs).toContain('/app/artists/a1');
