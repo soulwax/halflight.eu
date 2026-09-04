@@ -187,4 +187,23 @@ describe('PlayerState', () => {
 		player.openPanel('queue');
 		expect(player.isExpanded).toBe(false);
 	});
+
+	it('dragTo clamps the floating window inside the viewport', () => {
+		const player = new PlayerState();
+
+		// Off the top-left — clamps to the 8px inset.
+		player.dragTo(-500, -500, 0, 0, 1280, 800);
+		expect(player.floatingPos).toEqual({ x: 8, y: 8 });
+
+		// Off the bottom-right — clamps so a 380x92 window stays on screen.
+		player.dragTo(99999, 99999, 0, 0, 1280, 800);
+		expect(player.floatingPos).toEqual({ x: 1280 - 380 - 8, y: 800 - 92 - 8 });
+
+		// Honours the grab offset, and the taller expanded height lowers the y ceiling.
+		player.isExpanded = true;
+		player.dragTo(600, 500, 40, 30, 1280, 1200);
+		expect(player.floatingPos).toEqual({ x: 560, y: 470 });
+		player.dragTo(600, 900, 40, 30, 1280, 800);
+		expect(player.floatingPos).toEqual({ x: 560, y: 800 - 460 - 8 });
+	});
 });

@@ -10,8 +10,7 @@ export * from './theme/theme.svelte.js';
 // Music Domain Components
 export { default as StateCard } from './components/music/StateCard.svelte';
 export { default as MediaCard } from './components/music/MediaCard.svelte';
-export { default as TrackRow } from './components/music/TrackRow.svelte';
-export { default as TrackList } from './components/music/TrackList.svelte';
+export { default as TrackTable } from './components/music/TrackTable.svelte';
 export { default as PageHeader } from './components/music/PageHeader.svelte';
 export { default as PageActions } from './components/music/PageActions.svelte';
 export { default as SongCard } from './components/music/SongCard.svelte';

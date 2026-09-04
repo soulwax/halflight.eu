@@ -1,14 +1,14 @@
 <script lang="ts">
+	import PageActions from '#lib/components/music/PageActions.svelte';
+	import PageHeader from '#lib/components/music/PageHeader.svelte';
+	import StateCard from '#lib/components/music/StateCard.svelte';
+	import TrackTable from '#lib/components/music/TrackTable.svelte';
+	import Button from '#lib/components/ui/Button.svelte';
+	import { m } from '#lib/paraglide/messages.js';
+	import { player } from '#lib/player/player.svelte.js';
+	import { downloadM3u8File, generateM3u8 } from '#lib/utils/m3u';
 	import { resolve } from '$app/paths';
 	import { Download, Play } from '@lucide/svelte';
-	import { player } from '#lib/player/player.svelte.js';
-	import { m } from '#lib/paraglide/messages.js';
-	import { downloadM3u8File, generateM3u8 } from '#lib/utils/m3u';
-	import Button from '#lib/components/ui/Button.svelte';
-	import PageHeader from '#lib/components/music/PageHeader.svelte';
-	import TrackList from '#lib/components/music/TrackList.svelte';
-	import StateCard from '#lib/components/music/StateCard.svelte';
-	import PageActions from '#lib/components/music/PageActions.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -47,7 +47,7 @@
 			type="playlist"
 		>
 			{#if data.playlist.description}
-				<p class="line-clamp-2 text-sm text-[var(--text-muted)]">{data.playlist.description}</p>
+				<p class="line-clamp-2 text-sm text-(--text-muted)">{data.playlist.description}</p>
 			{/if}
 			<div class="meta-line">
 				{#if data.playlist.creator}
@@ -97,10 +97,10 @@
 
 		{#if data.playlist.items.length}
 			<section class="tracklist-section" aria-labelledby="playlist-title">
-				<TrackList
+				<TrackTable
 					tracks={data.playlist.items}
 					contextTracks={data.playlist.items}
-					showAlbum={true}
+					columns={['album', 'date', 'duration']}
 				/>
 			</section>
 		{/if}

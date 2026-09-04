@@ -2,15 +2,15 @@
 	import { goto } from '$app/navigation';
 	import { Loader2, Search } from '@lucide/svelte';
 
-	import { m } from '#lib/paraglide/messages';
+	import MediaCard from '#lib/components/music/MediaCard.svelte';
+	import StateCard from '#lib/components/music/StateCard.svelte';
+	import TrackTable from '#lib/components/music/TrackTable.svelte';
 	import Button from '#lib/components/ui/Button.svelte';
 	import SectionHeader from '#lib/components/ui/SectionHeader.svelte';
-	import MediaCard from '#lib/components/music/MediaCard.svelte';
-	import TrackList from '#lib/components/music/TrackList.svelte';
-	import StateCard from '#lib/components/music/StateCard.svelte';
+	import { m } from '#lib/paraglide/messages';
+	import type { SearchResultGroups } from '#lib/tidal/models';
 	import { parseTidalResource } from '#lib/tidal/resource';
 	import type { PageData } from './$types';
-	import type { SearchResultGroups } from '#lib/tidal/models';
 
 	let { data }: { data: PageData } = $props();
 
@@ -127,7 +127,7 @@
 			</div>
 			{#if isSearching}
 				<div class="search-spinner" aria-label={m.search_live_searching()}>
-					<Loader2 class="animate-spin text-[var(--action)]" size={20} />
+					<Loader2 class="animate-spin text-(--action)" size={20} />
 				</div>
 			{:else}
 				<Button type="submit" variant="primary">
@@ -165,7 +165,7 @@
 		<div class="result-summary" role="status">
 			<p>
 				{m.search_results_for({ query: activeQuery })}
-				<span class="font-mono text-xs text-[var(--text-muted)]">({resultCount} matches)</span>
+				<span class="font-mono text-xs text-(--text-muted)">({resultCount} matches)</span>
 			</p>
 		</div>
 
@@ -176,10 +176,10 @@
 					titleId="tracks-title"
 					count={currentResults.tracks.length}
 				/>
-				<TrackList
+				<TrackTable
 					tracks={currentResults.tracks}
 					contextTracks={currentResults.tracks}
-					showAlbum={true}
+					columns={['album', 'date', 'duration']}
 				/>
 			</section>
 		{/if}

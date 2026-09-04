@@ -316,6 +316,27 @@ export class PlayerState {
 		this.savePrefs();
 	}
 
+	/**
+	 * Live drag update for the floating window: place its top-left at the pointer
+	 * minus the grab offset, clamped so the ~380px window stays fully within the
+	 * given viewport (8px inset). Does not persist — call `setFloatingPos` on drop.
+	 */
+	dragTo(
+		clientX: number,
+		clientY: number,
+		offsetX: number,
+		offsetY: number,
+		viewportWidth: number,
+		viewportHeight: number
+	): void {
+		const width = 380;
+		const height = this.isExpanded ? 460 : 92;
+		this.floatingPos = {
+			x: Math.min(Math.max(8, clientX - offsetX), viewportWidth - width - 8),
+			y: Math.min(Math.max(8, clientY - offsetY), viewportHeight - height - 8)
+		};
+	}
+
 	toggleNormalization(): void {
 		this.isNormalizationEnabled = !this.isNormalizationEnabled;
 		this.applyVolume();

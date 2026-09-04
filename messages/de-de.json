@@ -262,5 +262,10 @@
 	"track_lyrics_heading": "Songtext",
 	"mixes_types_label": "Mix-Typen",
 	"album_review_heading": "Album-Rezension",
-	"album_credits_heading": "Album- & Track-Credits"
+	"album_credits_heading": "Album- & Track-Credits",
+	"track_col_art": "Cover",
+	"track_col_title": "Titel",
+	"track_col_album": "Album",
+	"track_col_release": "Erschienen",
+	"track_col_actions": "Aktionen"
 }

@@ -24,7 +24,11 @@ export default defineConfig({
 				runes: ({ filename }) =>
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true,
 				experimental: {
-					async: true
+					// Async mode's reactivity wrapper breaks vitest-browser-svelte's
+					// polling matchers on any component that reads a `$derived` (or
+					// `resolve()`); nothing in the app uses `await` in markup, so it's
+					// safe to keep it off under test.
+					async: !process.env.VITEST
 				}
 			},
 			adapter,
@@ -57,6 +61,8 @@ export default defineConfig({
 					browser: {
 						enabled: true,
 						provider: playwright(),
+						// Wide enough that responsive `display:none` columns still render.
+						viewport: { width: 1280, height: 900 },
 						instances: [
 							{
 								browser: 'chromium',

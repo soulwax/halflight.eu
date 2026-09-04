@@ -1,17 +1,17 @@
 <script lang="ts">
-	import { resolve } from '$app/paths';
-	import { BookOpen, Download, Play, Users } from '@lucide/svelte';
-	import { player } from '#lib/player/player.svelte.js';
-	import { m } from '#lib/paraglide/messages.js';
-	import { downloadM3u8File, generateM3u8 } from '#lib/utils/m3u';
+	import MediaCard from '#lib/components/music/MediaCard.svelte';
+	import PageActions from '#lib/components/music/PageActions.svelte';
+	import PageHeader from '#lib/components/music/PageHeader.svelte';
+	import StateCard from '#lib/components/music/StateCard.svelte';
+	import TrackTable from '#lib/components/music/TrackTable.svelte';
 	import Badge from '#lib/components/ui/Badge.svelte';
 	import Button from '#lib/components/ui/Button.svelte';
 	import SectionHeader from '#lib/components/ui/SectionHeader.svelte';
-	import PageHeader from '#lib/components/music/PageHeader.svelte';
-	import TrackList from '#lib/components/music/TrackList.svelte';
-	import MediaCard from '#lib/components/music/MediaCard.svelte';
-	import StateCard from '#lib/components/music/StateCard.svelte';
-	import PageActions from '#lib/components/music/PageActions.svelte';
+	import { m } from '#lib/paraglide/messages.js';
+	import { player } from '#lib/player/player.svelte.js';
+	import { downloadM3u8File, generateM3u8 } from '#lib/utils/m3u';
+	import { resolve } from '$app/paths';
+	import { BookOpen, Download, Play, Users } from '@lucide/svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -110,10 +110,10 @@
 					titleId="tracklist-title"
 					count={`${data.album.items.length} ${m.album_tracks_count()}`}
 				/>
-				<TrackList
+				<TrackTable
 					tracks={data.album.items}
 					contextTracks={data.album.items}
-					parentArtistName={data.album.artists[0]?.name}
+					columns={['duration']}
 				/>
 			</section>
 		{/if}
@@ -125,11 +125,10 @@
 		{#if data.review}
 			<section class="review-section" aria-labelledby="album-review-title">
 				<SectionHeader title={m.album_review_heading()} titleId="album-review-title">
-					<BookOpen size={18} class="text-[var(--action)]" />
+					<BookOpen size={18} class="text-(--action)" />
 					{#snippet actions()}
 						{#if data.review?.source}
-							<span class="font-mono text-xs text-[var(--text-muted)]"
-								>Source: {data.review.source}</span
+							<span class="font-mono text-xs text-(--text-muted)">Source: {data.review.source}</span
 							>
 						{/if}
 					{/snippet}
@@ -160,7 +159,7 @@
 					titleId="album-credits-title"
 					count={`${data.credits.length} tracks credited`}
 				>
-					<Users size={18} class="text-[var(--action)]" />
+					<Users size={18} class="text-(--action)" />
 				</SectionHeader>
 
 				<div class="credits-grid">

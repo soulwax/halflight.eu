@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatClock, formatDuration, qualityTier } from './format';
+import { formatClock, formatDuration, formatReleaseDate, qualityTier } from './format';
 
 describe('formatDuration', () => {
 	it('renders m:ss with a zero-padded seconds field', () => {
@@ -35,6 +35,20 @@ describe('formatClock', () => {
 	it('formats a live position', () => {
 		expect(formatClock(0)).toBe('0:00');
 		expect(formatClock(94.4)).toBe('1:34');
+	});
+});
+
+describe('formatReleaseDate', () => {
+	it('returns the four-digit year of an ISO date', () => {
+		expect(formatReleaseDate('2013-05-17')).toBe('2013');
+		expect(formatReleaseDate('1999')).toBe('1999');
+	});
+
+	it('returns an empty string when missing or unrecognisable', () => {
+		expect(formatReleaseDate(undefined)).toBe('');
+		expect(formatReleaseDate(null)).toBe('');
+		expect(formatReleaseDate('')).toBe('');
+		expect(formatReleaseDate('unknown')).toBe('');
 	});
 });
 

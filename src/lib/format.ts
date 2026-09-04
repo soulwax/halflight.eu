@@ -30,6 +30,16 @@ export function formatClock(seconds: number | null | undefined): string {
 	return clock(seconds);
 }
 
+/**
+ * The release year of an ISO date (`2013-05-17` → `2013`). Returns `''` when the
+ * value is missing or not a recognisable year — callers render a dash.
+ */
+export function formatReleaseDate(iso: string | null | undefined): string {
+	if (!iso) return '';
+	const year = iso.slice(0, 4);
+	return /^\d{4}$/.test(year) ? year : '';
+}
+
 export type QualityTier = 'lossy' | 'lossless' | 'hires';
 
 /**
