@@ -1,10 +1,8 @@
 <script lang="ts">
-	import type { AppBrand, AppNavigationItem } from './navigation.js';
+	import type { AppNavigationItem } from './navigation.js';
 	import { isCurrentNavigationItem } from './navigation.js';
-	import synLogo from '#lib/assets/syn-logo.svg';
 
 	interface Props {
-		brand: AppBrand;
 		navigation: AppNavigationItem[];
 		currentPath: string;
 		navigationLabel: string;
@@ -16,7 +14,6 @@
 	}
 
 	let {
-		brand,
 		navigation,
 		currentPath,
 		navigationLabel,
@@ -34,16 +31,8 @@
 	<span
 		class="pointer-events-none absolute inset-y-0 right-[3px] w-px bg-[color-mix(in_oklab,var(--accent-gold)_28%,transparent)]"
 	></span>
-	<div
-		class="flex min-h-20 items-center justify-between border-b border-[var(--border-subtle)] px-7"
-	>
-		<a class="block h-10 w-[9.75rem]" href={brand.href} aria-label={brand.label}>
-			<img class="h-full w-full" src={synLogo} alt="" />
-		</a>
-		<span class="font-mono text-[0.65rem] tracking-[0.3em] text-[var(--text-muted)]">I</span>
-	</div>
 
-	<nav class="px-3 py-5" aria-label={navigationLabel}>
+	<nav class="px-3 pt-6 pb-5" aria-label={navigationLabel}>
 		<ul class="space-y-0.5">
 			{#each navigation as item (item.href)}
 				{@const current = isCurrentNavigationItem(item, currentPath)}

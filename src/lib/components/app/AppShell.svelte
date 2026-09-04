@@ -2,11 +2,10 @@
 	import type { Snippet } from 'svelte';
 	import MobileNav from './MobileNav.svelte';
 	import SideNav from './SideNav.svelte';
-	import type { AppBrand, AppNavigationItem } from './navigation.js';
+	import type { AppNavigationItem } from './navigation.js';
 
 	interface Props {
 		children: Snippet;
-		brand: AppBrand;
 		navigation: AppNavigationItem[];
 		currentPath: string;
 		skipLinkLabel: string;
@@ -20,7 +19,6 @@
 
 	let {
 		children,
-		brand,
 		navigation,
 		currentPath,
 		skipLinkLabel,
@@ -40,7 +38,6 @@
 >
 	<div class="mx-auto flex min-h-[calc(100dvh-10px)] max-w-screen-2xl">
 		<SideNav
-			{brand}
 			{navigation}
 			{currentPath}
 			{navigationLabel}

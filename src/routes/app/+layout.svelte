@@ -31,7 +31,6 @@
 </script>
 
 <AppShell
-	brand={{ href: resolve('/app'), label: 'Syn' }}
 	{navigation}
 	currentPath={page.url.pathname}
 	skipLinkLabel={m.skip_to_content()}

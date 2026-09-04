@@ -4,7 +4,6 @@ import { render } from 'vitest-browser-svelte';
 import SideNav from './SideNav.svelte';
 
 const base = {
-	brand: { href: '/app', label: 'Syn' },
 	navigation: [
 		{ href: '/app', label: 'Home' },
 		{ href: '/app/search', label: 'Search' },

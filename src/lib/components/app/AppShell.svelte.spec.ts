@@ -7,7 +7,6 @@ import AppShell from './AppShell.svelte';
 describe('AppShell', () => {
 	it('provides a skip link, labelled navigation, and the current page', async () => {
 		render(AppShell, {
-			brand: { href: '/app', label: 'Syn' },
 			navigation: [
 				{ href: '/app', label: 'Home' },
 				{ href: '/app/search', label: 'Search' }

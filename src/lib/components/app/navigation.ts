@@ -5,11 +5,6 @@ export interface AppNavigationItem {
 	current?: boolean;
 }
 
-export interface AppBrand {
-	href: string;
-	label: string;
-}
-
 export function isCurrentNavigationItem(item: AppNavigationItem, currentPath: string): boolean {
 	if (item.current !== undefined) return item.current;
 	if (item.href === currentPath) return true;

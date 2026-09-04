@@ -32,10 +32,15 @@
 
 	let {
 		compact = false,
-		id = 'theme-selector'
+		id = 'theme-selector',
+		direction = 'down'
 	}: {
 		compact?: boolean;
 		id?: string;
+		/** Which way the menu opens relative to its trigger. Defaults to down, the
+		 * only direction that has room when the trigger sits near the top of the
+		 * viewport (the header) or a card (settings). */
+		direction?: 'up' | 'down';
 	} = $props();
 
 	let isOpen = $state(false);
@@ -78,7 +83,12 @@
 
 <svelte:window onclick={handleClickOutside} onkeydown={handleKeydown} />
 
-<div class="theme-selector-root" class:compact bind:this={menuRef}>
+<div
+	class="theme-selector-root"
+	class:compact
+	class:direction-up={direction === 'up'}
+	bind:this={menuRef}
+>
 	<button
 		type="button"
 		{id}
@@ -213,6 +223,15 @@
 		background: var(--surface-selected);
 	}
 
+	.theme-trigger-btn:focus-visible {
+		outline: 2px solid var(--action);
+		outline-offset: 1px;
+	}
+
+	.theme-selector-root:has(.theme-dropdown-menu) .theme-trigger-btn {
+		border-color: var(--action);
+	}
+
 	.theme-trigger-swatch {
 		display: flex;
 		align-items: center;
@@ -235,32 +254,46 @@
 
 	.theme-dropdown-menu {
 		position: absolute;
-		bottom: calc(100% + 0.35rem);
+		top: calc(100% + 0.4rem);
 		left: 0;
 		right: 0;
 		z-index: 50;
 		min-width: 16rem;
 		background: var(--surface-raised);
 		border: 1px solid var(--border-strong);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-lg, var(--radius-md));
 		box-shadow: var(--shadow-raised);
 		overflow: hidden;
-		animation: menu-slide-up 0.12s ease-out;
+		transform-origin: top center;
+		animation: menu-open-down 0.14s cubic-bezier(0.16, 1, 0.3, 1);
 	}
 
-	:global(.settings-theme-selector) .theme-dropdown-menu {
-		bottom: auto;
-		top: calc(100% + 0.35rem);
+	.direction-up .theme-dropdown-menu {
+		top: auto;
+		bottom: calc(100% + 0.4rem);
+		transform-origin: bottom center;
+		animation-name: menu-open-up;
 	}
 
-	@keyframes menu-slide-up {
+	@keyframes menu-open-down {
 		from {
 			opacity: 0;
-			transform: translateY(4px);
+			transform: translateY(-6px) scaleY(0.96);
 		}
 		to {
 			opacity: 1;
-			transform: translateY(0);
+			transform: translateY(0) scaleY(1);
+		}
+	}
+
+	@keyframes menu-open-up {
+		from {
+			opacity: 0;
+			transform: translateY(6px) scaleY(0.96);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0) scaleY(1);
 		}
 	}
 
@@ -298,6 +331,11 @@
 	.theme-option-item:hover {
 		background: var(--surface-selected);
 		border-color: var(--border-subtle);
+	}
+
+	.theme-option-item:focus-visible {
+		outline: 2px solid var(--action);
+		outline-offset: -2px;
 	}
 
 	.theme-option-item.selected {

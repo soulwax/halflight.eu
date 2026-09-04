@@ -274,7 +274,7 @@
 		</form>
 	</section>
 
-	<section class="preferences-card settings-theme-selector" aria-labelledby="theme-settings-title">
+	<section class="preferences-card" aria-labelledby="theme-settings-title">
 		<div class="card-indicator indicator-yellow"></div>
 		<div class="mb-2 flex items-center gap-2">
 			<Palette size={20} class="text-[var(--action)]" />
