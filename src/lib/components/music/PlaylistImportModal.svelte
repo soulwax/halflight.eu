@@ -90,8 +90,21 @@
 				throw new Error(err.message || err.error || 'Import failed');
 			}
 
-			const data = (await res.json()) as { totalImported: number; totalErrors: number };
-			successMessage = m.playlist_import_done() + ` (${data.totalImported})`;
+			const data = (await res.json()) as {
+				totalImported: number;
+				totalErrors: number;
+				totalTracksSkipped: number;
+				totalTracksReplaced: number;
+				streamValidation: 'verified' | 'unavailable';
+			};
+			const importSummary = `${m.playlist_import_done()} (${data.totalImported})`;
+			if (data.streamValidation === 'unavailable') {
+				successMessage = `${importSummary} ${m.playlist_import_streams_unavailable()}`;
+			} else if (data.totalTracksSkipped || data.totalTracksReplaced) {
+				successMessage = `${importSummary} ${m.playlist_import_streams_checked()} ${m.playlist_import_streams_adjusted({ replaced: data.totalTracksReplaced, skipped: data.totalTracksSkipped })}`;
+			} else {
+				successMessage = `${importSummary} ${m.playlist_import_streams_checked()}`;
+			}
 
 			// Refresh client-side custom playlist store
 			await customPlaylists.syncWithServer();

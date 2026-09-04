@@ -5,7 +5,7 @@
 	let {
 		imageUrl,
 		title,
-		eyebrow = 'SYN // SPECIFICATION',
+		eyebrow = 'HALFLIGHT // SPECIFICATION',
 		type = 'album',
 		children,
 		actions

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { Loader2, Search } from '@lucide/svelte';
+	import { onDestroy } from 'svelte';
 
 	import MediaCard from '#lib/components/music/MediaCard.svelte';
 	import StateCard from '#lib/components/music/StateCard.svelte';
@@ -20,51 +21,85 @@
 	let urlDetected = $state<string | null>(null);
 	let debounceTimer: ReturnType<typeof setTimeout> | undefined;
 	let activeAbortController: AbortController | null = null;
+	let searchRequestVersion = 0;
+	let liveError = $state<'unavailable' | null>(null);
+	let isLiveSearch = $state(false);
 	let lastPropQuery = $state<string | undefined>(undefined);
 
 	$effect.pre(() => {
 		if (data.query !== lastPropQuery) {
+			cancelLiveSearch();
 			lastPropQuery = data.query;
 			searchQuery = data.query ?? '';
 			liveResults = data.results ?? null;
+			liveError = null;
+			isLiveSearch = false;
 		}
 	});
+
+	onDestroy(cancelLiveSearch);
 
 	function updateUrl(query: string) {
 		if (typeof window === 'undefined') return;
 		const url = new URL(window.location.href);
 		if (query) {
-			url.searchParams.set('search', query);
-			url.searchParams.delete('q');
-		} else {
+			url.searchParams.set('q', query);
 			url.searchParams.delete('search');
+		} else {
 			url.searchParams.delete('q');
+			url.searchParams.delete('search');
 		}
 		window.history.replaceState(window.history.state, '', url.toString());
+	}
+
+	function cancelLiveSearch() {
+		clearTimeout(debounceTimer);
+		searchRequestVersion += 1;
+		activeAbortController?.abort();
+		activeAbortController = null;
+	}
+
+	function startLiveSearch(query: string, delay = 0) {
+		cancelLiveSearch();
+		const requestVersion = searchRequestVersion;
+		liveResults = null;
+		liveError = null;
+		isLiveSearch = true;
+		isSearching = true;
+
+		if (delay) {
+			debounceTimer = setTimeout(() => {
+				void runLiveSearch(query, requestVersion);
+			}, delay);
+			return;
+		}
+
+		void runLiveSearch(query, requestVersion);
 	}
 
 	function handlePopState() {
 		if (typeof window === 'undefined') return;
 		const url = new URL(window.location.href);
-		const q = (url.searchParams.get('search') ?? url.searchParams.get('q') ?? '').trim();
+		const q = (url.searchParams.get('q') ?? url.searchParams.get('search') ?? '').trim();
 		if (q !== searchQuery) {
 			searchQuery = q;
-			clearTimeout(debounceTimer);
-			if (activeAbortController) {
-				activeAbortController.abort();
-				activeAbortController = null;
-			}
 			if (q) {
-				void runLiveSearch(q);
+				startLiveSearch(q);
 			} else {
+				cancelLiveSearch();
 				liveResults = { tracks: [], albums: [], artists: [], playlists: [] };
+				liveError = null;
+				isLiveSearch = false;
 				isSearching = false;
 			}
 		}
 	}
 
-	const currentResults = $derived(liveResults ?? data.results);
+	const currentResults = $derived(isLiveSearch ? liveResults : data.results);
 	const activeQuery = $derived(searchQuery.trim());
+	const searchError = $derived(
+		liveError ?? (activeQuery === data.query.trim() ? data.error : null)
+	);
 
 	const resultCount = $derived(
 		currentResults
@@ -93,57 +128,54 @@
 			urlDetected = null;
 		}
 
-		clearTimeout(debounceTimer);
+		cancelLiveSearch();
 		if (!trimmed) {
-			if (activeAbortController) {
-				activeAbortController.abort();
-				activeAbortController = null;
-			}
 			liveResults = { tracks: [], albums: [], artists: [], playlists: [] };
+			liveError = null;
+			isLiveSearch = false;
 			isSearching = false;
 			return;
 		}
 
 		if (parsed) {
-			if (activeAbortController) {
-				activeAbortController.abort();
-				activeAbortController = null;
-			}
+			liveResults = null;
+			liveError = null;
+			isLiveSearch = true;
 			isSearching = false;
 			return;
 		}
 
-		isSearching = true;
-		debounceTimer = setTimeout(() => {
-			void runLiveSearch(trimmed);
-		}, 250);
+		startLiveSearch(trimmed, 250);
 	}
 
-	async function runLiveSearch(q: string) {
-		if (activeAbortController) {
-			activeAbortController.abort();
-		}
+	async function runLiveSearch(q: string, requestVersion: number) {
+		if (requestVersion !== searchRequestVersion) return;
+
 		const controller = new AbortController();
 		activeAbortController = controller;
-		isSearching = true;
 
 		try {
-			const res = await fetch(`/api/search?search=${encodeURIComponent(q)}`, {
+			const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`, {
 				signal: controller.signal
 			});
-			if (res.ok) {
-				const body = await res.json();
-				if (!controller.signal.aborted && body.results) {
-					liveResults = body.results;
-				}
+			if (!res.ok) throw new Error('Search request failed');
+
+			const body = (await res.json()) as { results?: SearchResultGroups };
+			if (requestVersion === searchRequestVersion && !controller.signal.aborted) {
+				liveResults = body.results ?? { tracks: [], albums: [], artists: [], playlists: [] };
 			}
 		} catch (err: unknown) {
-			if (err instanceof DOMException && err.name === 'AbortError') {
+			if (
+				requestVersion !== searchRequestVersion ||
+				controller.signal.aborted ||
+				(err instanceof DOMException && err.name === 'AbortError')
+			) {
 				return;
 			}
-			// retain existing results on network failure
+			liveResults = null;
+			liveError = 'unavailable';
 		} finally {
-			if (activeAbortController === controller) {
+			if (requestVersion === searchRequestVersion && activeAbortController === controller) {
 				isSearching = false;
 				activeAbortController = null;
 			}
@@ -158,7 +190,6 @@
 
 	function handleSubmit(event: SubmitEvent) {
 		event.preventDefault();
-		clearTimeout(debounceTimer);
 
 		const query = searchQuery.trim();
 		updateUrl(query);
@@ -169,9 +200,12 @@
 		}
 
 		if (query) {
-			void runLiveSearch(query);
+			startLiveSearch(query);
 		} else {
+			cancelLiveSearch();
 			liveResults = { tracks: [], albums: [], artists: [], playlists: [] };
+			liveError = null;
+			isLiveSearch = false;
 			isSearching = false;
 		}
 	}
@@ -186,7 +220,7 @@
 
 <section class="search-page" aria-labelledby="search-title">
 	<header class="search-header">
-		<p class="deco-eyebrow">SYN // EXPLORATION</p>
+		<p class="deco-eyebrow">HALFLIGHT // EXPLORATION</p>
 		<h1 id="search-title" class="search-title">{m.search_title()}</h1>
 		<p class="intro">{m.search_subtitle()}</p>
 	</header>
@@ -198,7 +232,7 @@
 				<span class="search-icon"><Search size={18} /></span>
 				<input
 					id="search-query"
-					name="search"
+					name="q"
 					type="search"
 					value={searchQuery}
 					oninput={handleInput}
@@ -232,9 +266,9 @@
 			title={m.search_not_connected_title()}
 			description={m.search_not_connected_description()}
 		/>
-	{:else if data.error === 'invalid_query'}
+	{:else if searchError === 'invalid_query'}
 		<p class="state-error" role="alert">{m.search_invalid_query()}</p>
-	{:else if data.error === 'unavailable'}
+	{:else if searchError === 'unavailable'}
 		<p class="state-error" role="alert">{m.search_error()}</p>
 	{:else if !activeQuery}
 		<StateCard title={m.search_empty_title()} description={m.search_empty_description()} />

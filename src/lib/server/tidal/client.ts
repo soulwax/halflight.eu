@@ -19,6 +19,9 @@ import type { Cookies } from '@sveltejs/kit';
 
 /** Refresh this many ms before the real expiry to absorb clock skew / latency. */
 const EXPIRY_SKEW_MS = 60_000;
+const TRANSIENT_READ_STATUSES = new Set([408, 500, 502, 503, 504]);
+const MAX_TRANSIENT_READ_RETRIES = 2;
+const INITIAL_RETRY_DELAY_MS = 100;
 
 export interface TidalRequestContext {
 	/** Injected fetch (e.g. SvelteKit's `event.fetch`); defaults to global `fetch`. */
@@ -127,10 +130,19 @@ function resolveUrl(path: string): string {
 	return `${TIDAL_API_BASE}${path.startsWith('/') ? '' : '/'}${path}`;
 }
 
+function isSafeRead(init: RequestInit): boolean {
+	const method = (init.method ?? 'GET').toUpperCase();
+	return method === 'GET' || method === 'HEAD';
+}
+
+function wait(ms: number): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /**
  * Perform an authenticated TIDAL API request. Injects the bearer token, sends
- * the JSON:API `Accept` header, and — on a 401 — forces one refresh and retries
- * exactly once before giving up.
+ * the JSON:API `Accept` header, retries transient failures for safe reads, and
+ * — on a 401 — forces one refresh and retries exactly once before giving up.
  */
 export async function tidalFetch(
 	path: string,
@@ -150,10 +162,32 @@ export async function tidalFetch(
 			}
 		});
 
-	let response = await send(await getAccessToken(ctx));
+	const sendWithTransientRetry = async (token: string): Promise<Response> => {
+		const retries = isSafeRead(init) ? MAX_TRANSIENT_READ_RETRIES : 0;
+
+		for (let attempt = 0; ; attempt += 1) {
+			try {
+				const response = await send(token);
+				if (!TRANSIENT_READ_STATUSES.has(response.status) || attempt === retries) {
+					return response;
+				}
+			} catch (reason) {
+				if (
+					attempt === retries ||
+					(reason instanceof DOMException && reason.name === 'AbortError')
+				) {
+					throw reason;
+				}
+			}
+
+			await wait(INITIAL_RETRY_DELAY_MS * 2 ** attempt);
+		}
+	};
+
+	let response = await sendWithTransientRetry(await getAccessToken(ctx));
 	if (response.status === 401) {
 		const next = await refreshAndPersist(await loadRecord(ctx.store), ctx);
-		response = await send(next.accessToken);
+		response = await sendWithTransientRetry(next.accessToken);
 		if (response.status === 401) throw new TidalAuthError();
 	}
 	return response;

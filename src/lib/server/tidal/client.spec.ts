@@ -129,6 +129,37 @@ describe('tidalFetch 401 handling', () => {
 	});
 });
 
+describe('tidalFetch transient failures', () => {
+	it('retries a transient failure for a safe read', async () => {
+		const store = memoryStore();
+		await writeRecord(record(), store);
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(new Response('{}', { status: 503 }))
+			.mockResolvedValueOnce(new Response('{}', { status: 200 }));
+
+		const response = await tidalFetch('/searchResults', {}, { store, fetch: fetchMock as never });
+
+		expect(response.status).toBe(200);
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+	});
+
+	it('does not retry a transient failure for a write', async () => {
+		const store = memoryStore();
+		await writeRecord(record(), store);
+		const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 503 }));
+
+		const response = await tidalFetch(
+			'/playlists',
+			{ method: 'POST', body: '{}' },
+			{ store, fetch: fetchMock as never }
+		);
+
+		expect(response.status).toBe(503);
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+	});
+});
+
 describe('getPlaybackToken', () => {
 	it('throws TidalPlaybackNotLinkedError when no device token is stored', async () => {
 		await expect(getPlaybackToken({ store: memoryStore() })).rejects.toBeInstanceOf(

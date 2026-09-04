@@ -48,7 +48,7 @@
 
 <section class="library" aria-labelledby="library-title">
 	<header class="library-header">
-		<p class="deco-eyebrow">SYN // PERSONAL CATALOGUE</p>
+		<p class="deco-eyebrow">HALFLIGHT // PERSONAL CATALOGUE</p>
 		<h1 id="library-title" class="library-title">{m.library_title()}</h1>
 		<p class="intro">{m.library_subtitle()}</p>
 	</header>
@@ -153,7 +153,7 @@
 							<button
 								type="button"
 								class="card-del-btn"
-								onclick={() => customPlaylists.deletePlaylist(playlist.id)}
+								onclick={() => void customPlaylists.deletePlaylist(playlist.id)}
 								title={m.action_delete()}
 								aria-label={m.action_delete_playlist()}
 							>

@@ -58,7 +58,10 @@ export const DELETE: RequestHandler = async (event) => {
 	}
 
 	try {
-		await deleteUserPlaylist(event.locals.user.id, playlistId);
+		const deleted = await deleteUserPlaylist(event.locals.user.id, playlistId);
+		if (!deleted) {
+			return json({ error: 'playlist_not_found' }, { status: 404 });
+		}
 		return json({ success: true, id: playlistId });
 	} catch (err) {
 		log.error('failed to delete playlist', { playlistId, cause: err });

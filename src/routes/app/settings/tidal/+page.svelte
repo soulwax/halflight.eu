@@ -83,7 +83,7 @@
 
 <section class="tidal-settings" aria-labelledby="tidal-settings-title">
 	<header class="settings-header">
-		<p class="eyebrow">SYN // SYSTEM CONFIGURATION</p>
+		<p class="eyebrow">HALFLIGHT // SYSTEM CONFIGURATION</p>
 		<h1 id="tidal-settings-title">{m.tidal_settings_title()}</h1>
 		<p class="intro">{m.tidal_settings_subtitle()}</p>
 	</header>

@@ -12,7 +12,7 @@
 
 <section class="lastfm-settings" aria-labelledby="lastfm-title">
 	<header>
-		<p class="eyebrow">SYN // LAST.FM</p>
+		<p class="eyebrow">HALFLIGHT // LAST.FM</p>
 		<h1 id="lastfm-title">{m.lastfm_settings_title()}</h1>
 		<p>{m.lastfm_settings_description()}</p>
 	</header>

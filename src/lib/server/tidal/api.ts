@@ -76,16 +76,16 @@ export async function getFullCollection(
 ): Promise<{ items: Resource[]; included: Resource[] }> {
 	const items: Resource[] = [];
 	const included: Resource[] = [];
-	let cursor = opts.cursor;
+	let page = await getCollectionPage(kind, opts, ctx);
 	for (let guard = 0; guard < 50; guard++) {
-		const page = await getCollectionPage(kind, { ...opts, cursor }, ctx);
 		items.push(...(Array.isArray(page.data) ? page.data : [page.data]));
 		included.push(...(page.included ?? []));
 		const next = page.links?.next;
 		if (!next) break;
-		const parsed = new URL(next, 'https://openapi.tidal.com');
-		cursor = parsed.searchParams.get('page[cursor]') ?? undefined;
-		if (!cursor) break;
+		// TIDAL controls the pagination token format. Following the supplied link
+		// avoids silently stopping after its common 20-item first page when that
+		// format changes (for example, cursor → offset/after pagination).
+		page = await tidalJson<Document<Resource[]>>(next, {}, ctx);
 	}
 	return { items, included };
 }
@@ -131,16 +131,13 @@ export async function getFullPlaylistItems(
 ): Promise<{ items: Resource[]; included: Resource[] }> {
 	const items: Resource[] = [];
 	const included: Resource[] = [];
-	let cursor = opts.cursor;
+	let page = await getPlaylistItems(id, opts, ctx);
 	for (let guard = 0; guard < 50; guard++) {
-		const page = await getPlaylistItems(id, { ...opts, cursor }, ctx);
 		items.push(...(Array.isArray(page.data) ? page.data : [page.data]));
 		included.push(...(page.included ?? []));
 		const next = page.links?.next;
 		if (!next) break;
-		const parsed = new URL(next, 'https://openapi.tidal.com');
-		cursor = parsed.searchParams.get('page[cursor]') ?? undefined;
-		if (!cursor) break;
+		page = await tidalJson<Document<Resource[]>>(next, {}, ctx);
 	}
 	return { items, included };
 }

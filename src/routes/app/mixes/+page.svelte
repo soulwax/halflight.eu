@@ -35,7 +35,7 @@
 
 <section class="mixes-page" aria-labelledby="mixes-title">
 	<header class="mixes-header">
-		<p class="deco-eyebrow">SYN // AUTOMATED COMPOSITION</p>
+		<p class="deco-eyebrow">HALFLIGHT // AUTOMATED COMPOSITION</p>
 		<h1 id="mixes-title" class="mixes-title">{m.mixes_title()}</h1>
 		<p class="intro">{m.mixes_subtitle()}</p>
 	</header>

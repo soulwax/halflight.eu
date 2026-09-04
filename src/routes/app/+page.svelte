@@ -1,16 +1,20 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { ArrowRight, ListMusic, Play, Plus, Sparkles, Trash2, Wand2 } from '@lucide/svelte';
-	import SongCard from '#lib/components/music/SongCard.svelte';
-	import { player } from '#lib/player/player.svelte.js';
-	import { customPlaylists } from '#lib/player/customPlaylists.svelte.js';
+	import { ArrowRight, ListMusic, Pause, Play, Wand2 } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
+	import { customPlaylists } from '#lib/player/customPlaylists.svelte.js';
+	import { player } from '#lib/player/player.svelte.js';
 	import Button from '#lib/components/ui/Button.svelte';
-	import SectionHeader from '#lib/components/ui/SectionHeader.svelte';
+	import SongCard from '#lib/components/music/SongCard.svelte';
 	import StateCard from '#lib/components/music/StateCard.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+
+	const nowPlayingArtwork = $derived(
+		player.currentTrack?.imageUrl ?? player.currentTrack?.album?.imageUrl
+	);
+	const savedSets = $derived(customPlaylists.playlists.slice(0, 4));
 </script>
 
 <svelte:head>
@@ -18,153 +22,151 @@
 	<meta name="description" content={m.home_subtitle()} />
 </svelte:head>
 
-<section class="welcome" aria-labelledby="home-title">
-	<header class="hero-header">
-		<div class="hero-mark" aria-hidden="true">
-			<span class="hero-mark-line"></span>
-			<span class="hero-mark-node"></span>
-			<span class="hero-mark-line"></span>
-		</div>
-		<p class="deco-eyebrow">HALFLIGHT — LISTENING ROOM</p>
-		<h1 id="home-title" class="hero-title">{m.home_title({ name: data.user.name })}</h1>
-		<p class="intro">{m.home_subtitle()}</p>
+<section class="home" aria-labelledby="home-title">
+	<header class="home-intro">
+		<p class="eyebrow">{m.home_eyebrow()}</p>
+		<h1 id="home-title">{m.home_title({ name: data.user.name })}</h1>
+		<p>{m.home_subtitle()}</p>
 	</header>
 
 	{#if data.connection.connected}
-		<!-- Bauhaus Composer Banner -->
-		<section class="composer-hero" aria-labelledby="composer-heading">
-			<div class="composer-content">
-				<div class="composer-badge">
-					<Sparkles size={16} class="text-[var(--action-contrast)]" />
-					<span>AUTONOMOUS COMPOSER</span>
-				</div>
-				<h2 id="composer-heading">GENERATE PLAYLISTS ON THE FLY</h2>
-				<p class="composer-desc">
-					Answer 3 quick aesthetic questions (vibe, era cycle, pacing) to synthesize a custom
-					20-track thematic playlist and start playback immediately.
-				</p>
+		<section
+			class:has-artwork={Boolean(nowPlayingArtwork)}
+			class="continuation"
+			aria-labelledby="continue-title"
+		>
+			{#if nowPlayingArtwork}
+				<img class="continuation-artwork" src={nowPlayingArtwork} alt="" />
+			{:else}
+				<div class="continuation-light" aria-hidden="true"></div>
+			{/if}
+
+			<div class="continuation-copy">
+				<p class="eyebrow">{m.home_resume_eyebrow()}</p>
+				{#if player.currentTrack}
+					<h2 id="continue-title">{player.currentTrack.title}</h2>
+					<p>{player.currentTrack.artists.map((artist) => artist.name).join(', ')}</p>
+				{:else if data.dailyMix[0]}
+					<h2 id="continue-title">{m.home_daily_mix_title()}</h2>
+					<p>{m.home_daily_mix_description()}</p>
+				{:else}
+					<h2 id="continue-title">{m.home_generate_title()}</h2>
+					<p>{m.home_generate_description()}</p>
+				{/if}
 			</div>
-			<div class="composer-action">
-				<Button variant="primary" size="lg" onclick={() => customPlaylists.openGenerator()}>
-					<Wand2 size={16} />
-					COMPOSE PLAYLIST
-				</Button>
+
+			<div class="continuation-action">
+				{#if player.currentTrack}
+					<Button variant="primary" size="lg" onclick={() => player.togglePlayPause()}>
+						{#if player.isPlaying}
+							<Pause size={17} fill="currentColor" />
+							{m.home_pause_action()}
+						{:else}
+							<Play size={17} fill="currentColor" />
+							{m.home_resume_action()}
+						{/if}
+					</Button>
+				{:else if data.dailyMix[0]}
+					<Button
+						variant="primary"
+						size="lg"
+						onclick={() => player.play(data.dailyMix[0], data.dailyMix)}
+					>
+						<Play size={17} fill="currentColor" />
+						{m.player_play_all()}
+					</Button>
+				{:else}
+					<Button href={resolve('/app/generate')} variant="primary" size="lg">
+						<Wand2 size={17} />
+						{m.home_generate_action()}
+					</Button>
+				{/if}
 			</div>
 		</section>
 
-		<!-- Custom Playlists Section -->
-		{#if customPlaylists.playlists.length > 0}
-			<section class="custom-playlists-section" aria-labelledby="custom-playlists-heading">
-				<SectionHeader
-					eyebrow="USER ARCHIVE // ON THE FLY"
-					title="MY CUSTOM PLAYLISTS"
-					titleId="custom-playlists-heading"
-					count={customPlaylists.playlists.length}
-				>
-					{#snippet actions()}
-						<Button variant="secondary" size="sm" onclick={() => customPlaylists.openGenerator()}>
-							<Plus size={14} />
-							COMPOSE NEW
-						</Button>
-					{/snippet}
-				</SectionHeader>
+		<section class="generation" aria-labelledby="generation-title">
+			<div>
+				<p class="eyebrow">{m.home_generate_eyebrow()}</p>
+				<h2 id="generation-title">{m.home_generate_title()}</h2>
+				<p>{m.home_generate_description()}</p>
+			</div>
+			<Button href={resolve('/app/generate')} variant="secondary">
+				<Wand2 size={16} />
+				{m.home_generate_action()}
+			</Button>
+		</section>
 
-				<div class="custom-playlists-grid">
-					{#each customPlaylists.playlists as playlist (playlist.id)}
-						<article class="custom-playlist-card">
-							<div class="pl-card-header">
-								<div class="pl-icon-wrap">
-									<ListMusic size={20} class="text-[var(--action)]" />
-								</div>
-								<div class="pl-meta">
-									<strong class="pl-title">{playlist.title}</strong>
-									<span class="pl-count font-mono">{playlist.items.length} tracks</span>
-								</div>
+		{#if data.dailyMix.length}
+			<section class="home-section" aria-labelledby="daily-mix-title">
+				<div class="section-heading">
+					<div>
+						<p class="eyebrow">{m.home_mix_eyebrow()}</p>
+						<h2 id="daily-mix-title">{m.home_daily_mix_title()}</h2>
+					</div>
+					<a href={resolve('/app/mixes')}>
+						{m.home_mixes_action()}
+						<ArrowRight size={16} />
+					</a>
+				</div>
+
+				<div class="track-grid">
+					{#each data.dailyMix as track, index (track.id)}
+						<SongCard {track} contextTracks={data.dailyMix} {index} />
+					{/each}
+				</div>
+			</section>
+		{/if}
+
+		{#if savedSets.length}
+			<section class="home-section" aria-labelledby="saved-sets-title">
+				<div class="section-heading">
+					<div>
+						<p class="eyebrow">{m.home_saved_sets_eyebrow()}</p>
+						<h2 id="saved-sets-title">{m.home_saved_sets_title()}</h2>
+					</div>
+					<Button href={resolve('/app/generate')} variant="ghost" size="sm">
+						{m.home_saved_sets_new()}
+					</Button>
+				</div>
+
+				<div class="saved-set-grid">
+					{#each savedSets as playlist (playlist.id)}
+						<article class="saved-set">
+							<div class="saved-set-icon" aria-hidden="true"><ListMusic size={20} /></div>
+							<div class="saved-set-copy">
+								<h3>{playlist.title}</h3>
+								<p>{playlist.items.length} {m.playlist_track_count()}</p>
 							</div>
-
-							{#if playlist.description}
-								<p class="pl-desc">{playlist.description}</p>
-							{/if}
-
-							<div class="pl-actions">
-								<button
-									type="button"
-									class="pl-play-btn"
-									disabled={playlist.items.length === 0}
-									onclick={() => customPlaylists.playPlaylist(playlist.id)}
-								>
-									<Play size={13} fill="currentColor" />
-									PLAY
-								</button>
-								<button
-									type="button"
-									class="pl-delete-btn"
-									onclick={() => customPlaylists.deletePlaylist(playlist.id)}
-									title={m.action_delete_playlist()}
-									aria-label={m.action_delete_playlist()}
-								>
-									<Trash2 size={13} />
-								</button>
-							</div>
+							<button
+								type="button"
+								class="saved-set-play"
+								disabled={playlist.items.length === 0}
+								onclick={() => player.play(playlist.items[0], playlist.items)}
+								title={m.player_play_all()}
+								aria-label={m.player_play_all()}
+							>
+								<Play size={15} fill="currentColor" />
+							</button>
 						</article>
 					{/each}
 				</div>
 			</section>
 		{/if}
 
-		{#if data.dailyMix.length}
-			<section class="mix-section" aria-labelledby="daily-mix-title">
-				<SectionHeader
-					eyebrow="CURATED SOUNDS"
-					title={m.home_daily_mix_title()}
-					titleId="daily-mix-title"
-				>
-					<Sparkles size={16} class="text-[var(--action)]" />
-					{#snippet actions()}
-						<Button variant="primary" onclick={() => player.play(data.dailyMix[0], data.dailyMix)}>
-							<Play size={14} fill="currentColor" />
-							{m.player_play_all()}
-						</Button>
-					{/snippet}
-				</SectionHeader>
-
-				<div class="song-cards-grid">
-					{#each data.dailyMix as track, index (track.id)}
-						<SongCard {track} contextTracks={data.dailyMix} {index} />
-					{/each}
-				</div>
-
-				<div class="mix-footer">
-					<a class="mix-link" href={resolve('/app/mixes')}>
-						{m.home_daily_mix_more()}
-						<ArrowRight size={15} />
-					</a>
-				</div>
-			</section>
-		{/if}
-
-		<div class="actions-grid">
-			<article class="action-card">
-				<div class="card-indicator indicator-blue"></div>
-				<h2>{m.home_search_title()}</h2>
-				<p>{m.home_search_description()}</p>
-				<a href={resolve('/app/search')}>{m.home_search_button()}</a>
-			</article>
-
-			<article class="action-card">
-				<div class="card-indicator indicator-yellow"></div>
-				<h2>{m.home_library_title()}</h2>
-				<p>{m.home_library_description()}</p>
-				<a href={resolve('/app/library')}>{m.home_library_button()}</a>
-			</article>
-
-			<article class="action-card">
-				<div class="card-indicator indicator-red"></div>
-				<h2>{m.mixes_title()}</h2>
-				<p>{m.mixes_subtitle()}</p>
-				<a href={resolve('/app/mixes')}>{m.nav_mixes()}</a>
-			</article>
-		</div>
+		<nav class="shortcuts" aria-label={m.nav_primary()}>
+			<a href={resolve('/app/search')}>
+				<span>{m.home_search_title()}</span>
+				<ArrowRight size={16} />
+			</a>
+			<a href={resolve('/app/library')}>
+				<span>{m.home_library_title()}</span>
+				<ArrowRight size={16} />
+			</a>
+			<a href={resolve('/app/mixes')}>
+				<span>{m.mixes_title()}</span>
+				<ArrowRight size={16} />
+			</a>
+		</nav>
 	{:else}
 		<StateCard
 			state="not_connected"
@@ -175,336 +177,305 @@
 </section>
 
 <style>
-	.welcome {
-		max-width: 100%;
+	.home {
+		max-width: 76rem;
+		margin: 0 auto;
+		padding: clamp(1.5rem, 3vw, 3rem) clamp(1rem, 3vw, 2.5rem) 3rem;
 	}
 
-	.hero-header {
-		position: relative;
-		margin-bottom: var(--space-section);
-		border-bottom: 1px solid var(--border-subtle);
-		padding-bottom: clamp(1.75rem, 4vw, 2.75rem);
+	.home-intro {
+		max-width: 42rem;
+		margin-bottom: clamp(2.5rem, 6vw, 5rem);
 	}
 
-	.hero-mark {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		margin-bottom: 1rem;
+	.eyebrow {
+		margin: 0 0 0.65rem;
+		color: var(--text-muted);
+		font-size: 0.72rem;
+		font-weight: 650;
+		letter-spacing: 0.11em;
+		text-transform: uppercase;
 	}
 
-	.hero-mark-line {
-		width: 2rem;
-		height: 1px;
-		background: var(--accent-gold);
-	}
-
-	.hero-mark-node {
-		width: 6px;
-		height: 6px;
-		background: var(--accent-gold);
-		rotate: 45deg;
-	}
-
-	.hero-title {
-		margin: 0.35rem 0 0.5rem;
-		font-size: clamp(2rem, 5vw, 3.25rem);
-		font-weight: 700;
+	.home-intro h1,
+	.continuation h2,
+	.generation h2,
+	.section-heading h2 {
+		margin: 0;
+		letter-spacing: -0.045em;
 		color: var(--text-primary);
 	}
 
-	.intro {
-		margin: 0;
-		color: var(--text-muted);
-		font-size: 1rem;
-		max-width: 48rem;
-		line-height: 1.55;
+	.home-intro h1 {
+		font-size: clamp(2.25rem, 5vw, 4.5rem);
+		font-weight: 650;
+		line-height: 0.98;
 	}
 
-	.composer-hero {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		justify-content: space-between;
-		gap: 1.5rem;
-		padding: clamp(1.5rem, 3.5vw, 2.5rem);
-		border: 1px solid var(--accent-gold);
-		background: linear-gradient(
-			135deg,
-			color-mix(in oklch, var(--accent-gold) 10%, var(--surface-raised)),
-			var(--surface-raised)
-		);
-		border-radius: var(--radius-lg);
-		box-shadow: var(--shadow-raised);
-		margin-bottom: 3.5rem;
+	.home-intro > p:last-child {
+		margin: 1.2rem 0 0;
+		max-width: 34rem;
+		color: var(--text-secondary);
+		font-size: 1.05rem;
+		line-height: 1.6;
 	}
 
-	.composer-content {
-		display: flex;
-		flex-direction: column;
-		gap: 0.45rem;
-		max-width: 36rem;
-	}
-
-	.composer-badge {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.45rem;
-		width: fit-content;
-		padding: 0.2rem 0.6rem;
-		background: var(--action);
-		color: var(--action-contrast);
-		font-family: ui-monospace, monospace;
-		font-size: 0.68rem;
-		font-weight: 800;
-		letter-spacing: 0.1em;
-		border-radius: var(--radius-sm);
-	}
-
-	.composer-content h2 {
-		margin: 0.2rem 0 0;
-		font-size: clamp(1.2rem, 3vw, 1.65rem);
-		font-weight: 800;
-		color: var(--text-primary);
-	}
-
-	.composer-desc {
-		margin: 0;
-		color: var(--text-muted);
-		font-size: 0.88rem;
-		line-height: 1.45;
-	}
-
-	.custom-playlists-section {
-		margin-bottom: 3.5rem;
-	}
-
-	.custom-playlists-grid {
+	.continuation {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(14.5rem, 1fr));
-		gap: 1rem;
-		margin-top: 1rem;
-	}
-
-	.custom-playlist-card {
-		padding: 1.15rem;
-		border: 1px solid var(--border-subtle);
-		background: var(--surface-raised);
-		border-radius: var(--radius-md);
-		display: flex;
-		flex-direction: column;
-		justify-content: space-between;
-		gap: 0.85rem;
-		transition: all 0.12s ease;
-	}
-
-	.custom-playlist-card:hover {
-		border-color: var(--border-strong);
-		box-shadow: var(--shadow-bauhaus);
-		transform: translate(-1px, -1px);
-	}
-
-	.pl-card-header {
-		display: flex;
+		grid-template-columns: minmax(0, 1fr) auto;
 		align-items: center;
-		gap: 0.75rem;
-	}
-
-	.pl-icon-wrap {
-		width: 2.25rem;
-		height: 2.25rem;
-		border-radius: var(--radius-sm);
-		background: var(--surface-canvas);
+		gap: 2rem;
+		min-height: 13rem;
+		padding: clamp(1.5rem, 3vw, 2.5rem);
 		border: 1px solid var(--border-subtle);
-		display: grid;
-		place-items: center;
-		flex-shrink: 0;
+		border-radius: 1.5rem;
+		background:
+			radial-gradient(
+				circle at 85% 8%,
+				color-mix(in oklab, var(--action) 18%, transparent),
+				transparent 36%
+			),
+			var(--surface-raised);
+		overflow: hidden;
 	}
 
-	.pl-meta {
-		display: flex;
-		flex-direction: column;
+	.continuation.has-artwork {
+		grid-template-columns: clamp(7rem, 14vw, 11rem) minmax(0, 1fr) auto;
+	}
+
+	.continuation-artwork,
+	.continuation-light {
+		width: 100%;
+		max-width: 11rem;
+		aspect-ratio: 1;
+		border-radius: 1rem;
+		box-shadow: 0 1.25rem 2.5rem color-mix(in srgb, #000 32%, transparent);
+	}
+
+	.continuation-artwork {
+		object-fit: cover;
+	}
+
+	.continuation-light {
+		background:
+			radial-gradient(
+				circle at 62% 32%,
+				color-mix(in oklab, var(--action) 58%, #fff),
+				transparent 15%
+			),
+			radial-gradient(
+				circle at 45% 55%,
+				color-mix(in oklab, var(--action) 25%, var(--surface-canvas)),
+				transparent 54%
+			),
+			var(--surface-canvas);
+	}
+
+	.continuation-copy {
 		min-width: 0;
 	}
 
-	.pl-title {
-		font-size: 0.92rem;
-		font-weight: 700;
-		color: var(--text-primary);
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
+	.continuation h2 {
+		font-size: clamp(1.55rem, 3vw, 2.5rem);
+		font-weight: 620;
+		line-height: 1.08;
 	}
 
-	.pl-count {
-		font-size: 0.72rem;
-		color: var(--text-muted);
+	.continuation-copy > p:last-child,
+	.generation p {
+		margin: 0.7rem 0 0;
+		color: var(--text-secondary);
+		line-height: 1.5;
 	}
 
-	.pl-desc {
-		margin: 0;
-		font-size: 0.8rem;
-		color: var(--text-muted);
-		line-height: 1.4;
+	.continuation-action {
+		align-self: end;
 	}
 
-	.pl-actions {
+	.generation {
 		display: flex;
-		align-items: center;
+		align-items: end;
 		justify-content: space-between;
-		border-top: 1px dashed var(--border-subtle);
-		padding-top: 0.65rem;
+		gap: 2rem;
+		padding: 2.5rem 0;
+		border-bottom: 1px solid var(--border-subtle);
 	}
 
-	.pl-play-btn {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.35rem;
-		padding: 0.35rem 0.75rem;
-		background: var(--action);
-		color: var(--action-contrast);
-		border: 1px solid var(--action);
-		border-radius: var(--radius-sm);
-		font-size: 0.72rem;
-		font-weight: 700;
-		cursor: pointer;
-		transition: all 0.1s ease;
+	.generation > div {
+		max-width: 36rem;
 	}
 
-	.pl-play-btn:hover:not(:disabled) {
-		background: var(--accent-gold-deep);
-		transform: scale(1.03);
+	.generation h2 {
+		font-size: clamp(1.55rem, 3vw, 2.25rem);
+		font-weight: 620;
 	}
 
-	.pl-play-btn:disabled {
-		opacity: 0.4;
-		cursor: not-allowed;
+	.home-section {
+		margin-top: clamp(3rem, 6vw, 5.5rem);
 	}
 
-	.pl-delete-btn {
-		padding: 0.35rem 0.45rem;
-		color: var(--text-muted);
-		background: transparent;
-		border: 1px solid transparent;
-		border-radius: var(--radius-sm);
-		cursor: pointer;
-		transition: all 0.1s ease;
-	}
-
-	.pl-delete-btn:hover {
-		color: var(--danger);
-		border-color: var(--danger);
-		background: var(--danger-subtle);
-	}
-
-	.mix-section {
-		margin-bottom: 3.5rem;
-	}
-
-	.song-cards-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(13.5rem, 1fr));
-		gap: 1.15rem;
-		margin-top: 1rem;
-	}
-
-	.mix-footer {
-		margin-top: 1.5rem;
+	.section-heading {
 		display: flex;
-		justify-content: flex-end;
+		align-items: end;
+		justify-content: space-between;
+		gap: 1.5rem;
+		margin-bottom: 1.4rem;
 	}
 
-	.mix-link {
+	.section-heading h2 {
+		font-size: clamp(1.35rem, 2.5vw, 1.85rem);
+		font-weight: 620;
+	}
+
+	.section-heading a,
+	.shortcuts a {
 		display: inline-flex;
 		align-items: center;
 		gap: 0.45rem;
-		font-size: 0.85rem;
-		font-weight: 700;
-		color: var(--action);
+		color: var(--text-secondary);
+		font-size: 0.9rem;
+		font-weight: 600;
 		text-decoration: none;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-		transition: transform 0.1s ease;
+		transition: color 160ms ease;
 	}
 
-	.mix-link:hover {
-		transform: translateX(3px);
+	.section-heading a:hover,
+	.shortcuts a:hover {
+		color: var(--text-primary);
 	}
 
-	.actions-grid {
+	.track-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
-		gap: 1.25rem;
-		margin-top: 3.5rem;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 0.85rem;
 	}
 
-	.action-card {
-		position: relative;
-		display: flex;
-		flex-direction: column;
-		gap: 0.65rem;
-		padding: 1.5rem;
+	.saved-set-grid {
+		display: grid;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		gap: 0.85rem;
+	}
+
+	.saved-set {
+		display: grid;
+		grid-template-columns: auto minmax(0, 1fr) auto;
+		align-items: center;
+		gap: 0.8rem;
+		min-height: 6.5rem;
+		padding: 1rem;
 		border: 1px solid var(--border-subtle);
+		border-radius: 1rem;
 		background: var(--surface-raised);
-		border-radius: var(--radius-md);
-		transition: all 0.14s ease;
 	}
 
-	.action-card:hover {
-		border-color: var(--border-strong);
-		box-shadow: var(--shadow-bauhaus);
-		transform: translate(-1px, -1px);
+	.saved-set-icon {
+		display: grid;
+		width: 2.6rem;
+		aspect-ratio: 1;
+		place-items: center;
+		border-radius: 0.75rem;
+		background: color-mix(in oklab, var(--action) 12%, var(--surface-canvas));
+		color: var(--action);
 	}
 
-	.card-indicator {
-		width: 2rem;
-		height: 3px;
-		border-radius: var(--radius-full);
+	.saved-set-copy {
+		min-width: 0;
 	}
 
-	.indicator-blue {
-		background: var(--bauhaus-blue);
-	}
-	.indicator-yellow {
-		background: var(--accent-gold);
-	}
-	.indicator-red {
-		background: var(--accent-oxblood);
-	}
-
-	.action-card h2 {
+	.saved-set h3,
+	.saved-set p {
 		margin: 0;
-		font-size: 1.15rem;
-		font-weight: 700;
+	}
+
+	.saved-set h3 {
+		overflow: hidden;
 		color: var(--text-primary);
+		font-size: 0.9rem;
+		font-weight: 620;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 
-	.action-card p {
-		margin: 0;
+	.saved-set p {
+		margin-top: 0.3rem;
 		color: var(--text-muted);
-		font-size: 0.88rem;
-		line-height: 1.5;
-		flex: 1;
+		font-size: 0.78rem;
 	}
 
-	.action-card a {
-		align-self: flex-start;
-		padding: 0.5rem 1rem;
+	.saved-set-play {
+		display: grid;
+		width: 2.25rem;
+		aspect-ratio: 1;
+		place-items: center;
+		border: 0;
+		border-radius: 50%;
+		background: var(--text-primary);
+		color: var(--surface-canvas);
+		cursor: pointer;
+		transition:
+			scale 160ms ease,
+			opacity 160ms ease;
+	}
+
+	.saved-set-play:hover:not(:disabled) {
+		scale: 1.06;
+	}
+
+	.saved-set-play:disabled {
+		cursor: not-allowed;
+		opacity: 0.35;
+	}
+
+	.shortcuts {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 1px;
+		margin-top: clamp(3rem, 6vw, 5.5rem);
 		border: 1px solid var(--border-subtle);
-		border-radius: var(--radius-sm);
-		background: var(--surface-canvas);
-		color: var(--text-primary);
-		font-size: 0.8rem;
-		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-		text-decoration: none;
-		transition: all 0.12s ease;
+		border-radius: 1rem;
+		overflow: hidden;
+		background: var(--border-subtle);
 	}
 
-	.action-card a:hover {
-		border-color: var(--action);
-		background: var(--action);
-		color: var(--action-contrast);
+	.shortcuts a {
+		justify-content: space-between;
+		padding: 1.1rem 1.25rem;
+		background: var(--surface-raised);
+	}
+
+	@media (max-width: 60rem) {
+		.track-grid,
+		.saved-set-grid {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+
+	@media (max-width: 42rem) {
+		.continuation,
+		.continuation.has-artwork {
+			grid-template-columns: minmax(0, 1fr);
+			gap: 1.25rem;
+		}
+
+		.continuation-artwork,
+		.continuation-light {
+			max-width: 6.5rem;
+		}
+
+		.continuation-action {
+			align-self: start;
+		}
+
+		.generation,
+		.section-heading {
+			align-items: start;
+			flex-direction: column;
+		}
+
+		.track-grid,
+		.saved-set-grid,
+		.shortcuts {
+			grid-template-columns: 1fr;
+		}
 	}
 </style>

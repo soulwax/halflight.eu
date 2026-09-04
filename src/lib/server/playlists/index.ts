@@ -208,10 +208,14 @@ export async function updateUserPlaylist(
 
 export async function deleteUserPlaylist(userId: string, playlistId: string): Promise<boolean> {
 	await ensurePlaylistTable();
-	await db
+	const deleted = await db
 		.delete(userPlaylist)
-		.where(and(eq(userPlaylist.id, playlistId), eq(userPlaylist.userId, userId)));
-	return true;
+		.where(and(eq(userPlaylist.id, playlistId), eq(userPlaylist.userId, userId)))
+		.returning({ id: userPlaylist.id });
+	// `items_json` and every sync field live on this row, so this is the complete
+	// Halflight-owned playlist footprint. The owner predicate also prevents one
+	// account from ever deleting another account's state.
+	return deleted.length === 1;
 }
 
 /**

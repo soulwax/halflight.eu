@@ -92,7 +92,10 @@ describe('API /api/playlists/import', () => {
 				tidalPlaylistId: 'pl-1',
 				status: 'created',
 				tracksAdded: 5,
-				tracksRemoved: 0
+				tracksRemoved: 0,
+				tracksSkipped: 1,
+				tracksReplaced: 2,
+				streamValidation: 'verified'
 			});
 
 			const res = await POST(makeEvent({ tidalPlaylistIds: ['pl-1'] }));
@@ -100,6 +103,8 @@ describe('API /api/playlists/import', () => {
 			const json = await res.json();
 			expect(json.totalImported).toBe(1);
 			expect(json.totalErrors).toBe(0);
+			expect(json.totalTracksSkipped).toBe(1);
+			expect(json.totalTracksReplaced).toBe(2);
 			expect(mocks.pullPlaylist).toHaveBeenCalledWith('pl-1', expect.anything());
 		});
 	});

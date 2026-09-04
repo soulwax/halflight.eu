@@ -156,8 +156,8 @@
 			player.play(data.tracks[0], data.tracks);
 
 			statusText = data.tidalPlaylistId
-				? 'SAVED TO SYN ACCOUNT & EXPORTED TO TIDAL!'
-				: 'SAVED PERMANENTLY TO YOUR SYN ACCOUNT!';
+				? 'SAVED TO HALFLIGHT & EXPORTED TO TIDAL!'
+				: 'SAVED PERMANENTLY TO HALFLIGHT!';
 
 			// Wait a brief moment to celebrate success, then close
 			setTimeout(() => {
@@ -188,7 +188,7 @@
 					<span class="bar bar-yellow"></span>
 				</div>
 				<div>
-					<p class="eyebrow">SYN // AUTOMATED COMPOSER & ACCOUNT ARCHIVIST</p>
+					<p class="eyebrow">HALFLIGHT // AUTOMATED COMPOSER & ACCOUNT ARCHIVIST</p>
 					<h2 id="generator-title">GENERATE & ARCHIVE PLAYLIST</h2>
 				</div>
 			</div>

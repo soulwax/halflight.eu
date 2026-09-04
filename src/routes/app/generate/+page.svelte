@@ -85,7 +85,7 @@
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement('a');
 		a.href = url;
-		a.download = `syn-set-${Date.now()}.m3u8`;
+		a.download = `halflight-set-${Date.now()}.m3u8`;
 		a.click();
 		URL.revokeObjectURL(url);
 	}
@@ -98,7 +98,7 @@
 <section class="max-w-4xl space-y-8" aria-labelledby="generator-title">
 	<header class="border-b-2 border-[var(--border-subtle)] pb-6">
 		<p class="font-mono text-xs font-bold tracking-[0.14em] text-[var(--text-muted)] uppercase">
-			SYN // THE TASTE ENGINE
+			HALFLIGHT // THE TASTE ENGINE
 		</p>
 		<h1
 			id="generator-title"

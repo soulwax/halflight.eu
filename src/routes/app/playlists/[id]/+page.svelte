@@ -119,9 +119,11 @@
 		if (!data.playlist) return;
 		isDeletePending = true;
 		try {
-			await fetch(`/api/playlists/${encodeURIComponent(data.playlist.id)}`, {
-				method: 'DELETE'
-			});
+			const deleted = await customPlaylists.deletePlaylist(data.playlist.id);
+			if (!deleted) {
+				isDeletePending = false;
+				return;
+			}
 
 			if (deleteTidalToo && tidalPlaylistId) {
 				// Delete from TIDAL too
@@ -132,7 +134,6 @@
 				}).catch(() => {});
 			}
 
-			customPlaylists.deletePlaylist(data.playlist.id);
 			await goto(resolve('/app/library'));
 		} catch {
 			isDeletePending = false;
@@ -183,7 +184,7 @@
 			<PageHeader
 				title={data.playlist.title}
 				imageUrl={data.playlist.imageUrl}
-				eyebrow="SYN // CURATED PLAYLIST"
+				eyebrow="HALFLIGHT // CURATED PLAYLIST"
 				type="playlist"
 			>
 				{#if data.playlist.description}

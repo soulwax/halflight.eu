@@ -40,7 +40,12 @@ export const POST: RequestHandler = async (event) => {
 		tidalPlaylistId?: string;
 	};
 
-	const ctx = { userId: user.id, fetch: event.fetch, cookies: event.cookies };
+	const ctx = {
+		userId: user.id,
+		fetch: event.fetch,
+		cookies: event.cookies,
+		validateStreams: connection.hasPlayback
+	};
 
 	switch (body.action) {
 		case 'pull': {

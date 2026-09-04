@@ -8,7 +8,7 @@ describe('AppHeader.svelte', () => {
 		render(AppHeader, { user: null });
 
 		// Logo links to root when unauthenticated
-		const logoLink = page.getByRole('link', { name: 'Syn' });
+		const logoLink = page.getByRole('link', { name: 'Halflight' });
 		await expect.element(logoLink).toHaveAttribute('href', '/');
 
 		// Login button links to /sign-in
@@ -33,7 +33,7 @@ describe('AppHeader.svelte', () => {
 		render(AppHeader, { user: { name: 'soulwax', email: 'soulwax@example.com' } });
 
 		// Logo links to /app when authenticated
-		const logoLink = page.getByRole('link', { name: 'Syn' });
+		const logoLink = page.getByRole('link', { name: 'Halflight' });
 		await expect.element(logoLink).toHaveAttribute('href', '/app');
 
 		// Sign out button is present

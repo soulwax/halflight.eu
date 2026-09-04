@@ -161,7 +161,7 @@ describe('TIDAL playlist API wrappers', () => {
 	});
 
 	it('getFullPlaylist fetches remaining items when numberOfItems exceeds initial items', async () => {
-		expect.assertions(3);
+		expect.assertions(4);
 		// First call: initial getPlaylist with 1 item but numberOfItems is 3
 		vi.mocked(tidalJson).mockResolvedValueOnce({
 			data: {
@@ -177,7 +177,9 @@ describe('TIDAL playlist API wrappers', () => {
 			included: [{ id: 't1', type: 'tracks' }]
 		} as any);
 
-		// Second call: getPlaylistItems returning page with t1, t2, and cursor to next
+		// Second call: getPlaylistItems returning page with t1, t2, and an
+		// offset-style next link. The importer must follow TIDAL's supplied URL
+		// rather than assuming cursor pagination (which used to stop at 20 items).
 		vi.mocked(tidalJson).mockResolvedValueOnce({
 			data: [
 				{ id: 't1', type: 'tracks' },
@@ -188,7 +190,7 @@ describe('TIDAL playlist API wrappers', () => {
 				{ id: 't2', type: 'tracks' }
 			],
 			links: {
-				next: 'https://openapi.tidal.com/playlists/p1/relationships/items?page%5Bcursor%5D=cursor2'
+				next: 'https://openapi.tidal.com/playlists/p1/relationships/items?page%5Boffset%5D=2'
 			}
 		} as any);
 
@@ -200,6 +202,12 @@ describe('TIDAL playlist API wrappers', () => {
 
 		const res = await getFullPlaylist('p1');
 		expect(tidalJson).toHaveBeenCalledTimes(3);
+		expect(tidalJson).toHaveBeenNthCalledWith(
+			3,
+			'https://openapi.tidal.com/playlists/p1/relationships/items?page%5Boffset%5D=2',
+			{},
+			undefined
+		);
 		expect((res.data as any).relationships.items.data).toHaveLength(3);
 		expect(res.included).toHaveLength(7); // initial t1 + page1/2 included (t1, t2, t3) + page1/2 items (t1, t2, t3)
 	});

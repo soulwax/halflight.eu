@@ -169,5 +169,14 @@ describe('API /api/playlists', () => {
 			expect(data.success).toBe(true);
 			expect(mocks.deleteUserPlaylist).toHaveBeenCalledWith('u1', 'pl_1');
 		});
+
+		it('returns 404 when the playlist is already absent', async () => {
+			mocks.deleteUserPlaylist.mockResolvedValue(false);
+
+			const res = await DELETE(
+				makeEvent('DELETE', { id: 'pl_missing' }) as unknown as Parameters<typeof DELETE>[0]
+			);
+			expect(res.status).toBe(404);
+		});
 	});
 });

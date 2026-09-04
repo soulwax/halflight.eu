@@ -302,7 +302,7 @@ export const POST: RequestHandler = async (event) => {
 
 	const queries = SOUNDSCAPE_QUERIES[vibe]?.[era] ?? SOUNDSCAPE_QUERIES.kinetic.contemporary;
 
-	const targetTitle = `SYN // ${SOUNDSCAPE_NAMES[vibe] ?? vibe.toUpperCase()} [${ERA_NAMES[era] ?? era.toUpperCase()}]`;
+	const targetTitle = `HALFLIGHT // ${SOUNDSCAPE_NAMES[vibe] ?? vibe.toUpperCase()} [${ERA_NAMES[era] ?? era.toUpperCase()}]`;
 	const targetDescription = `Curated generative Bauhaus mix from TIDAL: ${SOUNDSCAPE_NAMES[vibe] || vibe} • ${ERA_NAMES[era] || era} • ${TEXTURE_MODIFIERS[texture] || texture} • Flow: ${energyArc.toUpperCase()}.`;
 
 	const collectedTracks: TrackSummary[] = [];

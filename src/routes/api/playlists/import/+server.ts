@@ -28,7 +28,7 @@ export const GET: RequestHandler = async (event) => {
 /**
  * POST /api/playlists/import
  *
- * Import selected TIDAL playlists into Syn.
+ * Import selected TIDAL playlists into Halflight.
  * Body: { tidalPlaylistIds: string[] }
  */
 export const POST: RequestHandler = async (event) => {
@@ -53,7 +53,12 @@ export const POST: RequestHandler = async (event) => {
 
 	// Limit to 50 at once to avoid timeouts
 	const ids = body.tidalPlaylistIds.slice(0, 50);
-	const ctx = { userId: user.id, fetch: event.fetch, cookies: event.cookies };
+	const ctx = {
+		userId: user.id,
+		fetch: event.fetch,
+		cookies: event.cookies,
+		validateStreams: connection.hasPlayback
+	};
 	const imported = [];
 
 	for (const tidalId of ids) {
@@ -64,6 +69,9 @@ export const POST: RequestHandler = async (event) => {
 	return json({
 		imported,
 		totalImported: imported.filter((r) => r.status === 'created' || r.status === 'synced').length,
-		totalErrors: imported.filter((r) => r.status === 'error').length
+		totalErrors: imported.filter((r) => r.status === 'error').length,
+		totalTracksSkipped: imported.reduce((total, result) => total + result.tracksSkipped, 0),
+		totalTracksReplaced: imported.reduce((total, result) => total + result.tracksReplaced, 0),
+		streamValidation: connection.hasPlayback ? 'verified' : 'unavailable'
 	});
 };

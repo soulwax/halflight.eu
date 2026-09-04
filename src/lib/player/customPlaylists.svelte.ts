@@ -202,16 +202,27 @@ export class CustomPlaylistsManager {
 		}
 	}
 
-	deletePlaylist(playlistId: string): void {
+	async deletePlaylist(playlistId: string): Promise<boolean> {
+		// A deletion is only reflected locally once Postgres has confirmed it. This
+		// prevents a failed request from leaving an apparently deleted playlist that
+		// returns on the next server sync.
+		if (isBrowser) {
+			try {
+				const response = await fetch(`/api/playlists/${encodeURIComponent(playlistId)}`, {
+					method: 'DELETE'
+				});
+				// A stale browser may ask to delete a row another tab already removed.
+				// There is no remaining server data in that case, so clear its local
+				// mirror as well instead of letting the next sync resurrect the card.
+				if (!response.ok && response.status !== 404) return false;
+			} catch {
+				return false;
+			}
+		}
+
 		this.playlists = this.playlists.filter((p) => p.id !== playlistId);
 		this.save();
-
-		// Sync delete to server
-		if (isBrowser) {
-			fetch(`/api/playlists/${encodeURIComponent(playlistId)}`, {
-				method: 'DELETE'
-			}).catch(() => {});
-		}
+		return true;
 	}
 
 	playPlaylist(playlistId: string): void {

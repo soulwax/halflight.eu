@@ -80,7 +80,7 @@ describe('POST /api/generate-playlist', () => {
 		mocks.createUserPlaylist.mockResolvedValue({
 			id: 'pl_123',
 			userId: 'u1',
-			title: 'SYN // KINETIC SYNTH & CLUB [CONTEMPORARY 2020s]',
+			title: 'HALFLIGHT // KINETIC SYNTH & CLUB [CONTEMPORARY 2020s]',
 			description: 'Test Description',
 			items: [],
 			tidalPlaylistId: 'tidal-uuid-123',
