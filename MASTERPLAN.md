@@ -312,50 +312,64 @@ function over inputs the owner can inspect.
 
 Read live from the owner's TIDAL account on each profile refresh. Nothing here is mirrored.
 
-| Signal                | Source                                               | What it tells us                                   |
-| --------------------- | ---------------------------------------------------- | -------------------------------------------------- |
-| Saved tracks          | `getFullCollection('tracks')`, `fetchUserFavorites`  | The core affinity set                              |
-| Saved albums          | `getFullCollection('albums')`                        | Commitment — a whole record, not a single          |
-| Followed artists      | `getFullCollection('artists')`                       | Explicit artist-level intent                       |
-| Own playlists + items | `getCollectionPage('playlists')`, `getPlaylistItems` | Curated context, co-occurrence                     |
-| Personal mixes        | `getMix`, `getRecommendations`                       | TIDAL's read on the owner, as one input            |
-| Album credits         | `fetchAlbumCredits`                                  | Producers, writers, engineers behind loved records |
-| Session history       | `playback_state` history + in-session keeps/skips    | What actually got played, not just saved           |
+**Measured against the live account (2026-09-04).** The signal base is not what this plan first
+assumed: saved tracks and saved albums are **empty**, and only five artists are followed. The
+owner's own playlists carry essentially all of the affinity signal.
+
+| Signal                | Source                                               | Measured   | Weight  |
+| --------------------- | ---------------------------------------------------- | ---------- | ------- |
+| Own playlists + items | `getCollectionPage('playlists')`, `getPlaylistItems` | 20 lists, ~300+ items | **primary** |
+| Followed artists      | `getFullCollection('artists')`                       | 5          | high (explicit intent, low volume) |
+| Session history       | `playback_state` history + in-session keeps/skips     | empty, will grow | high once populated |
+| Saved tracks          | `getFullCollection('tracks')`, `fetchUserFavorites`  | **0**      | supported, currently silent |
+| Saved albums          | `getFullCollection('albums')`                        | **0**      | supported, currently silent |
+| Personal mixes        | `getMix`, `getRecommendations`                       | available  | low — a hint, deliberately down-weighted |
+| Album credits         | `fetchAlbumCredits` (v1)                             | available, 1 call/album | Phase D only |
 
 Weighting rules:
 
-- A **saved album** weighs more than a saved track by the same artist; a **followed artist** more
-  than either.
-- A track that appears in several of the owner's own playlists weighs more than one that appears in
-  none.
+- **Playlist membership is the core signal.** A track in one of the owner's own playlists counts as
+  a save; a track in several counts substantially more, and co-occurrence within a single playlist
+  is itself an edge (these two belong together, in the owner's judgement).
+- A **followed artist** outranks any single track, and with only five of them each carries real
+  weight — they are the highest-confidence anchors available.
 - **Recency decay**: signals from the last 90 days count roughly double signals from two years ago.
-  Decay is smooth, not cliffed, so the profile drifts rather than lurching.
+  Smooth, not cliffed, so the profile drifts rather than lurching. Note the sampled playlists all
+  date from 2023 — decay must not flatten the only signal there is, so decay applies *within* a
+  source, never across sources.
 - TIDAL's own recommendations are a _hint_, not ground truth — deliberately down-weighted, so the
   engine does not simply echo TIDAL back at the owner.
+- **Cold start is the normal case here, not an edge case.** With this signal base the engine must
+  produce something good from ~5 anchors and a few hundred playlist entries, and say honestly how
+  confident it is. Designing for a rich library first would have been designing for the wrong user.
 
 ### Stage 2 — The profile
 
 A small, Syn-owned derived model. **Weights and identifiers only** — no titles, artwork, lyrics, or
 audio, and no track-by-track history.
 
+The dimensions below are the ones the API actually supports; see _What the API does and does not
+give us_ for why genre is absent and where the sonic dimensions come from.
+
 ```ts
 interface TasteProfile {
 	// Weighted affinity, all normalised 0–1, each with a confidence.
-	artists: Map<ArtistId, Weight>; // direct + inferred
-	genres: Map<GenreTag, Weight>; // from TIDAL genre tags and mix membership
-	eras: Map<Decade, Weight>; // release-date distribution, not birth year
-	labels: Map<LabelName, Weight>; // catches scene/aesthetic coherence
-	contributors: Map<PersonId, Weight>; // producers/writers from credits
-	neighbours: Map<ArtistId, Weight>; // artists that co-occur with loved ones
+	artists: Map<ArtistId, Weight>; // playlist membership + follows
+	neighbours: Map<ArtistId, Weight>; // via similarArtists from the anchors
+	eras: Map<Decade, Weight>; // from album releaseDate
+	contributors: Map<PersonId, Weight>; // producers/writers from v1 credits (Phase D)
+	labels: Map<LabelName, Weight>; // best-effort, parsed from `copyright` (Phase D)
 
-	// Distributional preferences, learned rather than declared.
-	popularityBand: Range; // do you live on hits or deep cuts?
-	trackLength: Distribution; // 2-minute punk or 11-minute ambient?
+	// Sonic character — real values from the v1 track endpoint, not inferred.
+	tempo: Distribution; // bpm
+	keys: Map<CamelotKey, Weight>; // key + keyScale, for harmonic sequencing
+	loudness: Distribution; // replayGain
+	trackLength: Distribution; // duration
+	popularityBand: Range; // hits ↔ deep cuts
 	explicitTolerance: number;
-	instrumentalBias: number;
 
 	// Owner-set, never inferred.
-	exclusions: { artists: ArtistId[]; genres: GenreTag[]; eras: Decade[] };
+	exclusions: { artists: ArtistId[]; eras: Decade[] };
 	knobDefaults: GenerationKnobs;
 
 	updatedAt: Date;
@@ -365,34 +379,76 @@ interface TasteProfile {
 
 Rules:
 
-- **Confidence gates behaviour.** With a thin profile the engine stays conservative and says so
-  ("I only know your taste roughly — try a few sets and I'll sharpen").
-- **The profile is legible.** `/app/settings/taste` renders it in plain language: your top artists,
-  the decades you actually live in, the labels that keep recurring, how adventurous you've been.
-  Not a chart dump — sentences.
+- **Confidence gates behaviour.** With a thin profile — which is the current reality — the engine
+  stays conservative and says so ("I know five artists well and a few hundred playlist tracks; this
+  set leans on those").
+- **The profile is legible.** `/app/settings/taste` renders it in plain language: your anchor
+  artists, the decades you actually live in, the tempo range you keep returning to, how adventurous
+  you've been. Not a chart dump — sentences.
 - **The owner can edit it.** Any inferred weight can be pinned, damped, or excluded. Owner edits
   outrank inference permanently.
 - **It is disposable.** One button resets it; one button exports it as JSON; disconnecting offers
   to delete it.
+
+### What the API does and does not give us
+
+Verified against the live v2 and v1 endpoints, 2026-09-04. This is the constraint the engine is
+built inside.
+
+**Not available — genre.** Neither v2 (`artists`, `albums`, `tracks`) nor the v1 track/album
+endpoints expose a genre or mood taxonomy. `mediaTags` is audio quality (`LOSSLESS`,
+`HIRES_LOSSLESS`), not genre. **The planned `genres` dimension is dropped.** Nothing in the engine
+may depend on a genre string.
+
+**Available and better than assumed — real musical attributes.** The v1 track endpoint returns
+`bpm`, `key`, `keyScale`, `replayGain`, `peak`, `popularity`, `isrc`, `explicit`, `duration`, and a
+`mixes.TRACK_MIX` id. That is actual tempo, actual harmonic key, and actual loudness — so the
+engine does **not** need to approximate energy from popularity and genre, and does not need to
+measure loudness itself. Cost: one v1 call per track, so it is a scoring-stage enrichment for
+shortlisted candidates, not something to run across the whole pool.
+
+**Available — popularity and ISRC.** `popularity` on artists (0–1 float in v2), albums, and tracks
+(0–100 int in v1) makes the hits ↔ deep-cuts knob real. `isrc` on tracks makes recording-level
+dedupe real.
+
+**Available — era.** Album `releaseDate` is present; track-level era is derived through the album.
+
+**Rate limited.** Sustained probing returned `429` within a couple of dozen calls. The expansion
+budget in Stage 3 is not a nicety — it is a hard requirement, and the engine needs backoff and
+partial-result tolerance from the first commit.
 
 ### Stage 3 — Expansion
 
 From the seed set, walk TIDAL's own graph. Each edge type carries a weight and a provenance label
 that survives into the final explanation.
 
-| Edge                     | Helper                                          | Yields                               |
-| ------------------------ | ----------------------------------------------- | ------------------------------------ |
-| artist → similar artists | `getArtistRelationship('similar')`              | The main discovery axis              |
-| artist → albums → tracks | `getArtistRelationship`, `getAlbumRelationship` | Deep cuts from artists already loved |
-| track → radio / similar  | `getTrackRelationship('radio')`                 | Track-level neighbourhood            |
-| album → similar albums   | `getAlbumRelationship('similar')`               | Record-level aesthetic match         |
-| contributor → other work | `fetchAlbumCredits` + search                    | "Same producer" coherence            |
-| label → catalogue        | search by label                                 | Scene coherence                      |
-| personal mixes           | `getMix`, `getRecommendations`                  | TIDAL's view, down-weighted          |
+Edges verified against the live API, 2026-09-04. Status is what the endpoint actually returned.
+
+| Edge                     | Relationship                              | Verified                       | Yields                               |
+| ------------------------ | ----------------------------------------- | ------------------------------ | ------------------------------------ |
+| artist → similar artists | `artists/{id}/similarArtists`             | ✅ 20/page, paginated          | The main discovery axis              |
+| artist → albums          | `artists/{id}/albums`                     | ✅ 20/page, paginated          | Deep cuts from anchor artists        |
+| album → items            | `albums/{id}/items`                       | ✅ side-loads tracks           | The tracks themselves                |
+| artist → tracks          | `artists/{id}/tracks`                     | ✅ **requires `collapseBy`**   | Artist top tracks without the album hop |
+| track → similar tracks   | `tracks/{id}/similarTracks`               | ✅ 20/page, paginated          | Track-level neighbourhood            |
+| track / artist → radio   | `.../radio`                               | ⚠️ returns a mix ref (n=1), not tracks | Needs a second hop through the mix |
+| album → similar albums   | `albums/{id}/similarAlbums`               | ⚠️ returned empty for the sampled album | Sparse; treat as optional      |
+| contributor → other work | `fetchAlbumCredits` (v1) + search         | available, 1 call/album        | "Same producer" coherence — Phase D  |
+| personal mixes           | `getMix`, `getRecommendations`            | available                      | TIDAL's view, down-weighted          |
+
+Two API facts the implementation must carry:
+
+- **`artists/{id}/relationships/tracks` returns `400 Required parameter is missing` without a
+  `collapseBy` value.** `collapseBy=NONE` and `collapseBy=FINGERPRINT` both return 20 items;
+  `FINGERPRINT` is the right default because it collapses duplicate recordings for us.
+- **`radio` relationships return a mix reference, not a track list.** Radio is a two-hop edge, so
+  it costs double — down-weight it accordingly or defer it.
 
 Expansion is **breadth-limited and budgeted**: a fixed hop count (default 2), a per-edge fan-out
-cap, a total upstream request budget, and a wall-clock ceiling. It degrades gracefully — a partial
-graph still generates, with lower stated confidence.
+cap, a total upstream request budget, and a wall-clock ceiling. This is enforced from the first
+commit, not added later — sustained probing hit `429` within roughly two dozen calls, so the engine
+needs request pacing, backoff, and partial-result tolerance as a baseline. A partial graph still
+generates, with lower stated confidence.
 
 ### Stage 4 — Candidates, scoring, sequencing
 

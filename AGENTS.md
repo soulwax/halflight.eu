@@ -1,156 +1,162 @@
 # AGENTS.md
 
-Guidance for anyone — human or AI agent — working in this repository.
+Repository guidance for people and coding agents working on Syn.
 
-## What this is
+## Product and boundaries
 
-**Syn** is a **personal, single-user** SvelteKit app. It is not a multi-user product:
-favour simple, direct solutions over generalised abstractions and configuration. The
-current focus is a durable OAuth token foundation for connecting the owner's own TIDAL
-account (see `CLAUDE.md` and the TIDAL plan).
+Syn is a personal, single-user SvelteKit listening room built around the owner's own
+TIDAL account. The player and its listening session (now playing, queue, history, and
+resume position) are the product; routes exist to feed that session.
+
+- Optimise for one owner. Do not introduce tenancy, roles, sharing, generic repositories,
+  or configuration systems without an explicit requirement.
+- Read `MASTERPLAN.md` for the current product direction and `CLAUDE.md` for the detailed
+  architecture map. This file is the working-contract source of truth.
+- Production has no durable local filesystem. Persist owned state in Postgres; never use
+  local files for secrets, tokens, or durable application state.
+- Do not mirror TIDAL's catalogue, artwork, lyrics, or audio. Store only Syn-owned state,
+  identifiers, and derived data.
+- The taste engine must be deterministic and explainable. Do not send TIDAL content to
+  third-party AI or LLM services.
 
 ## Stack
 
-- **Framework** — SvelteKit (experimental `next`), Svelte 5; runes mode is forced on for
-  app code.
-- **Language** — TypeScript, `strict`, `rewriteRelativeImportExtensions`.
-- **Package manager** — pnpm (`engine-strict`); do not use npm or yarn in this repo.
-- **Adapter** — chosen in `vite.config.ts` by `$ADAPTER`: default `@sveltejs/adapter-vercel`
-  (serverless); `ADAPTER=node` builds `@sveltejs/adapter-node` into `build/` for the
-  self-hosted PM2 deploy (`ecosystem.config.cjs`). Either way assume **no persistent local
-  filesystem in prod**.
-- **Database** — PostgreSQL (Neon) via Drizzle ORM (`drizzle-orm/postgres-js`).
-- **Auth** — Better Auth (email/password + GitHub); session populated in
-  `hooks.server.ts`.
-- **i18n** — Paraglide (inlang); locales `en` + `de-DE`; source messages in
-  `messages/*.json`.
-- **Styling** — Tailwind CSS v4 (`@tailwindcss/vite`); config in `src/routes/layout.css`.
-- **Tests** — Vitest with three projects (`client`, `server`, `storybook`) + Playwright
-  e2e.
-- **Stories** — Storybook 10.
+- SvelteKit `next`, Svelte 5 in runes and async mode, TypeScript strict mode.
+- Tailwind CSS v4; shared semantic CSS tokens live in `src/routes/layout.css`.
+- PostgreSQL (Neon) through Drizzle ORM and `postgres-js`.
+- Better Auth (email/password and GitHub), with a single owner tracked in `administrator`.
+- TIDAL OAuth/API/playback integration; Paraglide (`en`, `de-DE`) for UI strings.
+- Vitest projects: `server`, `client`, and `storybook`; Playwright for end-to-end tests.
+- pnpm only (`engine-strict`): never use npm or yarn.
+
+`vite.config.ts` selects the deployment adapter: Vercel by default, or
+`ADAPTER=node` for the PM2-managed `adapter-node` build in `build/`.
 
 ## Commands
 
 ```sh
-pnpm dev                              # dev server (port per ORIGIN in .env)
-pnpm build                            # production build (Vercel adapter)
-pnpm build:node                       # production build (adapter-node -> ./build)
-pnpm pm2:start                        # build:node + pm2 start ecosystem.config.cjs
-pnpm pm2:reload                       # rebuild + zero-downtime pm2 reload
-pnpm check                            # svelte-kit sync + svelte-check (type check)
-pnpm lint                             # prettier --check . && eslint .
-pnpm format                           # prettier --write .
-pnpm test:unit -- --run               # run all Vitest projects once
-pnpm test:unit -- --run --project server   # server (node) tests only — fast, no browser
-pnpm test:e2e                         # Playwright (installs browsers first)
-pnpm db:generate                      # generate a SQL migration from schema changes
-pnpm db:migrate                       # apply migrations
-pnpm db:push                          # push schema directly (dev only)
-pnpm db:studio                        # Drizzle Studio
-pnpm storybook                        # Storybook dev on :6006
+pnpm dev
+pnpm check
+pnpm lint
+pnpm lint:types
+pnpm format
+pnpm test:unit -- --run
+pnpm test:unit -- --run --project server
+pnpm test:e2e
+pnpm build
+pnpm build:node
+pnpm db:generate
+pnpm db:migrate
+pnpm db:push                 # development only
+pnpm auth:schema             # after editing Better Auth configuration
 ```
 
-`client` and `storybook` Vitest projects need Playwright's chromium; `pnpm test:e2e`
-installs it. For quick server-logic iteration use `--project server`.
-
-**Before reporting a task complete**, run and report the real result of:
+Before reporting any code change complete, run and report the actual result of:
 
 ```sh
 pnpm check && pnpm lint && pnpm test:unit -- --run
 ```
 
-Run `pnpm format` if you edited files. If something fails or is skipped, say so.
+Run `pnpm format` after edits. Run `pnpm lint:types` before completing token or async
+work. Client and Storybook tests need Playwright Chromium (`pnpm test:e2e` installs it).
+Use the server project for fast unit-test iteration.
 
-## Layout
+## Code map
 
 ```text
 src/
-  app.d.ts             # App.Locals: { user?, session? }
-  env.ts               # defineEnvVars() — declare EVERY env var here
-  hooks.server.ts      # sequence(handleParaglide, handleBetterAuth)
-  hooks.ts             # reroute for localised URLs
+  hooks.server.ts             # session and administrator locals
+  env.ts                      # every SvelteKit environment variable
   lib/
-    index.ts           # re-exports surfaced through the `#lib` alias
-    server/            # SERVER-ONLY — never import from client code
-      auth.ts          # Better Auth instance
-      db/              # Drizzle client + schema
-    paraglide/         # GENERATED, gitignored — never edit by hand
+    server/                   # secrets, database, TIDAL, and server-only logic
+      db/                     # Drizzle schema and client
+      tidal/                  # OAuth, token store, API, normalisers, streaming
+    player/                   # client player/session $state classes
+    tidal/                    # client-safe display models and pure resource helpers
+    components/{app,music,player,ui}/
+    theme/
   routes/
-static/
-messages/              # Paraglide source messages (en.json, de-de.json)
-drizzle.config.ts      # runs outside SvelteKit — uses process.env directly
+    app/                      # authenticated product routes and permanent player shell
+    api/                      # product JSON handlers
+    tidal/                    # OAuth and restricted TIDAL proxy routes
+messages/                     # Paraglide source catalogues: en.json, de-de.json
+drizzle/                      # generated SQL migrations; commit generated migrations
 ```
 
-## Conventions
+`src/lib/tidal/models.ts` defines client-safe display contracts. Server-side normalisers
+translate TIDAL JSON:API into those models; never expose raw provider documents to pages
+or components. `loadTidalPage()` provides the shared connection/error boundary for
+TIDAL-backed page loads.
 
-- **Import alias**: this repo uses `#lib` (Node subpath imports, see `package.json`
-  `imports`), not `$lib`. Example: `import { auth } from '#lib/server/auth';`. `$lib`
-  still resolves, but match the surrounding code and use `#lib`.
-- **Environment variables**: declare each one in `src/env.ts` via `defineEnvVars`, then
-  import from `$app/env/private` (server) or `$app/env/public` (client, `PUBLIC_`
-  prefix). Add a matching placeholder line to `.env.example`. This project uses
-  SvelteKit's explicit-environment-variables feature — do not reach for `process.env`
-  or `$env/*` in app code (only `drizzle.config.ts` uses `process.env`, because it runs
-  outside SvelteKit).
-- **Server-only boundary**: anything touching secrets, tokens, or the database lives
-  under `src/lib/server/`. SvelteKit fails the build if such a module becomes reachable
-  from client code. Never relocate token or secret logic out of `server/`.
-- **Svelte 5 runes** everywhere in app code (`$props`, `$state`, `$derived`, `$effect`).
-- **Formatting**: Prettier with tabs, single quotes, no trailing commas, `printWidth` 100. Run `pnpm format`; do not hand-format.
-- **Route data**: use `+page.server.ts` `load` / form `actions` for anything needing the
-  DB or secrets; guard with `event.locals.user`.
-- **i18n**: user-facing strings go through Paraglide messages — add keys to **both**
+The player is mounted once in `src/routes/app/+layout.svelte`. Preserve playback through
+navigation and partial failures. Queue and position are debounced to `/api/playback-state`.
+
+## Application conventions
+
+- Use `#lib` imports, not `$lib`, to match the repository's Node subpath-import setup.
+- Use Svelte 5 runes (`$props`, `$state`, `$derived`, `$effect`) in app code. Keep `await`
+  out of markup: async mode is disabled under Vitest because it conflicts with browser
+  polling matchers.
+- Keep pure, testable logic separate from UI and I/O. Inject stores or `fetch` in server
+  logic so tests do not need a database or network.
+- User-facing strings must be Paraglide messages. Add every new key in both
   `messages/en.json` and `messages/de-de.json`.
+- Prefer `+page.server.ts` loads/actions for database or secret work. Product routes under
+  `/app` require the authenticated administrator; preserve that boundary when adding routes.
+- Follow the existing component split: UI primitives in `components/ui`, music-domain
+  widgets in `components/music`, player DOM/UI in `components/player`, and player state in
+  `lib/player`.
+- Svelte code should use the available Svelte MCP documentation and autofixer when those
+  tools are present.
 
-## Testing
+## Environment and database
 
-`vite.config.ts` defines three Vitest projects:
+- Declare every app environment variable in `src/env.ts`, use `$app/env/private` or
+  `$app/env/public` in application code, and add a placeholder to `.env.example`.
+- Do not use `process.env` in app code. `drizzle.config.ts` is the sole exception because
+  it runs outside SvelteKit.
+- App schema lives in `src/lib/server/db/schema.ts`; Better Auth schema is generated in
+  `src/lib/server/db/auth.schema.ts`. Do not edit generated auth schema by hand.
+- Generate and commit a Drizzle migration for production schema changes; use `db:push`
+  only for local development.
 
-- **client** — browser (Playwright chromium); `src/**/*.svelte.{test,spec}.{js,ts}`;
-  excludes `src/lib/server/**`.
-- **server** — node; `src/**/*.{test,spec}.{js,ts}` excluding `*.svelte.*`. Put
-  server-module unit tests here, e.g. `src/lib/server/<feature>/<name>.spec.ts`.
-- **storybook** — runs stories as tests.
+## Security and TIDAL
 
-`expect.requireAssertions` is enabled — every test must assert. Playwright e2e specs are
-`*.e2e.ts` files under `src/routes/`.
+- Anything touching a secret, token, database, or authenticated provider request belongs
+  under `src/lib/server/`. Never make it client-reachable.
+- Never log, return, embed, or put tokens, provider credentials, or TIDAL CDN URLs in
+  client state, local/session storage, URLs, or error messages.
+- Syn maintains two independently encrypted, rotating TIDAL tokens in the single-row
+  `tidal_auth` store: browse OAuth for v2 JSON:API and playback device authorization for
+  legacy playback endpoints. Preserve the separate flows and server-only accessors.
+- OAuth state/PKCE and the encrypted TIDAL cookie are the only cookie exception: cookies
+  holding token material must be `HttpOnly`, `Secure`, `SameSite=Strict`, narrowly scoped,
+  and have explicit expiry. Do not decode or copy their values into client code.
+- Keep least-privilege scopes. Any TIDAL write needs a named product action, validation,
+  clear progress/result UI, and user review before it runs.
+- `/tidal/api/[...path]` is read-only and its upstream host is fixed. Do not turn it into
+  an arbitrary proxy.
+- Audio is proxied through Syn so browser code never receives provider credentials or a
+  media URL. Preserve Range support, quality fallback, and the direct-playback/embed
+  fallback behavior.
+- Do not commit `.env`, credentials, token records, captured API payloads, or media.
 
-Keep pure logic (crypto, parsing, expiry math) in functions testable without a DB or
-network; inject or mock `fetch` for HTTP paths.
+## Tests and accessibility
 
-## Security
+- `expect.requireAssertions` is enabled: every test needs an assertion.
+- Browser component tests use `vitest-browser-svelte` polling `expect.element(...)`
+  assertions. Do not replace them with brittle timing checks.
+- Add or update focused tests for changed behavior, especially security boundaries,
+  token lifecycle, streaming, persistence, and pure parsing/scoring code.
+- Accessibility is a feature requirement: use semantic controls, keyboard operation,
+  visible focus, contrast, and reduced-motion-safe interactions before visual polish.
 
-- Never commit `.env` or any real credential. `.env.example` holds placeholders only.
-  `.gitignore` already excludes `.env*` (except `.env.example` / `.env.test`).
-- Never log token or secret values — no `console.log`, and no error messages that echo
-  them.
-- Tokens never reach the client: no `localStorage`, `sessionStorage`, URL params, or
-  client-side Svelte state holding token material.
-- **TIDAL OAuth cookie exception:** the single user's encrypted TIDAL access and refresh
-  tokens may be stored only in `HttpOnly`, `Secure`, `SameSite=Strict` cookies with a
-  narrow `Path` and explicit expiry. Never expose, decode, or copy their values into
-  client-side JavaScript, URLs, logs, or application state.
-- Any file that would hold secrets or persisted tokens must be gitignored.
+## Git
 
-## Svelte MCP server
-
-When the Svelte MCP tools are available, use them for Svelte 5 / SvelteKit work:
-
-1. `list-sections` first — discover doc sections (read the `use_cases` field).
-2. `get-documentation` — fetch every relevant section before answering or coding.
-3. `svelte-autofixer` — run on any Svelte code you write; loop until it returns nothing.
-4. `playground-link` — only when asked, and never for code already written to files.
-
-## Git & commits
-
-- Commit **only** as the repo owner; commits are GPG-signed automatically (git is already
-  configured — don't override `user.*` or signing).
-- **No attribution trailers.** Never add `Co-Authored-By:`, "Generated with …", or any
-  tool/model mention to commit messages or PR bodies.
-- Concise imperative subject; body explains _why_ when non-obvious. Conventional-commit
-  prefixes (`feat:`, `fix:`, `chore:`, `docs:`, `test:`, `refactor:`) welcome, not
-  required.
-- Push when a change is meaningful — a coherent unit that passes check + lint + tests.
-  Don't push broken or half-finished work; don't sit on finished green work.
-- Solo personal repo: work directly on `main` for small changes; use a short-lived
-  branch + PR only for large or risky ones.
+- Preserve unrelated dirty worktree changes. Never reset, checkout, or delete broadly.
+- Commit only as the repository owner; Git is already configured for signed commits. Do
+  not change author, committer, or signing settings.
+- Never add attribution trailers or tool/model mentions to commits or PRs.
+- Use concise imperative commits; push coherent, green work to `origin` once checks pass.
+  Small changes belong directly on `main`; use a short-lived branch only for larger or
+  riskier work.
