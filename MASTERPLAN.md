@@ -14,9 +14,23 @@ has to justify itself.
 This plan is designed for a **single user**. It keeps the server-only OAuth and token architecture,
 avoids multi-user abstractions, and prefers a small number of complete listening workflows over
 broad API coverage. It has two purpose-built sites sharing one listening identity and one session:
-the full **Listening Room** on desktop and the focused **Halflight Now** mobile site.
+the full **Listening Room** on desktop and the focused **Halflight Now** mobile site. Delivery
+progresses from a complete mobile website to an installable PWA, then a later Tauri native client;
+all three use the same server-owned listening session.
 
-Last reviewed: 2026-09-04.
+Last reviewed: 2026-09-05. Package documentation was checked on this date; proposed dependencies
+still need compatibility verification against the lockfile when their feature is implemented.
+
+Implementation guide: start with **Current state**, **Third-party packages and reuse decisions**,
+and **Implementation contracts and delivery gates**. These distinguish existing foundations from
+planned work; the product sections describe the intended finished experience.
+
+Mobile planning: [website](#the-mobile-site-halflight-now), [PWA](#the-installed-pwa),
+[later Tauri client](#later-tauri-native-client), and [release gates](#mobile-pwa-and-native-release-gates).
+
+Planning vocabulary: **implemented** means code exists, **accepted** means the named workflow has
+passed its checks, and **conditional** means a measured need or feasibility decision must precede
+implementation. A checked roadmap item records implemented scope only; it is not a release sign-off.
 
 ## The big bet: a service, not a catalogue browser
 
@@ -191,6 +205,8 @@ A good day with Halflight:
   lyrics, credits, quality telemetry, and honest failure states.
 - Two intentional product surfaces: the desktop **Listening Room** and the separate mobile
   **Halflight Now** site, sharing one service state without sharing a compromised responsive shell.
+- An installable Halflight Now PWA after the mobile browser workflow is complete, followed by a
+  separately accepted Tauri client with native integrations where they improve listening.
 - A **taste engine**: a deterministic, explainable curation system that models the owner's taste
   from the owner's own TIDAL signals and TIDAL's own similarity edges.
 - A small, Halflight-owned **taste profile** (derived weights only) that improves with use.
@@ -246,8 +262,8 @@ A good day with Halflight:
 6. **Store owned state, not a shadow catalogue.** Postgres persists preferences, bounded workflow
    state (the resumable queue), and the **derived taste profile** — weights, identifiers, and
    tuning defaults. It never persists a track-by-track listening log, catalogue metadata, artwork,
-   or audio. Object storage is working space for the current session under the rules in **Object
-   storage**: capped, short-TTL, playback-driven, purgeable — a cache, never a collection.
+   or audio. Any proposed media working storage is conditional on the gates in **Object storage**;
+   adding a bucket never creates permission to retain provider content.
 7. **The taste engine is deterministic and explainable.** Given the same profile, knobs, and
    upstream responses it produces the same set, and every track can state why it was chosen. No
    opaque scoring the owner cannot inspect.
@@ -266,23 +282,26 @@ A good day with Halflight:
 
 ## Current state
 
-Much of the original plan's early phases has shipped. This is where the effort now sits.
+Much of the original plan's early phases has shipped. This inventory reflects source inspection,
+not a claim that every capability has been validated in production. Existing roadmap checkmarks
+record implementation milestones; the acceptance gaps below still need delivery work.
 
-| Area                | What exists                                                                                                     | Main gap                                                                     |
-| ------------------- | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| Service experience  | Strong player foundation and all major browse routes                                                            | No single product model yet; home and routes still read like separate pages  |
-| Playback            | Full-track streaming (BTS single-file + segmented DASH), Range/seek, quality ladder, ReplayGain, embed fallback | No gapless/crossfade; no pre-buffering of the next queue item                |
-| Player UI           | Decomposed component set, docked shell region, queue/lyrics/source panels, floating mode, self-check telemetry  | Queue editing is basic; no "why is this playing?" provenance                 |
-| Session state       | Resumable queue/history/position persisted to `playback_state`                                                  | No session provenance; no per-track feedback capture                         |
-| Auth / TIDAL OAuth  | Better Auth, PKCE + state, dual-token model, encrypted persistence, rotation, single-flight refresh             | Stable                                                                       |
-| API client          | Authenticated fetch, pre-expiry refresh, 401 retry, typed helpers, JSON:API normalisers, `loadTidalPage`        | Relationship traversal helpers exist but are barely used                     |
-| Product surfaces    | Shell, home, search, library, mixes, artist/album/track/playlist detail, settings                               | Surfaces do not yet consistently offer the same queue verbs                  |
-| Playlist generation | `/api/generate-playlist` — a hardcoded vibe × era → search-query map, texture modifier, energy-arc ordering     | **Knows nothing about the owner.** This is the centre of this plan           |
-| Taste model         | None                                                                                                            | Everything below in _The taste engine_                                       |
-| Object storage      | None wired; `syn-worker` is named in config but not implemented                                                 | HiRes cold start, prebuffer, waveform, and measured loudness all wait on it  |
-| Design system       | Eight dark palettes, semantic tokens, extracted `player.css`, shared badges/formatters                          | Apple Music-level hierarchy and two deliberate site compositions are missing |
-| i18n                | Paraglide `en` + `de-DE`                                                                                        | Newer surfaces added strings ahead of the German catalogue                   |
-| Testing             | Strong server coverage (tokens, crypto, manifests, segmented delivery, stores); leaf component tests            | Little end-to-end; no taste-engine fixtures yet                              |
+| Area                | What exists                                                                                                     | Main gap                                                                                                |
+| ------------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Service experience  | Strong player foundation and all major browse routes                                                            | No single product model yet; home and routes still read like separate pages                             |
+| Playback            | Full-track streaming (BTS single-file + segmented DASH), Range/seek, quality ladder, ReplayGain, embed fallback | No gapless/crossfade; no pre-buffering of the next queue item                                           |
+| Player UI           | Decomposed component set, docked shell region, queue/lyrics/source panels, floating mode, self-check telemetry  | Queue editing is basic; no "why is this playing?" provenance                                            |
+| Session state       | Resumable queue/history/position, revision/origin fields, conditional writes, and HTTP 409 conflicts            | Client reconciliation, live updates, and active playback ownership remain incomplete                    |
+| Auth / TIDAL OAuth  | Better Auth, PKCE + state, dual-token model, encrypted persistence, rotation, single-flight refresh             | Stable                                                                                                  |
+| API client          | Authenticated fetch, pre-expiry refresh, 401 retry, typed helpers, JSON:API normalisers, `loadTidalPage`        | Relationship traversal helpers exist but are barely used                                                |
+| Product surfaces    | Shell, home, search, library, mixes, artist/album/track/playlist detail, settings                               | Surfaces do not yet consistently offer the same queue verbs                                             |
+| Playlist generation | Legacy `/api/generate-playlist` plus profile-based `/app/generate` and a deterministic pipeline                 | Consolidate entry points; add real progress/cancellation, richer scoring, and per-slot review           |
+| Taste model         | `taste_profile`, signal readers, artist/era weights, owner overrides, Settings, and server tests                | Target profile dimensions, enrichment, learning, and confidence calibration are only partly implemented |
+| Transactional mail  | `nodemailer` and `src/lib/server/email.ts` submit verification email over SMTP                                  | Verify deployment reachability, delivery, localisation, and safe failures                               |
+| Object storage      | None wired; `syn-worker` is named in config but not implemented                                                 | Optional experiments need permission and measured benefit; no launch dependency                         |
+| Design system       | Eight dark palettes, semantic tokens, extracted `player.css`, shared badges/formatters                          | Apple Music-level hierarchy and two deliberate site compositions are missing                            |
+| i18n                | Paraglide `en` + `de-DE`                                                                                        | Newer surfaces added strings ahead of the German catalogue                                              |
+| Testing             | Server and component suites, including taste profile, graph, scoring, sequencing, and redaction tests           | Cross-site session and complete generation journeys need acceptance coverage                            |
 
 ## Product principles
 
@@ -461,10 +480,9 @@ Success condition: disconnect is easy to find, deliberate, and complete.
 
 ## The taste engine
 
-This is the centrepiece of the plan and the largest new body of work.
-
-Today's generator maps a `vibe × era` pair to a hardcoded list of search strings. It produces
-plausible music. It cannot produce **your** music, because it has never looked at you.
+This is the centrepiece of the plan. A first profile-based implementation now exists under
+`src/lib/server/taste/`; the legacy generator still maps a `vibe × era` pair to search strings.
+Finish the profile-based workflow and consolidate the entry points before adding another engine.
 
 The engine replaces it with a four-stage deterministic pipeline over the owner's own signals and
 TIDAL's own similarity edges:
@@ -518,8 +536,10 @@ Weighting rules:
 A small, Halflight-owned derived model. **Weights and identifiers only** — no titles, artwork, lyrics, or
 audio, and no track-by-track history.
 
-The dimensions below are the ones the API actually supports; see _What the API does and does not
-give us_ for why genre is absent and where the sonic dimensions come from.
+The interface below is a **target model**, not the current persistence contract. The implemented
+version currently centres on artist/era weights, exclusions, overrides, and familiarity. Add other
+dimensions only after measuring coverage; see _What the API does and does not give us_ for why
+genre is absent and where the proposed sonic dimensions come from.
 
 ```ts
 interface TasteProfile {
@@ -528,7 +548,7 @@ interface TasteProfile {
 	neighbours: Map<ArtistId, Weight>; // via similarArtists from the anchors
 	eras: Map<Decade, Weight>; // from album releaseDate
 	contributors: Map<PersonId, Weight>; // producers/writers from v1 credits (Phase D)
-	labels: Map<LabelName, Weight>; // best-effort, parsed from `copyright` (Phase D)
+	labels: Map<LabelKey, Weight>; // derived key only; display labels resolved live (Phase D)
 
 	// Sonic character — real values from the v1 track endpoint, not inferred.
 	tempo: Distribution; // bpm
@@ -562,20 +582,22 @@ Rules:
 
 ### What the API does and does not give us
 
-Verified against the live v2 and v1 endpoints, 2026-09-04. This is the constraint the engine is
-built inside.
+The findings below were recorded from the live v2/v1 sample on 2026-09-04. They describe that
+sample, not guaranteed field coverage across regions, entitlements, or future responses. This
+documentation refinement did not query the owner's account again.
 
 **Not available — genre.** Neither v2 (`artists`, `albums`, `tracks`) nor the v1 track/album
 endpoints expose a genre or mood taxonomy. `mediaTags` is audio quality (`LOSSLESS`,
 `HIRES_LOSSLESS`), not genre. **The planned `genres` dimension is dropped.** Nothing in the engine
 may depend on a genre string.
 
-**Available and better than assumed — real musical attributes.** The v1 track endpoint returns
+**Observed musical attributes.** The sampled v1 track responses included
 `bpm`, `key`, `keyScale`, `replayGain`, `peak`, `popularity`, `isrc`, `explicit`, `duration`, and a
-`mixes.TRACK_MIX` id. That is actual tempo, actual harmonic key, and actual loudness — so the
-engine does **not** need to approximate energy from popularity and genre, and does not need to
-measure loudness itself. Cost: one v1 call per track, so it is a scoring-stage enrichment for
-shortlisted candidates, not something to run across the whole pool.
+`mixes.TRACK_MIX` id. Prefer these provider attributes to guessed genre-based features; validate
+their scales, units, and missingness before scoring. ReplayGain is a normalisation signal, not a
+complete measurement of perceived energy. Cost: one v1 call per track, so enrichment belongs on a
+small shortlist inside the run budget. Do not analyse audio unless a measured gap justifies the
+separately gated experiment.
 
 **Available — popularity and ISRC.** `popularity` on artists (0–1 float in v2), albums, and tracks
 (0–100 int in v1) makes the hits ↔ deep-cuts knob real. `isrc` on tracks makes recording-level
@@ -622,15 +644,23 @@ generates, with lower stated confidence.
 
 ### Stage 4 — Candidates, scoring, sequencing
 
-**Candidate pool.** Union of the expansion, deduplicated by ISRC where available (so the same
-recording does not appear as single, album, and remaster). Then filter:
+**Candidate pool.** Union the expansion, validate eligibility, then deduplicate eligible variants
+by track ID and verified ISRC where available. Prefer one playable representative of a recording;
+do not assume every remaster shares an ISRC. Filtering must precede representative selection so
+an excluded or unavailable edition cannot suppress a valid edition encountered later.
 
-- Drop anything in the owner's exclusions.
+- Drop anything in the owner's exclusions, checking every credited artist identifier rather than
+  only the primary artist.
 - Drop anything under a **cooldown** — appeared in a generated set in the last _N_ days — so
   consecutive generations do not repeat.
 - Drop unavailable-in-region and non-streamable items early.
-- Apply the request's own filters (era window, explicit tolerance, instrumental bias, minimum
-  length).
+- Apply supported request filters (era window, explicit tolerance, minimum length); instrumental
+  bias remains deferred until a reliable field is verified.
+
+Only expose filters whose input data is verified. Normalize non-empty ISRCs before grouping, keep
+track-ID fallback for missing ISRCs, and choose representatives with a stable preference order:
+eligible region/streamability, requested explicit policy, useful field coverage, then track ID.
+Do not let asynchronous response order decide which edition survives.
 
 **Scoring.** Each surviving candidate gets a transparent score:
 
@@ -640,7 +670,7 @@ score = affinity × w_fam
       + fit      × w_req      − penalty(fatigue, over-representation)
 ```
 
-- **Affinity** — closeness to the profile centre across artist, neighbour, genre, era, label, and
+- **Affinity** — closeness to the profile centre across artist, neighbour, era, label, and
   contributor dimensions.
 - **Novelty** — distance from what the owner already knows, _directional_: unfamiliar but adjacent
   scores high; unfamiliar and unrelated scores low. This is what stops "discovery" from becoming
@@ -651,13 +681,14 @@ score = affinity × w_fam
 
 **Sequencing.** Selection is not the end; order is most of the felt quality.
 
-- **Energy arc** shapes the run: flat, gentle build, wave, wind-down, or peak-and-release. Energy is
-  approximated from available signals (popularity, track length, genre, era, editorial-mix context)
-  — honestly labelled as an approximation, not a fake audio-feature vector.
+- **Energy arc** shapes the run: flat, gentle build, wave, wind-down, or peak-and-release. Use
+  verified BPM and ReplayGain where available, with explicit missing-value coverage. Perceived
+  energy remains an approximation: tempo and loudness do not establish mood or intensity alone.
+  Without those fields, preserve artist spacing and affinity ordering and say the arc is limited.
 - **Opener and closer** are chosen deliberately: an opener with high affinity (earn trust first), a
   closer that resolves rather than cuts off.
 - **Spacing rules**: no two tracks by the same artist adjacent unless cohesion is maxed; the same
-  album at most twice; genre drift rate bounded by the cohesion knob.
+  album at most twice; artist-neighbourhood drift bounded by the cohesion knob.
 - **Discovery placement**: unfamiliar tracks are seeded after the opener and away from each other,
   so a set never front-loads three unknowns.
 
@@ -665,20 +696,20 @@ score = affinity × w_fam
 
 Nuance lives here. Defaults come from the profile; every knob is optional.
 
-| Knob                        | Range / values                                                                       | Effect                                                                                         |
-| --------------------------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
-| **Length**                  | track count or target duration (e.g. "about 90 minutes")                             | Set size; duration targeting beats count                                                       |
-| **Familiarity ↔ Discovery** | 0–100                                                                                | Share of tracks already in the profile                                                         |
-| **Depth**                   | hits ↔ deep cuts                                                                     | Popularity band of picks                                                                       |
-| **Era**                     | anchor + spread ("centred 2016, ±8y") or unconstrained                               | Release-date window and its softness                                                           |
-| **Energy arc**              | flat / build / wave / wind-down / peak-and-release                                   | Sequencing shape                                                                               |
-| **Cohesion ↔ Variety**      | 0–100                                                                                | Genre drift rate, artist repeat spacing                                                        |
-| **Context**                 | focus · driving · workout · dinner · late night · background · melancholy · euphoric | A small curated vocabulary mapped to genre, length, and popularity constraints — not free text |
-| **Seeds**                   | whole profile · an artist · an album · a playlist · up to 5 tracks · "lately"        | What the expansion starts from                                                                 |
-| **Explicit**                | allow / avoid / exclude                                                              | Filter                                                                                         |
-| **Instrumental bias**       | 0–100                                                                                | Prefers instrumental where detectable                                                          |
-| **Exclusions**              | artists, genres, eras                                                                | Hard filters, persisted to the profile                                                         |
-| **Cooldown**                | days                                                                                 | Repeat suppression across generations                                                          |
+| Knob                        | Range / values                                                                       | Effect                                                                                              |
+| --------------------------- | ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| **Length**                  | track count or target duration (e.g. "about 90 minutes")                             | Set size; duration targeting beats count                                                            |
+| **Familiarity ↔ Discovery** | 0–100                                                                                | Share of tracks already in the profile                                                              |
+| **Depth**                   | hits ↔ deep cuts                                                                     | Popularity band of picks                                                                            |
+| **Era**                     | anchor + spread ("centred 2016, ±8y") or unconstrained                               | Release-date window and its softness                                                                |
+| **Energy arc**              | flat / build / wave / wind-down / peak-and-release                                   | Sequencing shape                                                                                    |
+| **Cohesion ↔ Variety**      | 0–100                                                                                | Artist-neighbourhood drift and artist repeat spacing                                                |
+| **Context**                 | focus · driving · workout · dinner · late night · background · melancholy · euphoric | Curated presets over supported tempo, duration, familiarity, and arc controls; mood is a suggestion |
+| **Seeds**                   | whole profile · an artist · an album · a playlist · up to 5 tracks · "lately"        | What the expansion starts from                                                                      |
+| **Explicit**                | allow / avoid / exclude                                                              | Filter                                                                                              |
+| **Instrumental bias**       | deferred until a reliable field is verified                                          | Do not infer instrumental status from titles or invent a missing signal                             |
+| **Exclusions**              | artists, eras, track identifiers                                                     | Hard filters, persisted to the profile                                                              |
+| **Cooldown**                | days                                                                                 | Repeat suppression across generations                                                               |
 
 Presets are just saved knob sets — "Sunday morning", "gym", "deep dive on one artist" — and the
 owner can name and pin their own.
@@ -688,7 +719,7 @@ owner can name and pin their own.
 Every track carries a short provenance chip, and the set carries a summary:
 
 ```text
-SET · 28 tracks · 1h 52m · gentle build · 38% new to you · confidence: good
+SET · 28 tracks · 1h 52m · gentle build · 38% outside your anchors · confidence: good
 
   1  Track A          you saved this artist's last two albums
   2  Track B          similar to [loved artist] · 2017 · deep cut
@@ -698,6 +729,11 @@ SET · 28 tracks · 1h 52m · gentle build · 38% new to you · confidence: good
 ```
 
 If the engine cannot explain a pick, it does not make it.
+
+These are examples of claims the input evidence must support, not universal templates. An artist
+outside the profile is not proof the owner has never heard the track; use "outside your anchors"
+until a stronger statement can be justified without keeping a listening diary. An estimated
+duration must be labelled approximate, with coverage retained separately from the estimate.
 
 ### Review and commit
 
@@ -730,8 +766,8 @@ Bounded, derived, and always reversible.
 ### Data and privacy
 
 - The profile lives in a Halflight-owned `taste_profile` table, scoped to the owner.
-- It contains derived weights, TIDAL identifiers, genre/label strings, and knob defaults. No
-  catalogue text beyond tags, no artwork, no audio, no lyrics.
+- It contains derived weights and keys, TIDAL identifiers, and knob defaults. Resolve display
+  labels live; no catalogue text, artwork, audio, or lyrics are retained in the profile.
 - Inputs are re-read live from TIDAL; nothing upstream is mirrored.
 - No profile content is logged, sent to analytics, or transmitted to any third party.
 - View, export, reset, and delete are first-class actions in Settings, and delete is offered on
@@ -926,12 +962,136 @@ Now Playing (a destination, not a modal)
 - **Session handoff is invisible.** The same canonical queue, order, current item, position,
   provisional-set state, and feedback appear on both sites. A state write includes a monotonic
   revision and origin so the most recent deliberate action wins without corrupting the queue.
-- **Device-aware quality is explicit.** Mobile defaults and Wi-Fi/cellular behaviour are owner-set;
-  the UI says what actually plays. It does not promise offline playback or background capabilities
-  that the browser cannot provide.
-- **It is a website, not a disguised native app.** Installability, media-session integration, and
-  safe-area polish are welcome where reliable, but every critical journey works in the browser
-  without an install prompt or a fragile PWA-only dependency.
+- **Device-aware quality is explicit.** Offer a manual data-saving preference and show the quality
+  actually playing. Automatic network-specific behaviour is optional where reliable information
+  exists; unknown network type never silently enables HiRes or prebuffering.
+- **Website first, PWA next, Tauri later.** Every critical journey works in an ordinary browser.
+  Installation improves access and presentation; native delivery later improves platform
+  integration. Neither installation nor a native wrapper implies offline music support.
+
+### Mobile release scope and daily journeys
+
+The mobile website is a complete daily listening surface. The PWA is the same site, routes,
+components, and release artifact presented in an installed window; it is not another frontend.
+The later native client shares these presentation components where useful, with a separate runtime.
+
+| Journey | Mobile behaviour | Completion condition |
+| --- | --- | --- |
+| Start the day | Home opens with Resume; if there is no session, one set or saved playlist leads | One deliberate play action, a truthful pending state, and audible progress |
+| Leave the desk | Now shows the canonical track/position and the device currently playing | "Play here" deliberately takes over; merely opening the phone never interrupts desktop audio |
+| Find and queue | Search retains `q`, cancels obsolete requests, and exposes play/next/add on each result | Returning from detail restores the query, scroll, and pending queue state |
+| Change the next hour | Queue permits reorder, remove, clear, and save; all operations use stable entry IDs | Duplicate tracks remain distinguishable and remote conflicts preserve deliberate intent |
+| Start a generated set | Choose a named preset, a duration/count, and optionally an artist seed; review a short explanation | Generate → review → play works; replace an existing queue only on an explicit action |
+| Save a good run | Save locally with a short name; TIDAL publishing remains a separate reviewed action | Pending/partial/success state names the destination and never duplicates a submit |
+| Recover on the move | An interruption keeps the current in-memory scene and explains what can be retried | Reconnect reconciles state before writes resume; no stale queue overwrites the server |
+
+Full profile editing, bulk collection operations, contributor research, and the complete generator
+knob panel stay in Listening Room initially. Mobile can give explicit feedback, exclude an artist,
+choose quality, reconnect, and manage its current session without a desktop visit.
+
+### Route and navigation contract
+
+| Route | Composition | Primary action |
+| --- | --- | --- |
+| `/home` | Resume, one set invitation, a bounded recent section, a short mixes rail | Resume or start the highlighted work |
+| `/now` | Artwork, track identity, transport, seek, quality, playback location | Play/pause or Play here |
+| `/now/queue` | Current entry followed by editable upcoming entries; no second mini player | Edit the next tracks |
+| `/now/lyrics` · `/now/credits` | Focused reading view with access to transport | Return to Now Playing |
+| `/search?q=…` | Sticky search input, grouped results, local loading/error states | Play or queue a result |
+| `/library?tab=…` | Artwork lists, saved playlists, visible pagination | Resume a saved work |
+| `/albums/[id]` · `/artists/[id]` · `/playlists/[id]` · `/tracks/[id]` | Mobile detail composition, brief context, consistent track actions | Play or add to the session |
+| `/generate` | Preset/length/seed, real progress, compact preview and rationale | Review then play/save |
+| `/settings` | Account/connection, playback/data preference, language, installation/help | Adjust one setting |
+
+There are still only four primary tabs: Home, Search, Library, Now. Other routes are reached from
+those contexts. A detail route may appear as a full-height sheet when opened from a list; opening
+the same URL directly must render a complete page with a safe Home/Back destination.
+
+- Use SvelteKit navigation and supported shallow-routing state for overlays. Browser/Android Back
+  closes the top layer before leaving its parent; Close provides the same action. Never maintain
+  an unrelated homemade history stack or call raw history APIs around the router.
+- Preserve scroll per primary tab and query/filter state in the URL. Keep sheet return targets
+  internal and validated; do not place tokens, profile data, or queue snapshots in URLs.
+- Mount one player in the mobile root layout, outside route content and sheet transitions. Hide
+  the mini-player representation on `/now` while keeping the same underlying audio engine.
+- A deep link opens context, not automatic playback. Explicit host switching preserves object IDs
+  and offers the matching destination; it never forces a device redirect during playback.
+- Modal action sheets trap/restore focus; route destinations move focus to their heading. Do not
+  label every full-screen page as a dialog or nest modal focus traps for lyrics and queue.
+
+### Mobile composition and interaction details
+
+Create `NowShell`, `NowTabs`, `MiniPlayer`, `NowPlayingScene`, `QueueScene`, `MobileTrackRow`,
+`TrackActions`, and `ConnectionNotice`. Share semantic tokens, Bits UI primitives, display models,
+and Paraglide messages; mobile scenes own layout and density. This is enough structure for the
+initial site; do not build a configurable cross-platform component framework.
+
+- The shell has one main scroll region with reserved space for mini player, tabs, and safe areas.
+  Use dynamic viewport units with a tested fallback and `env(safe-area-inset-*)`; the keyboard,
+  browser chrome, and bottom controls must not cover search results or a dialog's commit action.
+- Target 48 CSS-pixel touch areas with breathing room, including transport, overflow, Close, and
+  reorder controls. Small icons may sit inside larger buttons. Avoid overlapping invisible hit areas.
+- Put previous/play/next within comfortable thumb reach. On narrow/landscape layouts, shrink the
+  artwork before shrinking transport targets or hiding track identity. Respect orientation changes.
+- The seek control has an enlarged hit region, keyboard increments, and announced elapsed/remaining
+  time. Preview a dragged position and seek on commit; backend writes must not fire for every pixel.
+- Swiping and long press are enhancements. Every action remains reachable through a labelled
+  control; do not require edge gestures that compete with system Back or scrolling.
+- Keep motions brief and spatial; reduced motion uses immediate state changes. No continuous
+  artwork animation, decorative visualiser, or always-on screen wake lock during listening.
+- Loading reserves artwork/text geometry. Missing artwork uses an owned placeholder; long titles
+  wrap or truncate accessibly, and German expansion must not move the central transport controls.
+- Confirm clear/replace only when the current session would otherwise be lost. Prefer local Undo
+  for a single removal, bound to its operation ID and reconciled against newer revisions.
+
+### Playback, connectivity, and interruption contract
+
+Keep connection, playback, and session-sync status separate: a connection hint is not proof the
+server is reachable, a loaded track is not proof it is playing, and local playback is not proof a
+queue edit has been persisted.
+
+| Situation | Expected behaviour |
+| --- | --- |
+| Browser rejects autoplay | Keep the selected track and offer an explicit Play control; do not loop retries |
+| Track resolution or buffering | Keep transport stable, show bounded pending/retry state, and preserve the current queue |
+| Network disappears mid-track | Allow already-buffered audio to continue naturally; show connection trouble when a request fails |
+| A new track cannot start | Preserve its place, offer retry or explicit skip, and avoid an unbounded automatic skip chain |
+| Offline queue edit in an open page | Keep only a bounded volatile pending intent marked unsaved; reconcile on reconnect; reload may discard it |
+| Offline save/publish/generate | Explain that connection is required; do not queue durable writes or replay them in the background |
+| Page is hidden or screen locks | Let the browser manage existing audio; suspend decorative work and unnecessary polling |
+| Page resumes or is restored from navigation cache | Read the real media-element state and current server revision before enabling stale writes |
+| App is killed and reopened | Restore server-accepted state after authentication/network recovery; require a deliberate resume |
+| Headphones disconnect or another app interrupts | Reflect actual playback state and avoid surprising automatic audio from the speaker |
+
+Reuse `src/lib/player/media-session.ts`. Register supported OS actions, clear stale metadata on
+logout/stop, and derive position from the player rather than a background timer. Test both installed
+and browser contexts on real phones; browser simulation cannot establish background reliability.
+
+Offer **Data saver**, **Balanced**, and **Best available** as understandable preferences mapped to
+the existing quality ladder. Keep the actual format visible separately. Start conservatively,
+apply quality changes at the next track unless the owner explicitly restarts, and keep prebuffer
+off under Data saver. Browser network information has limited availability: treat any available
+hint as advisory and provide manual control everywhere.
+[Network Information API](https://developer.mozilla.org/en-US/docs/Web/API/Network_Information_API)
+
+### Mobile hosting and authentication
+
+Keep `m.halflight.eu` on HTTPS with same-origin product/API/audio URLs from the browser's point of
+view. A server reverse proxy or authenticated backend call may reach the shared service; browser
+code never calls an arbitrary API origin or receives server credentials. Confirm Range support,
+streaming timeouts, and proxy buffering on the actual deployment path.
+
+Start with host-only Better Auth sessions on both sites mapped to the same owner record. Signing
+into the phone again is acceptable; widening TIDAL cookie scope is not a shortcut to session
+continuity. An installed PWA may require its own sign-in as well; preserve the intended internal
+route through that process. Authorisation and the canonical listening session stay server-side.
+Any later seamless sign-in enhancement needs separate tests for both browser and installed storage
+contexts, logout, expiry, and revocation. Shared account identity does not imply shared cookie jars.
+
+Extract only the client-safe pieces that the second site actually consumes. Keep the current
+desktop app in place; add a mobile build entry and share modules incrementally through pnpm
+workspace packages if needed. Both web sites retain SvelteKit server loads and their auth boundary.
+Do not convert the production service to a static SPA in anticipation of Tauri.
 
 ### Halflight Now acceptance bar
 
@@ -963,7 +1123,7 @@ halflight.eu                    m.halflight.eu
           shared Halflight server boundary
   owner auth · session arbitration · taste · TIDAL · stream proxy
                      │
-              Postgres + short-lived bucket working state
+              Postgres + optional approved working storage
 ```
 
 - **Share domain logic, never whole layouts.** Display models, player/session protocol, server
@@ -973,8 +1133,13 @@ halflight.eu                    m.halflight.eu
   tokens, stream URLs, or bucket credentials. OAuth transaction and encrypted TIDAL cookies remain
   narrow, HttpOnly, Secure, SameSite=Strict, and explicitly expired. Establish session continuity
   across the two hosts deliberately, with tests, rather than widening token-cookie scope by habit.
-- **Make session changes ordered.** Add a server-assigned session revision plus action origin to
-  `playback_state`. Updates use optimistic concurrency: accept the next revision, return the latest
+- **Give rotating tokens one refresh authority.** The current module-level single-flight guard
+  coordinates one process only. Prefer routing provider access and refresh through the shared
+  service. If multiple processes must refresh directly, add cross-process serialization and
+  version-checked token persistence; test simultaneous expiry and disconnect during refresh.
+  Sharing a database or installing a request queue alone does not prevent rotation races.
+- **Make session changes ordered.** Build on the server-assigned session revision and action origin
+  in `playback_state`. Updates use optimistic concurrency: assign the next revision, return the latest
   session on conflict, and let the client reconcile visibly only when necessary. This protects a
   queue edited on desktop while the phone is open.
 - **Deep links are host-aware.** Catalogue and product objects retain canonical identifiers. Each
@@ -1010,8 +1175,8 @@ a screen uses it and its upstream shape is verified.
 
 ### Taste engine architecture
 
-A new server module, following the established `*Store` + injected-dependency pattern so every
-stage is unit-testable with no DB and no network.
+Extend the existing server modules using the established `*Store` + injected-dependency pattern so
+every stage remains unit-testable with no DB and no network.
 
 ```text
 src/lib/server/taste/
@@ -1029,11 +1194,11 @@ Rules:
 
 - `score.ts`, `sequence.ts`, and `explain.ts` are **pure** — arrays in, arrays out. They carry the
   bulk of the test suite and need no fixtures beyond plain objects.
-- `graph.ts` and `signals.ts` take an injected TIDAL client and are tested against recorded,
-  sanitised fixtures.
-- `generate.ts` enforces the request budget and wall-clock ceiling and always returns a usable set,
-  degrading confidence rather than failing.
-- Generation runs as a server action with streamed progress; it is cancellable.
+- `graph.ts` and `signals.ts` take an injected TIDAL client and use hand-authored synthetic fixtures.
+- `generate.ts` must enforce the request budget and wall-clock ceiling. Partial candidates return
+  a shorter set with lower confidence; zero eligible candidates return an honest empty result.
+- The current generation action returns a completed result. Real streamed progress and cancellation
+  are planned work, specified in **Implementation contracts and delivery gates**.
 
 ### API wrapper evolution
 
@@ -1056,111 +1221,367 @@ Persist only:
 - Bounded workflow state: the resumable queue, history, and position.
 - **The derived taste profile** — weights, identifiers, knob defaults, exclusions, timestamps.
 
-Do not persist catalogue, artwork, playlist, or listening-history mirrors. Object storage is the one
-sanctioned exception, under the rules in **Object storage** below.
+Do not persist catalogue, artwork, playlist, or listening-history mirrors. Optional storage experiments must satisfy the gates in **Object storage** below; they do not
+create a general retention exception.
+
+## Third-party packages and reuse decisions
+
+Use established packages for interaction mechanics, validation, scheduling, and test infrastructure.
+Halflight owns session semantics, provider boundaries, taste scoring, and explanations. A dependency
+should remove maintained code or deliver a named capability in the same slice that introduces it.
+This is an adoption plan, not a bulk installation list.
+
+### Reuse what is already installed
+
+Inventory source: `package.json`. Some runtime libraries currently sit in `devDependencies`; keep
+deployment packaging in mind without turning feature work into an unrelated dependency reshuffle.
+
+| Existing foundation           | Use it for                                                                     | Implementation boundary                                                          |
+| ----------------------------- | ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
+| SvelteKit + Svelte 5          | Server loads/actions, progressive forms, routing, runes, transitions           | Extend the current player state class; keep browser lifecycle code out of SSR    |
+| Better Auth                   | Owner identity, sessions, verification and sign-in lifecycle                   | Extend existing hooks; preserve separate server-only TIDAL authorization flows   |
+| Drizzle + `postgres`          | Owned state, conditional session updates, transactions, migrations             | Use the existing injected stores; avoid a second ORM or generic repository layer |
+| Paraglide                     | Both locales, action errors, generation explanations, accessible announcements | Store reason codes and safe parameters; render prose through message keys        |
+| `@lucide/svelte`              | Consistent control and status icons                                            | Keep visible or accessible labels; avoid another icon system                     |
+| `nodemailer`                  | Verification mail through the existing Postfix relay                           | Extend `src/lib/server/email.ts`; keep SMTP protocol logging disabled            |
+| `web-haptics`                 | Optional tactile feedback for deliberate mobile actions                        | Capability-gated enhancement; visible and keyboard feedback remain sufficient    |
+| Vitest, Storybook, Playwright | Pure logic, browser components, reusable states, full workflows                | Add coverage in the existing projects and synthetic fixtures                     |
+
+Nodemailer's SMTP transport already supplies submission, TLS options, timeouts, and connection
+pooling. Keep the existing small text/HTML template until email complexity warrants a template
+library. A Vercel function cannot reach this host's Postfix via its own `127.0.0.1`; launch mail from
+the colocated Node deployment or explicitly provision a secure relay path before enabling it on
+another runtime. [Nodemailer SMTP documentation](https://nodemailer.com/smtp)
+
+### Preferred additions when their slice starts
+
+| Package                                                                           | Concrete use and code it replaces                                                                      | First integration and acceptance gate                                                                                                                    |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`bits-ui`](https://www.bits-ui.com/docs)                                         | Headless dialogs, menus, tabs, comboboxes, and sliders; replaces repeated focus and keyboard machinery | Wrap one playlist dialog and track-action menu in `components/ui/`; verify focus return, Escape, keyboard operation, SSR, and existing theme tokens      |
+| [`valibot`](https://valibot.dev/guides/introduction/)                             | Runtime schemas with inferred types; replaces repeated shape checks and unsafe numeric coercion        | Start with generation knobs and new session commands; reject non-finite numbers, oversized arrays, invalid revisions, and unsupported actions before I/O |
+| [`p-queue`](https://github.com/sindresorhus/p-queue)                              | Concurrency and interval-based request scheduling; replaces ad hoc request timers                      | Add a server-only scheduler around graph/enrichment reads; verify cancellation, priority, pacing, and a shared budget under concurrent runs              |
+| [`svelte-dnd-action`](https://github.com/isaacHagoel/svelte-dnd-action)           | Pointer, touch, and keyboard sorting; replaces custom drag geometry and drop handling                  | Queue editing first; commit final order once, preserve the playing item, and retain explicit Move up/down actions                                        |
+| [`fast-check`](https://fast-check.dev/docs/introduction/) (dev)                   | Generated inputs and shrinking for invariant tests                                                     | Exercise queue commands, ISRC dedupe, exclusions, and deterministic ordering in Vitest; retain the failing seed for reproduction                         |
+| [`@axe-core/playwright`](https://playwright.dev/docs/accessibility-testing) (dev) | Automated accessibility checks of complete rendered journeys                                           | Scan dialog-open, queue, generator-error, and mobile-player states; supplement with manual keyboard and screen-reader checks                             |
+
+Bits UI's current component model targets Svelte 5; use its current documentation and snippets,
+not examples from the old v0 API. Keep Halflight's visual design in semantic tokens and small local
+wrappers. Adopt one primitive at a time rather than replacing the whole UI. [Bits UI migration guide](https://www.bits-ui.com/docs/migration-guide)
+
+### Conditional additions
+
+| Package or tool                                                                                                            | Introduce only when                                                                                   | Limits and alternative already available                                                                                                                           |
+| -------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [`sveltekit-superforms`](https://superforms.rocks/get-started/valibot)                                                     | Full generator/profile forms repeat field errors, nested values, dirty state, and submission handling | Pair with Valibot; keep simple one-action forms on SvelteKit's existing enhancement                                                                                |
+| [`@tanstack/svelte-virtual`](https://tanstack.com/virtual/latest/docs/framework/svelte)                                    | A measured long library list exceeds its render/scroll budget                                         | Keep cursor pagination; test focused rows, screen-reader position, dynamic heights, and current Svelte compatibility; the bounded queue does not need it initially |
+| [`lru-cache`](https://github.com/isaacs/node-lru-cache)                                                                    | Several request-scoped caches need common size/eviction semantics                                     | Server-only, explicit `maxSize` and TTL, no stale results after disconnect; it is neither durable state nor a cross-process cache                                  |
+| [`msw`](https://github.com/mswjs/msw) (dev)                                                                                | HTTP fixtures are duplicated between component/Storybook integration tests                            | Reuse synthetic handlers; retain injected clients for pure tests and Playwright routing for browser requests; intercept SSR requests in the server test process    |
+| [`pg-boss`](https://github.com/timgit/pg-boss)                                                                             | An approved task must survive request completion or process restart                                   | Use existing Postgres plus a separately operated worker; budget its connection pool, migrations, retries, and retention; avoid building a custom durable scheduler |
+| [`@aws-sdk/client-s3`](https://docs.aws.amazon.com/sdk-for-javascript/v3/developer-guide/javascript_s3_code_examples.html) | An approved storage use needs an S3-compatible bucket                                                 | Server-only put/get/delete behind `bucket.ts`; verify the chosen provider's Range/lifecycle behaviour; no browser credentials or media URL redirects               |
+| [FFmpeg / ffprobe](https://ffmpeg.org/ffmpeg.html) (worker binaries)                                                       | A verified container incompatibility requires an approved remux experiment                            | Pin the worker image, use stream copy, bound CPU/memory/time, and verify codec support; container changes cannot make an unsupported codec decodable               |
+| [`wavesurfer.js`](https://wavesurfer.xyz/)                                                                                 | Approved precomputed peaks demonstrably improve seeking                                               | Lazy-load against the existing media element and supplied peaks/duration; preserve a semantic seek control and prevent a second download or audio engine           |
+
+`pg-boss` manages durable job mechanics, but each handler must still tolerate a retry after a crash
+between an external effect and recording completion. Store identifiers and safe job status only,
+re-read credentials at execution, and purge completed payloads promptly. A Postgres queue does not
+give a serverless request an unlimited runtime. [pg-boss documentation](https://github.com/timgit/pg-boss)
+
+Do not add `fluent-ffmpeg`: its upstream repository is archived and marks the package deprecated.
+If the remux experiment is justified, invoke the maintained FFmpeg binary with a fixed argument
+array through Node's process API; never construct a shell command from provider data.
+[fluent-ffmpeg upstream notice](https://github.com/fluent-ffmpeg/node-fluent-ffmpeg)
+
+### Dependency admission and upgrade policy
+
+1. Name the first consumer, the custom code removed, and the rollback path. Add only that slice's
+   runtime/dev dependencies with pnpm; commit the resulting lockfile.
+2. At installation, inspect the exact release's engine/peer requirements, license, maintenance,
+   advisories, transitive packages, and install scripts. The recommendations above are architectural
+   choices, not claims that an untested release is compatible or vulnerability-free.
+3. Prove SSR and browser behaviour against this repository's SvelteKit `next`, Svelte runes, strict
+   TypeScript, and production adapter. Test both adapters when the shared server boundary changes.
+4. Measure added client JavaScript and lazy-load optional feature code. Secrets and Node-only
+   packages must remain unreachable from the browser bundle.
+5. Avoid overlapping primitives, schema libraries, state stores, or HTTP retry layers. Keep the
+   TIDAL client and token-refresh policy authoritative; a generic SDK is not a replacement for the
+   verified browse/playback split.
+6. Keep native `fetch`, `AbortController`, `URL`, `Intl`, Svelte transitions, and the current
+   `HTMLAudioElement` where they already solve the problem. A short domain rule is appropriate
+   custom code; an independent focus manager, retry scheduler, or job runner usually is not.
+
+## Implementation contracts and delivery gates
+
+These are proposed increments over today's code. Numeric budgets below are initial engineering
+targets, not measured production results or published TIDAL rate limits.
+
+### 1. Session reconciliation before a second site
+
+**Existing foundation:** `playback-state.ts`, `/api/playback-state`, revision/origin columns, and
+the player's debounced persistence. The API already returns HTTP 409 on a stale revision; the
+client currently consumes the returned revision without reconciling the returned queue.
+
+- Keep the server authoritative. Evolve snapshot writes toward named intents carrying
+  `expectedRevision`, `operationId`, `origin`, and a typed payload. Accept a mutation and increment
+  the revision atomically; a conflict returns the current state without applying the stale intent.
+- Give every queue occurrence a stable entry ID separate from its TIDAL track ID. The same track
+  can appear twice deliberately; reorder/remove must identify the intended occurrence.
+- Serialise client writes. Coalesce position updates, preserve deliberate edits, and never attach
+  a newer revision to an old snapshot and resend it. On conflict, refresh and rebase safe intents;
+  queue replacement asks the owner to resolve a meaningful conflict.
+- Maintain a bounded set of recent operation IDs with results to handle retries after a lost
+  response. Keep this in the same transaction as the state write; prune it by count and age.
+- Distinguish the **controller** from the **device playing audio**. Introduce a server-issued
+  playback lease/epoch for one active device; only it persists position. A remote queue edit must
+  not start another audio element. Explicit "Play here" takes over, with a gesture for autoplay
+  rules and reconciliation when a sleeping device returns. Do not promise zero overlap while a
+  disconnected old device can still play buffered audio.
+- Start live state reads with visibility-aware polling: a provisional 2-second interval while the
+  controller is visible, immediate refresh on focus/reconnect, and backoff on failure. Measure DB
+  reads and latency before moving to SSE. Neither polling nor an event connection owns playback.
+- `BroadcastChannel` may coordinate tabs on the same origin; it cannot connect `halflight.eu`
+  to `m.halflight.eu`. Cross-host state flows through the authenticated server boundary.
+  [Broadcast Channel scope](https://developer.mozilla.org/en-US/docs/Web/API/Broadcast_Channel_API)
+
+**Gate:** two browser contexts race an edit, duplicate a request, lose a response, reconnect, and
+take over playback. Exactly one accepted revision wins; no entry disappears, a remote position
+update never seeks the local audio unexpectedly, and ordinary navigation preserves playback.
+Reuse Drizzle transactions, Valibot, and native browser APIs; no realtime service or CRDT is needed.
+
+### 2. Accessible queue and review controls
+
+Start with a Bits UI playlist dialog and track-action menu, then the queue's `svelte-dnd-action`
+integration. Keep the existing `components/ui`, `components/music`, and `components/player` split.
+
+- Expose one set of commands: play now, play next, append, remove entry, reorder, clear, and save.
+  Domain functions own these commands; components invoke them through buttons, menus, or dragging.
+- During dragging, update a local preview. Persist on finalisation; cancel restores the last
+  accepted order. Disable ambiguous concurrent edits or reconcile them through the session contract.
+- Restore focus to the moved item, announce its new position through Paraglide, and keep Move
+  up/down buttons available. Include duplicate tracks, scrolling, long German labels, zoom, and
+  touch cancellation in the interaction checks.
+- Saving a local set and publishing to TIDAL are separate named actions. Publishing shows the
+  destination, ordered tracks, and expected effect before submission; partial success stays visible.
+
+**Gate:** keyboard-only queue editing and playlist review work while audio continues; automated
+axe checks pass for representative open states, and focus/announcements receive manual review.
+
+### 3. Bounded generation with truthful progress
+
+Extend `graph.ts` and `generate.ts` rather than creating another generator. Start with the existing
+15-request graph cap and fan-out of 5. Proposed initial additions: at most 2 concurrent reads,
+2 starts per second, a 20-second generation deadline, and a 5-second per-read timeout capped by
+the remaining deadline. Re-tune from observed safe timings and 429 responses.
+
+- Use `p-queue` for pacing and priority. The account's browse and enrichment traffic must share
+  admission control; playback resolution gets priority. A module-local queue only governs one
+  process. Before two deployments call TIDAL independently, centralise scheduling at the shared
+  service or coordinate admission in Postgres; do not assume a global limit from local instances.
+- Charge pagination, enrichment, retries, and extra relationship hops to the budget. Keep OAuth
+  refresh in its existing single-flight flow and reserve capacity for playback. Abort fetches when
+  the run is cancelled or its deadline expires; a queue timeout alone does not stop network I/O.
+- Honour `Retry-After` for 429 responses, including HTTP-date values. Wait only within the remaining
+  deadline; otherwise return the valid partial pool. Retry only safe reads, with a capped attempt
+  count. Existing one-shot 401 refresh remains separate from transport retry policy.
+- Use a POST response stream for actual stage events through a SvelteKit endpoint using native
+  streams. Events carry `runId`, sequence number, stage code, counts, and elapsed time; a terminal
+  event carries the normalised result or safe error. Localise stage labels in the UI; do not fake
+  a percentage when the amount of work is unknown.
+- Client cancellation aborts the stream and upstream work. A newer run supersedes the old one;
+  stale responses cannot replace a current preview. Retain a non-streamed form-action fallback
+  that invokes the same orchestrator. Verify proxy buffering and request lifetime on each adapter.
+- Derive a reproducible input key from profile revision, algorithm version, sorted seeds, knobs,
+  availability context, and an injected clock. Break score ties by stable identifiers and process
+  parallel results in canonical order. If reshuffle is introduced, use an explicit seed.
+- Missing BPM, popularity, key, or ISRC is missing evidence, not zero. Track coverage/confidence
+  and redistribute applicable score weights. Never substitute an invented genre or mood field.
+- A run with no eligible tracks preserves the existing queue and offers revised constraints. A
+  shorter result names the limiting constraint. Previewing never writes to TIDAL.
+
+**Gate:** injected slow, empty, malformed, 401, and 429 responses cannot exceed the budget, leak a
+provider body, or replace a newer run. `fast-check` verifies exclusion, uniqueness, bounded length,
+stable ordering, and input immutability across generated cases. Retire the legacy generator only
+after the consolidated workflow covers its useful presets and has a tested fallback.
+
+### 4. Owned data, cooldown, and resumable writes
+
+Use targeted Drizzle migrations for each feature; the following are proposed contracts, not a
+request to create all these tables immediately.
+
+| Owned state                | Minimum shape                                                                             | Bound and invalidation                                                                   |
+| -------------------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Session protocol additions | Stable queue-entry IDs, active-device epoch/lease, recent operation results               | Preserve the existing 100-item queue and 50-item history caps; no accumulating event log |
+| Profile evolution          | Schema version, separate content revision, derived weights, overrides, reason codes       | Rebuild or migrate old versions deliberately; reset/export/delete remain available       |
+| Generation cooldown        | Track ID and expiry, upserted when a set is accepted                                      | Proposed maximum 500 IDs and 30 days; no titles, play timestamps, or append-only history |
+| Local playlist             | Owner-written name/description, ordered track IDs, optional TIDAL ID and safe sync status | Retain as owned work until deleted; resolve provider display fields live                 |
+| Pending TIDAL operation    | Operation ID, reviewed input digest, remote ID if known, chunk progress, safe status      | Proposed 24-hour recovery window, then reconcile or expire; no tokens or raw responses   |
+
+Keep full display pools in request memory initially. If rapid reruns need reuse, start with a
+bounded server cache; cross-process snapshots may retain only IDs, derived scores, reason codes,
+input version, and expiry. Rehydrate current display data and recheck availability before save.
+Profile reset, exclusion changes, authorization changes, and disconnect invalidate related pools.
+
+TIDAL writes need recovery semantics beyond disabling a button. A timed-out create may already
+have succeeded: mark it uncertain, look up the known destination where supported, and require
+review before another create when the outcome cannot be determined. Store completed chunk
+progress so a partial append does not replay successful chunks. Verify current endpoint behaviour
+and scopes per action; do not assume provider idempotency or attempt automatic rollback.
+
+**Gate:** duplicate submissions and a crash between remote success and local acknowledgement do
+not silently duplicate a playlist. Persistence/redaction tests reject provider documents, media
+URLs, credentials, and display metadata outside the explicitly bounded current-session contract.
+
+### 5. Mobile composition and playback validation
+
+Build `/now` and minimal Home first, over the reconciled session contract. Reuse the current native
+audio engine and Media Session integration; feature-detect supported actions and update metadata,
+position, and playback state from the real media element. Media Session provides system controls,
+not a guarantee of uninterrupted background playback. [Media Session API](https://developer.mozilla.org/en-US/docs/Web/API/Media_Session_API)
+
+Use small pages and measured image sizes before introducing virtualization. Evaluate
+`@tanstack/svelte-virtual` only with a synthetic 1,000-row library fixture and a demonstrated scroll
+or render problem. Keep focus stable across recycled rows and provide a paginated fallback.
+
+Record median and p95 play-to-audio times for cold/warm HIGH, LOSSLESS, and HiRes separately. Use
+synthetic audio for repeatable Playwright checks and an owner-operated real-device smoke check for
+Safari/iOS and Chrome/Android behaviour. Target an immediate pending indication, ordinary queue
+actions within 100 ms locally, and live-state propagation within 3 seconds on a healthy connection;
+collect a playback baseline before setting a hard upstream-dependent start-time target.
+
+**Gate:** at 320px, 200% zoom, landscape, locale switch, background/foreground transition, and
+interrupted network, the main controls stay reachable and the session restores honestly. Never
+cache authenticated API responses or audio in a service worker to simulate offline support.
+
+### 6. Evidence-backed explanations and owner feedback
+
+The current engine already emits provenance, but `explain.ts` returns English prose, its discovery
+label is inferred from artist affinity, and unknown durations use an assumed length. Tighten the
+display contract before adding more score dimensions or promising a duration-targeted set.
+
+- Return structured reasons such as `pinned_artist`, `playlist_affinity`, or `similar_artist`,
+  with the supporting identifier, derived contribution, and confidence. Resolve names live and
+  use Paraglide to render both locales. Do not persist finished provider-derived sentences.
+- Keep algorithm version, profile content revision, and actual available score terms with the
+  provisional run. The owner-facing explanation names the meaningful reason; owner diagnostics
+  may show the derived breakdown without sending it to operational logs.
+- Make unknowns visible: `knownDurationSeconds`, `unknownDurationCount`, and an explicitly marked
+  estimate are separate values. Reject or soften exact-duration claims when too much of the pool
+  lacks duration; never make an estimated total look measured.
+- Define familiarity in terms of the evidence actually collected: profile affinity and current
+  explicit saves/playlist membership. Treat it as a preference signal, not a historical claim
+  about whether the owner has heard a recording.
+- Apply over-representation penalties as tracks are selected, updating artist/album counts for
+  each slot. A penalty parameter on a scorer has no effect if the orchestrator never supplies
+  updated counts. Check all credited artists when applying exclusions and spacing rules.
+- Start feedback with explicit Keep, Less like this, and Exclude. Introduce skip/completion
+  inference only when the player can distinguish a deliberate skip from seek, playback failure,
+  interruption, or device handoff. Never penalise taste for a network failure.
+- Fold feedback into bounded derived deltas once, with an operation ID for deduplication. Undo
+  reverses that delta; it must not restore an entire old profile over newer owner changes. Hard
+  exclusions and pinned overrides always outrank later inferred updates.
+
+**Gate:** a synthetic matrix covers a cold profile, one-artist pool, conflicting exclusions,
+duplicate editions, missing sonic fields, a partial graph, and English/German explanations. Add
+specific cases where the first ISRC variant is excluded, a secondary artist is excluded, repeated
+feedback arrives, and a duration is unknown. Human review asks whether the reasons match the
+actual picks and whether the set remains useful when constraints cannot all be satisfied.
+
+**Package decision:** use the existing pure modules, Paraglide, Valibot, and fast-check. Introduce
+no recommender framework, vector database, graph database, or audio-analysis dependency for this
+work. The bounded graph and transparent score terms are Halflight's own product logic.
+
+### Adoption order
+
+| Order | Reviewable slice                                                   | Dependencies introduced                                | Evidence before proceeding                                                    |
+| ----- | ------------------------------------------------------------------ | ------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| 1     | Input contracts and session conflict reconciliation                | Valibot; fast-check for invariants                     | Racing edits, duplicate requests, stale snapshots, no playback restart        |
+| 2     | Playlist dialog, action menu, queue editing                        | Bits UI, svelte-dnd-action, axe Playwright integration | Keyboard/touch editing, focus restoration, locale parity                      |
+| 3     | Generator pacing, cancellation, progress, consolidated entry point | p-queue                                                | Budget and abort tests, truthful partial results, deterministic output        |
+| 4     | Minimal second-site Home and Now Playing                           | Existing native APIs and shared modules                | Two-host authentication, active-device handoff, actual mobile smoke check     |
+| 5     | Profile controls and measured large-list improvements              | Superforms / virtualizer only if their triggers hold   | Reduced duplicated form code or measured rendering improvement                |
+| 6     | Durable jobs or optional media experiments                         | pg-boss / S3 SDK / worker tools only after their gates | Restart recovery, retention enforcement, deployment and playback measurements |
+
+For each adopted package, record the chosen version, integration files, removed custom code,
+bundle/runtime impact, and validation in the slice's PR or commit description. All code slices run
+`pnpm format`, `pnpm check && pnpm lint && pnpm test:unit -- --run`; token/async work also runs
+`pnpm lint:types`. Browser acceptance tests use synthetic content and never real account captures.
 
 ## Object storage
 
-Prod has no persistent local filesystem, so anything larger than a database row needs a bucket. The
-bucket is not a library — it is **working space for the session**. Every object either makes the
-next few minutes of listening better, or it is derived data small enough to keep.
+Object storage is an **optional, gated experiment**, not a prerequisite for the session, taste
+engine, or mobile launch. Production has no durable local filesystem, but ordinary owned state
+belongs in Postgres and small exports can stream directly from authenticated handlers. Do not add
+a bucket merely because a future feature might need one.
 
-A separate `syn-worker` service (see the `SYN_WORKER_*` variables) owns the long-running jobs; the
-SvelteKit server never blocks a request on a bucket write.
+The default remains the existing audio proxy. Media retention or processing requires a separately
+verified provider-permission decision before implementation; this plan does not establish that
+permission. The repository's prohibition on mirroring TIDAL content remains authoritative.
 
-### What it is for
+### Candidate uses and gates
 
-Ordered by value to the player.
+| Use                  | Potential benefit                                                    | What must be proved first                                                                                                          |
+| -------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| HiRes staging        | Reuse an already prepared segmented track during the current session | Provider permission, capped retention, a measured warm-start benefit, and an unchanged direct fallback                             |
+| Next-track prebuffer | Hide next-track resolution latency while the current track plays     | Playback-driven scope limited to the next entry, permission, cancellation on queue change, acceptable bandwidth                    |
+| Container remux      | Make a supported codec available in a browser-supported container    | Permission and a real codec/container compatibility matrix; remux cannot fix an unsupported codec                                  |
+| Waveform peaks       | Improve visual seeking with a small derived representation           | Permission to process and retain the derivative, usable keyboard seeking, a measured benefit over the existing range control       |
+| Loudness analysis    | Fill a measured ReplayGain coverage gap                              | Permission, enough missing upstream data to justify processing, consistent measurements; loudness alone is not perceived energy    |
+| Generation snapshots | Reuse derived selection work across workers                          | Store identifiers and derived values only, explicit expiry, live metadata rehydration; prefer bounded memory first                 |
+| Export artefacts     | Serve an unusually large owned export                                | A concrete size/runtime problem with direct streaming; export no provider audio, credentials, media URLs, or captured API payloads |
 
-**1. HiRes staging — the reason the bucket exists.**
-`HI_RES_LOSSLESS` arrives as a DASH init segment plus dozens of fragments. Today `segmented.ts`
-fetches them all into memory, concatenates, and only then serves the first byte — so HiRes has a
-multi-second cold start and a 128 MB in-process cache that dies with the function. Instead: the
-worker assembles the track once into the bucket, and `/api/tracks/[id]/audio` redirects to (or
-proxies) a short-lived signed URL with native Range support. Time-to-first-audio drops to a normal
-CDN fetch, the memory cache disappears, and seeking becomes real instead of buffer-backed.
+Staging cannot make a **first uncached play** fast merely by moving assembly from memory to a
+bucket: the worker must still fetch and assemble the data. Measure cold and warm starts separately.
+On a miss or worker failure, use the existing direct path; do not wait for an optional optimisation.
+Waveforms and loudness extraction are also conditional even if the final stored output contains
+only numbers. Derived output does not itself establish permission to process the source.
 
-**2. Next-track prebuffer.**
-While the current track plays, stage the next queue item. Transitions stop being a cold resolve →
-manifest → CDN round trip. This is what makes a generated 28-track set feel like a record rather
-than a series of requests.
+### Delivery and retention contract
 
-**3. Container normalisation.**
-Some tiers arrive in a container the browser will not decode natively (FLAC-in-fMP4 is the live
-example), and today that falls back to the TIDAL embed — losing quality telemetry, the queue, and
-the seek bar. The worker can remux (stream copy, no re-encode) into a container the `<audio>`
-element accepts, keeping playback inside Halflight. Remux only; never transcode, never re-encode.
+- If approved, use the server-only S3 SDK through a small `bucket.ts` adapter. The browser keeps
+  requesting `/api/tracks/[id]/audio`; the server proxies the object and preserves Range semantics.
+  Do not redirect audio to a bucket or provider URL, or put a signed media URL in client state.
+- Proposed experiment limits: only current/next track staging, a 2-hour media TTL, a 512 MiB total
+  cap, and a 128 MiB object cap. These are engineering ceilings, not statements of permitted
+  retention; shorten them if required and reject oversized work rather than silently raising caps.
+- Reserve capacity before staging, including concurrent in-flight objects. Enforce expiry on reads
+  and run explicit cleanup; bucket lifecycle rules are a backstop, not an exact expiry timer.
+- Keep object keys opaque and record only safe identifiers, bytes, expiry, and job state in
+  Postgres. Bound and expire derived objects independently; no indefinite per-track derivative store.
+- Purge invalidates serving immediately. Disconnect stops new jobs, invalidates authorization,
+  cancels in-flight staging, and deletes objects. A worker checks the current connection generation
+  before publishing a result so an old job cannot recreate objects after disconnect.
+- Report purge failures safely and retry deletion through a bounded job; do not report complete
+  deletion while objects remain. Settings shows counts/bytes/oldest age and purge progress only.
 
-**4. Waveform peaks.**
-A peaks array computed once while a track is staged, stored as a few KB of JSON. The seek bar
-becomes a real waveform instead of a plain range input — the single highest-visibility upgrade the
-player can get for the least data. Peaks are derived numbers, not content, so they outlive the audio
-object.
+### Worker and deployment contract
 
-**5. Measured loudness and dynamics.**
-While the audio is in hand, measure integrated LUFS, true peak, and dynamic range. Two payoffs:
-normalisation stops depending on whether TIDAL returned ReplayGain, and **the taste engine gets a
-real energy signal** for tracks the owner has actually played — replacing part of the honest
-"approximated from popularity and genre" caveat in _Stage 4_ with measurement. Store the numbers,
-discard the audio.
-
-**6. Generation pool snapshots.**
-A generation run produces an expansion graph and a scored candidate pool. Persisting that as one
-compressed JSON object for a short TTL makes "nudge a knob and re-run" near-instant instead of
-re-walking the graph and re-spending the upstream budget. Keyed by profile version + seed set, so a
-stale profile invalidates it.
-
-**7. Export artefacts.**
-M3U exports, taste-profile JSON exports, and owner-only diagnostic captures, served through
-short-lived signed URLs rather than streamed through the app server.
-
-### Guardrails
-
-These are the conditions under which the above is acceptable at all.
-
-- **Media objects are a cache, not a collection.** Short TTL (hours, not weeks), a hard total size
-  cap, and least-recently-used eviction. Reaching the cap evicts; it never grows the bucket.
-- **Staging is playback-driven.** The worker stages what is playing or next in the queue. There is
-  no "cache my whole library" action, no crawler, no background sweep over saved albums.
-- **Derived artefacts are the durable ones.** Peaks, loudness, and dynamics are kilobytes of
-  numbers and may persist with the profile. Audio objects are the disposable ones.
-- **Signed, short-lived, private.** No public objects, no guessable keys, no URL that outlives its
-  purpose. Bucket credentials stay server-side like every other secret.
-- **Owner-visible and purgeable.** Settings shows what the bucket currently holds — object count,
-  total size, oldest entry — with one action to purge it. Disconnect purges everything.
-- **Deletion is complete.** Disconnecting removes media objects, derived artefacts, generation
-  snapshots, and exports, not just the database rows.
-- **Compliance gate.** Before enabling media staging in production, confirm against the current
-  TIDAL Developer Terms that a short-lived, private, owner-scoped playback cache is permitted, and
-  record the finding. If it is not, uses 4–7 still stand on their own — peaks, loudness, snapshots,
-  and exports involve no stored audio.
-
-### Object lifecycle
+Use `pg-boss` only once a permitted job must survive a request. Operate a dedicated worker with a
+bounded connection pool and concurrency, explicit schema migration ownership, graceful shutdown,
+and startup recovery. PM2 can supervise it alongside adapter-node; a Vercel deployment needs a
+separately provisioned worker. Do not start polling workers during SvelteKit module import or rely
+on an unawaited promise after a serverless response.
 
 ```text
-  queued ──► staging ──► ready ──► (played) ──► expired ──► purged
-     │          │           │                                  ▲
-     │          └── failed ─┴──────────────────────────────────┘
-     └── cancelled (track skipped before staging finished)
+queued → processing → ready → expired → purged
+    └──── cancelled / failed ────────────┘
 ```
 
-- The player never waits on `staging`. If a track is not `ready`, it falls back to the existing
-  direct proxy — staging is an optimisation, never a dependency.
-- `failed` is silent to the owner unless it happens repeatedly; the direct path already works.
-- Skipping a track cancels its staging job and any prebuffer that is no longer next.
-
-### Where it lives
+Jobs carry identifiers, quality, and an authorization generation; they fetch current credentials
+server-side when executing. Retries must be idempotent, temporary workspace bounded and disposable,
+and failures must leave playback on its direct fallback. If approved remux requires temporary disk,
+it is scratch space only; secrets and durable state never depend on it.
 
 ```text
-src/lib/server/media/
-├── bucket.ts        signed URL issue, put/get/delete, size accounting
-├── staging.ts       job state machine, LRU eviction, cap enforcement
-├── peaks.ts         waveform extraction (pure over a byte source)
-└── loudness.ts      LUFS / true-peak / dynamic-range measurement
+src/lib/server/media/           # proposed only after the experiment is approved
+├── bucket.ts                  # private put/get/delete and object access
+├── staging.ts                 # domain policy, capacity reservation, cancellation
+├── peaks.ts                   # optional extraction adapter
+└── loudness.ts                # optional measurement adapter
 ```
 
-`peaks.ts` and `loudness.ts` are pure over an input buffer and unit-testable with synthetic audio.
-`bucket.ts` follows the established `*Store` pattern so tests inject an in-memory bucket.
+Keep format conversion and measurement in proven worker tooling, not handwritten audio codecs or
+DSP. Unit-test orchestration with injected stores; integration-test binaries with synthetic audio.
+Do not retire the current segmented path until permission, cleanup, Range correctness, resource
+bounds, cold/warm performance, and browser playback all pass their gates.
 
 ## Capability and scope plan
 
@@ -1338,6 +1759,19 @@ Effort labels are relative: **S** focused, **M** a vertical slice, **L** several
 Ship each phase as a coherent, green change. The three launch tracks below establish Halflight as a
 service; they are the priority framing for every existing capability phase that follows.
 
+### Delivery priorities
+
+| Priority                     | Finish                                                                                                           | Defer until it is accepted                                                             |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| P0 — dependable session      | Client conflict reconciliation, explicit queue commands, current audio continuity, truthful persistence failures | A second device writing position and automatic playback takeover                       |
+| P1 — complete daily workflow | Accessible queue editing and generation → review → play/save, with bounded requests and localised explanations   | More knobs, expanded relationship coverage, and aesthetic media features               |
+| P2 — second-site proof       | Minimal mobile Home/Now, deliberate auth continuity, active-device ownership, actual-device acceptance           | Mobile catalogue breadth and infrastructure for sub-second live updates                |
+| P3 — measured improvement    | Better scoring coverage, profile feedback, long-list performance where measured                                  | Optional workers, buckets, waveforms, or remux without their individual evidence gates |
+
+Brand/domain work may proceed alongside P0/P1. The mobile proof depends on session correctness;
+it does not depend on the full taste model or optional storage. A failed package compatibility
+spike should defer that enhancement or retain the existing implementation, not halt all delivery.
+
 ### Launch track 0 — Halflight identity and service spine
 
 Goal: turn the existing product into a coherent Halflight service before multiplying surfaces.
@@ -1353,8 +1787,8 @@ Goal: turn the existing product into a coherent Halflight service before multipl
       hierarchy as tokens and Storybook reference compositions. (M)
 - [ ] Audit every current route against the service standard: a clear listening invitation, one
       primary action, queue verbs, calm error recovery, and no operational jargon. (L)
-- [ ] Add canonical session revision/origin handling and an explicit session-conflict contract
-      before a second site can control the queue. (M)
+- [ ] Complete client reconciliation over existing session revision/origin handling; add
+      operation deduplication and active-device ownership before a second site controls the queue. (M)
 - [ ] Record the domain/cookie/auth design for `halflight.eu` and `m.halflight.eu`; test both hosts
       without widening OAuth or encrypted-TIDAL cookie scope. (M)
 
@@ -1406,16 +1840,15 @@ Goal: make the player unambiguously the centre before building on top of it.
 - [ ] Give every listable surface the same queue verbs (play now / next / add / radio). (M)
 - [ ] Session provenance: the player can state why the current track is playing. (M)
 - [ ] Queue panel editing: reorder, remove, clear, save-as-playlist. (M)
-- [ ] Stand up the bucket: `bucket.ts`, `staging.ts`, the `syn-worker` job runner, size cap and LRU
-      eviction, plus the Settings panel that shows and purges it. (L)
-- [ ] HiRes staging — assemble segmented tracks in the worker and serve a signed Range-capable URL;
-      retire the in-memory segment cache. (M)
-- [ ] Pre-buffer the next queue item; measure time-to-first-audio before and after. (M)
-- [ ] Container normalisation (remux only) so unplayable tiers stop falling back to the embed. (M)
+- [ ] Measure cold/warm playback and investigate next-track prebuffer within the existing proxy.
+      Apply the Object storage gates before any retained-media experiment. (M)
+- [ ] Conditional follow-up: approved bucket/worker staging with resource caps, same-origin Range
+      proxying, purge controls, and direct fallback. This does not block the session milestone. (L)
+- [ ] Conditional follow-up: remux only where verified codec/container support improves playback. (M)
 - [ ] Bring the German catalogue level with recent surfaces. (M)
 
 Exit: playback is uninterruptible by navigation or a failed section; any list can become the queue;
-HiRes starts in about the time a normal track does.
+playback start times are measured by quality tier, with honest HiRes trade-offs.
 
 ### Phase B — The profile
 
@@ -1423,7 +1856,9 @@ Goal: Halflight knows the owner, and the owner can see what it knows.
 
 - [x] `signals.ts` live readers with sanitised fixtures. (M)
 - [x] `taste_profile` table, `TasteProfileStore`, merge and decay logic. (M)
-- [x] Profile build job triggered on demand and after connection. (M)
+- [x] On-demand profile rebuild through Settings and the profile API. (M)
+- [ ] Verify a post-connection refresh policy that shares the provider budget, preserves owner
+      overrides, and never delays playback or the OAuth callback. (M)
 - [x] `/app/settings/taste` — plain-language profile, confidence, pin/damp/exclude, export, reset,
       delete. (L)
 - [x] Redaction tests over profile output and logs. (S)
@@ -1435,10 +1870,16 @@ Exit: the owner reads their profile and says "yes, that's me" — with no genera
 Goal: a real set from a real profile.
 
 - [x] Budgeted `graph.ts` expansion over relationship edges, with degradation. (L)
-- [x] `candidates.ts` — pool, ISRC dedupe, filters, cooldown. (M)
-- [x] `score.ts` — affinity / novelty / fit / penalties, fully unit-tested. (L)
-- [x] `sequence.ts` — energy arcs, spacing, opener/closer. (M)
-- [x] `/app/generate` with a first knob subset (length, familiarity, seeds) and streamed progress. (L)
+- [x] `candidates.ts` — initial pool, ID/ISRC dedupe, artist/era filters, injected cooldown IDs. (M)
+- [ ] Filter eligible variants before dedupe, check all artist exclusions, and wire bounded
+      cooldown persistence. (M)
+- [x] `score.ts` — initial artist/era affinity, novelty, and optional artist-count penalty. (M)
+- [ ] Apply diversity penalties during selection; add supported request-fit terms and stable
+      tie-breaking, with input-order and missing-field tests. (M)
+- [x] `sequence.ts` — initial affinity opener and artist spacing. Energy arcs and deliberate
+      closers remain Phase D work. (M)
+- [x] `/app/generate` with a first knob subset (length, familiarity, seeds). (L)
+- [ ] Actual progress streaming, deadline enforcement, pacing, cancellation, and stale-run protection. (M)
 - [x] Provisional queue in the player; save to Halflight; optional TIDAL push. (M)
 - [ ] Retire the hardcoded `SOUNDSCAPE_QUERIES` generator. (S)
 
@@ -1449,14 +1890,16 @@ Exit: a generated hour is better than TIDAL's own mix for the owner, and every p
 Goal: the difference between "a good playlist" and "uncannily accurate".
 
 - [ ] The full knob set, presets, and profile-derived defaults. (L)
-- [ ] `explain.ts` provenance chips and set summary throughout. (M)
+- [ ] Structured reasons rendered through Paraglide; honest familiarity, duration, and confidence
+      labels in provenance chips and set summaries throughout. (M)
 - [ ] Per-slot swap and fast re-run over a reused pool. (M)
 - [ ] Exclusions and cooldown as first-class, persisted controls. (M)
 - [ ] Contributor and label edges (producer/writer coherence). (M)
-- [ ] Waveform peaks captured during staging; real waveform seek bar. (M)
-- [ ] Measured loudness/dynamics during staging, feeding both normalisation and the engine's energy
-      term — replacing part of the popularity-and-genre approximation with measurement. (L)
-- [ ] Generation pool snapshots in the bucket so knob re-runs skip the graph walk. (M)
+- [ ] Conditional waveform experiment using approved peaks and the existing audio element. (M)
+- [ ] Conditional loudness/dynamics experiment only after upstream feature coverage demonstrates
+      a useful gap and processing permission is established. (L)
+- [ ] Bounded generation-pool reuse; persist only IDs and derived values if cross-process reuse
+      becomes necessary. (M)
 - [ ] `AppAside` as generation provenance and pinned queue — migration steps 4–5. (M)
 - [ ] Verified write scopes for save/remove and playlist creation. (M)
 
@@ -1488,19 +1931,31 @@ against deterministic mocks; the owner can diagnose common failures without open
 
 ## Recommended next vertical slice
 
-**One Halflight moment across two sites.** Prove the new service promise before a full mobile
-catalogue build:
+**A queue edit that survives a conflict while music keeps playing.** This is the first independently
+reviewable checkpoint toward one session across both sites. It addresses an observed gap without
+requiring a mobile deployment, provider write, or storage experiment.
 
-1. Establish `halflight.eu` and the Halflight identity on the existing Home and player surfaces.
-2. Add server-issued `playback_state` revision and action origin, with unit tests for conflict and
-   reconciliation.
-3. Build `m.halflight.eu/now` plus a minimal Home: resume or start one existing generated set.
-4. Open the same session on both sites; play, seek, queue next, and remove an item from either one.
-5. Assert that the other site receives the new state without restarting audio, leaking a secret, or
-   losing provenance.
+1. Extract the persistence/reconciliation decisions from `player.svelte.ts` into pure client-safe
+   logic. Keep the mounted player and existing `/api/playback-state` route.
+2. Validate snapshot/command inputs with Valibot at the server boundary. Preserve compatibility
+   during rollout; use a versioned contract when entry IDs or named intents change the payload.
+3. Serialise pending writes and handle 409 explicitly. Reconcile the returned state before another
+   write; a stale snapshot must never receive a fresh revision and overwrite the accepted queue.
+4. Use two test clients to race an append/remove while synthetic audio advances. Add delayed and
+   lost responses, reload, and a storage outage. Keep the UI responsive and show when state has
+   not been saved instead of replacing the current queue with an empty fallback.
+5. Review the error and conflict states in English and German. Document the protocol and rollback:
+   additive database changes first, compatible server second, client last; old clients must not be
+   allowed to submit destructive writes against an unsupported contract.
 
-If this feels like one private streaming service in two perfect contexts, the rest of Halflight Now
-is worth building. If it does not, fix the session and the composition before adding route breadth.
+**Accepted when:** one stale write loses without losing a deliberate edit, retries cannot overwrite
+newer state, audio continues, and reload restores the last accepted session. Changes are confined
+to the session store/API/client logic and relevant UI messages/tests. Add fast-check where it helps
+exercise state-transition invariants; no additional service is required.
+
+Then complete accessible queue review and bounded generation, and prove `m.halflight.eu/now` plus
+minimal Home against the same protocol. Add active-device takeover before enabling mobile position
+writes. Expand mobile route breadth only after the two-host handoff passes its acceptance bar.
 
 ## Success measures
 
@@ -1542,28 +1997,24 @@ One user, so measure task quality rather than growth:
 
 ## Open decisions and feasibility spikes
 
-1. **Relationship coverage** — which artist/track/album relationships are public, stable, and
-   paginated? The graph's shape depends entirely on this. _Blocks Phase C._
-2. **Genre and mood tags** — does the v2 catalogue expose usable genre tags, or must genre be
-   inferred from mix membership and editorial context? _Blocks profile genre weights._
-3. **Popularity signal** — is there a stable popularity or play-count field to drive the
-   hits ↔ deep-cuts knob, or must it be approximated?
-4. **ISRC availability** — is ISRC present often enough to dedupe recordings reliably?
-5. **Listening history** — does TIDAL expose recently-played, or must session history come solely
-   from Halflight's own `playback_state`?
-6. **Credits at scale** — is `fetchAlbumCredits` cheap enough to build contributor weights, or is it
-   a Phase D luxury?
-7. **Energy approximation** — which available fields correlate usefully with perceived energy, and
-   is the correlation strong enough to be worth claiming?
-8. **Write scopes** — exact scope names and approval needed for collection and playlist mutations.
-9. **Diagnostics** — development-only, or owner-accessible in production read-only?
-10. **Bucket permissibility** — do the current TIDAL Developer Terms allow a short-lived, private,
-    owner-scoped playback cache? _Blocks bucket uses 1–3; uses 4–7 store no audio and stand
-    regardless._ Record the finding either way.
-11. **Bucket provider and shape** — S3-compatible, Vercel Blob, or R2? What TTL, total cap, and
-    per-object cap? Where does `syn-worker` run for each deployment target (Vercel vs PM2)?
-12. **Remux dependency** — is shipping `ffmpeg` into the worker acceptable on both deployment
-    targets, or is container normalisation self-hosted-only?
+Each spike ends with a recorded finding, a small reproducible check, and a proceed/defer decision.
+Historical account observations from 2026-09-04 are evidence for the original sample, not an API
+stability guarantee or a reason to probe the live account during documentation work.
+
+| Question                                      | Existing evidence / next check                                                                                                                                       | Blocks                                                      |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Relationship coverage                         | Similar artists and artist tracks were observed; validate normalised relationships, pagination, and regional gaps per feature                                        | Additional expansion edges, not the existing engine         |
+| Genre/mood taxonomy                           | The recorded sample found none; keep genre out of schemas and UI until an explicit reliable source is verified                                                       | No current milestone                                        |
+| Popularity, ISRC, BPM/key/ReplayGain coverage | Fields were observed; measure missingness and scale differences in the intended shortlist workflow                                                                   | Depth and sonic controls, not initial artist/era generation |
+| Cooldown and feedback retention               | Use bounded ID/expiry state and weight deltas; define deletion and undo before collection                                                                            | Learning loop                                               |
+| Write capability and uncertain outcomes       | Verify exact scopes, limits, ordering, conflict tokens, and reconciliation per named action                                                                          | Each new TIDAL mutation                                     |
+| Two-host authentication                       | Choose host-only authenticated sessions or a deliberately tested Better Auth sharing configuration; preserve narrowly scoped TIDAL cookies and exact trusted origins | Mobile release                                              |
+| Active-device ownership                       | Test takeover, stale position writes, sleep/wake, and disconnected buffered audio                                                                                    | Honest cross-site handoff                                   |
+| Provider request coordination                 | Confirm both sites use one scheduling authority, or prove cross-process admission control                                                                            | Concurrent multi-deployment generation                      |
+| Durable job runtime                           | Prove worker restart, Neon connection budget, migrations, and job expiry for the selected adapter                                                                    | First durable background job                                |
+| Media permission and usefulness               | Record an explicit permission finding and measured benefit before staging, remux, peaks, or loudness processing; otherwise defer them                                | Optional media experiments only                             |
+| Component compatibility                       | Verify exact Bits UI / drag action / optional virtualizer releases against current runes, SSR, async mode, and browser tests                                         | Their individual adoption slices                            |
+| Diagnostics exposure                          | Keep developer tools gated; settle whether safe read-only owner diagnostics ship in production                                                                       | Diagnostics release only                                    |
 
 ## Risks and mitigations
 
