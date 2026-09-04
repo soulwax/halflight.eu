@@ -4,6 +4,7 @@
 
 	import { player } from '#lib/player/player.svelte.js';
 	import { customPlaylists } from '#lib/player/customPlaylists.svelte.js';
+	import { m } from '#lib/paraglide/messages';
 	import Button from '#lib/components/ui/Button.svelte';
 	import Badge from '#lib/components/ui/Badge.svelte';
 	import type { TrackSummary } from '#lib/tidal/models';
@@ -112,13 +113,15 @@
 		</p>
 	</header>
 
-	{#if form?.error}
+	{#if form?.error || form?.errorCode}
 		<div
 			class="flex items-center gap-3 border border-[var(--danger)] bg-[var(--danger-subtle)] p-4 text-sm text-[var(--text-primary)]"
 			role="alert"
 		>
 			<AlertCircle size={18} class="shrink-0 text-[var(--danger)]" />
-			<p>{form.error}</p>
+			<p>
+				{form.errorCode === 'invalid_generation_input' ? m.generate_invalid_input() : form.error}
+			</p>
 		</div>
 	{/if}
 

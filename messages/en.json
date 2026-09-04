@@ -55,6 +55,7 @@
 	"tidal_playback_standard_only": "Standard API Mode (Full song streaming requires TIDAL Link authorization)",
 	"nav_home": "Home",
 	"nav_generate": "Generate",
+	"generate_invalid_input": "Choose a whole-number set size from 5 to 100 and a familiarity value from 0 to 100.",
 	"nav_taste": "Taste Profile",
 	"nav_search": "Search",
 	"nav_library": "Library",

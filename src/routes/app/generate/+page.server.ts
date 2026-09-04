@@ -2,6 +2,7 @@ import { error, fail, redirect, type Actions } from '@sveltejs/kit';
 import { resolve } from '$app/paths';
 import { getTasteProfile } from '#lib/server/taste/profile';
 import { generateTasteSet, type ProvisionalSet } from '#lib/server/taste/generate';
+import { parseGenerateTasteSetInput } from '#lib/server/taste/generate-input';
 import { createLiveGraphClient } from '#lib/server/taste/graph';
 import { getConnectionStatus } from '#lib/server/tidal';
 import { getArtist } from '#lib/server/tidal/api';
@@ -61,16 +62,17 @@ export const actions: Actions = {
 		}
 
 		const data = await event.request.formData();
-		const targetCount = Math.max(5, Math.min(100, Number(data.get('targetCount') ?? 20)));
-		const familiarity = Math.max(0, Math.min(100, Number(data.get('familiarity') ?? 50)));
-		const seedArtistId = String(data.get('seedArtistId') ?? '').trim() || undefined;
+		const input = parseGenerateTasteSetInput(data);
+		if (!input.success) {
+			return fail(400, { errorCode: 'invalid_generation_input' });
+		}
 
 		const profile = await getTasteProfile(user.id);
 		const client = createLiveGraphClient({ fetch: event.fetch, cookies: event.cookies });
 
 		try {
 			const set: ProvisionalSet = await generateTasteSet(profile, {
-				knobs: { targetCount, familiarity, seedArtistId },
+				knobs: input.output,
 				client
 			});
 

@@ -55,6 +55,7 @@
 	"tidal_playback_standard_only": "Standard-API-Modus (Vollständige Wiedergabe erfordert TIDAL-Link-Autorisierung)",
 	"nav_home": "Startseite",
 	"nav_generate": "Generieren",
+	"generate_invalid_input": "Wähle eine ganze Set-Größe von 5 bis 100 und einen Vertrautheitswert von 0 bis 100.",
 	"nav_taste": "Geschmacksprofil",
 	"nav_search": "Suche",
 	"nav_library": "Mediathek",
