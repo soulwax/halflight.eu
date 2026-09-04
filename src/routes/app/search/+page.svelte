@@ -90,6 +90,15 @@
 			void goto(urlDetected);
 		}
 	}
+
+	function handleSubmit(event: SubmitEvent) {
+		event.preventDefault();
+
+		const query = searchQuery.trim();
+		void goto(query ? `/app/search?q=${encodeURIComponent(query)}` : '/app/search', {
+			invalidateAll: true
+		});
+	}
 </script>
 
 <svelte:head>
@@ -104,12 +113,7 @@
 		<p class="intro">{m.search_subtitle()}</p>
 	</header>
 
-	<form
-		class="search-form"
-		method="GET"
-		role="search"
-		onsubmit={(e) => isSearching && e.preventDefault()}
-	>
+	<form class="search-form" method="GET" role="search" onsubmit={handleSubmit}>
 		<label for="search-query" class="sr-only">{m.search_label()}</label>
 		<div class="search-input-wrap">
 			<div class="input-container">
