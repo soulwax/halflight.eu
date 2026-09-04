@@ -20,14 +20,15 @@ const track: TrackSummary = {
 
 describe('SongCard.svelte', () => {
 	it('shows title, artists, album year, quality and duration', async () => {
-		render(SongCard, { track });
+		render(SongCard, { track: { ...track, explicit: true } });
 		await expect
 			.element(page.getByRole('link', { name: 'Get Lucky' }))
 			.toHaveAttribute('href', '/app/tracks/55');
 		await expect.element(page.getByRole('link', { name: 'Daft Punk' })).toBeInTheDocument();
 		await expect.element(page.getByText('(2013)')).toBeInTheDocument();
-		await expect.element(page.getByText('HI RES LOSSLESS')).toBeInTheDocument();
+		await expect.element(page.getByText('HI RES LOSSLESS')).toHaveAttribute('data-tier', 'hires');
 		await expect.element(page.getByText('4:08')).toBeInTheDocument();
+		await expect.element(page.getByTitle(m.track_badge_explicit())).toBeInTheDocument();
 	});
 
 	it('exposes play, queue and add-to-playlist actions', async () => {

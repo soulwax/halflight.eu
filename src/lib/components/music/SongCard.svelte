@@ -1,11 +1,12 @@
 <script lang="ts">
+	import { formatDuration, formatReleaseDate } from '#lib/format';
+	import { m } from '#lib/paraglide/messages';
+	import { customPlaylists } from '#lib/player/customPlaylists.svelte';
+	import { player } from '#lib/player/player.svelte.js';
+	import type { TrackSummary } from '#lib/tidal/models';
+	import Badge from '#lib/components/ui/Badge.svelte';
 	import { resolve } from '$app/paths';
 	import { Check, Disc, ExternalLink, ListPlus, Play, Plus } from '@lucide/svelte';
-	import { player } from '#lib/player/player.svelte.js';
-	import { customPlaylists } from '#lib/player/customPlaylists.svelte';
-	import { m } from '#lib/paraglide/messages.js';
-	import { formatDuration, qualityTier } from '#lib/format';
-	import type { TrackSummary } from '#lib/tidal/models';
 
 	let {
 		track,
@@ -20,11 +21,6 @@
 	let imageError = $state(false);
 	let queuedFeedback = $state(false);
 
-	function formatQuality(quality?: string): string {
-		if (!quality) return '';
-		return quality.replaceAll('_', ' ');
-	}
-
 	function handleQueue() {
 		player.addToQueue(track);
 		queuedFeedback = true;
@@ -35,9 +31,7 @@
 
 	const tidalTrackUrl = $derived(`https://tidal.com/browse/track/${encodeURIComponent(track.id)}`);
 	const coverImage = $derived(track.imageUrl ?? track.album?.imageUrl);
-	const releaseYear = $derived(
-		track.album?.releaseDate ? track.album.releaseDate.slice(0, 4) : null
-	);
+	const releaseYear = $derived(formatReleaseDate(track.album?.releaseDate));
 </script>
 
 <article class="song-card" aria-label={track.title}>
@@ -88,7 +82,7 @@
 					{/if}
 				{/each}
 			{:else}
-				<span class="text-[var(--text-muted)]">TIDAL Artist</span>
+				<span class="text-(--text-muted)">TIDAL Artist</span>
 			{/if}
 		</p>
 
@@ -117,13 +111,11 @@
 			{/if}
 
 			{#if track.explicit}
-				<span class="explicit-badge" title={m.track_badge_explicit()}>E</span>
+				<Badge variant="explicit" title={m.track_badge_explicit()} />
 			{/if}
 
 			{#if track.audioQuality}
-				<span class="quality-badge" data-tier={qualityTier(track.audioQuality)}
-					>{formatQuality(track.audioQuality)}</span
-				>
+				<Badge variant="quality" text={track.audioQuality} />
 			{/if}
 
 			{#if track.popularity !== undefined && track.popularity > 0}
@@ -154,7 +146,7 @@
 			aria-label={m.player_add_to_queue()}
 		>
 			{#if queuedFeedback}
-				<Check size={14} class="text-[var(--action)]" />
+				<Check size={14} class="text-(--action)" />
 			{:else}
 				<ListPlus size={15} />
 			{/if}
@@ -362,40 +354,6 @@
 		padding: 0.15rem 0.45rem;
 		border: 1px solid var(--border-subtle);
 		border-radius: var(--radius-full, 9999px);
-	}
-
-	.explicit-badge {
-		border: 1px solid var(--border-strong);
-		padding: 0.1rem 0.4rem;
-		color: var(--text-primary);
-		font-family: ui-monospace, monospace;
-		font-size: 0.65rem;
-		font-weight: 800;
-		border-radius: var(--radius-xs, 4px);
-	}
-
-	.quality-badge {
-		background: var(--surface-selected);
-		border: 1px solid var(--border-subtle);
-		padding: 0.15rem 0.5rem;
-		color: var(--action);
-		font-family: ui-monospace, monospace;
-		font-size: 0.65rem;
-		font-weight: 800;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		border-radius: var(--radius-full, 9999px);
-	}
-	.quality-badge[data-tier='lossy'] {
-		color: var(--text-muted);
-	}
-	.quality-badge[data-tier='lossless'] {
-		color: var(--accent-jade);
-		border-color: color-mix(in oklab, var(--accent-jade) 40%, transparent);
-	}
-	.quality-badge[data-tier='hires'] {
-		color: var(--accent-gold);
-		border-color: color-mix(in oklab, var(--accent-gold) 45%, transparent);
 	}
 
 	.pop-badge {
