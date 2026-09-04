@@ -150,6 +150,10 @@ callback routes may keep their URLs to avoid unnecessary developer-dashboard cha
 - Each route owns its heading, description, and contextual actions.
 - A slim connection-health indicator appears only when attention is required.
 
+The layout system that realises these regions — the shell grid, tokens, header/toolbar, optional
+context panel, and the docked player — is specified in **Application shell and layout system** under
+Design direction.
+
 ## Core user journeys
 
 ### 1. First visit and sign-in
@@ -304,10 +308,11 @@ added only if it is genuinely useful.
 
 ### Core component inventory
 
-- `AppShell`, `SideNav`, `MobileNav`, `PageHeader`.
+- Shell: `AppShell`, `AppHeader` (+ `toolbar` slot), `AppRail` (nav), `AppAside` (context), `MobileNav`, `PageHeader`, `Footer`.
+- Player set: `Player`, `NowPlaying`, `PlayerSeekBar`, `PlayerTransport`, `PlayerActions`, `PlayerPanel`, `AlbumArtPanel`, `panels/{Queue,Lyrics,Source}Panel`.
 - `Button`, `IconButton`, `TextField`, `Select`, `Dialog`, `Menu`, `Tabs`.
 - `Notice`, `Toast`, `InlineError`, `EmptyState`, `Skeleton`, `SectionState`.
-- `Artwork`, `MediaCard`, `TrackRow`, `ArtistCard`, `MetadataList`.
+- `Artwork`, `MediaCard`, `TrackTable` / `TrackTableRow`, `SongCard`, `ArtistCard`, `MetadataList`.
 - `SaveButton`, `PlaylistPicker`, `ConnectionBadge`, `TidalAttribution`.
 
 Keep component APIs narrow and driven by actual screens. Add Storybook stories for each state rather
@@ -321,6 +326,111 @@ than building a generic design-system package.
 - Do not imply endorsement by TIDAL or an artist.
 - Use playback only through an official, unmodified TIDAL player integration.
 - Recheck the live guidelines before the visual release; they may change independently of Syn.
+
+## Application shell and layout system
+
+The shell is the one place a deliberate layout system pays off: fixed regions that must never
+overlap, must stay put while content scrolls, and must reshape predictably across breakpoints. Inside
+those regions, page content stays ordinary document flow. Modularity here means _named, swappable
+regions with a single owner of their geometry_ — not a configurable dashboard of movable panels.
+
+### Regions
+
+```text
+Desktop (>= 90rem — context panel available)     Laptop / desktop (64-90rem)
+┌─────────┬───────────────────────┬──────────┐    ┌─────────┬──────────────────────────┐
+│         │ header · toolbar      │          │    │         │ header · toolbar         │
+│  rail   ├───────────────────────┤  aside   │    │  rail   ├──────────────────────────┤
+│  (nav)  │ main viewport         │ (context │    │  (nav)  │ main viewport            │
+│         │ (scrolls)             │  scrolls)│    │         │ (scrolls)               │
+├─────────┴───────────────────────┴──────────┤    ├─────────┴──────────────────────────┤
+│ player  (docked, full width)               │    │ player  (docked, full width)       │
+└────────────────────────────────────────────┘    └────────────────────────────────────┘
+
+Mobile (< 48rem)
+┌──────────────────────────────┐
+│ header (brand · one action)  │
+├──────────────────────────────┤
+│ main viewport (scrolls)      │
+├──────────────────────────────┤
+│ mini player                  │  ← tap expands to a full-screen sheet
+├──────────────────────────────┤
+│ bottom nav (Home/Search/…)   │
+└──────────────────────────────┘
+```
+
+- **Rail** — primary navigation, account, theme. Persisted collapsed (icon-only) state on wide
+  screens. Becomes the bottom nav below `48rem`.
+- **Header** — page identity on the left (brand on mobile, breadcrumb/title on desktop) and a
+  `toolbar` region on the right that each route fills with its contextual actions (search field,
+  filter, view toggle, play-all, export). Global search lives here on desktop; on mobile it is its
+  own route/sheet so it never competes with the page title.
+- **Main viewport** — the only always-present scroll container besides `aside`. Page bodies render
+  here as a centred `--content-max` column; they do not get their own shell.
+- **Aside** — optional right-hand context panel, off by default, route- or action-opt-in. First uses:
+  a pinned queue, album credits beside the tracklist, lyrics beside a track. A sheet, not a column,
+  below `90rem`.
+- **Player** — a shell region (`grid-area: player`), never `position: fixed`. Expanding grows its
+  row on desktop; on mobile it takes over as a full-screen sheet. Already decomposed into a component
+  set (`Player`, `NowPlaying`, `PlayerTransport`, `PlayerActions`, `PlayerPanel`, `AlbumArtPanel`,
+  `panels/*`).
+- **Footer** — the 10px attribution line is a single hairline grid row beneath the player.
+
+### How it is built
+
+- One CSS Grid on `AppShell` owns every region:
+  `grid-template-areas` for `rail / header / main / aside / player / footer`,
+  `grid-template-columns: var(--shell-rail-w) minmax(0, 1fr) var(--shell-aside-w)`,
+  `grid-template-rows: var(--shell-header-h) minmax(0, 1fr) auto var(--shell-footer-h)`. Because the
+  header and player are grid rows, `main` never needs a manual `padding-bottom` reservation and the
+  player can never cover content.
+- Regions read geometry from tokens and never hard-code their own size. Collapsing the rail, opening
+  the aside, or growing the player is a change to one custom property, animated where it helps.
+- Region components take **named snippets**, nothing else: `AppShell` exposes
+  `header`, `rail`, `main`, `aside?`, `player`, `footer?`. Each region component
+  (`AppHeader`, `AppRail`, `AppAside`) has a narrow prop surface driven by real screens.
+- Flexbox inside a region (toolbars, nav lists, button clusters); Grid only for the shell and for
+  genuine 2-D content (card galleries, the track table, an album header's art-beside-metadata).
+
+### Layout tokens (add to `src/routes/layout.css`)
+
+- `--shell-rail-w` (expanded / `--shell-rail-w-collapsed`), `--shell-aside-w`.
+- `--shell-header-h`, `--shell-player-h` (`auto` when expanded), `--shell-footer-h`.
+- `--shell-gutter` — the main-viewport inline padding, `clamp()`-scaled.
+- A documented z-index scale: `--z-rail`, `--z-header`, `--z-aside`, `--z-player`, `--z-overlay`,
+  `--z-toast`. Nothing outside this scale sets `z-index`.
+- Named breakpoints: `48rem` (mobile ↔ tablet: rail becomes bottom nav), `64rem`
+  (toolbar gains room), `90rem` (aside column available).
+
+### UX and accessibility standards this must uphold
+
+- **Scroll containment**: only `main` and `aside` scroll; the page body never scrolls horizontally;
+  wide tables/code scroll inside their own `overflow-x: auto` container.
+- **Landmarks**: `<header>`, `<nav aria-label>`, `<main id="main-content" tabindex="-1">`,
+  `<aside aria-label>`, and the player as `role="region" aria-label`. The skip link targets `main`.
+  Rail-collapse and aside-toggle are real buttons with `aria-expanded` / `aria-controls`.
+- **No layout shift**: SSR the rail-collapsed and aside-open state from a cookie (the theme pattern)
+  so the grid renders in its final shape on first paint.
+- **Container queries** for region components whose own width — not the viewport — should drive them:
+  the track table collapses its album/date columns based on the width of `main` (or the pinned
+  `aside`), so it still adapts inside a narrow panel.
+- **Motion**: rail/aside/player transitions are 150–200ms and honour `prefers-reduced-motion`.
+- **Safe areas**: `env(safe-area-inset-*)` on the mobile player and bottom nav.
+- **State discipline**: layout state is at most two persisted booleans (rail collapsed, aside open);
+  no generic layout store, no draggable/resizable regions, no nested shells.
+
+### Migration (each step its own PR, app looks identical after step 1)
+
+1. Add the layout tokens and the `AppShell` grid; keep today's children. Move `Player` out of
+   `position: fixed` into `grid-area: player`; delete `main`'s `pb-40` reservation.
+2. Extract `AppHeader` with an empty `toolbar` snippet; move brand, theme, and desktop global search
+   into it. Pages begin filling `toolbar` (search field, library view/filter, album play-all +
+   export).
+3. Add the collapsed-rail state, its toggle, and cookie persistence.
+4. Add `AppAside` as opt-in; first consumer is a pinned queue, second is album credits.
+5. Convert region components to container queries.
+6. Storybook: one story per region and per shell breakpoint/collapse state; a Playwright check that
+   header, rail, and player stay in place while `main` scrolls.
 
 ## Technical architecture
 
@@ -619,7 +729,9 @@ Exit criteria:
 Goal: deliver a coherent application that makes connection, home, search, and library useful.
 
 - [ ] Replace starter/demo entry routes with real sign-in and authenticated landing routes. (M)
-- [ ] Build the responsive app shell and semantic design tokens. (L)
+- [ ] Move the app shell onto the grid layout system and semantic layout tokens — steps 1–3 of the
+      migration in _Application shell and layout system_ (grid regions, player as a docked row,
+      header + `toolbar` slot, collapsible rail). (L)
 - [ ] Build Settings / TIDAL connection, reconnect, and disconnect states. (M)
 - [ ] Build Home from normalised account, collection, and mix summaries. (M)
 - [ ] Build URL-backed Search with recognisable grouped results. (L)
@@ -642,6 +754,8 @@ Goal: make the app feel like a music product rather than a collection of API lis
 - [ ] Build artist, album, track, playlist, and mix detail routes. (L)
 - [ ] Add linked navigation between related resources. (M)
 - [ ] Add open-in-TIDAL actions to content views. (S)
+- [ ] Finish the shell: optional `AppAside` context panel and container-query region components —
+      migration steps 4–5. (M)
 - [ ] Tune responsive density, skeletons, artwork loading, and partial retries. (M)
 - [ ] Add detail-route accessibility and visual-regression coverage. (M)
 
