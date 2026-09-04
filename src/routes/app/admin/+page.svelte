@@ -63,7 +63,7 @@
 </script>
 
 <svelte:head>
-	<title>{m.admin_panel_title()} — Syn</title>
+	<title>{m.admin_panel_title()} — {m.brand_name()}</title>
 </svelte:head>
 
 <div class="mx-auto max-w-7xl space-y-8 p-4 sm:p-8">

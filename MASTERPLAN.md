@@ -89,7 +89,7 @@ Brand expression:
 
 ### Transactional email
 
-`noreply@mail.halflight.eu` is Halflight’s sole transactional sender: sign-in confirmation links,
+`noreply@adminmail.bluesix.dev` is Halflight’s sole transactional sender: sign-in confirmation links,
 account verification, and security-relevant account notices come from this address. It is not a
 marketing channel and never sends listening activity, taste-profile detail, catalogue information,
 or routine engagement mail.
@@ -100,7 +100,7 @@ for this service. Keep email delivery server-side and narrowly scoped:
 - Postfix accepts mail submission only from the local application / authenticated local path; it is
   never an open relay and has no general-purpose sending endpoint.
 - The envelope sender, visible From address, HELO/EHLO identity, reverse DNS, SPF, DKIM, and DMARC
-  alignment are configured for `mail.halflight.eu` before live confirmation mail is enabled.
+  alignment are configured for `adminmail.bluesix.dev` before live confirmation mail is enabled.
 - Confirmation links are single-use, short-lived, HTTPS-only, and point to the canonical Halflight
   domain. Do not place tokens, TIDAL state, or personal listening data in subjects, recipients,
   bodies, logs, or URLs beyond the purpose-limited confirmation token.
@@ -1346,7 +1346,7 @@ Goal: turn the existing product into a coherent Halflight service before multipl
       hostname, canonical URLs, CSP/origin configuration, and a rollback plan. (M)
 - [ ] Apply the Halflight name, wordmark treatment, metadata, Open Graph, sign-in, empty/error,
       settings, and TIDAL-attribution copy across customer-facing surfaces. (M)
-- [ ] Enable transactional confirmation email from `noreply@mail.halflight.eu` through the local
+- [ ] Enable transactional confirmation email from `noreply@adminmail.bluesix.dev` through the local
       Postfix relay; verify non-open-relay policy, DNS alignment, single-use expiry, redacted logs,
       and delivery/failure states with a real mailbox before enabling sign-in links. (M)
 - [ ] Define the default Halflight palette, type scale, luminance ladder, and Apple Music-inspired

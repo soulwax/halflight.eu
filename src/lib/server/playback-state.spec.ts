@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
 	EMPTY_PLAYBACK_STATE,
 	MAX_PLAYBACK_HISTORY_LENGTH,
-	parsePlaybackState
+	parsePlaybackState,
+	parsePlaybackStateOrigin,
+	parsePlaybackStateRevision
 } from './playback-state';
 
 const track = {
@@ -51,6 +53,18 @@ describe('playback state', () => {
 	});
 
 	it('keeps an explicit empty state', () => {
-		expect(parsePlaybackState(EMPTY_PLAYBACK_STATE)).toEqual(EMPTY_PLAYBACK_STATE);
+		expect(parsePlaybackState(EMPTY_PLAYBACK_STATE)).toEqual({
+			currentTrack: null,
+			queue: [],
+			history: [],
+			currentTime: 0
+		});
+	});
+
+	it('accepts only known product origins and non-negative integer revisions', () => {
+		expect(parsePlaybackStateOrigin('listening-room')).toBe('listening-room');
+		expect(parsePlaybackStateOrigin('other-site')).toBeNull();
+		expect(parsePlaybackStateRevision(12)).toBe(12);
+		expect(parsePlaybackStateRevision(-1)).toBeNull();
 	});
 });

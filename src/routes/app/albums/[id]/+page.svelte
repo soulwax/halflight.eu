@@ -32,7 +32,11 @@
 </script>
 
 <svelte:head>
-	<title>{data.album ? `${data.album.title} — Syn` : `${m.album_title()} — Syn`}</title>
+	<title
+		>{data.album
+			? `${data.album.title} — ${m.brand_name()}`
+			: `${m.album_title()} — ${m.brand_name()}`}</title
+	>
 	<meta
 		name="description"
 		content={data.album

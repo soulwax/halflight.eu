@@ -104,6 +104,8 @@ export const playbackState = pgTable('playback_state', {
 	queueJson: text('queue_json').notNull().default('[]'),
 	historyJson: text('history_json').notNull().default('[]'),
 	currentTime: integer('current_time').notNull().default(0),
+	revision: integer('revision').notNull().default(0),
+	lastOrigin: text('last_origin'),
 	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 });
 

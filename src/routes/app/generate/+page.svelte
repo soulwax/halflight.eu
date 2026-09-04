@@ -64,7 +64,7 @@
 		const summaries = currentSet.tracks.map(toTrackSummary);
 		const now = new Date();
 		const title = `Generated Set (${now.toLocaleDateString()})`;
-		const desc = `${currentSet.summary} · Generated via Syn Taste Engine`;
+		const desc = `${currentSet.summary} · Generated via Halflight Taste Engine`;
 
 		customPlaylists.createPlaylist(title, desc, summaries);
 		saveSuccess = true;
@@ -92,7 +92,7 @@
 </script>
 
 <svelte:head>
-	<title>Taste Engine Generator — Syn</title>
+	<title>Taste Engine Generator — Halflight</title>
 </svelte:head>
 
 <section class="max-w-4xl space-y-8" aria-labelledby="generator-title">

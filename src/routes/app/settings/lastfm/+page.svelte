@@ -7,7 +7,7 @@
 </script>
 
 <svelte:head>
-	<title>{m.lastfm_settings_title()} — Syn</title>
+	<title>{m.lastfm_settings_title()} — {m.brand_name()}</title>
 </svelte:head>
 
 <section class="lastfm-settings" aria-labelledby="lastfm-title">

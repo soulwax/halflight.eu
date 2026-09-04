@@ -141,7 +141,11 @@
 </script>
 
 <svelte:head>
-	<title>{data.playlist ? `${data.playlist.title} — Syn` : `${m.playlist_title()} — Syn`}</title>
+	<title
+		>{data.playlist
+			? `${data.playlist.title} — ${m.brand_name()}`
+			: `${m.playlist_title()} — ${m.brand_name()}`}</title
+	>
 	<meta
 		name="description"
 		content={data.playlist

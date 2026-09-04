@@ -9,13 +9,13 @@
 </script>
 
 <svelte:head>
-	<title>{m.sign_in_title()} — Syn</title>
+	<title>{m.sign_in_title()} — {m.brand_name()}</title>
 	<meta name="description" content={m.sign_in_subtitle()} />
 </svelte:head>
 
 <main class="auth-page app-style-canvas">
 	<section class="auth-card" aria-labelledby="sign-in-title">
-		<img class="brand-logo" src={synLogo} alt="Syn" />
+		<img class="brand-logo" src={synLogo} alt={m.brand_name()} />
 		<h1 id="sign-in-title">{m.sign_in_title()}</h1>
 		<p class="intro">{m.sign_in_subtitle()}</p>
 

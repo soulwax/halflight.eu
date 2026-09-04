@@ -24,13 +24,13 @@
 </script>
 
 <svelte:head>
-	<title>Taste Profile — Syn</title>
+	<title>Taste Profile — Halflight</title>
 </svelte:head>
 
 <section class="max-w-4xl space-y-8" aria-labelledby="taste-profile-title">
 	<header class="border-b-2 border-[var(--border-subtle)] pb-6">
 		<p class="font-mono text-xs font-bold tracking-[0.14em] text-[var(--text-muted)] uppercase">
-			SYN // TASTE ENGINE
+			HALFLIGHT // TASTE ENGINE
 		</p>
 		<h1
 			id="taste-profile-title"
@@ -330,8 +330,8 @@
 			<h2 id="disposability-heading" class="text-base font-bold">Data Disposability & Privacy</h2>
 		</div>
 		<p class="text-xs leading-relaxed text-[var(--text-muted)]">
-			Syn never mirrors your TIDAL catalogue. Your taste profile stores only numerical weights and
-			TIDAL identifiers. It can be wiped or reset at any time with immediate effect.
+			Halflight never mirrors your TIDAL catalogue. Your taste profile stores only numerical weights
+			and TIDAL identifiers. It can be wiped or reset at any time with immediate effect.
 		</p>
 
 		<div class="flex flex-wrap items-center gap-3 pt-2">
@@ -356,7 +356,7 @@
 				action="?/delete"
 				use:enhance
 				onsubmit={(e) => {
-					if (!confirm('Permanently delete your taste profile record from Syn database?')) {
+					if (!confirm('Permanently delete your taste profile record from Halflight database?')) {
 						e.preventDefault();
 					}
 				}}

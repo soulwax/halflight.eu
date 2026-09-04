@@ -14,7 +14,7 @@
 </script>
 
 <svelte:head>
-	<title>Syn</title>
+	<title>{m.brand_name()}</title>
 	<meta name="description" content={m.home_subtitle()} />
 </svelte:head>
 
@@ -25,7 +25,7 @@
 			<span class="hero-mark-node"></span>
 			<span class="hero-mark-line"></span>
 		</div>
-		<p class="deco-eyebrow">SYN — Sound Laboratory</p>
+		<p class="deco-eyebrow">HALFLIGHT — LISTENING ROOM</p>
 		<h1 id="home-title" class="hero-title">{m.home_title({ name: data.user.name })}</h1>
 		<p class="intro">{m.home_subtitle()}</p>
 	</header>

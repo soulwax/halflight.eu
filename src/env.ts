@@ -22,11 +22,11 @@ export const variables = defineEnvVars({
 	},
 	ADMIN_USERNAME: {
 		description:
-			'Permanent Syn administrator username. It must match the intended GitHub login exactly, except for letter case.'
+			'Permanent Halflight administrator username. It must match the intended GitHub login exactly, except for letter case.'
 	},
 	ADMIN_PASSWORD: {
 		description:
-			'Password for the permanent Syn administrator. Stored only as a Better Auth password hash after first use.'
+			'Password for the permanent Halflight administrator. Stored only as a Better Auth password hash after first use.'
 	},
 	SMTP_HOST: {
 		schema: optional,
@@ -40,7 +40,7 @@ export const variables = defineEnvVars({
 	SMTP_PASSWORD: { schema: optional, description: 'Optional SMTP password.' },
 	SMTP_FROM: {
 		schema: optional,
-		description: 'Sender address for Syn account-verification email.'
+		description: 'Sender address for Halflight account-verification email.'
 	},
 	LASTFM_API_KEY: { schema: optional, description: 'Last.fm API key.' },
 	LASTFM_APPLICATION_NAME: {

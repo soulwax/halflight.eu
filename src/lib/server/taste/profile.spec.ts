@@ -93,7 +93,9 @@ describe('taste profile', () => {
 						artists: [{ id: 'session-artist', name: 'Display data is discarded' }]
 					}
 				],
-				currentTime: 0
+				currentTime: 0,
+				revision: 0,
+				lastOrigin: null
 			},
 			now
 		});

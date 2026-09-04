@@ -24,7 +24,11 @@
 </script>
 
 <svelte:head>
-	<title>{data.artist ? `${data.artist.name} — Syn` : `${m.artist_title()} — Syn`}</title>
+	<title
+		>{data.artist
+			? `${data.artist.name} — ${m.brand_name()}`
+			: `${m.artist_title()} — ${m.brand_name()}`}</title
+	>
 	<meta
 		name="description"
 		content={data.artist

@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { db } from '#lib/server/db';
 import { playbackState } from '#lib/server/db/schema';
 import { log } from '#lib/server/log';
@@ -7,24 +7,43 @@ import type { AlbumReference, ArtistReference, TrackSummary } from '#lib/tidal/m
 export const MAX_PLAYBACK_QUEUE_LENGTH = 100;
 export const MAX_PLAYBACK_HISTORY_LENGTH = 50;
 const MAX_POSITION_SECONDS = 60 * 60 * 24;
+export const PLAYBACK_STATE_ORIGINS = ['listening-room', 'halflight-now'] as const;
+
+export type PlaybackStateOrigin = (typeof PLAYBACK_STATE_ORIGINS)[number];
 
 export interface PlaybackState {
 	currentTrack: TrackSummary | null;
 	queue: TrackSummary[];
 	history: TrackSummary[];
 	currentTime: number;
+	revision: number;
+	lastOrigin: PlaybackStateOrigin | null;
 }
+
+export type PlaybackStateInput = Omit<PlaybackState, 'revision' | 'lastOrigin'>;
 
 export const EMPTY_PLAYBACK_STATE: PlaybackState = {
 	currentTrack: null,
 	queue: [],
 	history: [],
-	currentTime: 0
+	currentTime: 0,
+	revision: 0,
+	lastOrigin: null
 };
 
 export interface PlaybackStateStore {
 	read(userId: string): Promise<PlaybackState | null>;
-	write(userId: string, state: PlaybackState): Promise<PlaybackState>;
+	write(
+		userId: string,
+		state: PlaybackStateInput,
+		expectedRevision: number,
+		origin: PlaybackStateOrigin
+	): Promise<PlaybackState | null>;
+}
+
+export interface PlaybackStateSaveResult {
+	state: PlaybackState;
+	conflict: boolean;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -128,7 +147,7 @@ function parseTrackList(value: unknown, maximum: number): TrackSummary[] | null 
 }
 
 /** Parse the only playback-state shape accepted by the API. */
-export function parsePlaybackState(value: unknown): PlaybackState | null {
+export function parsePlaybackState(value: unknown): PlaybackStateInput | null {
 	const state = asRecord(value);
 	if (!state) return null;
 	const currentTrack = state.currentTrack === null ? null : parsePlaybackTrack(state.currentTrack);
@@ -138,6 +157,18 @@ export function parsePlaybackState(value: unknown): PlaybackState | null {
 	const currentTime = optionalInteger(state.currentTime, MAX_POSITION_SECONDS);
 	if (!queue || !history || currentTime == null) return null;
 	return { currentTrack, queue, history, currentTime };
+}
+
+/** Only explicitly named product surfaces may claim a playback-state write. */
+export function parsePlaybackStateOrigin(value: unknown): PlaybackStateOrigin | null {
+	return typeof value === 'string' && PLAYBACK_STATE_ORIGINS.includes(value as PlaybackStateOrigin)
+		? (value as PlaybackStateOrigin)
+		: null;
+}
+
+/** Client revisions start at zero and advance only in the database. */
+export function parsePlaybackStateRevision(value: unknown): number | null {
+	return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null;
 }
 
 function parseJson(value: string | null): unknown {
@@ -154,15 +185,22 @@ function fromRow(row: {
 	queueJson: string;
 	historyJson: string;
 	currentTime: number;
+	revision: number;
+	lastOrigin: string | null;
 }): PlaybackState {
-	return (
-		parsePlaybackState({
-			currentTrack: parseJson(row.currentTrackJson),
-			queue: parseJson(row.queueJson),
-			history: parseJson(row.historyJson),
-			currentTime: row.currentTime
-		}) ?? EMPTY_PLAYBACK_STATE
-	);
+	const input = parsePlaybackState({
+		currentTrack: parseJson(row.currentTrackJson),
+		queue: parseJson(row.queueJson),
+		history: parseJson(row.historyJson),
+		currentTime: row.currentTime
+	});
+	return input
+		? {
+				...input,
+				revision: Math.max(0, row.revision),
+				lastOrigin: parsePlaybackStateOrigin(row.lastOrigin)
+			}
+		: EMPTY_PLAYBACK_STATE;
 }
 
 export const dbPlaybackStateStore: PlaybackStateStore = {
@@ -172,32 +210,41 @@ export const dbPlaybackStateStore: PlaybackStateStore = {
 				currentTrackJson: playbackState.currentTrackJson,
 				queueJson: playbackState.queueJson,
 				historyJson: playbackState.historyJson,
-				currentTime: playbackState.currentTime
+				currentTime: playbackState.currentTime,
+				revision: playbackState.revision,
+				lastOrigin: playbackState.lastOrigin
 			})
 			.from(playbackState)
 			.where(eq(playbackState.userId, userId))
 			.limit(1);
 		return rows[0] ? fromRow(rows[0]) : null;
 	},
-	async write(userId, state) {
+	async write(userId, state, expectedRevision, origin) {
 		const values = {
 			currentTrackJson: state.currentTrack ? JSON.stringify(state.currentTrack) : null,
 			queueJson: JSON.stringify(state.queue),
 			historyJson: JSON.stringify(state.history),
 			currentTime: state.currentTime,
+			lastOrigin: origin,
 			updatedAt: new Date()
 		};
 		const rows = await db
 			.insert(playbackState)
-			.values({ userId, ...values })
-			.onConflictDoUpdate({ target: playbackState.userId, set: values })
+			.values({ userId, ...values, revision: expectedRevision + 1 })
+			.onConflictDoUpdate({
+				target: playbackState.userId,
+				set: { ...values, revision: sql`${playbackState.revision} + 1` },
+				setWhere: sql`${playbackState.revision} = ${expectedRevision}`
+			})
 			.returning({
 				currentTrackJson: playbackState.currentTrackJson,
 				queueJson: playbackState.queueJson,
 				historyJson: playbackState.historyJson,
-				currentTime: playbackState.currentTime
+				currentTime: playbackState.currentTime,
+				revision: playbackState.revision,
+				lastOrigin: playbackState.lastOrigin
 			});
-		return fromRow(rows[0]);
+		return rows[0] ? fromRow(rows[0]) : null;
 	}
 };
 
@@ -217,8 +264,13 @@ export async function getPlaybackState(
 
 export function savePlaybackState(
 	userId: string,
-	state: PlaybackState,
+	state: PlaybackStateInput,
+	expectedRevision: number,
+	origin: PlaybackStateOrigin,
 	store: PlaybackStateStore = dbPlaybackStateStore
-): Promise<PlaybackState> {
-	return store.write(userId, state);
+): Promise<PlaybackStateSaveResult> {
+	return store.write(userId, state, expectedRevision, origin).then(async (saved) => {
+		if (saved) return { state: saved, conflict: false };
+		return { state: (await store.read(userId)) ?? EMPTY_PLAYBACK_STATE, conflict: true };
+	});
 }

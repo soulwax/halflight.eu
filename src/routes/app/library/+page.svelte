@@ -42,7 +42,7 @@
 </script>
 
 <svelte:head>
-	<title>{m.library_title()} — Syn</title>
+	<title>{m.library_title()} — {m.brand_name()}</title>
 	<meta name="description" content={m.library_subtitle()} />
 </svelte:head>
 

@@ -25,7 +25,11 @@
 </script>
 
 <svelte:head>
-	<title>{data.track ? `${data.track.title} — Syn` : `${m.track_title()} — Syn`}</title>
+	<title
+		>{data.track
+			? `${data.track.title} — ${m.brand_name()}`
+			: `${m.track_title()} — ${m.brand_name()}`}</title
+	>
 	<meta
 		name="description"
 		content={data.track

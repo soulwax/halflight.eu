@@ -15,6 +15,13 @@ export interface SavedPlaybackState {
 	queue: TrackSummary[];
 	history: TrackSummary[];
 	currentTime: number;
+	revision?: number;
+	lastOrigin?: 'listening-room' | 'halflight-now' | null;
+}
+
+interface PlaybackStateWrite extends SavedPlaybackState {
+	revision: number;
+	origin: 'listening-room';
 }
 
 export type DockMode = 'docked' | 'floating';
@@ -100,6 +107,7 @@ export class PlayerState {
 	private gainNode: GainNode | null = null;
 	private hasRestoredPlaybackState = false;
 	private persistenceTimer: ReturnType<typeof setTimeout> | undefined;
+	private playbackStateRevision = 0;
 	private lastPersistedPosition = 0;
 	private trackStartedAt = 0;
 	private lastObservedPlaybackTime = 0;
@@ -920,18 +928,21 @@ export class PlayerState {
 		this.queue = state.queue.slice(0, MAX_QUEUE_LENGTH);
 		this.history = state.history.slice(-MAX_HISTORY_LENGTH);
 		this.currentTime = Math.max(0, Math.floor(state.currentTime));
+		this.playbackStateRevision = Math.max(0, state.revision ?? 0);
 		this.lastPersistedPosition = this.currentTime;
 		this.duration = state.currentTrack?.duration || 0;
 
 		if (this.currentTrack) void this.resolveCover(this.currentTrack);
 	}
 
-	private snapshotPlaybackState(): SavedPlaybackState {
+	private snapshotPlaybackState(): PlaybackStateWrite {
 		return {
 			currentTrack: this.currentTrack,
 			queue: this.queue.slice(0, MAX_QUEUE_LENGTH),
 			history: this.history.slice(-MAX_HISTORY_LENGTH),
-			currentTime: Math.max(0, Math.floor(this.currentTime))
+			currentTime: Math.max(0, Math.floor(this.currentTime)),
+			revision: this.playbackStateRevision,
+			origin: 'listening-room'
 		};
 	}
 
@@ -945,9 +956,16 @@ export class PlayerState {
 				headers: { 'content-type': 'application/json' },
 				body: JSON.stringify(this.snapshotPlaybackState()),
 				keepalive: true
-			}).catch(() => {
-				// Resume state is a convenience; playback must remain usable offline.
-			});
+			})
+				.then(async (response) => {
+					const state = (await response.json().catch(() => null)) as { revision?: unknown } | null;
+					if (typeof state?.revision === 'number' && Number.isSafeInteger(state.revision)) {
+						this.playbackStateRevision = state.revision;
+					}
+				})
+				.catch(() => {
+					// Resume state is a convenience; playback must remain usable offline.
+				});
 		}, 500);
 	}
 }

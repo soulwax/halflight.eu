@@ -77,7 +77,7 @@
 </script>
 
 <svelte:head>
-	<title>{m.tidal_settings_title()} — Syn</title>
+	<title>{m.tidal_settings_title()} — {m.brand_name()}</title>
 	<meta name="description" content={m.tidal_settings_subtitle()} />
 </svelte:head>
 

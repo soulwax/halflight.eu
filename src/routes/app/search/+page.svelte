@@ -180,7 +180,7 @@
 <svelte:window onpopstate={handlePopState} />
 
 <svelte:head>
-	<title>{m.search_title()} — Syn</title>
+	<title>{m.search_title()} — {m.brand_name()}</title>
 	<meta name="description" content={m.search_subtitle()} />
 </svelte:head>
 

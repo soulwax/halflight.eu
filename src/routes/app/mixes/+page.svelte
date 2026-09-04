@@ -29,7 +29,7 @@
 </script>
 
 <svelte:head>
-	<title>{m.mixes_title()} — Syn</title>
+	<title>{m.mixes_title()} — {m.brand_name()}</title>
 	<meta name="description" content={m.mixes_subtitle()} />
 </svelte:head>
 

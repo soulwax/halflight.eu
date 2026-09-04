@@ -24,9 +24,9 @@
 		<a
 			href={user ? '/app' : '/'}
 			class="flex items-center transition-opacity hover:opacity-85 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--action)]"
-			aria-label="Syn"
+			aria-label={m.brand_name()}
 		>
-			<img src={synLogo} alt="Syn" class="h-7 w-auto sm:h-8" />
+			<img src={synLogo} alt={m.brand_name()} class="h-7 w-auto sm:h-8" />
 		</a>
 	</div>
 

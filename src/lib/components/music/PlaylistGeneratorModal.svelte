@@ -319,7 +319,8 @@
 			{:else}
 				<div class="footer-info">
 					<Cloud size={14} class="text-[var(--action)]" />
-					<span class="footer-hint">Saves directly to your Syn account & syncs across devices.</span
+					<span class="footer-hint"
+						>Saves directly to your Halflight account & syncs across devices.</span
 					>
 				</div>
 			{/if}

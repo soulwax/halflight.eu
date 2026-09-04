@@ -1,6 +1,6 @@
-# Syn
+# Halflight
 
-A personal, single-user SvelteKit app. See [`AGENTS.md`](AGENTS.md) for the stack,
+A personal, single-user streaming service built on the owner's TIDAL account. See [`AGENTS.md`](AGENTS.md) for the stack,
 commands, and conventions.
 
 ## Developing
@@ -24,13 +24,13 @@ pnpm build && pnpm preview              # production build
 
 ## Screenshots
 
-| Sign in                                                                          | Mobile sign in                                                                 |
-| -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| ![Syn sign-in page on desktop](static/readme-screenshots/01-sign-in-desktop.png) | ![Syn sign-in page on mobile](static/readme-screenshots/02-sign-in-mobile.png) |
+| Sign in                                                                                | Mobile sign in                                                                       |
+| -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| ![Halflight sign-in page on desktop](static/readme-screenshots/01-sign-in-desktop.png) | ![Halflight sign-in page on mobile](static/readme-screenshots/02-sign-in-mobile.png) |
 
-| Home                                                                 | Mobile home                                                                   |
-| -------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| ![Syn home dashboard](static/readme-screenshots/03-home-desktop.png) | ![Syn home dashboard on mobile](static/readme-screenshots/04-home-mobile.png) |
+| Home                                                                       | Mobile home                                                                         |
+| -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| ![Halflight home dashboard](static/readme-screenshots/03-home-desktop.png) | ![Halflight home dashboard on mobile](static/readme-screenshots/04-home-mobile.png) |
 
 | Empty search                                                               | Mobile empty search                                                                         |
 | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |

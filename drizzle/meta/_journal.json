@@ -127,6 +127,13 @@
       "when": 1788541887875,
       "tag": "0017_lame_night_nurse",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1788559705746,
+      "tag": "0018_tired_echo",
+      "breakpoints": true
     }
   ]
 }
