@@ -44,6 +44,8 @@
 	--content-max: 74rem;
 
 	--font-display: 'Marcellus', ui-serif, Georgia, 'Times New Roman', serif;
+	--font-mono: ui-monospace, 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+	--style-body-font: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 
 	/* ---- Contours: hairline metal rules + a quiet lift, never a hard poster offset ---- */
 	--hairline: 1px solid var(--border-subtle);
@@ -119,6 +121,34 @@
 	--danger-subtle: #3b2434;
 	--focus-ring: #7aa2f7;
 
+	--shadow-raised: 0 1px 0 0 rgba(122, 162, 247, 0.1) inset, 0 18px 48px -24px rgba(0, 0, 0, 0.85);
+	--shadow-bauhaus:
+		0 1px 0 0 rgba(122, 162, 247, 0.08) inset, 0 12px 32px -20px rgba(0, 0, 0, 0.75);
+	--shadow-bauhaus-hover: 0 0 0 1px #7aa2f7 inset, 0 16px 40px -20px rgba(0, 0, 0, 0.8);
+}
+
+/* Server-rendered pages have no data attribute until the client restores the
+   saved preference. Match the product default during that short interval. */
+:root:not([data-theme]) {
+	--surface-canvas: #1a1b26;
+	--surface-raised: #16161e;
+	--surface-selected: #24283b;
+	--border-subtle: #292e42;
+	--border-strong: #414868;
+	--text-primary: #c0caf5;
+	--text-muted: #7982a9;
+	--accent-gold: #e0af68;
+	--accent-gold-deep: #d09852;
+	--accent-jade: #73daca;
+	--accent-oxblood: #f7768e;
+	--bauhaus-blue: #7aa2f7;
+	--bauhaus-red: #f7768e;
+	--bauhaus-yellow: #e0af68;
+	--action: #7aa2f7;
+	--action-contrast: #15161e;
+	--danger: #f7768e;
+	--danger-subtle: #3b2434;
+	--focus-ring: #7aa2f7;
 	--shadow-raised: 0 1px 0 0 rgba(122, 162, 247, 0.1) inset, 0 18px 48px -24px rgba(0, 0, 0, 0.85);
 	--shadow-bauhaus:
 		0 1px 0 0 rgba(122, 162, 247, 0.08) inset, 0 12px 32px -20px rgba(0, 0, 0, 0.75);
@@ -286,6 +316,9 @@
 }
 
 :root[data-style='art-deco'] {
+	--style-body-font: Optima, Candara, 'Segoe UI', sans-serif;
+	--style-heading-font: 'Marcellus', Rockwell, Georgia, serif;
+	--font-mono: 'SFMono-Regular', Consolas, monospace;
 	--style-pattern:
 		linear-gradient(
 			135deg,
@@ -305,6 +338,9 @@
 }
 
 :root[data-style='art-nouveau'] {
+	--style-body-font: 'Gill Sans', 'Trebuchet MS', sans-serif;
+	--style-heading-font: 'Palatino Linotype', Palatino, Georgia, serif;
+	--font-mono: 'Courier New', Courier, monospace;
 	--radius-sm: 0.75rem;
 	--radius-md: 1.1rem;
 	--radius-lg: 1.5rem;
@@ -324,6 +360,9 @@
 }
 
 :root[data-style='bauhaus'] {
+	--style-body-font: 'Avenir Next', Avenir, 'Century Gothic', Futura, sans-serif;
+	--style-heading-font: Futura, 'Avenir Next', 'Century Gothic', Arial, sans-serif;
+	--font-mono: 'SFMono-Regular', 'Roboto Mono', Consolas, monospace;
 	--radius-xs: 0px;
 	--radius-sm: 0px;
 	--radius-md: 0px;
@@ -342,6 +381,9 @@
 }
 
 :root[data-style='arts-and-crafts'] {
+	--style-body-font: 'Book Antiqua', Palatino, Georgia, serif;
+	--style-heading-font: 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
+	--font-mono: 'Courier New', Courier, monospace;
 	--radius-sm: 0.2rem;
 	--radius-md: 0.35rem;
 	--radius-lg: 0.5rem;
@@ -361,6 +403,9 @@
 }
 
 :root[data-style='impressionism'] {
+	--style-body-font: Georgia, 'Times New Roman', serif;
+	--style-heading-font: 'Palatino Linotype', Palatino, Georgia, serif;
+	--font-mono: 'Courier New', Courier, monospace;
 	--radius-sm: 0.75rem;
 	--radius-md: 1rem;
 	--radius-lg: 1.4rem;
@@ -386,6 +431,9 @@
 }
 
 :root[data-style='cubism'] {
+	--style-body-font: 'Arial Narrow', Arial, sans-serif;
+	--style-heading-font: 'Arial Narrow', Impact, Arial, sans-serif;
+	--font-mono: 'SFMono-Regular', Consolas, monospace;
 	--radius-xs: 0px;
 	--radius-sm: 0px;
 	--radius-md: 0px;
@@ -410,6 +458,9 @@
 }
 
 :root[data-style='surrealism'] {
+	--style-body-font: 'Trebuchet MS', 'Gill Sans', sans-serif;
+	--style-heading-font: 'Palatino Linotype', Georgia, serif;
+	--font-mono: 'Courier New', Courier, monospace;
 	--radius-sm: 0.9rem;
 	--radius-md: 1.2rem;
 	--radius-lg: 1.75rem;
@@ -435,6 +486,9 @@
 }
 
 :root[data-style='expressionism'] {
+	--style-body-font: 'Arial Narrow', Arial, sans-serif;
+	--style-heading-font: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+	--font-mono: 'SFMono-Regular', Consolas, monospace;
 	--radius-sm: 0px;
 	--radius-md: 0px;
 	--radius-lg: 0px;
@@ -456,6 +510,9 @@
 }
 
 :root[data-style='pop-art'] {
+	--style-body-font: Arial, Helvetica, sans-serif;
+	--style-heading-font: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+	--font-mono: 'SFMono-Regular', Consolas, monospace;
 	--radius-xs: 0px;
 	--radius-sm: 0px;
 	--radius-md: 0px;
@@ -472,6 +529,9 @@
 }
 
 :root[data-style='abstract-expressionism'] {
+	--style-body-font: 'Trebuchet MS', Arial, sans-serif;
+	--style-heading-font: 'Arial Black', Impact, Arial, sans-serif;
+	--font-mono: 'SFMono-Regular', Consolas, monospace;
 	--radius-sm: 0.6rem;
 	--radius-md: 1rem;
 	--radius-lg: 1.5rem;
@@ -494,6 +554,28 @@
 		);
 	--style-panel-radius: 1rem 0.2rem 1.4rem 0.4rem;
 	--style-panel-shadow: 0 20px 46px -30px color-mix(in srgb, var(--accent-oxblood) 65%, transparent);
+}
+
+/* Match the selected default until ThemeManager adds data-style after hydration. */
+:root:not([data-style]) {
+	--style-body-font: 'Avenir Next', Avenir, 'Century Gothic', Futura, sans-serif;
+	--style-heading-font: Futura, 'Avenir Next', 'Century Gothic', Arial, sans-serif;
+	--font-mono: 'SFMono-Regular', 'Roboto Mono', Consolas, monospace;
+	--radius-xs: 0px;
+	--radius-sm: 0px;
+	--radius-md: 0px;
+	--radius-lg: 0px;
+	--radius-xl: 0px;
+	--style-pattern:
+		linear-gradient(
+			90deg,
+			color-mix(in oklab, var(--accent-gold) 9%, transparent) 1px,
+			transparent 1px
+		),
+		linear-gradient(color-mix(in oklab, var(--accent-jade) 7%, transparent) 1px, transparent 1px);
+	--style-panel-shadow: none;
+	--style-heading-spacing: 0.09em;
+	--style-heading-transform: uppercase;
 }
 
 .app-style-canvas {
@@ -539,13 +621,7 @@
 			),
 			var(--surface-canvas);
 		color: var(--text-primary);
-		font-family:
-			system-ui,
-			-apple-system,
-			BlinkMacSystemFont,
-			'Segoe UI',
-			Roboto,
-			sans-serif;
+		font-family: var(--style-body-font);
 		letter-spacing: 0;
 		line-height: 1.6;
 	}
@@ -553,7 +629,7 @@
 	h1,
 	h2,
 	h3 {
-		font-family: var(--font-display);
+		font-family: var(--style-heading-font);
 		font-weight: 400;
 		letter-spacing: 0.01em;
 	}

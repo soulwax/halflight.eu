@@ -100,8 +100,8 @@ export const userSettings = pgTable('user_settings', {
 	userId: text('user_id')
 		.primaryKey()
 		.references(() => user.id, { onDelete: 'cascade' }),
-	theme: text('theme').notNull().default('bauhaus-dark'),
-	visualStyle: text('visual_style').notNull().default('art-deco'),
+	theme: text('theme').notNull().default('tokyo-night'),
+	visualStyle: text('visual_style').notNull().default('bauhaus'),
 	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 });
 

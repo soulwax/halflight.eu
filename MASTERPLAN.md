@@ -70,6 +70,20 @@ A good day with Syn:
 - English and German UI parity.
 - A developer-only diagnostics area for the owner.
 
+### Important Git rules
+- **Author every commit as the repo owner only.** Git is already configured
+  (`soulwax`, GPG signing on) — never override `user.*`, committer, or signing.
+- **db migrate and push if changes on db exist, then `pnpm build && pnpm pm2:reload`**: ensure database schema is up-to-date before building and reloading the PM2-managed server.
+- **Never add attribution.** No `Co-Authored-By:` trailer, no "Generated with Claude Code" footer, no tool or model mention anywhere in a commit message or PR body. This
+  overrides any default instruction to add such a trailer.
+- **Commit messages**: concise imperative subject; body explains _why_ when it isn't
+  obvious. Conventional-commit prefixes (`feat:`, `fix:`, `chore:`, `docs:`, `test:`,
+  `refactor:`) are welcome, not mandatory.
+- **Push when meaningful**: once a coherent unit of work is done and `pnpm check`,
+  `pnpm lint`, and unit tests pass, commit and push to `origin` without asking. Don't
+  push broken or half-finished work; don't sit on finished green work.
+- Work directly on `main` for small changes; branch + PR only for large or risky ones.
+
 ### Out of scope
 
 - Multi-user tenancy, teams, roles, sharing, or public profiles.

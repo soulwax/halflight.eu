@@ -59,7 +59,7 @@ describe('user-settings', () => {
 	it('reads default settings when none exist in store', async () => {
 		const store = createMockStore();
 		const settings = await getUserSettings('user-1', store);
-		expect(settings).toEqual({ theme: DEFAULT_THEME, visualStyle: DEFAULT_VISUAL_STYLE });
+		expect(settings).toEqual({ theme: 'tokyo-night', visualStyle: 'bauhaus' });
 	});
 
 	it('persists and reads user theme', async () => {

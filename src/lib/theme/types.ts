@@ -11,7 +11,7 @@ export const DARK_THEMES = [
 
 export type DarkTheme = (typeof DARK_THEMES)[number];
 
-export const DEFAULT_THEME: DarkTheme = 'bauhaus-dark';
+export const DEFAULT_THEME: DarkTheme = 'tokyo-night';
 
 export const VISUAL_STYLES = [
 	'art-deco',
@@ -28,7 +28,7 @@ export const VISUAL_STYLES = [
 
 export type VisualStyle = (typeof VISUAL_STYLES)[number];
 
-export const DEFAULT_VISUAL_STYLE: VisualStyle = 'art-deco';
+export const DEFAULT_VISUAL_STYLE: VisualStyle = 'bauhaus';
 
 export function isDarkTheme(value: unknown): value is DarkTheme {
 	return typeof value === 'string' && (DARK_THEMES as readonly string[]).includes(value);

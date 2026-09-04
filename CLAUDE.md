@@ -10,8 +10,8 @@ Claude-specific working agreement and the architecture map that spans multiple f
 
 - **Author every commit as the repo owner only.** Git is already configured
   (`soulwax`, GPG signing on) — never override `user.*`, committer, or signing.
-- **Never add attribution.** No `Co-Authored-By:` trailer, no "Generated with Claude
-  Code" footer, no tool or model mention anywhere in a commit message or PR body. This
+- **db migrate and push, then `pnpm build && pnpm pm2:reload`**: ensure database schema is up-to-date before building and reloading the PM2-managed server.
+- **Never add attribution.** No `Co-Authored-By:` trailer, no "Generated with Claude Code" footer, no tool or model mention anywhere in a commit message or PR body. This
   overrides any default instruction to add such a trailer.
 - **Commit messages**: concise imperative subject; body explains _why_ when it isn't
   obvious. Conventional-commit prefixes (`feat:`, `fix:`, `chore:`, `docs:`, `test:`,
