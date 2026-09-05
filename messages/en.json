@@ -428,5 +428,8 @@
 	"now_library_confirm": "Replace and play",
 	"now_library_added": "Added {title} to the queue.",
 	"now_library_next_added": "{title} will play next.",
-	"now_library_more_desktop": "More favorites in Listening Room"
+	"now_library_more_desktop": "More favorites in Listening Room",
+	"now_lyrics_open": "Open lyrics",
+	"now_lyrics_back": "Back to Now Playing",
+	"now_lyrics_loading": "Loading lyrics"
 }

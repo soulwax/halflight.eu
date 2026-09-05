@@ -428,5 +428,8 @@
 	"now_library_confirm": "Ersetzen und abspielen",
 	"now_library_added": "{title} zur Warteschlange hinzugefügt.",
 	"now_library_next_added": "{title} wird als Nächstes gespielt.",
-	"now_library_more_desktop": "Weitere Lieblingstitel im Listening Room"
+	"now_library_more_desktop": "Weitere Lieblingstitel im Listening Room",
+	"now_lyrics_open": "Songtext öffnen",
+	"now_lyrics_back": "Zurück zur Wiedergabe",
+	"now_lyrics_loading": "Songtext wird geladen"
 }

@@ -1,7 +1,16 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { fade } from 'svelte/transition';
-	import { Disc, ListMusic, Loader2, Pause, Play, SkipBack, SkipForward } from '@lucide/svelte';
+	import {
+		Disc,
+		ListMusic,
+		Loader2,
+		Pause,
+		Play,
+		ScrollText,
+		SkipBack,
+		SkipForward
+	} from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { formatClock } from '#lib/format';
 	import { player } from '#lib/player/player.svelte.js';
@@ -28,7 +37,14 @@
 	<h1 class="sr-only">{m.now_playing_heading()}</h1>
 
 	{#if track}
-		<div class="flex justify-end">
+		<div class="flex justify-end gap-2">
+			<a
+				href={resolve('/(mobile)/now/lyrics')}
+				class="flex h-10 w-10 items-center justify-center text-(--text-primary)"
+				aria-label={m.now_lyrics_open()}
+			>
+				<ScrollText size={20} />
+			</a>
 			<a
 				href={resolve('/(mobile)/now/queue')}
 				class="relative flex h-10 w-10 items-center justify-center text-(--text-primary)"
