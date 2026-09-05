@@ -7,7 +7,7 @@ const MAX_QUERY_LENGTH = 160;
 const SEARCH_INCLUDES = ['tracks.artists', 'tracks.albums', 'albums.artists'];
 
 export const GET: RequestHandler = async (event) => {
-	if (!event.locals.user) {
+	if (!event.locals.user || !event.locals.isAdministrator) {
 		error(401, 'Unauthorized');
 	}
 
@@ -22,12 +22,11 @@ export const GET: RequestHandler = async (event) => {
 		error(400, 'Search query too long');
 	}
 
-	const connection = await getConnectionStatus();
-	if (!connection.connected) {
-		return json({ results: null, error: 'not_connected' }, { status: 503 });
-	}
-
 	try {
+		const connection = await getConnectionStatus();
+		if (!connection.connected) {
+			return json({ results: null, error: 'not_connected' }, { status: 503 });
+		}
 		const doc = await tidalApi.search(
 			q,
 			{

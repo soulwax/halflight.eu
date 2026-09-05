@@ -6,6 +6,7 @@ import { player } from '#lib/player/player.svelte.js';
 import MobileSearch from './MobileSearch.svelte';
 
 afterEach(() => {
+	vi.restoreAllMocks();
 	vi.unstubAllGlobals();
 	player.currentTrack = null;
 	player.queue = [];
@@ -13,6 +14,96 @@ afterEach(() => {
 });
 
 describe('MobileSearch.svelte', () => {
+	const track = {
+		kind: 'track' as const,
+		id: '1',
+		title: 'Recovered track',
+		artists: [{ id: 'a', name: 'Artist' }]
+	};
+	const resultsResponse = () =>
+		Response.json({ results: { tracks: [track], albums: [], artists: [], playlists: [] } });
+
+	it('retries the same failed query and clears the old error', async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(new Response(null, { status: 502 }))
+			.mockImplementationOnce(resultsResponse);
+		vi.stubGlobal('fetch', fetchMock);
+		render(MobileSearch);
+		await page.getByRole('searchbox').fill('recover');
+		await expect.element(page.getByRole('alert')).toHaveTextContent(m.now_search_unavailable());
+		await page.getByRole('button', { name: m.track_retry(), exact: true }).click();
+		await expect.element(page.getByText(track.title)).toBeInTheDocument();
+		await expect.element(page.getByRole('alert')).not.toBeInTheDocument();
+		expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+			'/api/search?q=recover',
+			'/api/search?q=recover'
+		]);
+	});
+
+	it('turns a stalled search into a retryable failure', async () => {
+		const deadline = new AbortController();
+		vi.spyOn(AbortSignal, 'timeout').mockReturnValue(deadline.signal);
+		const fetchMock = vi.fn(
+			(_url: string, init: RequestInit) =>
+				new Promise<Response>((_resolve, reject) => {
+					init.signal?.addEventListener('abort', () => reject(init.signal?.reason), { once: true });
+				})
+		);
+		vi.stubGlobal('fetch', fetchMock);
+		render(MobileSearch);
+		await page.getByRole('searchbox').fill('slow');
+		await expect.poll(() => fetchMock.mock.calls.length).toBe(1);
+		deadline.abort(new DOMException('Timed out', 'TimeoutError'));
+		await expect.element(page.getByRole('button', { name: m.track_retry() })).toBeInTheDocument();
+		await expect.element(page.getByText(m.search_live_searching())).not.toBeInTheDocument();
+		expect(fetchMock.mock.calls[0][1].signal?.aborted).toBe(true);
+	});
+
+	it.each([401, 503])('offers a recovery link for status %s', async (status) => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status })));
+		render(MobileSearch);
+		await page.getByRole('searchbox').fill('test');
+		const link = page.getByRole('link', {
+			name: status === 401 ? m.sign_in_button() : m.tidal_connect()
+		});
+		await expect
+			.element(link)
+			.toHaveAttribute('href', status === 401 ? '/sign-in' : '/app/settings/tidal');
+	});
+
+	it.each(['cancel', 'unmount', 'new-track'] as const)(
+		'ignores late radio after %s',
+		async (action) => {
+			let resolveRadio!: (response: Response) => void;
+			let radioSignal: AbortSignal | null | undefined;
+			const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+				if (url.startsWith('/api/search')) return Promise.resolve(resultsResponse());
+				radioSignal = init?.signal;
+				return new Promise<Response>((resolve) => {
+					resolveRadio = resolve;
+				});
+			});
+			vi.stubGlobal('fetch', fetchMock);
+			const play = vi.spyOn(player, 'play').mockImplementation(() => {});
+			const screen = render(MobileSearch);
+			await page.getByRole('searchbox').fill('radio');
+			await page.getByRole('button', { name: m.player_start_radio() }).click();
+			await expect.element(page.getByText(m.player_starting_radio())).toBeInTheDocument();
+			if (action === 'cancel')
+				await page.getByRole('button', { name: m.playlist_cancel() }).click();
+			else if (action === 'unmount') await screen.unmount();
+			else player.currentTrack = { ...track, id: 'newer' };
+			const response = Response.json({ tracks: [track] });
+			const json = vi.spyOn(response, 'json');
+			resolveRadio(response);
+			await expect.poll(() => json.mock.results.length).toBe(1);
+			await json.mock.results[0].value;
+			expect(play).not.toHaveBeenCalled();
+			if (action !== 'new-track') expect(radioSignal?.aborted).toBe(true);
+		}
+	);
+
 	it('keeps newer results when an older mobile query resolves late', async () => {
 		const pending: Array<{ resolve: (response: Response) => void }> = [];
 		vi.stubGlobal(

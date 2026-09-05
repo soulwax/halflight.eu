@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Consistent track actions for play next, queue, and track radio across cards and desktop track tables.
 - A focused Halflight Now Home and Now Playing shell sharing the authenticated listening session.
 
+### Fixed
+
+- Mobile search can retry failed queries, recover from expired sign-in or a disconnected TIDAL account, and end stalled requests. Radio can be cancelled and late responses no longer replace a newer track or start playback after leaving search.
+- Search API access now requires the owner account and connection lookup failures return a safe error.
+- Mobile search queue controls have 48-pixel touch targets and keep long track titles on their own row.
+
 ## [0.0.1] - 2026-09-02
 
 ### Added

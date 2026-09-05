@@ -2303,6 +2303,10 @@ afterthought.
       queue editing on mobile are still open. Mobile Search now has a dedicated `/search` route,
       cancellation-safe grouped live results, and track-level play, play-next, queue, and radio
       actions; mobile Library, detail sheets, lyrics, credits, and queue editing remain open.
+      Search recovery now includes retry/sign-in/connection actions, 12-second search and
+      20-second radio client deadlines, cancellable radio with late-response protection, and
+      48-pixel queue controls. Browser regression tests cover recovery and radio cancellation;
+      physical-device acceptance and URL-backed mobile query restoration remain open.
 - [ ] Add live session handoff, conflict reconciliation, Media Session integration, and manual
       data/quality preferences with optional network hints. (L)
 - [ ] Add mobile-only Playwright, visual, accessibility, rotation, safe-area, keyboard, and

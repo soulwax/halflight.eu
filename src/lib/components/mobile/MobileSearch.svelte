@@ -30,7 +30,7 @@
 		playlists: []
 	};
 
-	type SearchError = 'not_connected' | 'unavailable' | null;
+	type SearchError = 'not_connected' | 'unauthorized' | 'unavailable' | null;
 
 	let query = $state('');
 	let results = $state<SearchResultGroups | null>(null);
@@ -38,6 +38,7 @@
 	let error = $state<SearchError>(null);
 	let startingRadioId = $state<string | null>(null);
 	let radioError = $state<string | null>(null);
+	let radioController: AbortController | undefined;
 	let debounceTimer: ReturnType<typeof setTimeout> | undefined;
 	let controller: AbortController | undefined;
 	let requestVersion = 0;
@@ -53,7 +54,17 @@
 		)
 	);
 
-	onDestroy(cancelSearch);
+	onDestroy(() => {
+		cancelSearch();
+		cancelRadio();
+	});
+
+	function cancelRadio(): void {
+		radioController?.abort();
+		radioController = undefined;
+		startingRadioId = null;
+		radioError = null;
+	}
 
 	function cancelSearch(): void {
 		if (debounceTimer) clearTimeout(debounceTimer);
@@ -65,6 +76,7 @@
 	}
 
 	function handleInput(event: Event): void {
+		cancelRadio();
 		query = (event.currentTarget as HTMLInputElement).value;
 		results = null;
 		error = null;
@@ -82,6 +94,8 @@
 		const searchQuery = query.trim();
 		if (searchQuery.length < MINIMUM_QUERY_LENGTH) return;
 		cancelSearch();
+		results = null;
+		error = null;
 		const version = requestVersion;
 		isSearching = true;
 		void search(searchQuery, version);
@@ -91,18 +105,26 @@
 		if (version !== requestVersion) return;
 		const nextController = new AbortController();
 		controller = nextController;
+		const signal = AbortSignal.any([nextController.signal, AbortSignal.timeout(12_000)]);
 
 		try {
 			const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`, {
-				signal: nextController.signal
+				signal
 			});
-			if (version !== requestVersion || nextController.signal.aborted) return;
+			signal.throwIfAborted();
+			if (version !== requestVersion) return;
 			if (!response.ok) {
-				error = response.status === 503 ? 'not_connected' : 'unavailable';
+				error =
+					response.status === 401 || response.status === 403
+						? 'unauthorized'
+						: response.status === 503
+							? 'not_connected'
+							: 'unavailable';
 				return;
 			}
 			const body = (await response.json()) as { results?: SearchResultGroups };
-			if (version === requestVersion && !nextController.signal.aborted) {
+			signal.throwIfAborted();
+			if (version === requestVersion) {
 				results = body.results ?? EMPTY_RESULTS;
 			}
 		} catch (cause) {
@@ -121,6 +143,7 @@
 	}
 
 	function play(track: TrackSummary): void {
+		cancelRadio();
 		player.play(track, results?.tracks, m.now_search_provenance({ query: trimmedQuery }));
 	}
 
@@ -128,17 +151,28 @@
 		if (startingRadioId) return;
 		startingRadioId = track.id;
 		radioError = null;
+		const nextController = new AbortController();
+		radioController = nextController;
+		const signal = AbortSignal.any([nextController.signal, AbortSignal.timeout(20_000)]);
+		const currentTrack = player.currentTrack;
 		try {
-			const response = await fetch(`/api/tracks/${encodeURIComponent(track.id)}/radio`);
+			const response = await fetch(`/api/tracks/${encodeURIComponent(track.id)}/radio`, { signal });
 			if (!response.ok) throw new Error('Radio unavailable');
 			const body = (await response.json()) as { tracks?: TrackSummary[] };
+			signal.throwIfAborted();
+			if (radioController !== nextController || player.currentTrack !== currentTrack) return;
 			const tracks = body.tracks ?? [];
 			if (!tracks.length) throw new Error('Radio empty');
 			player.play(tracks[0], tracks, m.player_radio_provenance({ title: track.title }));
 		} catch {
-			radioError = m.player_radio_unavailable();
+			if (radioController === nextController && !nextController.signal.aborted) {
+				radioError = m.player_radio_unavailable();
+			}
 		} finally {
-			startingRadioId = null;
+			if (radioController === nextController) {
+				startingRadioId = null;
+				radioController = undefined;
+			}
 		}
 	}
 
@@ -194,8 +228,14 @@
 		<p class="state-message">{m.now_search_prompt()}</p>
 	{:else if error === 'not_connected'}
 		<p class="state-message" role="status">{m.search_not_connected_title()}</p>
+		<a class="recovery-action" href={resolve('/app/settings/tidal')}>{m.tidal_connect()}</a>
+	{:else if error === 'unauthorized'}
+		<a class="recovery-action" href={resolve('/sign-in')}>{m.sign_in_button()}</a>
 	{:else if error === 'unavailable'}
 		<p class="state-message" role="alert">{m.now_search_unavailable()}</p>
+		<button class="recovery-action" type="button" onclick={submit}>{m.track_retry()}</button>
+	{:else if isSearching}
+		<p class="state-message" role="status">{m.search_live_searching()}</p>
 	{:else if !isSearching && results && !hasResults}
 		<p class="state-message" role="status">{m.search_no_results_title({ query: trimmedQuery })}</p>
 	{:else if results}
@@ -284,7 +324,13 @@
 			{/if}
 		</div>
 	{/if}
-	<span class="sr-only" aria-live="polite">{radioError ?? ''}</span>
+	{#if startingRadioId}
+		<p role="status">{m.player_starting_radio()}</p>
+		<button class="recovery-action" type="button" onclick={cancelRadio}
+			>{m.playlist_cancel()}</button
+		>
+	{/if}
+	{#if radioError}<p class="state-message" role="alert">{radioError}</p>{/if}
 </section>
 
 <style>
@@ -356,11 +402,17 @@
 		border-bottom: 1px solid var(--border-subtle);
 		padding: 0.75rem 0;
 	}
+	.track-result {
+		flex-wrap: wrap;
+	}
 	.track-copy,
 	.catalogue-result {
 		min-width: 0;
 		flex: 1;
 		color: var(--text-primary);
+	}
+	.track-copy {
+		flex-basis: 100%;
 	}
 	.track-copy,
 	.catalogue-result {
@@ -393,8 +445,8 @@
 	}
 	.track-actions button {
 		display: grid;
-		width: 2rem;
-		height: 2rem;
+		width: 3rem;
+		height: 3rem;
 		place-items: center;
 		border: 0;
 		border-radius: var(--radius-sm);
@@ -410,6 +462,22 @@
 	}
 	.track-actions button:disabled {
 		opacity: 0.5;
+	}
+	.recovery-action {
+		display: inline-flex;
+		align-items: center;
+		min-height: 3rem;
+		padding: 0.5rem 1rem;
+		border: 1px solid var(--border-subtle);
+		background: var(--surface-raised);
+		color: var(--action);
+		font: inherit;
+		cursor: pointer;
+	}
+	.recovery-action:focus-visible,
+	.catalogue-result:focus-visible {
+		outline: 2px solid var(--focus-ring);
+		outline-offset: 2px;
 	}
 	.sr-only {
 		position: absolute;

@@ -17,9 +17,9 @@ import { GET } from './+server';
 
 const fetchMock = vi.fn();
 
-function event(urlStr: string, user: { id: string } | null = { id: 'u1' }) {
+function event(urlStr: string, user: { id: string } | null = { id: 'u1' }, isAdministrator = true) {
 	return {
-		locals: { user },
+		locals: { user, isAdministrator },
 		url: new URL(urlStr),
 		fetch: fetchMock,
 		cookies: {} as unknown as Cookies
@@ -45,6 +45,22 @@ describe('GET /api/search', () => {
 		expect(data).toEqual({
 			results: { tracks: [], albums: [], artists: [], playlists: [] }
 		});
+		expect(mocks.search).not.toHaveBeenCalled();
+	});
+
+	it('rejects signed-in non-owners before reading connection or catalogue data', async () => {
+		await expect(
+			GET(event('http://localhost/api/search?q=test', { id: 'u2' }, false))
+		).rejects.toMatchObject({ status: 401 });
+		expect(mocks.getConnectionStatus).not.toHaveBeenCalled();
+		expect(mocks.search).not.toHaveBeenCalled();
+	});
+
+	it('returns a safe recoverable response when the connection lookup fails', async () => {
+		mocks.getConnectionStatus.mockRejectedValue(new Error('private upstream detail'));
+		const response = await GET(event('http://localhost/api/search?q=test'));
+		expect(response.status).toBe(502);
+		expect(await response.json()).toEqual({ results: null, error: 'search_failed' });
 		expect(mocks.search).not.toHaveBeenCalled();
 	});
 
