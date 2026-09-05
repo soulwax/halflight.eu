@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Mobile search can retry failed queries, recover from expired sign-in or a disconnected TIDAL account, and end stalled requests. Radio can be cancelled and late responses no longer replace a newer track or start playback after leaving search.
+- Mobile search now keeps its query in the URL and restores it with browser history navigation.
 - Search API access now requires the owner account and connection lookup failures return a safe error.
 - Mobile search queue controls have 48-pixel touch targets and keep long track titles on their own row.
 

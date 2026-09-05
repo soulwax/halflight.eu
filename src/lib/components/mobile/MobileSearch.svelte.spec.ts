@@ -5,9 +5,13 @@ import { m } from '#lib/paraglide/messages.js';
 import { player } from '#lib/player/player.svelte.js';
 import MobileSearch from './MobileSearch.svelte';
 
+const mocks = vi.hoisted(() => ({ goto: vi.fn() }));
+vi.mock('$app/navigation', () => ({ goto: mocks.goto }));
+
 afterEach(() => {
 	vi.restoreAllMocks();
 	vi.unstubAllGlobals();
+	mocks.goto.mockReset();
 	player.currentTrack = null;
 	player.queue = [];
 	player.history = [];
@@ -39,6 +43,36 @@ describe('MobileSearch.svelte', () => {
 			'/api/search?q=recover',
 			'/api/search?q=recover'
 		]);
+	});
+
+	it('keeps the active query in the URL without moving focus or scrolling', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockImplementation(resultsResponse));
+		render(MobileSearch);
+
+		await page.getByRole('searchbox').fill('url backed');
+		const [url, options] = mocks.goto.mock.calls[0] ?? [];
+		expect(new URL(String(url)).searchParams.get('q')).toBe('url backed');
+		expect(options).toMatchObject({
+			replace: true,
+			reset: false,
+			shallow: true
+		});
+	});
+
+	it('restores a query when browser history changes', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockImplementation(resultsResponse));
+		const originalUrl = window.location.href;
+		const restoredUrl = new URL(originalUrl);
+		restoredUrl.searchParams.set('q', 'history query');
+		const screen = render(MobileSearch);
+
+		window.history.replaceState(window.history.state, '', restoredUrl);
+		window.dispatchEvent(new PopStateEvent('popstate'));
+		await expect.element(page.getByRole('searchbox')).toHaveValue('history query');
+
+		screen.unmount();
+		window.history.replaceState(window.history.state, '', originalUrl);
+		expect(mocks.goto).not.toHaveBeenCalled();
 	});
 
 	it('turns a stalled search into a retryable failure', async () => {

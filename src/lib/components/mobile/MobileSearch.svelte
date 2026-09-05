@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import {
 		Album,
@@ -11,7 +12,7 @@
 		Search,
 		UserRound
 	} from '@lucide/svelte';
-	import { onDestroy } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { player } from '#lib/player/player.svelte.js';
 	import type {
@@ -54,6 +55,8 @@
 		)
 	);
 
+	onMount(restoreFromUrl);
+
 	onDestroy(() => {
 		cancelSearch();
 		cancelRadio();
@@ -75,30 +78,50 @@
 		isSearching = false;
 	}
 
-	function handleInput(event: Event): void {
-		cancelRadio();
-		query = (event.currentTarget as HTMLInputElement).value;
+	function searchFromQuery(searchQuery: string, delay = 250): void {
 		results = null;
 		error = null;
 		cancelSearch();
-
-		const searchQuery = query.trim();
 		if (searchQuery.length < MINIMUM_QUERY_LENGTH) return;
 
 		const version = requestVersion;
 		isSearching = true;
-		debounceTimer = setTimeout(() => void search(searchQuery, version), 250);
+		if (delay === 0) {
+			void search(searchQuery, version);
+			return;
+		}
+		debounceTimer = setTimeout(() => void search(searchQuery, version), delay);
+	}
+
+	function updateUrl(searchQuery: string): void {
+		if (typeof window === 'undefined') return;
+		const url = new URL(window.location.href);
+		if (searchQuery) url.searchParams.set('q', searchQuery);
+		else url.searchParams.delete('q');
+		void goto(url, { replace: true, reset: false, shallow: true });
+	}
+
+	function restoreFromUrl(): void {
+		if (typeof window === 'undefined') return;
+		const urlQuery = new URL(window.location.href).searchParams.get('q');
+		const nextQuery = urlQuery?.trim().slice(0, 160) ?? '';
+		if (nextQuery === query) return;
+		query = nextQuery;
+		searchFromQuery(nextQuery, 0);
+	}
+
+	function handleInput(event: Event): void {
+		cancelRadio();
+		query = (event.currentTarget as HTMLInputElement).value;
+		const searchQuery = query.trim();
+		updateUrl(searchQuery);
+		searchFromQuery(searchQuery);
 	}
 
 	function submit(): void {
 		const searchQuery = query.trim();
-		if (searchQuery.length < MINIMUM_QUERY_LENGTH) return;
-		cancelSearch();
-		results = null;
-		error = null;
-		const version = requestVersion;
-		isSearching = true;
-		void search(searchQuery, version);
+		updateUrl(searchQuery);
+		searchFromQuery(searchQuery, 0);
 	}
 
 	async function search(searchQuery: string, version: number): Promise<void> {
@@ -191,6 +214,8 @@
 		}
 	}
 </script>
+
+<svelte:window onpopstate={restoreFromUrl} />
 
 <section class="mobile-search" aria-labelledby="mobile-search-title">
 	<header>

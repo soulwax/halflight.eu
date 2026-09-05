@@ -2305,8 +2305,9 @@ afterthought.
       actions; mobile Library, detail sheets, lyrics, credits, and queue editing remain open.
       Search recovery now includes retry/sign-in/connection actions, 12-second search and
       20-second radio client deadlines, cancellable radio with late-response protection, and
-      48-pixel queue controls. Browser regression tests cover recovery and radio cancellation;
-      physical-device acceptance and URL-backed mobile query restoration remain open.
+      48-pixel queue controls. Search queries are URL-backed and restore after browser history
+      navigation. Browser regression tests cover recovery, radio cancellation, and URL updates;
+      physical-device acceptance remains open.
 - [ ] Add live session handoff, conflict reconciliation, Media Session integration, and manual
       data/quality preferences with optional network hints. (L)
 - [ ] Add mobile-only Playwright, visual, accessibility, rotation, safe-area, keyboard, and
