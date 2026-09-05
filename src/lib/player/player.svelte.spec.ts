@@ -490,6 +490,80 @@ describe('PlayerState', () => {
 		expect(retry).toMatchObject({ revision: 4, queue: [sampleTrack2, sampleTrack1] });
 	});
 
+	it('refreshes a repeatedly conflicted queue without changing the audible track', async () => {
+		let writes = 0;
+		const fetchSpy = vi.fn((url: string, init?: RequestInit) => {
+			if (url !== '/api/playback-state') return Promise.reject(new Error('offline'));
+			if (!init?.method || init.method === 'GET') {
+				return Promise.resolve(
+					new Response(
+						JSON.stringify({
+							currentTrack: sampleTrack2,
+							queue: [sampleTrack3],
+							history: [],
+							currentTime: 42,
+							revision: 6
+						}),
+						{ status: 200 }
+					)
+				);
+			}
+			writes += 1;
+			if (writes === 1) {
+				return Promise.resolve(
+					new Response(
+						JSON.stringify({
+							currentTrack: sampleTrack2,
+							queue: [sampleTrack2],
+							history: [],
+							currentTime: 19,
+							revision: 4
+						}),
+						{ status: 409 }
+					)
+				);
+			}
+			if (writes === 2) {
+				return Promise.resolve(
+					new Response(
+						JSON.stringify({
+							currentTrack: sampleTrack3,
+							queue: [sampleTrack3],
+							history: [],
+							currentTime: 24,
+							revision: 5
+						}),
+						{ status: 409 }
+					)
+				);
+			}
+			return Promise.resolve(new Response(JSON.stringify({ revision: 7 }), { status: 200 }));
+		});
+		vi.stubGlobal('fetch', fetchSpy);
+
+		const player = new PlayerState();
+		player.restorePlaybackState({ currentTrack: null, queue: [], history: [], currentTime: 0 });
+		player.addToQueue(sampleTrack1);
+
+		await vi.waitFor(() => expect(player.persistenceStatus).toBe('conflict'));
+		expect(player.currentTrack).toBeNull();
+
+		await player.refreshQueueFromServer();
+
+		expect(player.persistenceStatus).toBe('saved');
+		expect(player.currentTrack).toBeNull();
+		expect(player.queue).toEqual([sampleTrack3, sampleTrack1]);
+		const persistenceWrites = fetchSpy.mock.calls.filter(
+			([url, init]) =>
+				url === '/api/playback-state' && (init as RequestInit | undefined)?.method === 'PUT'
+		);
+		const refreshedWrite = JSON.parse(String(persistenceWrites[2]?.[1]?.body));
+		expect(refreshedWrite).toMatchObject({
+			revision: 6,
+			queue: [sampleTrack3, sampleTrack1]
+		});
+	});
+
 	it('scrobbles once after enough continuous listening time', async () => {
 		const fetchSpy = vi.fn(() => Promise.resolve(new Response(JSON.stringify({ ok: true }))));
 		vi.stubGlobal('fetch', fetchSpy);

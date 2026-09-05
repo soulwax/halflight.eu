@@ -252,6 +252,7 @@
 	"player_radio_unavailable": "Radio is unavailable right now",
 	"player_radio_provenance": "Track radio · {title}",
 	"player_sync_conflict": "Your queue changed elsewhere and has not been saved here.",
+	"player_sync_refresh": "Refresh queue",
 	"player_sync_offline": "Your queue has not been saved. Check your connection and try again.",
 	"player_remove_from_queue": "Remove",
 	"player_previous": "Previous track",

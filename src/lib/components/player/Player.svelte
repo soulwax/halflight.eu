@@ -99,7 +99,16 @@
 			<PlayerActions {track} {floating} {isNarrow} {tidalUrl} />
 		</div>
 		{#if player.persistenceStatus === 'conflict'}
-			<p class="player-sync-status" role="status">{m.player_sync_conflict()}</p>
+			<div class="player-sync-status" role="status">
+				<span>{m.player_sync_conflict()}</span>
+				<button
+					class="player-sync-action"
+					type="button"
+					onclick={() => player.refreshQueueFromServer()}
+				>
+					{m.player_sync_refresh()}
+				</button>
+			</div>
 		{:else if player.persistenceStatus === 'offline'}
 			<p class="player-sync-status" role="status">{m.player_sync_offline()}</p>
 		{/if}

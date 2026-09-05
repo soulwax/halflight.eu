@@ -252,6 +252,7 @@
 	"player_radio_unavailable": "Radio ist gerade nicht verfügbar",
 	"player_radio_provenance": "Titel-Radio · {title}",
 	"player_sync_conflict": "Deine Warteschlange wurde anderswo geändert und hier nicht gespeichert.",
+	"player_sync_refresh": "Warteschlange aktualisieren",
 	"player_sync_offline": "Deine Warteschlange wurde nicht gespeichert. Prüfe die Verbindung und versuche es erneut.",
 	"player_remove_from_queue": "Entfernen",
 	"player_previous": "Vorheriger Titel",

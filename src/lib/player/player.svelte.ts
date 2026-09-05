@@ -1016,6 +1016,51 @@ export class PlayerState {
 		};
 	}
 
+	/**
+	 * Refresh a queue after the automatic stale-write retry has also conflicted.
+	 * The currently audible track remains local; only deliberate queue commands
+	 * are replayed over the latest server queue before one new conditional write.
+	 */
+	async refreshQueueFromServer(): Promise<void> {
+		if (!isBrowser || this.persistenceStatus !== 'conflict') return;
+		this.persistenceStatus = 'saving';
+
+		try {
+			const response = await fetch('/api/playback-state', {
+				headers: { accept: 'application/json' },
+				cache: 'no-store'
+			});
+			const state = (await response.json().catch(() => null)) as SavedPlaybackState | null;
+			if (
+				!response.ok ||
+				!state ||
+				!Array.isArray(state.queue) ||
+				!Array.isArray(state.history) ||
+				typeof state.currentTime !== 'number' ||
+				typeof state.revision !== 'number' ||
+				!Number.isSafeInteger(state.revision)
+			) {
+				this.persistenceStatus = 'offline';
+				return;
+			}
+
+			this.reconciliationBase = state;
+			this.playbackStateRevision = state.revision;
+			this.queue = rebaseQueue(state.queue, this.queueCommands, MAX_QUEUE_LENGTH);
+			this.reconciliationAttempts = 0;
+
+			if (this.queueCommands.length === 0) {
+				this.reconciliationBase = null;
+				this.persistenceStatus = 'saved';
+				return;
+			}
+
+			await this.persistPlaybackState();
+		} catch {
+			this.persistenceStatus = 'offline';
+		}
+	}
+
 	private schedulePersistence(): void {
 		if (!isBrowser || !this.hasRestoredPlaybackState) return;
 		if (this.persistenceStatus === 'conflict') return;
