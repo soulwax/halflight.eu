@@ -30,4 +30,28 @@ describe('AppShell', () => {
 			)
 			.toHaveAttribute('aria-current', 'page');
 	});
+
+	it('renders named shell regions only when a route supplies them', async () => {
+		const snippet = (markup: string) => createRawSnippet(() => ({ render: () => markup }));
+
+		render(AppShell, {
+			navigation: [],
+			currentPath: '/app',
+			skipLinkLabel: 'Skip to main content',
+			navigationLabel: 'Primary navigation',
+			header: snippet('<p>Room header</p>'),
+			aside: snippet('<p>Up next</p>'),
+			asideLabel: 'Listening context',
+			player: snippet('<p>Room player</p>'),
+			footer: snippet('<p>Room footer</p>'),
+			children: snippet('<h1>Home</h1>')
+		});
+
+		await expect.element(page.getByText('Room header')).toBeInTheDocument();
+		// The context region only becomes visible at the wide-shell breakpoint;
+		// the component contract here is that a supplied region is rendered.
+		await expect.element(page.getByText('Up next')).toBeInTheDocument();
+		await expect.element(page.getByText('Room player')).toBeInTheDocument();
+		await expect.element(page.getByText('Room footer')).toBeInTheDocument();
+	});
 });

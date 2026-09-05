@@ -43,6 +43,22 @@
 	--space-panel: clamp(1.75rem, 3.5vw, 2.75rem);
 	--content-max: 74rem;
 
+	/* ---- Listening Room shell: one grid owns the desktop app geometry. ---- */
+	--shell-rail-w: 18rem;
+	--shell-rail-w-collapsed: 4.5rem;
+	--shell-aside-w: 22rem;
+	--shell-header-h: 3.5rem;
+	--shell-player-h: auto;
+	--shell-footer-h: 0.625rem;
+	--shell-gutter: clamp(1.25rem, 3vw, 3.5rem);
+	--z-rail: 10;
+	--z-header: 20;
+	--z-aside: 15;
+	--z-player: 30;
+	--z-footer: 5;
+	--z-overlay: 50;
+	--z-toast: 60;
+
 	--font-display: 'Marcellus', ui-serif, Georgia, 'Times New Roman', serif;
 	--font-mono: ui-monospace, 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
 	--style-body-font: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;

@@ -2302,7 +2302,9 @@ afterthought.
       `player.svelte.ts`'s `origin` field, previously dead code). Library, lyrics, credits, and
       queue editing on mobile are still open. Mobile Search now has a dedicated `/search` route,
       cancellation-safe grouped live results, and track-level play, play-next, queue, and radio
-      actions; mobile Library, detail sheets, lyrics, credits, and queue editing remain open.
+      actions. Mobile Library now presents saved playlists and paginated favorite tracks with
+      play, next, queue, retry, connection, and reviewed replacement states; detail sheets,
+      lyrics, credits, and physical-device acceptance remain open.
       Search recovery now includes retry/sign-in/connection actions, 12-second search and
       20-second radio client deadlines, cancellable radio with late-response protection, and
       48-pixel queue controls. Search queries are URL-backed and restore after browser history

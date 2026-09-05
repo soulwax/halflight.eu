@@ -2,6 +2,8 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import AppShell from '#lib/components/app/AppShell.svelte';
+	import AppHeader from '#lib/components/app/AppHeader.svelte';
+	import Footer from '#lib/components/Footer.svelte';
 	import Player from '#lib/components/player/Player.svelte';
 	import AddToPlaylistModal from '#lib/components/music/AddToPlaylistModal.svelte';
 	import { player } from '#lib/player/player.svelte.js';
@@ -29,8 +31,21 @@
 	});
 </script>
 
+{#snippet appHeader()}
+	<AppHeader user={data.user} />
+{/snippet}
+{#snippet playerRegion()}
+	<Player />
+{/snippet}
+{#snippet footerRegion()}
+	<Footer />
+{/snippet}
+
 <AppShell
 	{navigation}
+	header={appHeader}
+	player={playerRegion}
+	footer={footerRegion}
 	currentPath={page.url.pathname}
 	skipLinkLabel={m.skip_to_content()}
 	navigationLabel={m.nav_primary()}
@@ -41,5 +56,4 @@
 	{@render children()}
 </AppShell>
 
-<Player />
 <AddToPlaylistModal />

@@ -27,7 +27,7 @@ afterEach(() => {
 describe('NowPlayingScreen.svelte', () => {
 	it('shows an honest idle state with no track loaded', async () => {
 		player.currentTrack = null;
-		render(NowPlayingScreen);
+		await render(NowPlayingScreen);
 
 		await expect.element(page.getByText(m.now_idle_message())).toBeInTheDocument();
 		const cta = page.getByRole('link', { name: m.now_idle_cta() });
@@ -37,7 +37,7 @@ describe('NowPlayingScreen.svelte', () => {
 
 	it('shows artwork, identity, seek control and transport for the current track', async () => {
 		player.currentTrack = track;
-		render(NowPlayingScreen);
+		await render(NowPlayingScreen);
 
 		await expect
 			.element(page.getByRole('img', { name: 'Cover for Bela Lugosi Is Dead' }))
@@ -59,7 +59,7 @@ describe('NowPlayingScreen.svelte', () => {
 		player.queue = [];
 		player.history = [];
 		player.currentTime = 0;
-		render(NowPlayingScreen);
+		await render(NowPlayingScreen);
 
 		expect(
 			page.getByRole('button', { name: m.player_previous() }).element().hasAttribute('disabled')

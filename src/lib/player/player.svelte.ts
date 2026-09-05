@@ -30,6 +30,7 @@ interface PlaybackStateWrite extends SavedPlaybackState {
 export type DockMode = 'docked' | 'floating';
 export type RepeatMode = 'off' | 'all' | 'one';
 export type PlayerPanel = 'queue' | 'lyrics' | 'source';
+export type PlaybackPersistenceStatus = 'saved' | 'saving' | 'offline' | 'conflict';
 
 interface PlayerPrefs {
 	dockMode: DockMode;
@@ -71,6 +72,8 @@ export class PlayerState {
 	repeatMode = $state<RepeatMode>('off');
 	/** Which site this browser tab is acting as, for session-write attribution. */
 	origin = $state<PlaybackOrigin>('listening-room');
+	/** Whether the current in-memory session has reached the authoritative server state. */
+	persistenceStatus = $state<PlaybackPersistenceStatus>('saved');
 
 	// Audio playback engine states
 	isPlaying = $state(false);
@@ -112,6 +115,8 @@ export class PlayerState {
 	private gainNode: GainNode | null = null;
 	private hasRestoredPlaybackState = false;
 	private persistenceTimer: ReturnType<typeof setTimeout> | undefined;
+	private persistenceInFlight = false;
+	private persistenceQueued = false;
 	private playbackStateRevision = 0;
 	private lastPersistedPosition = 0;
 	private trackStartedAt = 0;
@@ -971,25 +976,60 @@ export class PlayerState {
 
 	private schedulePersistence(): void {
 		if (!isBrowser || !this.hasRestoredPlaybackState) return;
+		if (this.persistenceStatus === 'conflict') return;
+		this.persistenceStatus = 'saving';
 		if (this.persistenceTimer) clearTimeout(this.persistenceTimer);
 		this.persistenceTimer = setTimeout(() => {
 			this.persistenceTimer = undefined;
-			void fetch('/api/playback-state', {
+			void this.persistPlaybackState();
+		}, 500);
+	}
+
+	private async persistPlaybackState(): Promise<void> {
+		if (this.persistenceInFlight) {
+			this.persistenceQueued = true;
+			return;
+		}
+
+		this.persistenceInFlight = true;
+		const snapshot = this.snapshotPlaybackState();
+		try {
+			const response = await fetch('/api/playback-state', {
 				method: 'PUT',
 				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify(this.snapshotPlaybackState()),
+				body: JSON.stringify(snapshot),
 				keepalive: true
-			})
-				.then(async (response) => {
-					const state = (await response.json().catch(() => null)) as { revision?: unknown } | null;
-					if (typeof state?.revision === 'number' && Number.isSafeInteger(state.revision)) {
-						this.playbackStateRevision = state.revision;
-					}
-				})
-				.catch(() => {
-					// Resume state is a convenience; playback must remain usable offline.
-				});
-		}, 500);
+			});
+			const state = (await response.json().catch(() => null)) as { revision?: unknown } | null;
+			if (response.status === 409) {
+				// Do not attach the server's newer revision to this stale snapshot: that
+				// would overwrite an accepted remote queue. The local audio session stays
+				// intact until an explicit reconciliation flow resolves the conflict.
+				this.persistenceQueued = false;
+				this.persistenceStatus = 'conflict';
+				return;
+			}
+			if (
+				!response.ok ||
+				typeof state?.revision !== 'number' ||
+				!Number.isSafeInteger(state.revision)
+			) {
+				this.persistenceStatus = 'offline';
+				return;
+			}
+
+			this.playbackStateRevision = state.revision;
+			this.persistenceStatus = 'saved';
+		} catch {
+			// Resume state is a convenience; playback must remain usable offline.
+			this.persistenceStatus = 'offline';
+		} finally {
+			this.persistenceInFlight = false;
+			if (this.persistenceQueued && this.persistenceStatus !== 'conflict') {
+				this.persistenceQueued = false;
+				void this.persistPlaybackState();
+			}
+		}
 	}
 }
 

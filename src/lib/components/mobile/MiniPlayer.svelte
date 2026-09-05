@@ -3,10 +3,16 @@
 	import { Disc, Loader2, Pause, Play } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { player } from '#lib/player/player.svelte.js';
+	import { haptics } from '#lib/player/haptics.js';
 
 	const track = $derived(player.currentTrack);
 	const cover = $derived(track ? (track.imageUrl ?? track.album?.imageUrl ?? null) : null);
 	const artistLine = $derived(track ? track.artists.map((artist) => artist.name).join(', ') : '');
+
+	function togglePlayback() {
+		haptics.tick();
+		player.togglePlayPause();
+	}
 </script>
 
 {#if track}
@@ -20,6 +26,7 @@
 		>
 			<span
 				class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden border border-(--border-subtle) bg-(--surface-selected)"
+				style:view-transition-name="syn-now-art"
 			>
 				{#if cover}
 					<img src={cover} alt="" class="h-full w-full object-cover" />
@@ -37,7 +44,7 @@
 		<button
 			type="button"
 			class="flex h-10 w-10 shrink-0 items-center justify-center text-(--text-primary)"
-			onclick={() => player.togglePlayPause()}
+			onclick={togglePlayback}
 			aria-label={player.isPlaying ? m.player_pause() : m.player_play_track()}
 		>
 			{#if player.isLoading}

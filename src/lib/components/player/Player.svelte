@@ -98,6 +98,11 @@
 			<PlayerTransport />
 			<PlayerActions {track} {floating} {isNarrow} {tidalUrl} />
 		</div>
+		{#if player.persistenceStatus === 'conflict'}
+			<p class="player-sync-status" role="status">{m.player_sync_conflict()}</p>
+		{:else if player.persistenceStatus === 'offline'}
+			<p class="player-sync-status" role="status">{m.player_sync_offline()}</p>
+		{/if}
 
 		{#if player.isExpanded}
 			<PlayerPanel {track} {floating} onDragStart={startDrag} />

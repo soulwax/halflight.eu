@@ -420,6 +420,62 @@ describe('PlayerState', () => {
 		expect(body.origin).toBe('halflight-now');
 	});
 
+	it('serializes a changed queue behind an in-flight persistence write', async () => {
+		let resolveFirst: ((response: Response) => void) | undefined;
+		const firstResponse = new Promise<Response>((resolve) => {
+			resolveFirst = resolve;
+		});
+		let persistenceCalls = 0;
+		const fetchSpy = vi.fn((url: string, _init?: RequestInit) => {
+			if (url !== '/api/playback-state') return Promise.reject(new Error('offline'));
+			persistenceCalls += 1;
+			return persistenceCalls === 1
+				? firstResponse
+				: Promise.resolve(new Response(JSON.stringify({ revision: 2 }), { status: 200 }));
+		});
+		vi.stubGlobal('fetch', fetchSpy);
+
+		const player = new PlayerState();
+		player.restorePlaybackState({ currentTrack: null, queue: [], history: [], currentTime: 0 });
+		player.addToQueue(sampleTrack1);
+		await vi.waitFor(() => expect(persistenceCalls).toBe(1));
+
+		player.addToQueue(sampleTrack2);
+		resolveFirst?.(new Response(JSON.stringify({ revision: 1 }), { status: 200 }));
+
+		await vi.waitFor(() => expect(persistenceCalls).toBe(2));
+		const persistenceWrites = fetchSpy.mock.calls.filter(([url]) => url === '/api/playback-state');
+		const secondBody = JSON.parse(String(persistenceWrites[1]?.[1]?.body));
+		expect(secondBody).toMatchObject({
+			revision: 1,
+			queue: [
+				expect.objectContaining({ id: 'track-1' }),
+				expect.objectContaining({ id: 'track-2' })
+			]
+		});
+	});
+
+	it('keeps local playback untouched after a stale persistence conflict', async () => {
+		let persistenceCalls = 0;
+		const fetchSpy = vi.fn((url: string) => {
+			if (url !== '/api/playback-state') return Promise.reject(new Error('offline'));
+			persistenceCalls += 1;
+			return Promise.resolve(new Response(JSON.stringify({ revision: 4 }), { status: 409 }));
+		});
+		vi.stubGlobal('fetch', fetchSpy);
+
+		const player = new PlayerState();
+		player.restorePlaybackState({ currentTrack: null, queue: [], history: [], currentTime: 0 });
+		player.addToQueue(sampleTrack1);
+
+		await vi.waitFor(() => expect(player.persistenceStatus).toBe('conflict'));
+		expect(player.queue).toEqual([sampleTrack1]);
+
+		player.addToQueue(sampleTrack2);
+		await new Promise((resolve) => setTimeout(resolve, 550));
+		expect(persistenceCalls).toBe(1);
+	});
+
 	it('scrobbles once after enough continuous listening time', async () => {
 		const fetchSpy = vi.fn(() => Promise.resolve(new Response(JSON.stringify({ ok: true }))));
 		vi.stubGlobal('fetch', fetchSpy);

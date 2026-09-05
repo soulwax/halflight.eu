@@ -17,6 +17,9 @@
 	// tokens and theming stay shared (see MASTERPLAN.md "share domain logic,
 	// never whole layouts"), so `layout.css` and `themeManager` stay unconditional.
 	let isMobile = $derived(isMobileRoute(page.url.pathname));
+	let isListeningRoom = $derived(
+		page.url.pathname === '/app' || page.url.pathname.startsWith('/app/')
+	);
 
 	$effect(() => {
 		themeManager.init(data.theme, data.visualStyle);
@@ -24,7 +27,7 @@
 </script>
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
-{#if isMobile}
+{#if isMobile || isListeningRoom}
 	{@render children()}
 {:else}
 	<div class="flex min-h-dvh flex-col">

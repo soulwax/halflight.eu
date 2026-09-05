@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { onNavigate } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { player } from '#lib/player/player.svelte.js';
@@ -20,7 +21,26 @@
 		player.restorePlaybackState(data.playbackState);
 	});
 
-	const isNowPlayingRoute = $derived(page.url.pathname === resolve('/(mobile)/now'));
+	// "The mini player grows into Now Playing" (MASTERPLAN.md). Scoped to this
+	// layout so it only ever wraps mobile-to-mobile navigations — `/app/**`
+	// never mounts this component tree. Skips itself under reduced motion,
+	// which the shared global CSS rule (layout.css) cannot reach because the
+	// View Transitions API isn't a `transition-duration`.
+	onNavigate((navigation) => {
+		if (!document.startViewTransition) return;
+		if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+		return new Promise((finishTransition) => {
+			document.startViewTransition(async () => {
+				finishTransition();
+				await navigation.complete;
+			});
+		});
+	});
+
+	const nowRoot = resolve('/(mobile)/now');
+	const isOnNowRoute = $derived(
+		page.url.pathname === nowRoot || page.url.pathname.startsWith(`${nowRoot}/`)
+	);
 </script>
 
 <div class="flex min-h-dvh flex-col bg-(--surface-canvas) text-(--text-primary)">
@@ -34,7 +54,7 @@
 	<main id="main-content" class="min-h-0 flex-1 overflow-y-auto">
 		{@render children()}
 	</main>
-	{#if !isNowPlayingRoute}
+	{#if !isOnNowRoute}
 		<MiniPlayer />
 	{/if}
 	<NowTabBar currentPath={page.url.pathname} />
