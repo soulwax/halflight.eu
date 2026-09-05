@@ -2289,12 +2289,18 @@ Goal: release `m.halflight.eu` as a real mobile site with the same session, not 
 afterthought.
 
 - [ ] Create an independently deployed mobile SvelteKit entry point with its own route tree, shell,
-      CSS entry, error boundary, and release pipeline. (L)
-- [ ] Share only display contracts, player/session protocol, authenticated server capabilities,
+      CSS entry, error boundary, and release pipeline. (L) — deferred: the first slice below keeps
+      one repository/deployment per the plan's own allowance, as a `(mobile)` route group.
+- [x] Share only display contracts, player/session protocol, authenticated server capabilities,
       i18n, and accessible primitives; do not import `AppShell`, `MobileNav`, desktop tables, or
       desktop page CSS. (M)
 - [ ] Build Home, Search, Library, Mini Player, and full-screen Now Playing with queue, lyrics,
-      credits, provenance, and all essential queue verbs. (L)
+      credits, provenance, and all essential queue verbs. (L) — `/now` (full-screen Now Playing:
+      artwork, transport, seek) and a minimal `/home` (resume card) exist behind the `(mobile)`
+      route group, sharing the `player` singleton, `/api/playback-state`, and design tokens with
+      zero desktop-component imports; writes now correctly send `origin: 'halflight-now'` (see
+      `player.svelte.ts`'s `origin` field, previously dead code). Search, Library, lyrics, credits,
+      and queue editing on mobile are still open.
 - [ ] Add live session handoff, conflict reconciliation, Media Session integration, and manual
       data/quality preferences with optional network hints. (L)
 - [ ] Add mobile-only Playwright, visual, accessibility, rotation, safe-area, keyboard, and
