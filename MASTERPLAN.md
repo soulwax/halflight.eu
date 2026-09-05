@@ -2303,8 +2303,11 @@ afterthought.
       queue editing on mobile are still open. Mobile Search now has a dedicated `/search` route,
       cancellation-safe grouped live results, and track-level play, play-next, queue, and radio
       actions. Mobile Library now presents saved playlists and paginated favorite tracks with
-      play, next, queue, retry, connection, and reviewed replacement states; detail sheets,
-      lyrics, credits, and physical-device acceptance remain open.
+      play, next, queue, retry, connection, and reviewed replacement states; Now Playing includes
+      provenance, actual quality, focused lyrics, and contributor credits. Detail sheets and
+      physical-device acceptance remain open. Mobile Settings now offers the
+      same persisted stream quality, default volume, loudness normalization, and TIDAL connection
+      state as the Listening Room without importing its desktop shell.
       Search recovery now includes retry/sign-in/connection actions, 12-second search and
       20-second radio client deadlines, cancellable radio with late-response protection, and
       48-pixel queue controls. Search queries are URL-backed and restore after browser history

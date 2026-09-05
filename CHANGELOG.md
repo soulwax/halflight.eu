@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Header search with grouped live-result dropdowns, keyboard navigation, and a full-results fallback.
 - Consistent track actions for play next, queue, and track radio across cards and desktop track tables.
 - A focused Halflight Now Home and Now Playing shell sharing the authenticated listening session.
+- Halflight Now settings for saved stream quality, default volume, loudness normalization, and TIDAL connection state.
+- Halflight Now now exposes provenance and actual playback quality, with focused lyrics and contributor-credit views.
 
 ### Fixed
 

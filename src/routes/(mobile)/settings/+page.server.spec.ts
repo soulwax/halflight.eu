@@ -1,0 +1,60 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const mocks = vi.hoisted(() => ({
+	saveStreamingSettings: vi.fn()
+}));
+
+vi.mock('#lib/server/streaming-settings', () => ({
+	parseStreamingSettingsInput: (input: { preferredQuality?: string; volume?: string }) =>
+		input.preferredQuality === 'LOSSLESS' && input.volume === '65'
+			? { preferredQuality: 'LOSSLESS', volume: 65, loudnessNormalization: true }
+			: null,
+	saveStreamingSettings: mocks.saveStreamingSettings
+}));
+
+import { actions } from './+page.server';
+
+function event(request: Request) {
+	return { locals: { user: { id: 'owner' } }, request } as never;
+}
+
+describe('/settings streaming action', () => {
+	beforeEach(() => mocks.saveStreamingSettings.mockReset());
+
+	it('persists a valid mobile streaming preference', async () => {
+		mocks.saveStreamingSettings.mockResolvedValue({});
+		const result = await actions.saveStreamingSettings(
+			event(
+				new Request('http://localhost/settings?/saveStreamingSettings', {
+					method: 'POST',
+					body: new URLSearchParams({
+						preferredQuality: 'LOSSLESS',
+						volume: '65',
+						loudnessNormalization: 'on'
+					})
+				})
+			)
+		);
+
+		expect(mocks.saveStreamingSettings).toHaveBeenCalledWith('owner', {
+			preferredQuality: 'LOSSLESS',
+			volume: 65,
+			loudnessNormalization: true
+		});
+		expect(result).toEqual({ streamingSettingsSaved: true });
+	});
+
+	it('rejects an invalid mobile streaming preference', async () => {
+		const result = await actions.saveStreamingSettings(
+			event(
+				new Request('http://localhost/settings?/saveStreamingSettings', {
+					method: 'POST',
+					body: new URLSearchParams({ preferredQuality: 'INVALID', volume: '65' })
+				})
+			)
+		);
+
+		expect(mocks.saveStreamingSettings).not.toHaveBeenCalled();
+		expect(result).toMatchObject({ status: 400, data: { streamingSettingsError: true } });
+	});
+});

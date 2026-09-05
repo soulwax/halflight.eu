@@ -2,6 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { fade } from 'svelte/transition';
 	import {
+		BadgeInfo,
 		Disc,
 		ListMusic,
 		Loader2,
@@ -45,6 +46,11 @@
 			>
 				<ScrollText size={20} />
 			</a>
+			<a
+				href={resolve('/(mobile)/now/credits')}
+				class="flex h-10 w-10 items-center justify-center text-(--text-primary)"
+				aria-label={m.now_credits_open()}><BadgeInfo size={20} /></a
+			>
 			<a
 				href={resolve('/(mobile)/now/queue')}
 				class="relative flex h-10 w-10 items-center justify-center text-(--text-primary)"
@@ -91,6 +97,11 @@
 				<p class="truncate text-xl font-semibold text-(--text-primary)">{track.title}</p>
 				{#if artistLine}
 					<p class="truncate text-sm text-(--text-muted)">{artistLine}</p>
+				{/if}
+				{#if track.provenance || player.qualityLabel}
+					<p class="mt-2 text-xs text-(--text-muted)">
+						{[track.provenance, player.qualityLabel].filter(Boolean).join(' · ')}
+					</p>
 				{/if}
 			</div>
 

@@ -3,6 +3,7 @@
 	import { onNavigate } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import { Settings } from '@lucide/svelte';
 	import { player } from '#lib/player/player.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import synLogo from '#lib/assets/syn-logo.svg';
@@ -45,10 +46,17 @@
 
 <div class="flex min-h-dvh flex-col bg-(--surface-canvas) text-(--text-primary)">
 	<header
-		class="flex h-12 shrink-0 items-center justify-center border-b border-(--border-subtle) bg-(--surface-raised)/95 backdrop-blur-md"
+		class="relative flex h-12 shrink-0 items-center justify-center border-b border-(--border-subtle) bg-(--surface-raised)/95 backdrop-blur-md"
 	>
 		<a href={resolve('/(mobile)/home')} aria-label={m.brand_name()}>
 			<img src={synLogo} alt="" class="h-6 w-auto" />
+		</a>
+		<a
+			href={resolve('/(mobile)/settings')}
+			class="absolute right-1 flex h-11 w-11 items-center justify-center text-(--text-muted) hover:text-(--text-primary) focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-(--focus-ring)"
+			aria-label={m.mobile_settings_title()}
+		>
+			<Settings size={20} aria-hidden="true" />
 		</a>
 	</header>
 	<main id="main-content" class="min-h-0 flex-1 overflow-y-auto">
