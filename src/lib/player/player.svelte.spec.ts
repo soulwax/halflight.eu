@@ -457,7 +457,7 @@ describe('PlayerState', () => {
 
 	it('rebases a stale local queue edit and retries without interrupting playback', async () => {
 		let persistenceCalls = 0;
-		const fetchSpy = vi.fn((url: string) => {
+		const fetchSpy = vi.fn((url: string, _init?: RequestInit) => {
 			if (url !== '/api/playback-state') return Promise.reject(new Error('offline'));
 			persistenceCalls += 1;
 			return persistenceCalls === 1
