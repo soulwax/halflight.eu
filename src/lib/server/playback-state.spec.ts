@@ -52,6 +52,30 @@ describe('playback state', () => {
 		).toBeNull();
 	});
 
+	it('accepts snapshots from older clients but rejects unknown queue commands', () => {
+		expect(
+			parsePlaybackState({ currentTrack: null, queue: [], history: [], currentTime: 0 })
+		).toEqual({ currentTrack: null, queue: [], history: [], currentTime: 0 });
+		expect(
+			parsePlaybackState({
+				currentTrack: null,
+				queue: [],
+				history: [],
+				currentTime: 0,
+				queueCommands: [{ type: 'append', tracks: [track] }]
+			})
+		).toEqual({ currentTrack: null, queue: [], history: [], currentTime: 0 });
+		expect(
+			parsePlaybackState({
+				currentTrack: null,
+				queue: [],
+				history: [],
+				currentTime: 0,
+				queueCommands: [{ type: 'unknown-command' }]
+			})
+		).toBeNull();
+	});
+
 	it('keeps an explicit empty state', () => {
 		expect(parsePlaybackState(EMPTY_PLAYBACK_STATE)).toEqual({
 			currentTrack: null,
@@ -66,5 +90,6 @@ describe('playback state', () => {
 		expect(parsePlaybackStateOrigin('other-site')).toBeNull();
 		expect(parsePlaybackStateRevision(12)).toBe(12);
 		expect(parsePlaybackStateRevision(-1)).toBeNull();
+		expect(parsePlaybackStateRevision(1.5)).toBeNull();
 	});
 });

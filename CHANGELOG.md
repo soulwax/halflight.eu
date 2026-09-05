@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Playback-state snapshot and queue-command inputs are now structurally validated at the server boundary.
 - Halflight Now search with live grouped results and direct queue controls for tracks.
 - Halflight Now Library with saved playlists, paginated favorite tracks, queue controls, and a reviewed queue-replacement action.
 - Property-based generator tests that protect candidate eligibility, cooldown, deduplication, and input-immutability invariants.

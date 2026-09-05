@@ -1,4 +1,5 @@
 import { eq, sql } from 'drizzle-orm';
+import * as v from 'valibot';
 import { db } from '#lib/server/db';
 import { playbackState } from '#lib/server/db/schema';
 import { log } from '#lib/server/log';
@@ -10,6 +11,38 @@ const MAX_POSITION_SECONDS = 60 * 60 * 24;
 export const PLAYBACK_STATE_ORIGINS = ['listening-room', 'halflight-now'] as const;
 
 export type PlaybackStateOrigin = (typeof PLAYBACK_STATE_ORIGINS)[number];
+
+const trackIdSchema = v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(128));
+const queueCommandSchema = v.union([
+	v.object({ type: v.literal('append'), tracks: v.array(v.unknown()) }),
+	v.object({ type: v.literal('prepend'), track: v.unknown() }),
+	v.object({ type: v.literal('remove'), trackId: trackIdSchema }),
+	v.object({
+		type: v.literal('move'),
+		trackId: trackIdSchema,
+		beforeTrackId: v.optional(trackIdSchema),
+		afterTrackId: v.optional(trackIdSchema)
+	}),
+	v.object({ type: v.literal('clear') }),
+	v.object({ type: v.literal('replace'), tracks: v.array(v.unknown()) })
+]);
+
+/**
+ * Compatible wire contract for the existing snapshot endpoint. Queue commands
+ * are still client-side reconciliation intent; the server validates them now
+ * so a future named-intent endpoint can adopt the field without accepting an
+ * unrecognised command from an old or forged client.
+ */
+const playbackStateSnapshotSchema = v.object({
+	currentTrack: v.nullable(v.unknown()),
+	queue: v.array(v.unknown()),
+	history: v.array(v.unknown()),
+	currentTime: v.pipe(v.number(), v.safeInteger(), v.minValue(0), v.maxValue(MAX_POSITION_SECONDS)),
+	queueCommands: v.optional(v.array(queueCommandSchema))
+});
+
+const playbackStateOriginSchema = v.picklist(PLAYBACK_STATE_ORIGINS);
+const playbackStateRevisionSchema = v.pipe(v.number(), v.safeInteger(), v.minValue(0));
 
 export interface PlaybackState {
 	currentTrack: TrackSummary | null;
@@ -148,27 +181,27 @@ function parseTrackList(value: unknown, maximum: number): TrackSummary[] | null 
 
 /** Parse the only playback-state shape accepted by the API. */
 export function parsePlaybackState(value: unknown): PlaybackStateInput | null {
-	const state = asRecord(value);
-	if (!state) return null;
+	const parsed = v.safeParse(playbackStateSnapshotSchema, value);
+	if (!parsed.success) return null;
+	const state = parsed.output;
 	const currentTrack = state.currentTrack === null ? null : parsePlaybackTrack(state.currentTrack);
 	if (state.currentTrack !== null && !currentTrack) return null;
 	const queue = parseTrackList(state.queue, MAX_PLAYBACK_QUEUE_LENGTH);
 	const history = parseTrackList(state.history, MAX_PLAYBACK_HISTORY_LENGTH);
-	const currentTime = optionalInteger(state.currentTime, MAX_POSITION_SECONDS);
-	if (!queue || !history || currentTime == null) return null;
-	return { currentTrack, queue, history, currentTime };
+	if (!queue || !history) return null;
+	return { currentTrack, queue, history, currentTime: state.currentTime };
 }
 
 /** Only explicitly named product surfaces may claim a playback-state write. */
 export function parsePlaybackStateOrigin(value: unknown): PlaybackStateOrigin | null {
-	return typeof value === 'string' && PLAYBACK_STATE_ORIGINS.includes(value as PlaybackStateOrigin)
-		? (value as PlaybackStateOrigin)
-		: null;
+	const parsed = v.safeParse(playbackStateOriginSchema, value);
+	return parsed.success ? parsed.output : null;
 }
 
 /** Client revisions start at zero and advance only in the database. */
 export function parsePlaybackStateRevision(value: unknown): number | null {
-	return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null;
+	const parsed = v.safeParse(playbackStateRevisionSchema, value);
+	return parsed.success ? parsed.output : null;
 }
 
 function parseJson(value: string | null): unknown {
