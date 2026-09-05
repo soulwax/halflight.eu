@@ -443,11 +443,5 @@
 	"now_credits_title": "Credits",
 	"now_credits_loading": "Loading credits",
 	"now_credits_empty": "No contributor credits are available for this track.",
-	"now_credits_unavailable": "Credits are unavailable right now.",
-	"mobile_settings_title": "Settings",
-	"mobile_settings_description": "Tune playback and keep your connection in view.",
-	"mobile_settings_back": "Back to Home",
-	"mobile_settings_connection_title": "TIDAL connection",
-	"mobile_settings_connected": "Your TIDAL account is connected.",
-	"mobile_settings_disconnected": "Connect TIDAL to browse and play your music."
+	"now_credits_unavailable": "Credits are unavailable right now."
 }
