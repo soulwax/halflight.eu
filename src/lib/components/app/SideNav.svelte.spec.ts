@@ -39,4 +39,26 @@ describe('SideNav.svelte', () => {
 			.toHaveAttribute('href', '/app/settings/tidal');
 		await expect.element(page.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
 	});
+
+	it('keeps collapsed navigation accessible and exposes its expansion control', async () => {
+		let toggles = 0;
+		render(SideNav, {
+			...base,
+			currentPath: '/app',
+			collapsed: true,
+			onToggleRail: () => (toggles += 1),
+			collapseRailLabel: 'Collapse navigation',
+			expandRailLabel: 'Expand navigation'
+		});
+
+		await expect
+			.element(
+				page
+					.getByRole('navigation', { name: 'Primary navigation' })
+					.getByRole('link', { name: 'Library' })
+			)
+			.toBeInTheDocument();
+		await page.getByRole('button', { name: 'Expand navigation' }).click();
+		expect(toggles).toBe(1);
+	});
 });

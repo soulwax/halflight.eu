@@ -2260,7 +2260,10 @@ Goal: turn the existing product into a coherent Halflight service before multipl
 - [ ] Audit every current route against the service standard: a clear listening invitation, one
       primary action, queue verbs, calm error recovery, and no operational jargon. (L)
 - [ ] Complete client reconciliation over existing session revision/origin handling; add
-      operation deduplication and active-device ownership before a second site controls the queue. (M)
+      operation deduplication and active-device ownership before a second site controls the queue. (M) —
+      queue commands now rebase once after a 409 response, preserving local audio while retrying
+      append, remove, reorder, clear, and deliberate replacement changes against the returned
+      revision. Stable queue-entry IDs, operation deduplication, and active-device ownership remain open.
 - [ ] Record the domain/cookie/auth design for `halflight.eu` and `m.halflight.eu`; test both hosts
       without widening OAuth or encrypted-TIDAL cookie scope. (M)
 

@@ -20,6 +20,21 @@
 	const track = $derived(player.currentTrack);
 	const cover = $derived(track ? (track.imageUrl ?? track.album?.imageUrl ?? null) : null);
 	const artistLine = $derived(track ? track.artists.map((artist) => artist.name).join(', ') : '');
+	let scrubTime = $state<number | null>(null);
+	const displayedTime = $derived(scrubTime ?? player.currentTime);
+
+	function previewSeek(event: Event): void {
+		const next = Number((event.currentTarget as HTMLInputElement).value);
+		if (Number.isFinite(next)) scrubTime = next;
+	}
+
+	function commitSeek(event: Event): void {
+		const next = Number((event.currentTarget as HTMLInputElement).value);
+		scrubTime = null;
+		if (!Number.isFinite(next)) return;
+		haptics.tick();
+		player.seek(next);
+	}
 
 	// Tied to the track id rather than reset on every change, so a broken image
 	// on one track can't keep hiding artwork once playback moves to the next.
@@ -106,17 +121,19 @@
 			</div>
 
 			<div class="flex w-full max-w-sm items-center gap-2">
-				<span class="w-10 text-right text-xs text-(--text-muted)"
-					>{formatClock(player.currentTime)}</span
+				<span class="w-10 text-right text-xs text-(--text-muted)">{formatClock(displayedTime)}</span
 				>
 				<input
 					type="range"
 					min="0"
 					max={player.duration || 100}
 					step="0.5"
-					value={player.currentTime}
-					oninput={(event) => player.seek(parseFloat(event.currentTarget.value))}
+					value={displayedTime}
+					oninput={previewSeek}
+					onchange={commitSeek}
+					onpointercancel={() => (scrubTime = null)}
 					aria-label={m.player_seek()}
+					aria-valuetext={formatClock(displayedTime)}
 					class="h-8 flex-1 accent-(--action)"
 				/>
 				<span class="w-10 text-xs text-(--text-muted)">{formatClock(player.duration)}</span>

@@ -278,6 +278,8 @@
 	"player_move_down": "Nach unten",
 	"player_save_queue": "Warteschlange als Playlist speichern",
 	"player_add_to_playlist": "Zu einer Playlist hinzufügen",
+	"nav_collapse": "Navigation einklappen",
+	"nav_expand": "Navigation ausklappen",
 	"player_open_tidal": "In TIDAL öffnen",
 	"player_no_lyrics": "Kein Songtext für diesen Titel gefunden.",
 	"player_idle": "Audio-Engine bereit — kein Titel geladen",

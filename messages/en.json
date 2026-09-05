@@ -278,6 +278,8 @@
 	"player_move_down": "Move down",
 	"player_save_queue": "Save queue as a playlist",
 	"player_add_to_playlist": "Add to a playlist",
+	"nav_collapse": "Collapse navigation",
+	"nav_expand": "Expand navigation",
 	"player_open_tidal": "Open in TIDAL",
 	"player_no_lyrics": "No lyrics found for this track.",
 	"player_idle": "Audio engine ready — no track loaded",

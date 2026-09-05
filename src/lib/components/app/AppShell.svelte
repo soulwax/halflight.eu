@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import type { Snippet } from 'svelte';
 	import MobileNav from './MobileNav.svelte';
 	import SideNav from './SideNav.svelte';
@@ -20,7 +21,13 @@
 		accountLabel?: string;
 		signOutAction?: string;
 		signOutLabel?: string;
+		collapseRailLabel?: string;
+		expandRailLabel?: string;
 	}
+
+	const RAIL_PREFERENCE_KEY = 'halflight:listening-room:rail';
+
+	let railCollapsed = $state(false);
 
 	let {
 		children,
@@ -37,14 +44,38 @@
 		accountHref,
 		accountLabel,
 		signOutAction,
-		signOutLabel
+		signOutLabel,
+		collapseRailLabel,
+		expandRailLabel
 	}: Props = $props();
+
+	onMount(() => {
+		try {
+			railCollapsed = localStorage.getItem(RAIL_PREFERENCE_KEY) === 'collapsed';
+		} catch {
+			// The full rail remains usable when browser storage is unavailable.
+		}
+	});
+
+	function toggleRail(): void {
+		railCollapsed = !railCollapsed;
+		try {
+			localStorage.setItem(RAIL_PREFERENCE_KEY, railCollapsed ? 'collapsed' : 'expanded');
+		} catch {
+			// This is a convenience preference, never required session state.
+		}
+	}
 </script>
 
 <a class="app-skip-link" href="#main-content">{skipLinkLabel}</a>
 
 <div class="app-style-canvas app-shell-canvas">
-	<div class="app-shell">
+	<div
+		class="app-shell"
+		style={railCollapsed
+			? '--shell-rail-current: var(--shell-rail-w-collapsed)'
+			: '--shell-rail-current: var(--shell-rail-w)'}
+	>
 		<div class="app-shell-rail">
 			<SideNav
 				{navigation}
@@ -55,6 +86,10 @@
 				{accountLabel}
 				{signOutAction}
 				{signOutLabel}
+				collapsed={railCollapsed}
+				onToggleRail={toggleRail}
+				{collapseRailLabel}
+				{expandRailLabel}
 			/>
 		</div>
 
@@ -92,7 +127,7 @@
 		width: 100%;
 		height: 100dvh;
 		overflow: hidden;
-		grid-template-columns: var(--shell-rail-w) minmax(0, 1fr);
+		grid-template-columns: var(--shell-rail-current) minmax(0, 1fr);
 		grid-template-rows: var(--shell-header-h) minmax(0, 1fr) var(--shell-player-h) var(
 				--shell-footer-h
 			);
@@ -145,7 +180,7 @@
 
 	@media (min-width: 90rem) {
 		.app-shell:has(.app-shell-aside) {
-			grid-template-columns: var(--shell-rail-w) minmax(0, 1fr) var(--shell-aside-w);
+			grid-template-columns: var(--shell-rail-current) minmax(0, 1fr) var(--shell-aside-w);
 			grid-template-areas:
 				'rail header header'
 				'rail main aside'

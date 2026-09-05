@@ -71,4 +71,21 @@ describe('NowPlayingScreen.svelte', () => {
 			page.getByRole('button', { name: m.player_next() }).element().hasAttribute('disabled')
 		).toBe(true);
 	});
+
+	it('previews a scrub before committing one deliberate seek', async () => {
+		player.currentTrack = track;
+		player.duration = track.duration ?? 0;
+		player.currentTime = 12;
+		render(NowPlayingScreen);
+		const slider = page.getByRole('slider', { name: m.player_seek() });
+		const element = slider.element() as HTMLInputElement;
+		element.value = '120';
+		element.dispatchEvent(new Event('input', { bubbles: true }));
+
+		expect(player.currentTime).toBe(12);
+		await expect.element(page.getByText('2:00')).toBeInTheDocument();
+
+		element.dispatchEvent(new Event('change', { bubbles: true }));
+		expect(player.currentTime).toBe(120);
+	});
 });

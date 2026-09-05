@@ -52,6 +52,8 @@
 	userName={data.user.name}
 	signOutAction={resolve('/logout')}
 	signOutLabel={m.sign_out()}
+	collapseRailLabel={m.nav_collapse()}
+	expandRailLabel={m.nav_expand()}
 >
 	{@render children()}
 </AppShell>

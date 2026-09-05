@@ -455,12 +455,25 @@ describe('PlayerState', () => {
 		});
 	});
 
-	it('keeps local playback untouched after a stale persistence conflict', async () => {
+	it('rebases a stale local queue edit and retries without interrupting playback', async () => {
 		let persistenceCalls = 0;
 		const fetchSpy = vi.fn((url: string) => {
 			if (url !== '/api/playback-state') return Promise.reject(new Error('offline'));
 			persistenceCalls += 1;
-			return Promise.resolve(new Response(JSON.stringify({ revision: 4 }), { status: 409 }));
+			return persistenceCalls === 1
+				? Promise.resolve(
+						new Response(
+							JSON.stringify({
+								currentTrack: sampleTrack2,
+								queue: [sampleTrack2],
+								history: [],
+								currentTime: 19,
+								revision: 4
+							}),
+							{ status: 409 }
+						)
+					)
+				: Promise.resolve(new Response(JSON.stringify({ revision: 5 }), { status: 200 }));
 		});
 		vi.stubGlobal('fetch', fetchSpy);
 
@@ -468,12 +481,13 @@ describe('PlayerState', () => {
 		player.restorePlaybackState({ currentTrack: null, queue: [], history: [], currentTime: 0 });
 		player.addToQueue(sampleTrack1);
 
-		await vi.waitFor(() => expect(player.persistenceStatus).toBe('conflict'));
-		expect(player.queue).toEqual([sampleTrack1]);
-
-		player.addToQueue(sampleTrack2);
-		await new Promise((resolve) => setTimeout(resolve, 550));
-		expect(persistenceCalls).toBe(1);
+		await vi.waitFor(() => expect(player.persistenceStatus).toBe('saved'));
+		expect(persistenceCalls).toBe(2);
+		expect(player.currentTrack).toBeNull();
+		expect(player.queue).toEqual([sampleTrack2, sampleTrack1]);
+		const writes = fetchSpy.mock.calls.filter(([url]) => url === '/api/playback-state');
+		const retry = JSON.parse(String(writes[1]?.[1]?.body));
+		expect(retry).toMatchObject({ revision: 4, queue: [sampleTrack2, sampleTrack1] });
 	});
 
 	it('scrobbles once after enough continuous listening time', async () => {

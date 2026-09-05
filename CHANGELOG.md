@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Playback-state conflicts now rebase deliberate queue edits onto the accepted queue and retry once without interrupting local audio.
 - Mobile search can retry failed queries, recover from expired sign-in or a disconnected TIDAL account, and end stalled requests. Radio can be cancelled and late responses no longer replace a newer track or start playback after leaving search.
 - Mobile search now keeps its query in the URL and restores it with browser history navigation.
 - Search API access now requires the owner account and connection lookup failures return a safe error.

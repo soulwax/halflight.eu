@@ -8,6 +8,7 @@ import {
 	updatePlaybackState,
 	updatePositionState
 } from './media-session.js';
+import { rebaseQueue, type QueueCommand } from './playback-reconciliation.js';
 import { streamPreloader, type PreloadedStreamData } from './stream-preloader.js';
 
 /** Which site persisted a queue/position write — see MASTERPLAN.md's session contract. */
@@ -25,6 +26,10 @@ export interface SavedPlaybackState {
 interface PlaybackStateWrite extends SavedPlaybackState {
 	revision: number;
 	origin: PlaybackOrigin;
+}
+
+interface PlaybackPersistenceSnapshot extends PlaybackStateWrite {
+	queueCommands: QueueCommand[];
 }
 
 export type DockMode = 'docked' | 'floating';
@@ -118,6 +123,9 @@ export class PlayerState {
 	private persistenceInFlight = false;
 	private persistenceQueued = false;
 	private playbackStateRevision = 0;
+	private queueCommands: QueueCommand[] = [];
+	private reconciliationBase: SavedPlaybackState | null = null;
+	private reconciliationAttempts = 0;
 	private lastPersistedPosition = 0;
 	private trackStartedAt = 0;
 	private lastObservedPlaybackTime = 0;
@@ -421,6 +429,10 @@ export class PlayerState {
 	 * position, quality, codecs, lyrics or embed state on screen.
 	 */
 	private switchToTrack(track: TrackSummary): void {
+		// A direct track choice is a deliberate session change, so subsequent
+		// persistence may use its local current-track/history fields again.
+		this.reconciliationBase = null;
+		this.recordQueueReplacement();
 		this.currentTrack = track;
 		this.currentTime = 0;
 		this.trackStartedAt = Date.now();
@@ -822,6 +834,7 @@ export class PlayerState {
 	addToQueue(track: TrackSummary, provenance?: string): void {
 		const queuedTrack = this.withProvenance(track, provenance);
 		this.queue.push(queuedTrack);
+		this.queueCommands.push({ type: 'append', tracks: [queuedTrack] });
 		if (this.queue.length === 1) {
 			streamPreloader.preload(queuedTrack.id);
 		}
@@ -832,24 +845,29 @@ export class PlayerState {
 	playNext(track: TrackSummary, provenance?: string): void {
 		const queuedTrack = this.withProvenance(track, provenance);
 		this.queue.unshift(queuedTrack);
+		this.queueCommands.push({ type: 'prepend', track: queuedTrack });
 		streamPreloader.preload(queuedTrack.id);
 		this.schedulePersistence();
 	}
 
 	addMultipleToQueue(tracks: TrackSummary[]): void {
 		this.queue.push(...tracks);
+		this.queueCommands.push({ type: 'append', tracks: tracks.slice() });
 		this.schedulePersistence();
 	}
 
 	removeFromQueue(index: number): void {
 		if (index >= 0 && index < this.queue.length) {
-			this.queue.splice(index, 1);
+			const [removed] = this.queue.splice(index, 1);
+			if (removed) this.queueCommands.push({ type: 'remove', trackId: removed.id });
 			this.schedulePersistence();
 		}
 	}
 
 	clearQueue(): void {
+		if (this.queue.length === 0) return;
 		this.queue = [];
+		this.queueCommands.push({ type: 'clear' });
 		this.schedulePersistence();
 	}
 
@@ -859,6 +877,19 @@ export class PlayerState {
 		if (index < 0 || index >= this.queue.length || target < 0 || target >= this.queue.length)
 			return;
 		[this.queue[index], this.queue[target]] = [this.queue[target], this.queue[index]];
+		const moved = this.queue[target];
+		if (moved) {
+			this.queueCommands.push({
+				type: 'move',
+				trackId: moved.id,
+				...(direction === -1 && this.queue[target + 1]
+					? { beforeTrackId: this.queue[target + 1].id }
+					: {}),
+				...(direction === 1 && this.queue[target - 1]
+					? { afterTrackId: this.queue[target - 1].id }
+					: {})
+			});
+		}
 		this.schedulePersistence();
 	}
 
@@ -929,6 +960,8 @@ export class PlayerState {
 		this.currentTrack = null;
 		this.queue = [];
 		this.history = [];
+		this.reconciliationBase = null;
+		this.recordQueueReplacement();
 		this.isExpanded = false;
 		this.isPlaying = false;
 		this.currentTime = 0;
@@ -957,20 +990,29 @@ export class PlayerState {
 		this.history = state.history.slice(-MAX_HISTORY_LENGTH);
 		this.currentTime = Math.max(0, Math.floor(state.currentTime));
 		this.playbackStateRevision = Math.max(0, state.revision ?? 0);
+		this.queueCommands = [];
+		this.reconciliationBase = null;
+		this.reconciliationAttempts = 0;
 		this.lastPersistedPosition = this.currentTime;
 		this.duration = state.currentTrack?.duration || 0;
 
 		if (this.currentTrack) void this.resolveCover(this.currentTrack);
 	}
 
-	private snapshotPlaybackState(): PlaybackStateWrite {
+	private recordQueueReplacement(): void {
+		this.queueCommands = [{ type: 'replace', tracks: this.queue.slice(0, MAX_QUEUE_LENGTH) }];
+	}
+
+	private snapshotPlaybackState(): PlaybackPersistenceSnapshot {
+		const base = this.reconciliationBase;
 		return {
-			currentTrack: this.currentTrack,
+			currentTrack: base?.currentTrack ?? this.currentTrack,
 			queue: this.queue.slice(0, MAX_QUEUE_LENGTH),
-			history: this.history.slice(-MAX_HISTORY_LENGTH),
-			currentTime: Math.max(0, Math.floor(this.currentTime)),
+			history: (base?.history ?? this.history).slice(-MAX_HISTORY_LENGTH),
+			currentTime: Math.max(0, Math.floor(base?.currentTime ?? this.currentTime)),
 			revision: this.playbackStateRevision,
-			origin: this.origin
+			origin: this.origin,
+			queueCommands: this.queueCommands.slice()
 		};
 	}
 
@@ -1000,13 +1042,29 @@ export class PlayerState {
 				body: JSON.stringify(snapshot),
 				keepalive: true
 			});
-			const state = (await response.json().catch(() => null)) as { revision?: unknown } | null;
+			const state = (await response.json().catch(() => null)) as SavedPlaybackState | null;
 			if (response.status === 409) {
-				// Do not attach the server's newer revision to this stale snapshot: that
-				// would overwrite an accepted remote queue. The local audio session stays
-				// intact until an explicit reconciliation flow resolves the conflict.
-				this.persistenceQueued = false;
-				this.persistenceStatus = 'conflict';
+				if (
+					!state ||
+					!Array.isArray(state.queue) ||
+					typeof state.revision !== 'number' ||
+					!Number.isSafeInteger(state.revision) ||
+					this.reconciliationAttempts >= 1
+				) {
+					this.persistenceQueued = false;
+					this.persistenceStatus = 'conflict';
+					return;
+				}
+
+				// Preserve the currently audible track in this tab. Only its deliberate
+				// queue commands are rebased onto the authoritative server queue; the
+				// next write carries the returned current/history/position unchanged.
+				this.reconciliationBase = state;
+				this.playbackStateRevision = state.revision;
+				this.queue = rebaseQueue(state.queue, this.queueCommands, MAX_QUEUE_LENGTH);
+				this.reconciliationAttempts += 1;
+				this.persistenceQueued = true;
+				this.persistenceStatus = 'saving';
 				return;
 			}
 			if (
@@ -1019,6 +1077,9 @@ export class PlayerState {
 			}
 
 			this.playbackStateRevision = state.revision;
+			this.queueCommands.splice(0, snapshot.queueCommands.length);
+			this.reconciliationBase = null;
+			this.reconciliationAttempts = 0;
 			this.persistenceStatus = 'saved';
 		} catch {
 			// Resume state is a convenience; playback must remain usable offline.
