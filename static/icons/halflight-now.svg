@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Halflight Now</title>
+  <rect width="512" height="512" rx="128" fill="#1d1a16"/>
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="none" stroke="#d6b46f" stroke-opacity=".42" stroke-width="12"/>
+  <circle cx="256" cy="256" r="152" fill="none" stroke="#d6b46f" stroke-width="12" stroke-opacity=".45"/>
+  <circle cx="256" cy="256" r="96" fill="none" stroke="#d6b46f" stroke-width="12" stroke-opacity=".24"/>
+  <path d="M144 276h224M196 168v204M316 168v204" fill="none" stroke="#f0d69a" stroke-linecap="round" stroke-width="30"/>
+  <circle cx="350.4" cy="165.6" r="17.6" fill="#72a993"/>
+  <circle cx="161.6" cy="345.6" r="17.6" fill="#72a993"/>
+</svg>

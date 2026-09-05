@@ -446,5 +446,11 @@
 	"now_credits_title": "Credits",
 	"now_credits_loading": "Loading credits",
 	"now_credits_empty": "No contributor credits are available for this track.",
-	"now_credits_unavailable": "Credits are unavailable right now."
+	"now_credits_unavailable": "Credits are unavailable right now.",
+	"mobile_install_title": "Install Halflight Now",
+	"mobile_install_description": "Open your listening room in its own focused window.",
+	"mobile_install_action": "Install app",
+	"mobile_install_installed": "Halflight Now is installed on this device.",
+	"mobile_install_help_title": "Add it from your browser",
+	"mobile_install_help_description": "Use your browser’s Share or menu button, then choose Add to Home Screen or Install app."
 }

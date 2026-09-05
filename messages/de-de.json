@@ -446,5 +446,11 @@
 	"now_credits_title": "Credits",
 	"now_credits_loading": "Credits werden geladen",
 	"now_credits_empty": "Für diesen Titel sind keine Mitwirkenden-Credits verfügbar.",
-	"now_credits_unavailable": "Credits sind gerade nicht verfügbar."
+	"now_credits_unavailable": "Credits sind gerade nicht verfügbar.",
+	"mobile_install_title": "Halflight Now installieren",
+	"mobile_install_description": "Öffne deinen Listening Room in einem eigenen fokussierten Fenster.",
+	"mobile_install_action": "App installieren",
+	"mobile_install_installed": "Halflight Now ist auf diesem Gerät installiert.",
+	"mobile_install_help_title": "Über deinen Browser hinzufügen",
+	"mobile_install_help_description": "Öffne Teilen oder das Browsermenü und wähle Zum Home-Bildschirm oder App installieren."
 }

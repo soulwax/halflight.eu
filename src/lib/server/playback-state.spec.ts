@@ -1,13 +1,18 @@
 import { describe, expect, it } from 'vitest';
+import type { TrackSummary } from '#lib/tidal/models';
 import {
 	EMPTY_PLAYBACK_STATE,
 	MAX_PLAYBACK_HISTORY_LENGTH,
 	parsePlaybackState,
 	parsePlaybackStateOrigin,
-	parsePlaybackStateRevision
+	parsePlaybackStateRevision,
+	savePlaybackState,
+	type PlaybackState,
+	type PlaybackStateInput,
+	type PlaybackStateStore
 } from './playback-state';
 
-const track = {
+const track: TrackSummary = {
 	kind: 'track',
 	id: '123',
 	title: 'A track',
@@ -16,6 +21,43 @@ const track = {
 };
 
 describe('playback state', () => {
+	it('accepts only one of two simultaneous writes for the same revision', async () => {
+		let persisted: PlaybackState = { ...EMPTY_PLAYBACK_STATE };
+		const acceptedRevisions: number[] = [];
+		const store: PlaybackStateStore = {
+			read: async () => persisted,
+			write: async (_userId, nextState, expectedRevision, origin) => {
+				if (persisted.revision !== expectedRevision) return null;
+				const revision = expectedRevision + 1;
+				acceptedRevisions.push(revision);
+				persisted = { ...nextState, revision, lastOrigin: origin };
+				return persisted;
+			}
+		};
+		const first: PlaybackStateInput = {
+			currentTrack: null,
+			queue: [track],
+			history: [],
+			currentTime: 12
+		};
+		const second: PlaybackStateInput = {
+			currentTrack: null,
+			queue: [],
+			history: [track],
+			currentTime: 34
+		};
+
+		const [firstResult, secondResult] = await Promise.all([
+			savePlaybackState('owner-1', first, 0, 'listening-room', store),
+			savePlaybackState('owner-1', second, 0, 'halflight-now', store)
+		]);
+
+		expect(acceptedRevisions).toEqual([1]);
+		expect([firstResult.conflict, secondResult.conflict]).toEqual([false, true]);
+		expect(secondResult.state).toEqual(firstResult.state);
+		expect(secondResult.state).toMatchObject({ revision: 1, queue: [track], currentTime: 12 });
+	});
+
 	it('accepts a bounded resume state', () => {
 		expect(
 			parsePlaybackState({ currentTrack: track, queue: [track], history: [], currentTime: 42 })

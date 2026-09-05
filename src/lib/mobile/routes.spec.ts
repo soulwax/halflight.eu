@@ -6,6 +6,8 @@ describe('isMobileRoute', () => {
 		expect(isMobileRoute('/now')).toBe(true);
 		expect(isMobileRoute('/home')).toBe(true);
 		expect(isMobileRoute('/search')).toBe(true);
+		expect(isMobileRoute('/library')).toBe(true);
+		expect(isMobileRoute('/settings')).toBe(true);
 	});
 
 	it('matches a nested path under a mobile root', () => {

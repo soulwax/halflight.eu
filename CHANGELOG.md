@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Halflight Now now has an installable-shell manifest, owned standard and maskable icons, mobile-only app metadata, and a Settings installation/help flow.
+- Playback-session protocol documentation and a deterministic two-client optimistic-concurrency race test.
 - Playback-state snapshot and queue-command inputs are now structurally validated at the server boundary.
 - Halflight Now search with live grouped results and direct queue controls for tracks.
 - Halflight Now Library with saved playlists, paginated favorite tracks, queue controls, and a reviewed queue-replacement action.

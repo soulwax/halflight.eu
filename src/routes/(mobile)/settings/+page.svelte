@@ -1,10 +1,60 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { ChevronLeft, CircleCheck, SlidersHorizontal } from '@lucide/svelte';
+	import { ChevronLeft, CircleCheck, Download, SlidersHorizontal } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
+
+	type InstallPromptEvent = Event & {
+		prompt(): Promise<void>;
+		userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+	};
+
+	let installPrompt = $state<InstallPromptEvent | null>(null);
+	let isPromptingInstall = $state(false);
+	let isInstalled = $state(false);
+
+	function isStandalone(): boolean {
+		return (
+			window.matchMedia('(display-mode: standalone)').matches ||
+			(navigator as Navigator & { standalone?: boolean }).standalone === true
+		);
+	}
+
+	$effect(() => {
+		const displayMode = window.matchMedia('(display-mode: standalone)');
+		const syncInstalled = () => (isInstalled = isStandalone());
+		const captureInstallPrompt = (event: Event) => {
+			event.preventDefault();
+			installPrompt = event as InstallPromptEvent;
+		};
+		const markInstalled = () => {
+			isInstalled = true;
+			installPrompt = null;
+		};
+
+		syncInstalled();
+		window.addEventListener('beforeinstallprompt', captureInstallPrompt);
+		window.addEventListener('appinstalled', markInstalled);
+		displayMode.addEventListener('change', syncInstalled);
+		return () => {
+			window.removeEventListener('beforeinstallprompt', captureInstallPrompt);
+			window.removeEventListener('appinstalled', markInstalled);
+			displayMode.removeEventListener('change', syncInstalled);
+		};
+	});
+
+	async function install(): Promise<void> {
+		if (!installPrompt || isPromptingInstall) return;
+		isPromptingInstall = true;
+		try {
+			await installPrompt.prompt();
+			await installPrompt.userChoice;
+		} finally {
+			isPromptingInstall = false;
+		}
+	}
 </script>
 
 <svelte:head>
@@ -102,6 +152,36 @@
 		{:else}
 			<p>{m.mobile_settings_disconnected()}</p>
 			<a class="button" href={resolve('/tidal/connect')}>{m.tidal_connect()}</a>
+		{/if}
+	</section>
+
+	<section class="card" aria-labelledby="mobile-install-title">
+		<div class="card-heading">
+			<Download size={20} aria-hidden="true" />
+			<div>
+				<h2 id="mobile-install-title">{m.mobile_install_title()}</h2>
+				<p>{m.mobile_install_description()}</p>
+			</div>
+		</div>
+
+		{#if isInstalled}
+			<p class="notice success" role="status">
+				<CircleCheck size={18} aria-hidden="true" />{m.mobile_install_installed()}
+			</p>
+		{:else if installPrompt}
+			<button
+				type="button"
+				disabled={isPromptingInstall}
+				aria-busy={isPromptingInstall}
+				onclick={install}
+			>
+				{m.mobile_install_action()}
+			</button>
+		{:else}
+			<details class="install-help">
+				<summary>{m.mobile_install_help_title()}</summary>
+				<p>{m.mobile_install_help_description()}</p>
+			</details>
 		{/if}
 	</section>
 
@@ -208,6 +288,21 @@
 	}
 	.connection .button {
 		margin-top: 1rem;
+	}
+	.card > button,
+	.install-help {
+		margin-top: 1rem;
+	}
+	.install-help {
+		color: var(--text-muted);
+	}
+	.install-help summary {
+		cursor: pointer;
+		font-weight: 700;
+		color: var(--text-primary);
+	}
+	.install-help p {
+		margin-top: 0.5rem;
 	}
 	.notice {
 		display: flex;
