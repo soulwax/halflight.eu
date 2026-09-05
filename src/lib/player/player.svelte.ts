@@ -10,18 +10,21 @@ import {
 } from './media-session.js';
 import { streamPreloader, type PreloadedStreamData } from './stream-preloader.js';
 
+/** Which site persisted a queue/position write — see MASTERPLAN.md's session contract. */
+export type PlaybackOrigin = 'listening-room' | 'halflight-now';
+
 export interface SavedPlaybackState {
 	currentTrack: TrackSummary | null;
 	queue: TrackSummary[];
 	history: TrackSummary[];
 	currentTime: number;
 	revision?: number;
-	lastOrigin?: 'listening-room' | 'halflight-now' | null;
+	lastOrigin?: PlaybackOrigin | null;
 }
 
 interface PlaybackStateWrite extends SavedPlaybackState {
 	revision: number;
-	origin: 'listening-room';
+	origin: PlaybackOrigin;
 }
 
 export type DockMode = 'docked' | 'floating';
@@ -66,6 +69,8 @@ export class PlayerState {
 	floatingPos = $state<{ x: number; y: number }>({ x: 24, y: 24 });
 	shuffle = $state(false);
 	repeatMode = $state<RepeatMode>('off');
+	/** Which site this browser tab is acting as, for session-write attribution. */
+	origin = $state<PlaybackOrigin>('listening-room');
 
 	// Audio playback engine states
 	isPlaying = $state(false);
@@ -378,10 +383,10 @@ export class PlayerState {
 	});
 
 	play(track: TrackSummary, contextTracks?: TrackSummary[], provenance?: string): void {
-		const withProvenance = (candidate: TrackSummary): TrackSummary =>
-			provenance && !candidate.provenance ? { ...candidate, provenance } : candidate;
-		const selectedTrack = withProvenance(track);
-		const contextualTracks = contextTracks?.map(withProvenance);
+		const selectedTrack = this.withProvenance(track, provenance);
+		const contextualTracks = contextTracks?.map((candidate) =>
+			this.withProvenance(candidate, provenance)
+		);
 
 		if (this.currentTrack && this.currentTrack.id !== track.id) {
 			this.history.push(this.currentTrack);
@@ -397,6 +402,10 @@ export class PlayerState {
 		}
 
 		this.switchToTrack(selectedTrack);
+	}
+
+	private withProvenance(track: TrackSummary, provenance?: string): TrackSummary {
+		return provenance && !track.provenance ? { ...track, provenance } : track;
 	}
 
 	/**
@@ -805,11 +814,20 @@ export class PlayerState {
 		this.isCoverExpanded = !this.isCoverExpanded;
 	}
 
-	addToQueue(track: TrackSummary): void {
-		this.queue.push(track);
+	addToQueue(track: TrackSummary, provenance?: string): void {
+		const queuedTrack = this.withProvenance(track, provenance);
+		this.queue.push(queuedTrack);
 		if (this.queue.length === 1) {
-			streamPreloader.preload(track.id);
+			streamPreloader.preload(queuedTrack.id);
 		}
+		this.schedulePersistence();
+	}
+
+	/** Insert a track directly after the current one without interrupting playback. */
+	playNext(track: TrackSummary, provenance?: string): void {
+		const queuedTrack = this.withProvenance(track, provenance);
+		this.queue.unshift(queuedTrack);
+		streamPreloader.preload(queuedTrack.id);
 		this.schedulePersistence();
 	}
 
@@ -947,7 +965,7 @@ export class PlayerState {
 			history: this.history.slice(-MAX_HISTORY_LENGTH),
 			currentTime: Math.max(0, Math.floor(this.currentTime)),
 			revision: this.playbackStateRevision,
-			origin: 'listening-room'
+			origin: this.origin
 		};
 	}
 

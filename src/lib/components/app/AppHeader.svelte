@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { LogIn, LogOut, Settings, Shield } from '@lucide/svelte';
+	import HeaderSearch from '#lib/components/app/HeaderSearch.svelte';
 	import ThemeSelector from '#lib/components/ui/ThemeSelector.svelte';
 	import synLogo from '#lib/assets/syn-logo.svg';
 	import { m } from '#lib/paraglide/messages.js';
@@ -17,7 +18,7 @@
 </script>
 
 <header
-	class="app-header sticky top-0 z-40 flex h-14 w-full shrink-0 items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--surface-raised)]/95 px-4 backdrop-blur-md sm:px-6"
+	class="app-header sticky top-0 z-40 flex h-14 w-full shrink-0 items-center gap-3 border-b border-[var(--border-subtle)] bg-[var(--surface-raised)]/95 px-4 backdrop-blur-md sm:px-6"
 >
 	<!-- Leftmost: Logo -->
 	<div class="flex items-center">
@@ -30,9 +31,17 @@
 		</a>
 	</div>
 
+	{#if user}
+		<div class="min-w-0 flex-1">
+			<HeaderSearch />
+		</div>
+	{:else}
+		<div class="flex-1"></div>
+	{/if}
+
 	<!-- Right: Style Chooser Dropdown, Admin Button, Settings Icon, and Login/Logout Button -->
-	<div class="flex items-center gap-2.5 sm:gap-4">
-		<div class="xs:w-44 w-36 sm:w-52">
+	<div class="flex shrink-0 items-center gap-2.5 sm:gap-4">
+		<div class="hidden w-44 sm:block sm:w-52">
 			<ThemeSelector compact={true} id="header-theme-selector" />
 		</div>
 

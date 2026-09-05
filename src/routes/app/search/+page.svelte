@@ -6,6 +6,7 @@
 	import MediaCard from '#lib/components/music/MediaCard.svelte';
 	import StateCard from '#lib/components/music/StateCard.svelte';
 	import TrackTable from '#lib/components/music/TrackTable.svelte';
+	import TrackQueueActions from '#lib/components/music/TrackQueueActions.svelte';
 	import Button from '#lib/components/ui/Button.svelte';
 	import SectionHeader from '#lib/components/ui/SectionHeader.svelte';
 	import { m } from '#lib/paraglide/messages';
@@ -297,7 +298,11 @@
 					contextTracks={currentResults.tracks}
 					provenance={m.search_title()}
 					columns={['album', 'date', 'duration']}
-				/>
+				>
+					{#snippet rowActions(track)}
+						<TrackQueueActions {track} provenance={m.search_title()} />
+					{/snippet}
+				</TrackTable>
 			</section>
 		{/if}
 

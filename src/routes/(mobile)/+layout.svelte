@@ -1,0 +1,41 @@
+<script lang="ts">
+	import type { Snippet } from 'svelte';
+	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
+	import { player } from '#lib/player/player.svelte.js';
+	import { m } from '#lib/paraglide/messages.js';
+	import synLogo from '#lib/assets/syn-logo.svg';
+	import MiniPlayer from '#lib/components/mobile/MiniPlayer.svelte';
+	import NowTabBar from '#lib/components/mobile/NowTabBar.svelte';
+	import type { LayoutData } from './$types';
+
+	let { data, children }: { data: LayoutData; children: Snippet } = $props();
+
+	// Halflight Now writes are attributed separately from the desktop Listening
+	// Room (see player.svelte.ts's `origin` field / MASTERPLAN's session
+	// contract). Theming is initialised once by the root layout already.
+	$effect(() => {
+		player.origin = 'halflight-now';
+		player.applyStreamingSettings(data.streamingSettings);
+		player.restorePlaybackState(data.playbackState);
+	});
+
+	const isNowPlayingRoute = $derived(page.url.pathname === resolve('/(mobile)/now'));
+</script>
+
+<div class="flex min-h-dvh flex-col bg-(--surface-canvas) text-(--text-primary)">
+	<header
+		class="flex h-12 shrink-0 items-center justify-center border-b border-(--border-subtle) bg-(--surface-raised)/95 backdrop-blur-md"
+	>
+		<a href={resolve('/(mobile)/home')} aria-label={m.brand_name()}>
+			<img src={synLogo} alt="" class="h-6 w-auto" />
+		</a>
+	</header>
+	<main id="main-content" class="min-h-0 flex-1 overflow-y-auto">
+		{@render children()}
+	</main>
+	{#if !isNowPlayingRoute}
+		<MiniPlayer />
+	{/if}
+	<NowTabBar currentPath={page.url.pathname} />
+</div>

@@ -82,6 +82,17 @@ describe('PlayerState', () => {
 		expect(player.queue).toEqual([]);
 	});
 
+	it('inserts a track next while retaining its source provenance', () => {
+		const player = new PlayerState();
+		player.addToQueue(sampleTrack2, 'Search');
+		player.playNext(sampleTrack1, 'Album · Discovery');
+
+		expect(player.queue).toEqual([
+			{ ...sampleTrack1, provenance: 'Album · Discovery' },
+			{ ...sampleTrack2, provenance: 'Search' }
+		]);
+	});
+
 	it('advances to next track in queue and retains history', () => {
 		const player = new PlayerState();
 		player.play(sampleTrack1);
@@ -384,6 +395,29 @@ describe('PlayerState', () => {
 		await Promise.resolve();
 
 		expect(fetchSpy.mock.calls.some((args) => String(args[0]).endsWith('/cover'))).toBe(false);
+	});
+
+	it('attributes a persisted write to the site the player is acting as', async () => {
+		const fetchSpy = vi.fn((url: string, _init?: RequestInit) => {
+			if (String(url) === '/api/playback-state') {
+				return Promise.resolve(new Response(JSON.stringify({ revision: 1 }), { status: 200 }));
+			}
+			return Promise.reject(new Error('offline'));
+		});
+		vi.stubGlobal('fetch', fetchSpy);
+
+		const player = new PlayerState();
+		player.restorePlaybackState({ currentTrack: null, queue: [], history: [], currentTime: 0 });
+		player.origin = 'halflight-now';
+		player.addToQueue(sampleTrack1);
+
+		await vi.waitFor(
+			() => expect(fetchSpy).toHaveBeenCalledWith('/api/playback-state', expect.anything()),
+			{ timeout: 2000 }
+		);
+		const call = fetchSpy.mock.calls.find(([url]) => String(url) === '/api/playback-state');
+		const body = JSON.parse(String(call?.[1]?.body));
+		expect(body.origin).toBe('halflight-now');
 	});
 
 	it('scrobbles once after enough continuous listening time', async () => {

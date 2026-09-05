@@ -1,32 +1,17 @@
 import { redirect } from '@sveltejs/kit';
-import { getConnectionStatus } from '#lib/server/tidal';
-import { getPlaybackState } from '#lib/server/playback-state';
-import { getStreamingSettings } from '#lib/server/streaming-settings';
-import { getUserSettings } from '#lib/server/user-settings';
+import { loadSessionShellData } from '#lib/server/session-shell';
 import type { LayoutServerLoad } from './$types';
 
 export const load: LayoutServerLoad = async (event) => {
 	if (!event.locals.user) redirect(302, '/sign-in');
 
-	const [connection, streamingSettings, playbackState, userSettings] = await Promise.all([
-		getConnectionStatus(),
-		getStreamingSettings(event.locals.user.id),
-		getPlaybackState(event.locals.user.id),
-		getUserSettings(event.locals.user.id)
-	]);
+	const shell = await loadSessionShellData(event);
 	return {
 		user: {
 			name: event.locals.user.name || event.locals.user.email,
 			isAdministrator: Boolean(event.locals.isAdministrator),
 			isFirstAdministrator: Boolean(event.locals.isFirstAdministrator)
 		},
-		connection: {
-			connected: connection.connected,
-			configured: connection.configured
-		},
-		streamingSettings,
-		playbackState,
-		theme: userSettings.theme,
-		visualStyle: userSettings.visualStyle
+		...shell
 	};
 };

@@ -31,13 +31,19 @@ describe('SongCard.svelte', () => {
 		await expect.element(page.getByTitle(m.track_badge_explicit())).toBeInTheDocument();
 	});
 
-	it('exposes play, queue and add-to-playlist actions', async () => {
+	it('exposes play, play-next, queue, radio and add-to-playlist actions', async () => {
 		render(SongCard, { track });
 		await expect
 			.element(page.getByRole('button', { name: m.player_play_track(), exact: true }).first())
 			.toBeInTheDocument();
 		await expect
+			.element(page.getByRole('button', { name: m.player_play_next() }))
+			.toBeInTheDocument();
+		await expect
 			.element(page.getByRole('button', { name: m.player_add_to_queue() }))
+			.toBeInTheDocument();
+		await expect
+			.element(page.getByRole('button', { name: m.player_start_radio() }))
 			.toBeInTheDocument();
 		await expect
 			.element(page.getByRole('button', { name: m.action_add_to_custom_playlist() }))

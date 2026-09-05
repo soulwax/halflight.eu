@@ -3,6 +3,7 @@
 	import PageHeader from '#lib/components/music/PageHeader.svelte';
 	import StateCard from '#lib/components/music/StateCard.svelte';
 	import TrackTable from '#lib/components/music/TrackTable.svelte';
+	import TrackQueueActions from '#lib/components/music/TrackQueueActions.svelte';
 	import Button from '#lib/components/ui/Button.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { player } from '#lib/player/player.svelte.js';
@@ -304,7 +305,11 @@
 					contextTracks={data.playlist.items}
 					provenance={playlistProvenance}
 					columns={['album', 'date', 'duration']}
-				/>
+				>
+					{#snippet rowActions(track)}
+						<TrackQueueActions {track} provenance={playlistProvenance} />
+					{/snippet}
+				</TrackTable>
 			</section>
 		{/if}
 

@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Property-based generator tests that protect candidate eligibility, cooldown, deduplication, and input-immutability invariants.
+- Header search with grouped live-result dropdowns, keyboard navigation, and a full-results fallback.
+- Consistent track actions for play next, queue, and track radio across cards and desktop track tables.
+- A focused Halflight Now Home and Now Playing shell sharing the authenticated listening session.
 
 ## [0.0.1] - 2026-09-02
 

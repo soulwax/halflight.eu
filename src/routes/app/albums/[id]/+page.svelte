@@ -4,6 +4,7 @@
 	import PageHeader from '#lib/components/music/PageHeader.svelte';
 	import StateCard from '#lib/components/music/StateCard.svelte';
 	import TrackTable from '#lib/components/music/TrackTable.svelte';
+	import TrackQueueActions from '#lib/components/music/TrackQueueActions.svelte';
 	import Badge from '#lib/components/ui/Badge.svelte';
 	import Button from '#lib/components/ui/Button.svelte';
 	import SectionHeader from '#lib/components/ui/SectionHeader.svelte';
@@ -122,7 +123,11 @@
 					contextTracks={data.album.items}
 					provenance={albumProvenance}
 					columns={['duration']}
-				/>
+				>
+					{#snippet rowActions(track)}
+						<TrackQueueActions {track} provenance={albumProvenance} />
+					{/snippet}
+				</TrackTable>
 			</section>
 		{/if}
 

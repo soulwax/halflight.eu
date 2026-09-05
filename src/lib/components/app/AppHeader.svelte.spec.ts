@@ -27,6 +27,10 @@ describe('AppHeader.svelte', () => {
 		const settingsLink = page.getByRole('link', { name: 'Settings' });
 		await expect.element(settingsLink).toBeInTheDocument();
 		await expect.element(settingsLink).toHaveAttribute('href', '/app/settings/tidal');
+
+		await expect
+			.element(page.getByRole('combobox', { name: 'Search Halflight' }))
+			.not.toBeInTheDocument();
 	});
 
 	it('renders logo linking to /app and sign-out form when user is logged in', async () => {
@@ -47,6 +51,10 @@ describe('AppHeader.svelte', () => {
 		const settingsLink = page.getByRole('link', { name: 'Settings' });
 		await expect.element(settingsLink).toBeInTheDocument();
 		await expect.element(settingsLink).toHaveAttribute('href', '/app/settings/tidal');
+
+		await expect
+			.element(page.getByRole('combobox', { name: 'Search Halflight' }))
+			.toBeInTheDocument();
 
 		// Admin button should NOT be present for non-admin
 		await expect

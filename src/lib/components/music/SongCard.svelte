@@ -5,24 +5,27 @@
 	import { player } from '#lib/player/player.svelte.js';
 	import type { TrackSummary } from '#lib/tidal/models';
 	import Badge from '#lib/components/ui/Badge.svelte';
+	import TrackRadioButton from './TrackRadioButton.svelte';
 	import { resolve } from '$app/paths';
-	import { Check, Disc, ExternalLink, ListPlus, Play, Plus } from '@lucide/svelte';
+	import { Check, Disc, ExternalLink, ListPlus, ListStart, Play, Plus } from '@lucide/svelte';
 
 	let {
 		track,
 		contextTracks,
-		index
+		index,
+		provenance
 	}: {
 		track: TrackSummary;
 		contextTracks?: TrackSummary[];
 		index?: number;
+		provenance?: string;
 	} = $props();
 
 	let imageError = $state(false);
 	let queuedFeedback = $state(false);
 
 	function handleQueue() {
-		player.addToQueue(track);
+		player.addToQueue(track, provenance);
 		queuedFeedback = true;
 		setTimeout(() => {
 			queuedFeedback = false;
@@ -53,7 +56,7 @@
 		<button
 			type="button"
 			class="artwork-play-btn"
-			onclick={() => player.play(track, contextTracks)}
+			onclick={() => player.play(track, contextTracks, provenance)}
 			title={m.player_play_track()}
 			aria-label={m.player_play_track()}
 		>
@@ -130,12 +133,24 @@
 		<button
 			type="button"
 			class="action-btn play-btn"
-			onclick={() => player.play(track, contextTracks)}
+			onclick={() => player.play(track, contextTracks, provenance)}
 			title={m.player_play_track()}
 			aria-label={m.player_play_track()}
 		>
 			<Play size={14} fill="currentColor" />
 		</button>
+
+		<button
+			type="button"
+			class="action-btn"
+			onclick={() => player.playNext(track, provenance)}
+			title={m.player_play_next()}
+			aria-label={m.player_play_next()}
+		>
+			<ListStart size={15} />
+		</button>
+
+		<TrackRadioButton {track} class="action-btn" />
 
 		<button
 			type="button"
