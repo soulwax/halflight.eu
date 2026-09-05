@@ -391,6 +391,7 @@
 	"admin_submit_create": "Erstellen",
 	"admin_no_users": "Keine Benutzer gefunden",
 	"now_tab_home": "Start",
+	"now_tab_search": "Suche",
 	"now_tab_now": "Jetzt",
 	"now_nav_label": "Halflight Now-Navigation",
 	"now_open_full_player": "Wiedergabe öffnen",
@@ -400,5 +401,11 @@
 	"now_home_heading": "Start",
 	"now_home_continue_heading": "Weiterhören",
 	"now_home_resume_cta": "Wiedergabe fortsetzen",
-	"now_home_empty": "Noch nichts zum Fortsetzen. Starte die Wiedergabe im Listening Room."
+	"now_home_empty": "Noch nichts zum Fortsetzen. Starte die Wiedergabe im Listening Room.",
+	"now_search_heading": "Suche",
+	"now_search_label": "Durchsuche deine Musik",
+	"now_search_placeholder": "Künstler, Album, Titel oder Playlist",
+	"now_search_prompt": "Suche nach etwas zum Abspielen.",
+	"now_search_unavailable": "Die Suche ist nicht verfügbar. Versuche es erneut.",
+	"now_search_provenance": "Suche · {query}"
 }

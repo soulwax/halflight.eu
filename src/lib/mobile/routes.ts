@@ -7,7 +7,7 @@
  * Grows as more mobile routes ship (search, library, settings); nothing
  * outside this module should hard-code a mobile path prefix.
  */
-export const MOBILE_ROOT_PATHS = ['/now', '/home'] as const;
+export const MOBILE_ROOT_PATHS = ['/now', '/home', '/search'] as const;
 
 export function isMobileRoute(pathname: string): boolean {
 	return MOBILE_ROOT_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));

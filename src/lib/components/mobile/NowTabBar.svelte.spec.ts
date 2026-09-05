@@ -5,14 +5,17 @@ import NowTabBar from './NowTabBar.svelte';
 import { m } from '#lib/paraglide/messages.js';
 
 describe('NowTabBar.svelte', () => {
-	it('exposes Home and Now Playing destinations', async () => {
+	it('exposes Home, Search, and Now Playing destinations', async () => {
 		render(NowTabBar, { currentPath: '/home' });
 
 		const home = page.getByRole('link', { name: m.now_tab_home() });
+		const search = page.getByRole('link', { name: m.now_tab_search() });
 		const now = page.getByRole('link', { name: m.now_tab_now() });
 		await expect.element(home).toBeInTheDocument();
+		await expect.element(search).toBeInTheDocument();
 		await expect.element(now).toBeInTheDocument();
 		expect(home.element().getAttribute('href')).toBe('/home');
+		expect(search.element().getAttribute('href')).toBe('/search');
 		expect(now.element().getAttribute('href')).toBe('/now');
 	});
 

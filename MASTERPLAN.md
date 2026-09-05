@@ -2299,8 +2299,10 @@ afterthought.
       artwork, transport, seek) and a minimal `/home` (resume card) exist behind the `(mobile)`
       route group, sharing the `player` singleton, `/api/playback-state`, and design tokens with
       zero desktop-component imports; writes now correctly send `origin: 'halflight-now'` (see
-      `player.svelte.ts`'s `origin` field, previously dead code). Search, Library, lyrics, credits,
-      and queue editing on mobile are still open.
+      `player.svelte.ts`'s `origin` field, previously dead code). Library, lyrics, credits, and
+      queue editing on mobile are still open. Mobile Search now has a dedicated `/search` route,
+      cancellation-safe grouped live results, and track-level play, play-next, queue, and radio
+      actions; mobile Library, detail sheets, lyrics, credits, and queue editing remain open.
 - [ ] Add live session handoff, conflict reconciliation, Media Session integration, and manual
       data/quality preferences with optional network hints. (L)
 - [ ] Add mobile-only Playwright, visual, accessibility, rotation, safe-area, keyboard, and

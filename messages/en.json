@@ -391,6 +391,7 @@
 	"admin_submit_create": "Submit & Create",
 	"admin_no_users": "No users found",
 	"now_tab_home": "Home",
+	"now_tab_search": "Search",
 	"now_tab_now": "Now",
 	"now_nav_label": "Halflight Now navigation",
 	"now_open_full_player": "Open Now Playing",
@@ -400,5 +401,11 @@
 	"now_home_heading": "Home",
 	"now_home_continue_heading": "Continue listening",
 	"now_home_resume_cta": "Resume playback",
-	"now_home_empty": "Nothing to resume yet. Start playing something in the Listening Room."
+	"now_home_empty": "Nothing to resume yet. Start playing something in the Listening Room.",
+	"now_search_heading": "Search",
+	"now_search_label": "Search your music",
+	"now_search_placeholder": "Artist, album, track, or playlist",
+	"now_search_prompt": "Search for something to play.",
+	"now_search_unavailable": "Search is unavailable. Try again.",
+	"now_search_provenance": "Search · {query}"
 }

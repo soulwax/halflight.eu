@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Halflight Now search with live grouped results and direct queue controls for tracks.
 - Property-based generator tests that protect candidate eligibility, cooldown, deduplication, and input-immutability invariants.
 - Header search with grouped live-result dropdowns, keyboard navigation, and a full-results fallback.
 - Consistent track actions for play next, queue, and track radio across cards and desktop track tables.
