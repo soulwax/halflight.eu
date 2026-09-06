@@ -73,9 +73,13 @@
 		gap: clamp(1.25rem, 3.5vw, 2.5rem);
 		padding: clamp(1.25rem, 3.5vw, 2.5rem);
 		border: 1px solid var(--border-subtle);
-		background: var(--surface-raised);
-		border-radius: var(--radius-lg);
-		box-shadow: var(--shadow-raised);
+		background: linear-gradient(
+			120deg,
+			color-mix(in oklab, var(--editorial-sky, var(--surface-selected)) 54%, var(--surface-raised)),
+			color-mix(in oklab, var(--editorial-blush, var(--surface-raised)) 34%, var(--surface-raised))
+		);
+		border-radius: var(--radius-xl);
+		box-shadow: 0 18px 34px -28px rgb(6 48 100 / 35%);
 		margin-bottom: 2rem;
 	}
 
@@ -85,8 +89,8 @@
 		object-fit: cover;
 		border: 1px solid var(--border-subtle);
 		border-radius: var(--radius-md);
-		background: var(--surface-canvas);
-		box-shadow: 3px 3px 0px var(--border-strong);
+		background: var(--surface-raised);
+		box-shadow: 0 14px 26px -18px rgb(6 48 100 / 42%);
 		flex-shrink: 0;
 	}
 

@@ -1217,14 +1217,14 @@
 @layer components {
 	/* ---- Deco building blocks ---- */
 
-	/* Eyebrow / kicker: small caps, wide tracking, brass. */
+	/* A quiet editorial kicker shared by route and entity headers. */
 	.deco-eyebrow {
 		display: inline-block;
-		color: var(--accent-gold-deep);
-		font-family: system-ui, sans-serif;
-		font-size: 0.7rem;
+		color: var(--action);
+		font-family: var(--style-body-font);
+		font-size: var(--fs-xs);
 		font-weight: 700;
-		letter-spacing: 0.32em;
+		letter-spacing: 0.08em;
 		text-transform: uppercase;
 	}
 
