@@ -782,24 +782,25 @@ Bounded, derived, and always reversible.
 Halflight should be visually distinct from TIDAL while respecting TIDAL's content and attribution
 rules.
 
-**Desktop (Listening Room) north star: macOS composure with a dopamine pulse, built from modules.**
-The pure phone experience (Halflight Now) is designed separately and does not inherit this system.
+**Visual north star: Halflight light, a mobile-first editorial listening room.** The local
+[`docs/style-guide.html`](docs/style-guide.html) is the reference for its palette, rhythm, and
+surface language. Halflight Now remains a separate phone composition with its own route and
+interaction contracts; it shares the system, not the desktop rail.
 
-- **macOS composure.** Deep dark ground; content lives on _floating, rounded panes_ that sit
-  inset from the window edge with soft, diffuse, layered shadows — never hard poster offsets or
-  hairline "metal rules". Chrome (rail, header, player) is translucent **vibrancy**: a blurred,
-  slightly saturated wash of the surface colour so artwork colour bleeds through. Type is the
-  system UI face (SF on macOS) at its real weights — no display serif, no uppercase transforms in
-  the default composition. Corners are generously rounded (10px controls, 14px panes, 20px sheets).
-- **Dopamine pulse.** One confident, _saturated_ accent that actually glows — it tints the primary
-  action, the active nav item, the scrubber, and the now-playing focus. Selection and hover are
-  felt: a quick scale, a spring settle, a colour bloom. Energy is welcome in the shell; it never
-  crosses onto the artwork, and it never fires during a save, a generation, or while a track is
-  mid-transition.
-- **Modular.** Every region and every content block is a discrete **module** — one radius, one
-  border treatment, one elevation, consumed from tokens (`--module-*`). Home is a short stack of
-  named modules; the player, queue, provenance, and generation controls each read as their own
-  tile. Modules can be shown, hidden, and (later) rearranged without restyling.
+- **Paper and ink.** An off-white canvas and clean white surfaces make artwork, titles, and
+  artists prominent. Deep blue is the durable ink for type and primary actions; restrained sky
+  states mark selection and a sky/blush wash is reserved for editorial invitations. Metadata stays
+  quiet slate. Use shallow blue elevation and hairline dividers, never hard offset shadows or
+  decorative chrome.
+- **Calm interaction.** Controls, artwork, and rows use a small family of soft radii. Focus is
+  clear; hover and press feedback settle within 120–220ms. The primary transport is round and
+  decisive, while secondary controls recede. Do not rotate artwork, draw a fake waveform, or add
+  decorative animation while music plays; a real range input remains the seek control.
+- **Shared surface language.** Desktop uses a compact rail, simple header/search, clear main
+  reading column, and persistent player. Mobile starts with safe-area-aware compact chrome,
+  touch-sized art-led rows, a mini player, and four destination tabs. Both consume the same
+  semantic tokens for canvas, surface, border, ink, muted text, action, editorial sky/blush,
+  radii, and elevation.
 
 Apple Music's album-forward hierarchy still governs _what_ leads: artwork, artist, title, release
 context, and the act of listening come first; metrics and diagnostics recede. "Audio outranks UI"
@@ -815,10 +816,9 @@ saturation, translucent surface), `--shadow-panel` / `--shadow-float` (soft laye
 `--ease-spring`, and `--module-*` (radius, border, background, elevation) — the single source of
 truth for a tile.
 
-Halflight has one dark reference composition. The interface is quiet everywhere except the
-accent: a single saturated colour that glows on the primary action and the now-playing focus.
-Artwork, quality, and playback state still carry the rest of the colour. Quality badges colour by
-fidelity tier (grey lossy, cyan lossless, gold HiRes) via `qualityTier()`.
+Halflight has one light reference composition. Artwork, quality, and playback state carry the
+visual energy; the surface system stays quiet. Quality badges colour by fidelity tier (grey lossy,
+cyan lossless, gold HiRes) via `qualityTier()`.
 
 Typography and hierarchy rules:
 

@@ -318,23 +318,27 @@
 <style>
 	.header-search {
 		position: relative;
-		width: min(100%, 42rem);
+		width: min(100%, 26.25rem);
 	}
 	.search-field {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: 0.55rem;
 		min-width: 0;
-		height: 2.25rem;
-		padding: 0 0.7rem;
+		height: 2.5rem;
+		padding: 0 0.85rem;
 		border: 1px solid var(--border-subtle);
-		border-radius: var(--radius-md);
-		background: var(--surface-canvas);
-		color: var(--text-muted);
+		border-radius: 0.75rem;
+		background: var(--surface-raised);
+		color: var(--editorial-faint);
+		transition:
+			border-color 140ms ease,
+			box-shadow 140ms ease,
+			color 140ms ease;
 	}
 	.search-field:focus-within {
-		border-color: var(--action);
-		box-shadow: 0 0 0 2px color-mix(in oklab, var(--action) 20%, transparent);
+		border-color: color-mix(in oklab, var(--action) 64%, var(--border-subtle));
+		box-shadow: 0 0 0 3px color-mix(in oklab, var(--editorial-sky) 58%, transparent);
 		color: var(--action);
 	}
 	input {
@@ -343,7 +347,8 @@
 		border: 0;
 		background: transparent;
 		color: var(--text-primary);
-		font-size: var(--fs-base);
+		font-size: 0.875rem;
+		letter-spacing: -0.005em;
 		outline: none;
 	}
 	input::placeholder {
@@ -352,27 +357,26 @@
 	.search-dropdown {
 		position: absolute;
 		z-index: 60;
-		top: calc(100% + 0.45rem);
+		top: calc(100% + 0.55rem);
 		width: 100%;
 		max-height: min(70dvh, 34rem);
 		overflow-y: auto;
-		border: 1px solid var(--border-strong);
-		border-radius: var(--radius-md);
+		border: 1px solid var(--border-subtle);
+		border-radius: 0.85rem;
 		background: var(--surface-raised);
-		box-shadow: var(--shadow-raised);
+		box-shadow: 0 18px 34px -24px rgb(6 48 100 / 38%);
 	}
 	.result-group {
-		padding: 0.45rem;
+		padding: 0.5rem;
 		border-bottom: 1px solid var(--border-subtle);
 	}
 	.group-label {
 		margin: 0;
-		padding: 0.35rem 0.5rem;
-		color: var(--text-muted);
-		font-family: var(--font-mono);
+		padding: 0.45rem 0.55rem;
+		color: var(--editorial-faint);
 		font-size: 0.65rem;
 		font-weight: 700;
-		letter-spacing: 0.09em;
+		letter-spacing: 0.12em;
 		text-transform: uppercase;
 	}
 	.dropdown-result,
@@ -380,10 +384,10 @@
 		display: flex;
 		width: 100%;
 		align-items: center;
-		gap: 0.7rem;
-		padding: 0.55rem;
+		gap: 0.75rem;
+		padding: 0.6rem;
 		border: 0;
-		border-radius: var(--radius-sm);
+		border-radius: 0.625rem;
 		background: transparent;
 		color: var(--text-primary);
 		text-align: left;
@@ -394,7 +398,7 @@
 	.dropdown-result.active,
 	.resource-result:hover,
 	.view-all:hover {
-		background: var(--surface-selected);
+		background: color-mix(in oklab, var(--editorial-sky) 62%, var(--surface-raised));
 	}
 	.dropdown-result:focus-visible,
 	.resource-result:focus-visible,
@@ -405,10 +409,11 @@
 	.result-icon {
 		display: grid;
 		flex: none;
-		width: 2rem;
-		height: 2rem;
+		width: 2.1rem;
+		height: 2.1rem;
 		place-items: center;
-		background: color-mix(in oklab, var(--action) 12%, transparent);
+		border-radius: 0.5rem;
+		background: color-mix(in oklab, var(--editorial-sky) 58%, var(--surface-raised));
 		color: var(--action);
 	}
 	.result-copy {
@@ -443,8 +448,9 @@
 		display: block;
 		padding: 0.75rem 1rem;
 		color: var(--action);
-		font-size: 0.85rem;
+		font-size: 0.8rem;
 		font-weight: 700;
+		letter-spacing: 0.01em;
 		text-decoration: none;
 	}
 	.sr-only {
@@ -463,7 +469,7 @@
 			width: 100%;
 		}
 		.search-field {
-			height: 2.15rem;
+			height: 2.3rem;
 		}
 		input {
 			font-size: 0.8rem;

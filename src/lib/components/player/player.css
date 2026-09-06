@@ -195,8 +195,8 @@
 	position: absolute;
 	inset: -1px;
 	border: 1px solid transparent;
-	border-top-color: var(--accent-gold);
-	animation: syn-player-spin 3s linear infinite;
+	border-color: color-mix(in oklab, var(--action) 38%, transparent);
+	box-shadow: 0 0 0 2px color-mix(in oklab, var(--action) 10%, transparent);
 }
 .syn-player .cover-cta {
 	position: absolute;
@@ -233,7 +233,7 @@
 	text-overflow: ellipsis;
 }
 .syn-player .title:hover {
-	color: var(--accent-gold);
+	color: var(--action);
 }
 .syn-player .sub {
 	display: flex;
@@ -348,6 +348,7 @@
 	width: 2.1rem;
 	height: 2.1rem;
 	border: 1px solid transparent;
+	border-radius: var(--radius-sm);
 	background: transparent;
 	color: var(--text-muted);
 	cursor: pointer;
@@ -368,19 +369,23 @@
 }
 .syn-player .t-btn.on,
 .syn-player .a-btn.on {
-	color: var(--accent-gold);
-	border-color: color-mix(in oklab, var(--accent-gold) 35%, transparent);
+	color: var(--action);
+	border-color: color-mix(in oklab, var(--action) 35%, transparent);
+	background: color-mix(in oklab, var(--action) 8%, transparent);
 }
 .syn-player .t-btn.play {
 	width: 2.5rem;
 	height: 2.5rem;
 	color: var(--action-contrast);
-	background: var(--accent-gold);
-	border-color: var(--accent-gold-deep);
+	border-radius: var(--radius-full);
+	background: var(--action);
+	border-color: var(--action);
+	box-shadow: 0 8px 18px -12px color-mix(in oklab, var(--action) 70%, transparent);
 }
 .syn-player .t-btn.play:hover {
-	background: var(--accent-gold);
-	filter: brightness(1.06);
+	background: var(--accent-gold-deep);
+	filter: none;
+	transform: scale(1.04);
 }
 
 .syn-player .actions {
@@ -402,7 +407,8 @@
 	padding: 0 3px;
 	display: grid;
 	place-items: center;
-	background: var(--accent-gold);
+	border-radius: var(--radius-full);
+	background: var(--action);
 	color: var(--action-contrast);
 	font-size: 0.58rem;
 	font-weight: 700;
@@ -764,16 +770,5 @@
 	.syn-player .a-btn {
 		width: 2.4rem;
 		height: 2.4rem;
-	}
-}
-
-@keyframes syn-player-spin {
-	to {
-		rotate: 360deg;
-	}
-}
-@media (prefers-reduced-motion: reduce) {
-	.syn-player .cover.spin::after {
-		animation: none;
 	}
 }

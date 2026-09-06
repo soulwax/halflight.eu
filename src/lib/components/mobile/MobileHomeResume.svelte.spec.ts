@@ -23,6 +23,9 @@ describe('MobileHomeResume.svelte', () => {
 		player.currentTrack = null;
 		render(MobileHomeResume);
 
+		await expect
+			.element(page.getByRole('heading', { name: m.now_home_heading() }))
+			.toBeInTheDocument();
 		await expect.element(page.getByText(m.now_home_empty())).toBeInTheDocument();
 		await expect.element(page.getByRole('link')).not.toBeInTheDocument();
 	});

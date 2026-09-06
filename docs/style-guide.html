@@ -1,0 +1,1390 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Drift — Music</title>
+		<link
+			href="https://fonts.googleapis.com/css?family=Roboto:400,500,700&display=swap"
+			rel="stylesheet"
+		/>
+		<link href="https://fonts.googleapis.com/css?family=Fjalla+One&display=swap" rel="stylesheet" />
+		<style>
+			:root {
+				--ink: #063064;
+				--muted: #7c8aa8;
+				--faint: #aeb8cc;
+				--bg: #f5f8fb;
+				--surface: #ffffff;
+				--sky: #bfe7f4;
+				--sky-deep: #7fc9e0;
+				--blush: #f1cdec;
+				--line: #eef1f6;
+				--player-h: 84px;
+				--sidebar-w: 232px;
+			}
+
+			* {
+				box-sizing: border-box;
+			}
+			*:focus-visible {
+				outline: 2px solid var(--ink);
+				outline-offset: 2px;
+			}
+
+			html,
+			body {
+				height: 100%;
+				margin: 0;
+			}
+
+			body {
+				background: var(--bg);
+				font-family: 'Roboto', sans-serif;
+				color: var(--ink);
+			}
+
+			.app {
+				display: grid;
+				grid-template-columns: var(--sidebar-w) 1fr;
+				grid-template-rows: 1fr var(--player-h);
+				height: 100vh;
+			}
+
+			/* ---------- Sidebar ---------- */
+			.sidebar {
+				grid-row: 1 / 2;
+				background: var(--surface);
+				border-right: 1px solid var(--line);
+				padding: 28px 18px;
+				display: flex;
+				flex-direction: column;
+				overflow-y: auto;
+			}
+
+			.brand {
+				font-family: 'Fjalla One', sans-serif;
+				font-size: 21px;
+				letter-spacing: 0.2px;
+				padding: 0 10px 28px 10px;
+			}
+
+			.nav-list {
+				list-style: none;
+				margin: 0;
+				padding: 0;
+			}
+
+			.nav-item {
+				display: flex;
+				align-items: center;
+				gap: 12px;
+				padding: 10px 12px;
+				border-radius: 10px;
+				color: var(--muted);
+				cursor: pointer;
+				font-size: 14px;
+				font-weight: 500;
+				transition:
+					background-color 120ms ease,
+					color 120ms ease;
+				margin-bottom: 2px;
+			}
+			.nav-item svg {
+				width: 18px;
+				height: 18px;
+				flex-shrink: 0;
+			}
+			.nav-item:hover {
+				background: var(--bg);
+				color: var(--ink);
+			}
+			.nav-item.active {
+				background: var(--sky);
+				color: var(--ink);
+			}
+
+			.sidebar-section-label {
+				font-size: 11px;
+				color: var(--faint);
+				margin: 26px 12px 8px 12px;
+				font-weight: 500;
+			}
+
+			.playlist-mini-list {
+				list-style: none;
+				margin: 0;
+				padding: 0;
+			}
+			.playlist-mini-item {
+				padding: 8px 12px;
+				border-radius: 10px;
+				font-size: 13px;
+				color: var(--muted);
+				cursor: pointer;
+				transition:
+					background-color 120ms ease,
+					color 120ms ease;
+			}
+			.playlist-mini-item:hover {
+				background: var(--bg);
+				color: var(--ink);
+			}
+
+			/* ---------- Main ---------- */
+			.main {
+				grid-row: 1 / 2;
+				overflow-y: auto;
+				padding: 32px 40px 60px 40px;
+			}
+
+			.topbar {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				margin-bottom: 26px;
+			}
+
+			.view-title {
+				font-family: 'Fjalla One', sans-serif;
+				font-size: 26px;
+				margin: 0;
+			}
+
+			.search-input-wrap {
+				position: relative;
+				width: 100%;
+				max-width: 420px;
+			}
+			.search-input-wrap svg {
+				position: absolute;
+				left: 14px;
+				top: 50%;
+				transform: translateY(-50%);
+				width: 15px;
+				height: 15px;
+				color: var(--faint);
+			}
+			.search-input {
+				width: 100%;
+				padding: 11px 14px 11px 38px;
+				border-radius: 12px;
+				border: 1px solid var(--line);
+				background: var(--surface);
+				font-family: 'Roboto', sans-serif;
+				font-size: 14px;
+				color: var(--ink);
+			}
+			.search-input::placeholder {
+				color: var(--faint);
+			}
+
+			.view {
+				display: none;
+			}
+			.view.active {
+				display: block;
+			}
+
+			/* Discover */
+			.hero {
+				display: flex;
+				align-items: center;
+				gap: 22px;
+				background: linear-gradient(120deg, var(--sky), var(--blush));
+				border-radius: 20px;
+				padding: 26px;
+				margin-bottom: 34px;
+			}
+			.hero-art {
+				width: 110px;
+				height: 110px;
+				border-radius: 16px;
+				background-image: url('https://images.unsplash.com/photo-1535392432937-a27c36ec07b5?ixlib=rb-1.2.1&auto=format&fit=crop&w=934&q=80');
+				background-size: cover;
+				background-position: center;
+				flex-shrink: 0;
+				box-shadow: 0 14px 30px -14px rgba(6, 48, 100, 0.45);
+			}
+			.hero-text {
+				flex: 1;
+			}
+			.hero-eyebrow {
+				font-size: 13px;
+				color: rgba(6, 48, 100, 0.65);
+				margin-bottom: 4px;
+			}
+			.hero-title {
+				font-family: 'Fjalla One', sans-serif;
+				font-size: 24px;
+				margin: 0 0 12px 0;
+			}
+			.hero-play {
+				display: inline-flex;
+				align-items: center;
+				gap: 8px;
+				background: var(--ink);
+				color: #fff;
+				border: none;
+				padding: 10px 18px;
+				border-radius: 30px;
+				font-family: 'Roboto', sans-serif;
+				font-size: 13px;
+				font-weight: 500;
+				cursor: pointer;
+				transition: transform 120ms ease;
+			}
+			.hero-play:hover {
+				transform: scale(1.03);
+			}
+			.hero-play svg {
+				width: 12px;
+				height: 12px;
+			}
+
+			.section-label {
+				font-size: 15px;
+				font-weight: 500;
+				margin: 0 0 14px 0;
+			}
+
+			.track-grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+				gap: 18px;
+				margin-bottom: 10px;
+			}
+
+			.track-card {
+				background: var(--surface);
+				border-radius: 14px;
+				padding: 12px;
+				cursor: pointer;
+				transition:
+					transform 120ms ease,
+					box-shadow 120ms ease;
+				border: 1px solid var(--line);
+			}
+			.track-card:hover {
+				transform: translateY(-3px);
+				box-shadow: 0 12px 24px -16px rgba(6, 48, 100, 0.35);
+			}
+			.track-card img {
+				width: 100%;
+				aspect-ratio: 1 / 1;
+				object-fit: cover;
+				border-radius: 10px;
+				margin-bottom: 10px;
+			}
+			.track-card .track-name {
+				font-size: 13px;
+				font-weight: 500;
+				margin-bottom: 3px;
+			}
+			.track-card .track-artist {
+				font-size: 11.5px;
+				color: var(--muted);
+			}
+			.track-card.is-current .track-name {
+				color: #0d5fae;
+			}
+
+			/* List (Library / Search / Liked) */
+			.track-list {
+				list-style: none;
+				margin: 0;
+				padding: 0;
+			}
+			.track-row {
+				display: flex;
+				align-items: center;
+				gap: 14px;
+				padding: 10px 10px;
+				border-radius: 12px;
+				cursor: pointer;
+				transition: background-color 120ms ease;
+			}
+			.track-row:hover {
+				background: var(--surface);
+			}
+			.track-row.is-current {
+				background: var(--sky);
+			}
+			.track-row img {
+				width: 42px;
+				height: 42px;
+				border-radius: 8px;
+				object-fit: cover;
+				flex-shrink: 0;
+			}
+			.track-row .row-detail {
+				flex: 1;
+				min-width: 0;
+			}
+			.track-row .track-name {
+				font-size: 13.5px;
+				font-weight: 500;
+				white-space: nowrap;
+				overflow: hidden;
+				text-overflow: ellipsis;
+			}
+			.track-row .track-artist {
+				font-size: 11.5px;
+				color: var(--muted);
+				margin-top: 2px;
+			}
+			.row-like {
+				width: 17px;
+				height: 17px;
+				cursor: pointer;
+				flex-shrink: 0;
+				color: var(--faint);
+				transition:
+					color 120ms ease,
+					transform 120ms ease;
+			}
+			.row-like:hover {
+				transform: scale(1.15);
+			}
+			.row-like.liked {
+				color: #e0245e;
+			}
+
+			.empty-state {
+				color: var(--faint);
+				font-size: 13.5px;
+				padding: 30px 10px;
+				text-align: center;
+			}
+
+			/* Now Playing view */
+			.now-playing-view {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				padding-top: 10px;
+			}
+			.np-art-wrap {
+				position: relative;
+				margin-bottom: 26px;
+			}
+			.np-art {
+				width: 220px;
+				height: 220px;
+				border-radius: 50%;
+				object-fit: cover;
+				border: 5px solid var(--surface);
+				box-shadow: 0 24px 50px -20px rgba(6, 48, 100, 0.4);
+				animation: rotateImg 9s linear infinite;
+				animation-play-state: paused;
+			}
+			.np-art.spinning {
+				animation-play-state: running;
+			}
+			.np-play-btn {
+				position: absolute;
+				bottom: 6px;
+				right: 6px;
+				width: 52px;
+				height: 52px;
+				border-radius: 18px;
+				border: none;
+				background: var(--surface);
+				box-shadow: 0 8px 20px -8px rgba(6, 48, 100, 0.5);
+				cursor: pointer;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				transition: transform 120ms ease;
+			}
+			.np-play-btn:hover {
+				transform: scale(1.05);
+			}
+			.np-play-btn svg {
+				width: 20px;
+				height: 20px;
+			}
+			.np-play-btn .np-pause-icon {
+				display: none;
+			}
+			.np-play-btn.playing .np-play-icon {
+				display: none;
+			}
+			.np-play-btn.playing .np-pause-icon {
+				display: block;
+			}
+
+			@keyframes rotateImg {
+				0% {
+					transform: rotateZ(0);
+				}
+				100% {
+					transform: rotateZ(360deg);
+				}
+			}
+
+			.np-name {
+				font-family: 'Fjalla One', sans-serif;
+				font-size: 22px;
+				margin-bottom: 4px;
+			}
+			.np-artist {
+				font-size: 13px;
+				color: var(--faint);
+				margin-bottom: 30px;
+			}
+
+			.waveform {
+				display: flex;
+				align-items: flex-end;
+				gap: 3px;
+				width: 100%;
+				max-width: 520px;
+				height: 56px;
+				margin-bottom: 12px;
+			}
+			.wave-bar {
+				flex: 1;
+				background: var(--line);
+				border-radius: 3px;
+				min-height: 4px;
+				cursor: pointer;
+				transition: background-color 100ms ease;
+			}
+			.wave-bar.filled {
+				background: var(--ink);
+			}
+
+			.np-time-row {
+				display: flex;
+				justify-content: space-between;
+				width: 100%;
+				max-width: 520px;
+				font-size: 11.5px;
+				color: var(--faint);
+				margin-bottom: 30px;
+			}
+			.np-time-row .np-elapsed {
+				color: var(--ink);
+			}
+
+			.np-actions {
+				display: flex;
+				align-items: center;
+				gap: 26px;
+			}
+			.np-actions button {
+				background: none;
+				border: none;
+				cursor: pointer;
+				color: var(--muted);
+				padding: 6px;
+				transition:
+					color 120ms ease,
+					transform 120ms ease;
+			}
+			.np-actions button svg {
+				width: 20px;
+				height: 20px;
+				display: block;
+			}
+			.np-actions button:hover {
+				color: var(--ink);
+				transform: scale(1.1);
+			}
+			.np-actions .np-like.liked {
+				color: #e0245e;
+			}
+			.np-actions .np-skip svg {
+				width: 17px;
+				height: 17px;
+			}
+
+			/* ---------- Player bar ---------- */
+			.player-bar {
+				grid-row: 2 / 3;
+				grid-column: 1 / 3;
+				background: var(--surface);
+				border-top: 1px solid var(--line);
+				display: grid;
+				grid-template-columns: 260px 1fr 220px;
+				align-items: center;
+				padding: 0 24px;
+				gap: 20px;
+			}
+
+			.pb-track {
+				display: flex;
+				align-items: center;
+				gap: 12px;
+				min-width: 0;
+				cursor: pointer;
+			}
+			.pb-track img {
+				width: 48px;
+				height: 48px;
+				border-radius: 10px;
+				object-fit: cover;
+				flex-shrink: 0;
+			}
+			.pb-track .row-detail {
+				min-width: 0;
+			}
+			.pb-track .track-name {
+				font-size: 13px;
+				font-weight: 500;
+				white-space: nowrap;
+				overflow: hidden;
+				text-overflow: ellipsis;
+			}
+			.pb-track .track-artist {
+				font-size: 11px;
+				color: var(--muted);
+				margin-top: 2px;
+			}
+
+			.pb-center {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				gap: 8px;
+			}
+			.pb-controls {
+				display: flex;
+				align-items: center;
+				gap: 18px;
+			}
+			.pb-controls button {
+				background: none;
+				border: none;
+				cursor: pointer;
+				color: var(--ink);
+				padding: 4px;
+				transition: transform 120ms ease;
+			}
+			.pb-controls button:hover {
+				transform: scale(1.1);
+			}
+			.pb-skip svg {
+				width: 15px;
+				height: 15px;
+			}
+			.pb-play {
+				width: 34px;
+				height: 34px;
+				border-radius: 50%;
+				background: var(--ink);
+				color: #fff;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
+			.pb-play svg {
+				width: 13px;
+				height: 13px;
+			}
+			.pb-play .pb-pause-icon {
+				display: none;
+			}
+			.pb-play.playing .pb-play-icon {
+				display: none;
+			}
+			.pb-play.playing .pb-pause-icon {
+				display: block;
+			}
+
+			.pb-progress-row {
+				display: flex;
+				align-items: center;
+				gap: 9px;
+				width: 100%;
+				max-width: 420px;
+			}
+			.pb-time {
+				font-size: 10.5px;
+				color: var(--faint);
+				width: 32px;
+				flex-shrink: 0;
+			}
+			.pb-time.right {
+				text-align: right;
+			}
+			.pb-progress-bar {
+				flex: 1;
+				height: 4px;
+				border-radius: 4px;
+				background: var(--line);
+				position: relative;
+				cursor: pointer;
+			}
+			.pb-progress-fill {
+				position: absolute;
+				left: 0;
+				top: 0;
+				bottom: 0;
+				width: 0%;
+				border-radius: 4px;
+				background: var(--ink);
+			}
+
+			.pb-right {
+				display: flex;
+				align-items: center;
+				justify-content: flex-end;
+				gap: 16px;
+			}
+			.pb-right button {
+				background: none;
+				border: none;
+				cursor: pointer;
+				color: var(--muted);
+				padding: 4px;
+				transition:
+					color 120ms ease,
+					transform 120ms ease;
+			}
+			.pb-right button:hover {
+				color: var(--ink);
+				transform: scale(1.1);
+			}
+			.pb-right svg {
+				width: 18px;
+				height: 18px;
+				display: block;
+			}
+			.pb-heart.liked {
+				color: #e0245e;
+			}
+			.pb-expand svg {
+				width: 16px;
+				height: 16px;
+			}
+
+			/* ---------- Responsive ---------- */
+			@media (max-width: 860px) {
+				:root {
+					--sidebar-w: 76px;
+				}
+				.brand {
+					text-align: center;
+					font-size: 0;
+					padding-bottom: 22px;
+				}
+				.brand::after {
+					content: 'D';
+					font-size: 20px;
+				}
+				.nav-item span {
+					display: none;
+				}
+				.nav-item {
+					justify-content: center;
+				}
+				.sidebar-section-label,
+				.playlist-mini-list {
+					display: none;
+				}
+				.main {
+					padding: 24px 20px 60px 20px;
+				}
+				.player-bar {
+					grid-template-columns: 1fr auto;
+				}
+				.pb-center {
+					display: none;
+				}
+			}
+
+			@media (max-width: 560px) {
+				.pb-track .row-detail {
+					display: none;
+				}
+				.pb-right {
+					gap: 8px;
+				}
+				.np-art {
+					width: 170px;
+					height: 170px;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<div class="app">
+			<!-- Sidebar -->
+			<aside class="sidebar">
+				<div class="brand">Drift</div>
+				<ul class="nav-list">
+					<li class="nav-item active" data-nav="discover">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							fill="none"
+							stroke="currentColor"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							viewBox="0 0 24 24"
+						>
+							<path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+						</svg>
+						<span>Discover</span>
+					</li>
+					<li class="nav-item" data-nav="search">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							fill="none"
+							stroke="currentColor"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							viewBox="0 0 24 24"
+						>
+							<circle cx="11" cy="11" r="8" />
+							<path d="M21 21l-4.35-4.35" />
+						</svg>
+						<span>Search</span>
+					</li>
+					<li class="nav-item" data-nav="library">
+						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 29 29">
+							<g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-width="2.6">
+								<rect width="19" height="19" x="8" y="8" rx="5" />
+								<rect width="19" height="19" x="2" y="2" rx="5" />
+							</g>
+						</svg>
+						<span>Your library</span>
+					</li>
+					<li class="nav-item" data-nav="liked">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							fill="none"
+							stroke="currentColor"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							viewBox="0 0 24 24"
+						>
+							<path
+								d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"
+							/>
+						</svg>
+						<span>Liked songs</span>
+					</li>
+				</ul>
+
+				<div class="sidebar-section-label">Recently played</div>
+				<ul class="playlist-mini-list" id="recentList"></ul>
+			</aside>
+
+			<!-- Main -->
+			<main class="main">
+				<div class="topbar">
+					<h1 class="view-title" id="viewTitle">Discover</h1>
+					<div class="search-input-wrap" id="searchWrap" style="display: none">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							fill="none"
+							stroke="currentColor"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							viewBox="0 0 24 24"
+						>
+							<circle cx="11" cy="11" r="8" />
+							<path d="M21 21l-4.35-4.35" />
+						</svg>
+						<input
+							type="text"
+							class="search-input"
+							id="searchInput"
+							placeholder="Search songs or artists"
+						/>
+					</div>
+				</div>
+
+				<!-- Discover -->
+				<section class="view active" data-view="discover">
+					<div class="hero">
+						<div class="hero-art"></div>
+						<div class="hero-text">
+							<div class="hero-eyebrow">Featured mix</div>
+							<div class="hero-title">Relax</div>
+							<button class="hero-play" id="heroPlay">
+								<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 308.838 308.838">
+									<path
+										fill="currentColor"
+										d="M269.394 139.638c-.4-.8-.8-1.2-1.2-1.6-.8-1.2-1.6-2-2.8-3.2-1.2-1.2-2.8-2.4-4-3.2l-91.6-63.2-92-63.6c-6-4.4-13.6-5.6-20.4-4.4s-13.2 5.2-17.2 11.2c-1.6 2.4-2.8 4.8-3.6 7.2-.8 2-1.2 4-1.2 6.4v256.4c0 7.6 3.2 14.4 8 19.2 4.4 4.8 11.2 8 18.8 8 3.2 0 6.4-.4 9.2-1.6 2.8-.8 5.2-2.4 7.6-4.4l90.8-62.8 91.2-63.2c.4-.4 1.2-.8 1.6-1.2 5.6-4.4 9.2-10.4 10.4-16.8 1.2-6.4 0-13.6-3.6-19.2zm-20 20.4l-92 63.6-90.4 62.4c-.4 0-.8.4-.8.4-.4.4-1.2.8-2 1.2-.8.4-1.2.4-2 .4-1.6 0-3.2-.8-4.4-1.6-1.2-1.2-1.6-2.8-1.6-4.4v-127.6h-.4v-126-1.6c0-.4 0-.8.4-1.2 0-.4.4-.8.4-1.2.4-.4.4-.4.4-.8.8-1.2 2.4-2 3.6-2 1.6-.4 2.8 0 4.4.8.4.4.8.4 1.2.8l91.2 63.2 91.6 63.2c.4.4.8.4.8.8.4.4.4.8.8.8.8 1.6 1.2 3.2 1.2 4.8-.4 1.6-1.2 3.2-2.4 4z"
+									/>
+								</svg>
+								Play mix
+							</button>
+						</div>
+					</div>
+					<div class="section-label">Made for you</div>
+					<div class="track-grid" id="discoverGrid"></div>
+				</section>
+
+				<!-- Search -->
+				<section class="view" data-view="search">
+					<ul class="track-list" id="searchResults"></ul>
+				</section>
+
+				<!-- Library -->
+				<section class="view" data-view="library">
+					<ul class="track-list" id="libraryList"></ul>
+				</section>
+
+				<!-- Liked -->
+				<section class="view" data-view="liked">
+					<ul class="track-list" id="likedList"></ul>
+				</section>
+
+				<!-- Now Playing -->
+				<section class="view" data-view="now-playing">
+					<div class="now-playing-view">
+						<div class="np-art-wrap">
+							<img class="np-art" id="npArt" src="" alt="" />
+							<button class="np-play-btn" id="npPlayBtn" aria-label="Play or pause">
+								<svg
+									class="np-play-icon"
+									xmlns="http://www.w3.org/2000/svg"
+									viewBox="0 0 308.838 308.838"
+								>
+									<path
+										fill="#063064"
+										d="M269.394 139.638c-.4-.8-.8-1.2-1.2-1.6-.8-1.2-1.6-2-2.8-3.2-1.2-1.2-2.8-2.4-4-3.2l-91.6-63.2-92-63.6c-6-4.4-13.6-5.6-20.4-4.4s-13.2 5.2-17.2 11.2c-1.6 2.4-2.8 4.8-3.6 7.2-.8 2-1.2 4-1.2 6.4v256.4c0 7.6 3.2 14.4 8 19.2 4.4 4.8 11.2 8 18.8 8 3.2 0 6.4-.4 9.2-1.6 2.8-.8 5.2-2.4 7.6-4.4l90.8-62.8 91.2-63.2c.4-.4 1.2-.8 1.6-1.2 5.6-4.4 9.2-10.4 10.4-16.8 1.2-6.4 0-13.6-3.6-19.2zm-20 20.4l-92 63.6-90.4 62.4c-.4 0-.8.4-.8.4-.4.4-1.2.8-2 1.2-.8.4-1.2.4-2 .4-1.6 0-3.2-.8-4.4-1.6-1.2-1.2-1.6-2.8-1.6-4.4v-127.6h-.4v-126-1.6c0-.4 0-.8.4-1.2 0-.4.4-.8.4-1.2.4-.4.4-.4.4-.8.8-1.2 2.4-2 3.6-2 1.6-.4 2.8 0 4.4.8.4.4.8.4 1.2.8l91.2 63.2 91.6 63.2c.4.4.8.4.8.8.4.4.4.8.8.8.8 1.6 1.2 3.2 1.2 4.8-.4 1.6-1.2 3.2-2.4 4z"
+									/>
+								</svg>
+								<svg
+									class="np-pause-icon"
+									xmlns="http://www.w3.org/2000/svg"
+									viewBox="0 0 493.528 493.528"
+								>
+									<path
+										fill="#063064"
+										d="M178.064 0L166.04.248c-14.876 0-27.236 12.112-27.236 26.992v439.664c0 14.876 13.396 26.624 28.272 26.624h.084l10.976-.072c14.892 0 26.22-11.92 26.22-26.808V26.996C204.352 12.116 193.028 0 178.064 0zM328.584 0l-12.092.248c-14.88 0-27.3 12.112-27.3 26.992v439.664c0 14.876 13.708 26.624 28.58 26.624h.084l10.816-.072c14.88 0 26.052-11.92 26.052-26.808V26.996C354.72 12.116 343.548 0 328.584 0z"
+									/>
+								</svg>
+							</button>
+						</div>
+						<div class="np-name" id="npName">—</div>
+						<div class="np-artist" id="npArtist">—</div>
+
+						<div class="waveform" id="waveform"></div>
+						<div class="np-time-row">
+							<span class="np-elapsed" id="npElapsed">0:00</span>
+							<span id="npDuration">0:00</span>
+						</div>
+
+						<div class="np-actions">
+							<button class="np-skip" id="npPrev" aria-label="Previous">
+								<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor">
+									<path
+										d="M493.2 445.4l-201-183.5c-6-5.5-6-15.1 0-20.6l201-183.5c9.5-8.7 24.8-2 24.8 11v367c0 13-15.3 19.7-24.8 11zM24.8 468.4l201-183.5c6-5.5 6-15.1 0-20.6l-201-183.5C15.3 72.1 0 78.8 0 91.8v367c0 13 15.3 19.7 24.8 11z"
+									/>
+								</svg>
+							</button>
+							<button class="np-like" id="npLike" aria-label="Like">
+								<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -28 512 512" fill="currentColor">
+									<path
+										d="M471.383 44.578C444.879 15.832 408.512 0 368.973 0c-29.555 0-56.621 9.344-80.45 27.77C276.5 37.07 265.605 48.45 256 61.73c-9.602-13.277-20.5-24.66-32.527-33.96C199.648 9.344 172.582 0 143.027 0c-39.539 0-75.91 15.832-102.414 44.578C14.426 72.988 0 111.801 0 153.871c0 43.3 16.137 82.938 50.781 124.742 30.992 37.395 75.535 75.356 127.117 119.313 17.614 15.012 37.579 32.027 58.309 50.152A30.023 30.023 0 00256 455.516c7.285 0 14.316-2.641 19.785-7.43 20.73-18.129 40.707-35.152 58.328-50.172 51.575-43.95 96.117-81.906 127.11-119.305C495.867 236.81 512 197.172 512 153.867c0-42.066-14.426-80.879-40.617-109.289zm0 0"
+									/>
+								</svg>
+							</button>
+							<button class="np-skip" id="npNext" aria-label="Next">
+								<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor">
+									<path
+										d="M18.8 445.4l201-183.5c6-5.5 6-15.1 0-20.6l-201-183.5C9.3 49.1-6 55.8-6 68.8v367c0 13 15.3 19.7 24.8 11zM487.2 468.4l-201-183.5c-6-5.5-6-15.1 0-20.6l201-183.5c9.5-8.7 24.8-2 24.8 11v367c0 13-15.3 19.7-24.8 11z"
+									/>
+								</svg>
+							</button>
+						</div>
+					</div>
+				</section>
+			</main>
+
+			<!-- Persistent player bar -->
+			<footer class="player-bar">
+				<div class="pb-track" id="pbTrack">
+					<img id="pbCover" src="" alt="" />
+					<div class="row-detail">
+						<div class="track-name" id="pbName">—</div>
+						<div class="track-artist" id="pbArtist">—</div>
+					</div>
+				</div>
+
+				<div class="pb-center">
+					<div class="pb-controls">
+						<button class="pb-skip" id="pbPrev" aria-label="Previous">
+							<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor">
+								<path
+									d="M493.2 445.4l-201-183.5c-6-5.5-6-15.1 0-20.6l201-183.5c9.5-8.7 24.8-2 24.8 11v367c0 13-15.3 19.7-24.8 11zM24.8 468.4l201-183.5c6-5.5 6-15.1 0-20.6l-201-183.5C15.3 72.1 0 78.8 0 91.8v367c0 13 15.3 19.7 24.8 11z"
+								/>
+							</svg>
+						</button>
+						<button class="pb-play" id="pbPlay" aria-label="Play or pause">
+							<svg
+								class="pb-play-icon"
+								xmlns="http://www.w3.org/2000/svg"
+								viewBox="0 0 308.838 308.838"
+							>
+								<path
+									fill="currentColor"
+									d="M269.394 139.638c-.4-.8-.8-1.2-1.2-1.6-.8-1.2-1.6-2-2.8-3.2-1.2-1.2-2.8-2.4-4-3.2l-91.6-63.2-92-63.6c-6-4.4-13.6-5.6-20.4-4.4s-13.2 5.2-17.2 11.2c-1.6 2.4-2.8 4.8-3.6 7.2-.8 2-1.2 4-1.2 6.4v256.4c0 7.6 3.2 14.4 8 19.2 4.4 4.8 11.2 8 18.8 8 3.2 0 6.4-.4 9.2-1.6 2.8-.8 5.2-2.4 7.6-4.4l90.8-62.8 91.2-63.2c.4-.4 1.2-.8 1.6-1.2 5.6-4.4 9.2-10.4 10.4-16.8 1.2-6.4 0-13.6-3.6-19.2zm-20 20.4l-92 63.6-90.4 62.4c-.4 0-.8.4-.8.4-.4.4-1.2.8-2 1.2-.8.4-1.2.4-2 .4-1.6 0-3.2-.8-4.4-1.6-1.2-1.2-1.6-2.8-1.6-4.4v-127.6h-.4v-126-1.6c0-.4 0-.8.4-1.2 0-.4.4-.8.4-1.2.4-.4.4-.4.4-.8.8-1.2 2.4-2 3.6-2 1.6-.4 2.8 0 4.4.8.4.4.8.4 1.2.8l91.2 63.2 91.6 63.2c.4.4.8.4.8.8.4.4.4.8.8.8.8 1.6 1.2 3.2 1.2 4.8-.4 1.6-1.2 3.2-2.4 4z"
+								/>
+							</svg>
+							<svg
+								class="pb-pause-icon"
+								xmlns="http://www.w3.org/2000/svg"
+								viewBox="0 0 493.528 493.528"
+							>
+								<path
+									fill="currentColor"
+									d="M178.064 0L166.04.248c-14.876 0-27.236 12.112-27.236 26.992v439.664c0 14.876 13.396 26.624 28.272 26.624h.084l10.976-.072c14.892 0 26.22-11.92 26.22-26.808V26.996C204.352 12.116 193.028 0 178.064 0zM328.584 0l-12.092.248c-14.88 0-27.3 12.112-27.3 26.992v439.664c0 14.876 13.708 26.624 28.58 26.624h.084l10.816-.072c14.88 0 26.052-11.92 26.052-26.808V26.996C354.72 12.116 343.548 0 328.584 0z"
+								/>
+							</svg>
+						</button>
+						<button class="pb-skip" id="pbNext" aria-label="Next">
+							<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor">
+								<path
+									d="M18.8 445.4l201-183.5c6-5.5 6-15.1 0-20.6l-201-183.5C9.3 49.1-6 55.8-6 68.8v367c0 13 15.3 19.7 24.8 11zM487.2 468.4l-201-183.5c-6-5.5-6-15.1 0-20.6l201-183.5c9.5-8.7 24.8-2 24.8 11v367c0 13-15.3 19.7-24.8 11z"
+								/>
+							</svg>
+						</button>
+					</div>
+					<div class="pb-progress-row">
+						<span class="pb-time" id="pbElapsed">0:00</span>
+						<div class="pb-progress-bar" id="pbProgressBar">
+							<div class="pb-progress-fill" id="pbProgressFill"></div>
+						</div>
+						<span class="pb-time right" id="pbDuration">0:00</span>
+					</div>
+				</div>
+
+				<div class="pb-right">
+					<button class="pb-heart" id="pbLike" aria-label="Like">
+						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -28 512 512" fill="currentColor">
+							<path
+								d="M471.383 44.578C444.879 15.832 408.512 0 368.973 0c-29.555 0-56.621 9.344-80.45 27.77C276.5 37.07 265.605 48.45 256 61.73c-9.602-13.277-20.5-24.66-32.527-33.96C199.648 9.344 172.582 0 143.027 0c-39.539 0-75.91 15.832-102.414 44.578C14.426 72.988 0 111.801 0 153.871c0 43.3 16.137 82.938 50.781 124.742 30.992 37.395 75.535 75.356 127.117 119.313 17.614 15.012 37.579 32.027 58.309 50.152A30.023 30.023 0 00256 455.516c7.285 0 14.316-2.641 19.785-7.43 20.73-18.129 40.707-35.152 58.328-50.172 51.575-43.95 96.117-81.906 127.11-119.305C495.867 236.81 512 197.172 512 153.867c0-42.066-14.426-80.879-40.617-109.289zm0 0"
+							/>
+						</svg>
+					</button>
+					<button class="pb-expand" id="pbExpand" aria-label="Open now playing">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							fill="none"
+							stroke="currentColor"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							viewBox="0 0 24 24"
+						>
+							<path d="M18 15l-6-6-6 6" />
+						</svg>
+					</button>
+				</div>
+			</footer>
+		</div>
+
+		<audio id="audio" preload="metadata">
+			<source
+				src="https://file-examples.com/wp-content/uploads/2017/11/file_example_MP3_700KB.mp3"
+				type="audio/mpeg"
+			/>
+		</audio>
+
+		<script>
+			(function () {
+				const tracks = [
+					{
+						id: 1,
+						name: 'Sunset',
+						artist: 'The xx',
+						cover:
+							'https://images.unsplash.com/photo-1574281183650-14db8f28c259?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=934&q=80'
+					},
+					{
+						id: 2,
+						name: 'The Pursuit of Happiness',
+						artist: 'Beyries',
+						cover:
+							'https://images.unsplash.com/photo-1496324839965-d6281225d8eb?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=3300&q=80'
+					},
+					{
+						id: 3,
+						name: 'Run',
+						artist: 'Daughter',
+						cover:
+							'https://images.unsplash.com/photo-1506079619863-0bf287d459e8?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=800&q=60'
+					},
+					{
+						id: 4,
+						name: 'Tearing Me Up',
+						artist: 'Bob Moses',
+						cover:
+							'https://images.unsplash.com/photo-1521133573892-e44906baee46?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=934&q=80'
+					},
+					{
+						id: 5,
+						name: 'Low Tide',
+						artist: 'Wildlight',
+						cover:
+							'https://images.unsplash.com/photo-1574281183650-14db8f28c259?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=934&q=80'
+					},
+					{
+						id: 6,
+						name: 'Amber Skies',
+						artist: 'Cosima',
+						cover:
+							'https://images.unsplash.com/photo-1496324839965-d6281225d8eb?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=3300&q=80'
+					}
+				];
+
+				const likedIds = new Set();
+				const recentIds = [];
+				let queue = tracks.slice();
+				let currentIndex = 0;
+				let isPlaying = false;
+
+				const audio = document.getElementById('audio');
+
+				// ---------- element refs ----------
+				const navItems = Array.from(document.querySelectorAll('.nav-item'));
+				const views = Array.from(document.querySelectorAll('.view'));
+				const viewTitle = document.getElementById('viewTitle');
+				const searchWrap = document.getElementById('searchWrap');
+				const searchInput = document.getElementById('searchInput');
+
+				const discoverGrid = document.getElementById('discoverGrid');
+				const searchResults = document.getElementById('searchResults');
+				const libraryList = document.getElementById('libraryList');
+				const likedList = document.getElementById('likedList');
+				const recentListEl = document.getElementById('recentList');
+
+				const npArt = document.getElementById('npArt');
+				const npName = document.getElementById('npName');
+				const npArtist = document.getElementById('npArtist');
+				const npPlayBtn = document.getElementById('npPlayBtn');
+				const npElapsed = document.getElementById('npElapsed');
+				const npDuration = document.getElementById('npDuration');
+				const npLike = document.getElementById('npLike');
+				const npPrev = document.getElementById('npPrev');
+				const npNext = document.getElementById('npNext');
+				const waveformEl = document.getElementById('waveform');
+
+				const pbCover = document.getElementById('pbCover');
+				const pbName = document.getElementById('pbName');
+				const pbArtist = document.getElementById('pbArtist');
+				const pbPlay = document.getElementById('pbPlay');
+				const pbPrev = document.getElementById('pbPrev');
+				const pbNext = document.getElementById('pbNext');
+				const pbElapsed = document.getElementById('pbElapsed');
+				const pbDuration = document.getElementById('pbDuration');
+				const pbProgressBar = document.getElementById('pbProgressBar');
+				const pbProgressFill = document.getElementById('pbProgressFill');
+				const pbLike = document.getElementById('pbLike');
+				const pbExpand = document.getElementById('pbExpand');
+				const pbTrack = document.getElementById('pbTrack');
+				const heroPlay = document.getElementById('heroPlay');
+
+				const titles = {
+					discover: 'Discover',
+					search: 'Search',
+					library: 'Your library',
+					liked: 'Liked songs',
+					'now-playing': 'Now playing'
+				};
+
+				// ---------- waveform bars ----------
+				const BAR_COUNT = 56;
+				const bars = [];
+				for (let i = 0; i < BAR_COUNT; i++) {
+					const bar = document.createElement('div');
+					bar.className = 'wave-bar';
+					const h =
+						10 + Math.round(Math.abs(Math.sin(i * 0.7)) * 34 + Math.abs(Math.cos(i * 0.35)) * 12);
+					bar.style.height = h + 'px';
+					bar.addEventListener('click', (e) => {
+						e.stopPropagation();
+						if (audio.duration) audio.currentTime = ((i + 1) / BAR_COUNT) * audio.duration;
+					});
+					waveformEl.appendChild(bar);
+					bars.push(bar);
+				}
+
+				function formatTime(sec) {
+					if (!isFinite(sec) || sec < 0) sec = 0;
+					const m = Math.floor(sec / 60);
+					const s = Math.floor(sec % 60)
+						.toString()
+						.padStart(2, '0');
+					return `${m}:${s}`;
+				}
+
+				// ---------- view switching ----------
+				function showView(name) {
+					views.forEach((v) => v.classList.toggle('active', v.dataset.view === name));
+					navItems.forEach((n) => n.classList.toggle('active', n.dataset.nav === name));
+					viewTitle.textContent = titles[name] || '';
+					searchWrap.style.display = name === 'search' ? 'block' : 'none';
+					if (name === 'search') searchInput.focus();
+				}
+
+				navItems.forEach((item) => {
+					item.addEventListener('click', () => {
+						showView(item.dataset.nav);
+						if (item.dataset.nav === 'liked') renderLiked();
+					});
+				});
+
+				pbExpand.addEventListener('click', () => showView('now-playing'));
+				pbTrack.addEventListener('click', () => showView('now-playing'));
+
+				// ---------- rendering track lists ----------
+				function trackCardHTML(t) {
+					return `
+      <img src="${t.cover}" alt="" />
+      <div class="track-name">${t.name}</div>
+      <div class="track-artist">${t.artist}</div>
+    `;
+				}
+
+				function renderDiscover() {
+					discoverGrid.innerHTML = '';
+					tracks.forEach((t) => {
+						const card = document.createElement('div');
+						card.className = 'track-card';
+						card.dataset.id = t.id;
+						card.innerHTML = trackCardHTML(t);
+						card.addEventListener('click', () => playFromQueue(tracks, tracks.indexOf(t)));
+						discoverGrid.appendChild(card);
+					});
+					refreshCurrentHighlights();
+				}
+
+				function trackRow(t, list) {
+					const li = document.createElement('li');
+					li.className = 'track-row';
+					li.dataset.id = t.id;
+					li.innerHTML = `
+      <img src="${t.cover}" alt="" />
+      <div class="row-detail">
+        <div class="track-name">${t.name}</div>
+        <div class="track-artist">${t.artist}</div>
+      </div>
+      <svg class="row-like ${likedIds.has(t.id) ? 'liked' : ''}" viewBox="0 -28 512 512" fill="currentColor"><path d="M471.383 44.578C444.879 15.832 408.512 0 368.973 0c-29.555 0-56.621 9.344-80.45 27.77C276.5 37.07 265.605 48.45 256 61.73c-9.602-13.277-20.5-24.66-32.527-33.96C199.648 9.344 172.582 0 143.027 0c-39.539 0-75.91 15.832-102.414 44.578C14.426 72.988 0 111.801 0 153.871c0 43.3 16.137 82.938 50.781 124.742 30.992 37.395 75.535 75.356 127.117 119.313 17.614 15.012 37.579 32.027 58.309 50.152A30.023 30.023 0 00256 455.516c7.285 0 14.316-2.641 19.785-7.43 20.73-18.129 40.707-35.152 58.328-50.172 51.575-43.95 96.117-81.906 127.11-119.305C495.867 236.81 512 197.172 512 153.867c0-42.066-14.426-80.879-40.617-109.289zm0 0"/></svg>
+    `;
+					li.addEventListener('click', () => playFromQueue(list, list.indexOf(t)));
+					li.querySelector('.row-like').addEventListener('click', (e) => {
+						e.stopPropagation();
+						toggleLike(t.id);
+					});
+					return li;
+				}
+
+				function renderLibrary() {
+					libraryList.innerHTML = '';
+					tracks.forEach((t) => libraryList.appendChild(trackRow(t, tracks)));
+					refreshCurrentHighlights();
+				}
+
+				function renderLiked() {
+					likedList.innerHTML = '';
+					const likedTracks = tracks.filter((t) => likedIds.has(t.id));
+					if (likedTracks.length === 0) {
+						likedList.innerHTML = `<li class="empty-state">Songs you like will show up here. Tap the heart on any track to save it.</li>`;
+						return;
+					}
+					likedTracks.forEach((t) => likedList.appendChild(trackRow(t, likedTracks)));
+					refreshCurrentHighlights();
+				}
+
+				function renderSearch(query) {
+					const q = query.trim().toLowerCase();
+					searchResults.innerHTML = '';
+					if (!q) {
+						searchResults.innerHTML = `<li class="empty-state">Start typing to search your music.</li>`;
+						return;
+					}
+					const results = tracks.filter(
+						(t) => t.name.toLowerCase().includes(q) || t.artist.toLowerCase().includes(q)
+					);
+					if (results.length === 0) {
+						searchResults.innerHTML = `<li class="empty-state">No matches for "${query}".</li>`;
+						return;
+					}
+					results.forEach((t) => searchResults.appendChild(trackRow(t, results)));
+					refreshCurrentHighlights();
+				}
+
+				function renderRecent() {
+					recentListEl.innerHTML = '';
+					recentIds.slice(0, 4).forEach((id) => {
+						const t = tracks.find((x) => x.id === id);
+						if (!t) return;
+						const li = document.createElement('li');
+						li.className = 'playlist-mini-item';
+						li.textContent = t.name;
+						li.addEventListener('click', () => playFromQueue(tracks, tracks.indexOf(t)));
+						recentListEl.appendChild(li);
+					});
+				}
+
+				searchInput.addEventListener('input', () => renderSearch(searchInput.value));
+
+				function refreshCurrentHighlights() {
+					const currentId = queue[currentIndex] ? queue[currentIndex].id : null;
+					document
+						.querySelectorAll('.track-card')
+						.forEach((el) =>
+							el.classList.toggle('is-current', Number(el.dataset.id) === currentId)
+						);
+					document
+						.querySelectorAll('.track-row')
+						.forEach((el) =>
+							el.classList.toggle('is-current', Number(el.dataset.id) === currentId)
+						);
+				}
+
+				// ---------- like toggling ----------
+				function toggleLike(id) {
+					if (likedIds.has(id)) likedIds.delete(id);
+					else likedIds.add(id);
+					document
+						.querySelectorAll(`.track-row[data-id="${id}"] .row-like`)
+						.forEach((el) => el.classList.toggle('liked', likedIds.has(id)));
+					const current = queue[currentIndex];
+					if (current && current.id === id) {
+						npLike.classList.toggle('liked', likedIds.has(id));
+						pbLike.classList.toggle('liked', likedIds.has(id));
+					}
+					if (document.querySelector('.view[data-view="liked"]').classList.contains('active'))
+						renderLiked();
+				}
+
+				npLike.addEventListener('click', () => {
+					const c = queue[currentIndex];
+					if (c) toggleLike(c.id);
+				});
+				pbLike.addEventListener('click', () => {
+					const c = queue[currentIndex];
+					if (c) toggleLike(c.id);
+				});
+
+				// ---------- playback ----------
+				function updateNowPlayingUI(track) {
+					npArt.src = track.cover;
+					npName.textContent = track.name;
+					npArtist.textContent = track.artist;
+					npLike.classList.toggle('liked', likedIds.has(track.id));
+
+					pbCover.src = track.cover;
+					pbName.textContent = track.name;
+					pbArtist.textContent = track.artist;
+					pbLike.classList.toggle('liked', likedIds.has(track.id));
+
+					refreshCurrentHighlights();
+				}
+
+				function setPlayingState(playing) {
+					isPlaying = playing;
+					pbPlay.classList.toggle('playing', playing);
+					npPlayBtn.classList.toggle('playing', playing);
+					npArt.classList.toggle('spinning', playing);
+					if (playing) {
+						audio.play().catch(() => {
+							isPlaying = false;
+							pbPlay.classList.remove('playing');
+							npPlayBtn.classList.remove('playing');
+							npArt.classList.remove('spinning');
+						});
+					} else {
+						audio.pause();
+					}
+				}
+
+				function playFromQueue(list, index) {
+					queue = list.slice();
+					currentIndex = index;
+					const track = queue[currentIndex];
+					updateNowPlayingUI(track);
+					recentIds.unshift(track.id);
+					const seen = new Set();
+					for (let i = recentIds.length - 1; i >= 0; i--) {
+						if (seen.has(recentIds[i])) recentIds.splice(i, 1);
+						else seen.add(recentIds[i]);
+					}
+					renderRecent();
+					audio.currentTime = 0;
+					bars.forEach((b) => b.classList.remove('filled'));
+					setPlayingState(true);
+				}
+
+				function togglePlay() {
+					if (!queue[currentIndex]) {
+						playFromQueue(tracks, 0);
+						return;
+					}
+					setPlayingState(!isPlaying);
+				}
+
+				function stepTrack(delta) {
+					if (!queue.length) return;
+					const next = (currentIndex + delta + queue.length) % queue.length;
+					playFromQueue(queue, next);
+				}
+
+				pbPlay.addEventListener('click', togglePlay);
+				npPlayBtn.addEventListener('click', togglePlay);
+				heroPlay.addEventListener('click', () => playFromQueue(tracks, 0));
+
+				pbPrev.addEventListener('click', () => stepTrack(-1));
+				npPrev.addEventListener('click', () => stepTrack(-1));
+				pbNext.addEventListener('click', () => stepTrack(1));
+				npNext.addEventListener('click', () => stepTrack(1));
+
+				audio.addEventListener('loadedmetadata', () => {
+					const d = formatTime(audio.duration);
+					npDuration.textContent = d;
+					pbDuration.textContent = d;
+				});
+
+				audio.addEventListener('timeupdate', () => {
+					const elapsed = formatTime(audio.currentTime);
+					npElapsed.textContent = elapsed;
+					pbElapsed.textContent = elapsed;
+					if (audio.duration) {
+						const frac = audio.currentTime / audio.duration;
+						pbProgressFill.style.width = frac * 100 + '%';
+						const filled = Math.round(frac * bars.length);
+						bars.forEach((b, i) => b.classList.toggle('filled', i < filled));
+					}
+				});
+
+				audio.addEventListener('ended', () => {
+					if (currentIndex < queue.length - 1) {
+						stepTrack(1);
+					} else {
+						setPlayingState(false);
+						bars.forEach((b) => b.classList.remove('filled'));
+						pbProgressFill.style.width = '0%';
+					}
+				});
+
+				pbProgressBar.addEventListener('click', (e) => {
+					if (!audio.duration) return;
+					const rect = pbProgressBar.getBoundingClientRect();
+					const frac = (e.clientX - rect.left) / rect.width;
+					audio.currentTime = frac * audio.duration;
+				});
+
+				// ---------- boot ----------
+				renderDiscover();
+				renderLibrary();
+				renderLiked();
+				renderSearch('');
+				renderRecent();
+				updateNowPlayingUI(tracks[0]);
+			})();
+		</script>
+	</body>
+</html>

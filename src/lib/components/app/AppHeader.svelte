@@ -17,16 +17,16 @@
 </script>
 
 <header
-	class="app-header flex h-full min-h-12 w-full shrink-0 items-center gap-3 border-b border-[var(--border-subtle)] bg-[var(--surface-raised)]/95 px-3 backdrop-blur-md sm:px-5"
+	class="app-header flex h-full min-h-14 w-full shrink-0 items-center gap-4 border-b border-[var(--border-subtle)] bg-[color-mix(in_oklab,var(--surface-raised)_94%,transparent)] px-4 backdrop-blur-md sm:min-h-16 sm:px-7"
 >
 	<!-- Leftmost: Logo -->
 	<div class="flex items-center">
 		<a
 			href={user ? '/app' : '/'}
-			class="flex items-center transition-opacity hover:opacity-85 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--action)]"
+			class="brand-mark flex items-center transition-opacity hover:opacity-75 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--focus-ring)]"
 			aria-label={m.brand_name()}
 		>
-			<img src={synLogo} alt={m.brand_name()} class="h-7 w-auto sm:h-8" />
+			<img src={synLogo} alt={m.brand_name()} class="h-6 w-auto sm:h-7" />
 		</a>
 	</div>
 
@@ -39,11 +39,11 @@
 	{/if}
 
 	<!-- Right: Style Chooser Dropdown, Admin Button, Settings Icon, and Login/Logout Button -->
-	<div class="flex shrink-0 items-center gap-2.5 sm:gap-4">
+	<div class="header-actions flex shrink-0 items-center gap-2 sm:gap-2.5">
 		{#if user?.isAdministrator}
 			<a
 				href="/app/admin"
-				class="app-header-admin-btn inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-canvas)] text-[var(--text-secondary)] transition-colors hover:border-[var(--action)] hover:bg-[color-mix(in_oklab,var(--action)_12%,transparent)] hover:text-[var(--action)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--action)] sm:h-9 sm:w-9"
+				class="app-header-admin-btn inline-flex h-8 w-8 items-center justify-center rounded-[0.625rem] border border-[var(--border-subtle)] bg-[var(--surface-raised)] text-[var(--text-secondary)] transition-[border-color,background-color,color,transform] hover:-translate-y-px hover:border-[color-mix(in_oklab,var(--action)_58%,var(--border-subtle))] hover:bg-[var(--surface-selected)] hover:text-[var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)] sm:h-9 sm:w-9"
 				title={m.nav_admin()}
 				aria-label={m.nav_admin()}
 			>
@@ -54,7 +54,7 @@
 
 		<a
 			href="/app/settings/tidal"
-			class="app-header-settings-btn inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-canvas)] text-[var(--text-secondary)] transition-colors hover:border-[var(--action)] hover:bg-[color-mix(in_oklab,var(--action)_12%,transparent)] hover:text-[var(--action)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--action)] sm:h-9 sm:w-9"
+			class="app-header-settings-btn inline-flex h-8 w-8 items-center justify-center rounded-[0.625rem] border border-[var(--border-subtle)] bg-[var(--surface-raised)] text-[var(--text-secondary)] transition-[border-color,background-color,color,transform] hover:-translate-y-px hover:border-[color-mix(in_oklab,var(--action)_58%,var(--border-subtle))] hover:bg-[var(--surface-selected)] hover:text-[var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)] sm:h-9 sm:w-9"
 			title={m.nav_settings()}
 			aria-label={m.nav_settings()}
 		>
@@ -66,7 +66,7 @@
 			<form method="POST" action="/logout" class="flex items-center">
 				<button
 					type="submit"
-					class="app-header-auth-btn inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-canvas)] text-[var(--text-secondary)] transition-colors hover:border-[var(--danger)] hover:bg-[color-mix(in_oklab,var(--danger)_12%,transparent)] hover:text-[var(--danger)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--action)] sm:h-9 sm:w-9"
+					class="app-header-auth-btn inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-[0.625rem] border border-[var(--border-subtle)] bg-[var(--surface-raised)] text-[var(--text-secondary)] transition-[border-color,background-color,color,transform] hover:-translate-y-px hover:border-[color-mix(in_oklab,var(--danger)_58%,var(--border-subtle))] hover:bg-[var(--danger-subtle)] hover:text-[var(--danger)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)] sm:h-9 sm:w-9"
 					title={m.sign_out()}
 					aria-label={m.sign_out()}
 				>
@@ -77,7 +77,7 @@
 		{:else}
 			<a
 				href="/sign-in"
-				class="app-header-auth-btn inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-canvas)] text-[var(--text-secondary)] transition-colors hover:border-[var(--action)] hover:bg-[color-mix(in_oklab,var(--action)_12%,transparent)] hover:text-[var(--action)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--action)] sm:h-9 sm:w-9"
+				class="app-header-auth-btn inline-flex h-8 w-8 items-center justify-center rounded-[0.625rem] border border-[var(--border-subtle)] bg-[var(--surface-raised)] text-[var(--text-secondary)] transition-[border-color,background-color,color,transform] hover:-translate-y-px hover:border-[color-mix(in_oklab,var(--action)_58%,var(--border-subtle))] hover:bg-[var(--surface-selected)] hover:text-[var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)] sm:h-9 sm:w-9"
 				title={m.sign_in_button()}
 				aria-label={m.sign_in_button()}
 			>
