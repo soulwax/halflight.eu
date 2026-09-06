@@ -192,10 +192,11 @@
 
 <style>
 	.song-card {
+		container-type: inline-size;
 		display: flex;
 		align-items: center;
-		gap: 1.15rem;
-		padding: 0.95rem 1.15rem;
+		gap: 0.8rem;
+		padding: 0.7rem 0.8rem;
 		border: var(--style-card-border-width, 2px) solid
 			var(--style-card-border-color, var(--border-subtle));
 		background: var(--surface-raised);
@@ -213,7 +214,7 @@
 
 	.artwork-wrap {
 		position: relative;
-		width: clamp(4.5rem, 9vw, 5.5rem);
+		width: clamp(3.75rem, 7vw, 4.5rem);
 		aspect-ratio: 1;
 		flex: 0 0 auto;
 		overflow: hidden;
@@ -384,15 +385,33 @@
 	.card-actions {
 		display: flex;
 		align-items: center;
-		gap: 0.45rem;
+		gap: 0.25rem;
 		flex: 0 0 auto;
+	}
+
+	.card-actions .action-btn:not(.play-btn) {
+		width: 0;
+		border-width: 0;
+		opacity: 0;
+		overflow: hidden;
+		transition:
+			width var(--dur-fast, 120ms) ease,
+			opacity var(--dur-fast, 120ms) ease,
+			border-width var(--dur-fast, 120ms) ease;
+	}
+
+	.song-card:hover .card-actions .action-btn:not(.play-btn),
+	.song-card:focus-within .card-actions .action-btn:not(.play-btn) {
+		width: 1.9rem;
+		border-width: 1px;
+		opacity: 1;
 	}
 
 	.action-btn {
 		display: grid;
 		place-items: center;
-		width: 2.15rem;
-		height: 2.15rem;
+		width: 1.9rem;
+		height: 1.9rem;
 		border: 1px solid var(--border-subtle);
 		background: var(--surface-canvas);
 		color: var(--text-muted);
@@ -439,6 +458,12 @@
 		}
 
 		.external-btn {
+			display: none;
+		}
+	}
+
+	@container (max-width: 23rem) {
+		.card-actions .action-btn:not(.play-btn) {
 			display: none;
 		}
 	}

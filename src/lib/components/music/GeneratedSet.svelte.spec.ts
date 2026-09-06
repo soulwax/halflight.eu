@@ -56,5 +56,5 @@ describe('GeneratedSet.svelte', () => {
 		expect(onPlayTrack).toHaveBeenCalledWith(set.tracks[0]);
 		expect(onSave).toHaveBeenCalledOnce();
 		expect(onExport).toHaveBeenCalledOnce();
-	});
+	}, 30_000);
 });

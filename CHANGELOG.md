@@ -27,6 +27,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Halflight Now settings for saved stream quality, default volume, loudness normalization, and TIDAL connection state.
 - Halflight Now now exposes provenance and actual playback quality, with focused lyrics and contributor-credit views.
 
+### Changed
+
+- Reworked the Listening Room’s desktop hierarchy around a compact, recognisable docked player,
+  quieter rail and header controls, and denser music-first home and track-card compositions.
+
 ### Fixed
 
 - A queue conflict that needs another review can now refresh the authoritative queue, replay local queue edits, and save without interrupting the current audio.

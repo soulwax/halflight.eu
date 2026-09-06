@@ -318,14 +318,14 @@
 <style>
 	.header-search {
 		position: relative;
-		width: min(100%, 38rem);
+		width: min(100%, 42rem);
 	}
 	.search-field {
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
 		min-width: 0;
-		height: 2.35rem;
+		height: 2.25rem;
 		padding: 0 0.7rem;
 		border: 1px solid var(--border-subtle);
 		border-radius: var(--radius-md);
@@ -343,7 +343,7 @@
 		border: 0;
 		background: transparent;
 		color: var(--text-primary);
-		font-size: 0.9rem;
+		font-size: var(--fs-base);
 		outline: none;
 	}
 	input::placeholder {

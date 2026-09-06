@@ -79,9 +79,7 @@
 		</ul>
 	</nav>
 
-	<div
-		class="side-nav-account mt-auto border-t-2 border-[var(--border-subtle)] bg-[var(--surface-canvas)] p-4"
-	>
+	<div class="side-nav-account mt-auto border-t border-[var(--border-subtle)] p-3">
 		{#if accountHref && accountLabel}
 			<a class="app-account-link" href={accountHref}>
 				{#if userName}<span class="side-nav-label truncate font-bold">{userName}</span>{/if}
@@ -171,5 +169,9 @@
 	.side-nav-collapsed .app-account-link {
 		align-items: center;
 		padding: 0.5rem;
+	}
+	.side-nav-account :global(.app-account-link) {
+		min-height: 2.5rem;
+		padding: 0.55rem 0.7rem;
 	}
 </style>

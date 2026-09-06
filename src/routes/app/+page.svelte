@@ -237,12 +237,12 @@
 	}
 
 	.continuation.has-artwork {
-		grid-template-columns: 4rem minmax(0, 1fr) auto;
+		grid-template-columns: 5.5rem minmax(0, 1fr) auto;
 	}
 
 	.continuation-artwork {
-		width: 4rem;
-		max-width: 4rem;
+		width: 5.5rem;
+		max-width: 5.5rem;
 		aspect-ratio: 1;
 		border-radius: var(--radius-md);
 		box-shadow: 0 0.5rem 1.25rem color-mix(in srgb, #000 32%, transparent);
@@ -438,8 +438,7 @@
 			gap: 1.25rem;
 		}
 
-		.continuation-artwork,
-		.continuation-light {
+		.continuation-artwork {
 			max-width: 6.5rem;
 		}
 

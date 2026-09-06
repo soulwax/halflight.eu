@@ -4,6 +4,7 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { Settings } from '@lucide/svelte';
+	import { SvelteMap } from 'svelte/reactivity';
 	import { player } from '#lib/player/player.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import synLogo from '#lib/assets/syn-logo.svg';
@@ -18,7 +19,7 @@
 
 	let { data, children }: { data: LayoutData; children: Snippet } = $props();
 	let mainElement: HTMLElement;
-	const scrollPositions = new Map<string, number>();
+	const scrollPositions = new SvelteMap<string, number>();
 
 	// Halflight Now writes are attributed separately from the desktop Listening
 	// Room (see player.svelte.ts's `origin` field / MASTERPLAN's session
