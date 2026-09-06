@@ -29,7 +29,8 @@ const file = {
 	objectKey: 'halflight-private-music/v1/123e4567-e89b-12d3-a456-426614174000',
 	fileName: 'demo.flac',
 	contentType: 'audio/flac',
-	sizeBytes: 5
+	sizeBytes: 5,
+	createdAt: '2026-01-01T00:00:00.000Z'
 };
 
 describe('/api/private-music/[id]', () => {
@@ -72,6 +73,34 @@ describe('/api/private-music/[id]', () => {
 		expect(mocks.getObject).toHaveBeenCalledWith(file.objectKey, 'bytes=1-3');
 	});
 
+	it('returns a cache validation response without reading private bytes', async () => {
+		mocks.get.mockResolvedValue(file);
+		const response = await GET(
+			event(
+				new Request('https://syn.test/api/private-music/file-1', {
+					headers: { 'If-None-Match': '"file-1-5-1767225600000"' }
+				})
+			)
+		);
+		expect(response.status).toBe(304);
+		expect(response.headers.get('ETag')).toBe('"file-1-5-1767225600000"');
+		expect(mocks.getObject).not.toHaveBeenCalled();
+	});
+
+	it('falls back to a full response when an If-Range validator is stale', async () => {
+		mocks.get.mockResolvedValue(file);
+		mocks.getObject.mockResolvedValue(new ReadableStream());
+		const response = await GET(
+			event(
+				new Request('https://syn.test/api/private-music/file-1', {
+					headers: { Range: 'bytes=1-3', 'If-Range': '"stale"' }
+				})
+			)
+		);
+		expect(response.status).toBe(200);
+		expect(mocks.getObject).toHaveBeenCalledWith(file.objectKey, undefined);
+	});
+
 	it('rejects invalid byte ranges before reading from storage', async () => {
 		mocks.get.mockResolvedValue(file);
 		const response = await GET(
@@ -91,6 +120,7 @@ describe('/api/private-music/[id]', () => {
 		);
 		expect(response.headers.get('Content-Length')).toBe('5');
 		expect(response.headers.get('Accept-Ranges')).toBe('bytes');
+		expect(response.headers.get('ETag')).toBe('"file-1-5-1767225600000"');
 		expect(mocks.getObject).not.toHaveBeenCalled();
 	});
 

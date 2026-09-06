@@ -791,8 +791,8 @@ elevated surface, subtle border; primary/secondary/muted text; action accent and
 warning, danger, information; focus ring, selected, skeleton, overlay; spacing, radii, shadows,
 content widths, motion durations.
 
-Eight named dark palettes exist and are persisted per owner. The default Halflight palette must be
-the reference composition; alternative palettes are personal atmosphere, not competing themes.
+Halflight has one dark reference composition. The interface stays neutral and quiet so artwork,
+quality, and playback state carry the colour; there are no palette or art-direction preferences.
 Quality badges colour by fidelity tier (grey lossy, cyan lossless, gold HiRes) via `qualityTier()`.
 
 Typography and hierarchy rules:
@@ -854,7 +854,7 @@ Desktop (>= 90rem — context panel available)     Laptop / desktop (64-90rem)
 └────────────────────────────────────────────┘    └────────────────────────────────────┘
 ```
 
-- **Rail** — primary navigation, account, theme. Persisted collapsed state on wide screens; it
+- **Rail** — primary navigation and account. Persisted collapsed state on wide screens; it
   never turns into a mobile bottom nav because mobile is Halflight Now.
 - **Header** — page identity left, a `toolbar` region right that each route fills with contextual
   actions (search field, filter, view toggle, play-all, generate, export).
@@ -1532,7 +1532,7 @@ Persist only:
 
 - The encrypted TIDAL authorization records (browse + playback).
 - Better Auth data.
-- Halflight-owned preferences: theme, streaming quality, volume, normalisation, layout booleans.
+- Halflight-owned preferences: streaming quality, volume, normalisation, layout booleans.
 - Bounded workflow state: the resumable queue, history, and position.
 - **The derived taste profile** — weights, identifiers, knob defaults, exclusions, timestamps.
 
@@ -2001,7 +2001,11 @@ Owner-uploaded private music is a separate capability: bytes use `HALFLIGHT_PRIV
 while Postgres records only ownership, an opaque key, filename, type, size, and creation time. The
 owner can list, download, and delete files through same-origin APIs. Downloads support authenticated
 `HEAD` metadata probes and single byte ranges for reliable resumption without exposing bucket URLs.
-TIDAL media remains excluded.
+They use immutable metadata validators so a cache check avoids a bucket read and a stale resumable
+request receives the complete current file. The owner can also export an M3U or JSON manifest: a
+direct response is the default, while an explicit short-lived copy uses the isolated export bucket.
+Manifests contain only same-origin Syn download routes and safe metadata, never object keys. TIDAL
+media remains excluded.
 
 ### Candidate uses and gates
 

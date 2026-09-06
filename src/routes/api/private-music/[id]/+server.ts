@@ -9,17 +9,37 @@ function requireOwner(event: Parameters<RequestHandler>[0]): string {
 	return event.locals.user.id;
 }
 
-function responseHeaders(
-	file: { contentType: string; fileName: string; sizeBytes: number },
-	range?: { start: number; end: number }
-): Headers {
+interface DownloadFile {
+	id: string;
+	contentType: string;
+	fileName: string;
+	sizeBytes: number;
+	createdAt: string;
+}
+
+function entityTag(file: DownloadFile): string {
+	return `"${file.id}-${file.sizeBytes}-${Date.parse(file.createdAt)}"`;
+}
+
+function matchesEntityTag(header: string | null, tag: string): boolean {
+	return Boolean(
+		header
+			?.split(',')
+			.map((value) => value.trim())
+			.some((value) => value === '*' || value === tag)
+	);
+}
+
+function responseHeaders(file: DownloadFile, range?: { start: number; end: number }): Headers {
 	const headers = new Headers({
 		'Content-Type': file.contentType,
 		'Content-Disposition': `attachment; filename="${file.fileName}"`,
 		'Cache-Control': 'private, no-store',
 		'Accept-Ranges': 'bytes',
 		'X-Content-Type-Options': 'nosniff',
-		Vary: 'Range'
+		Vary: 'Range',
+		ETag: entityTag(file),
+		'Last-Modified': new Date(file.createdAt).toUTCString()
 	});
 
 	if (range) {
@@ -36,9 +56,17 @@ export const GET: RequestHandler = async (event) => {
 	const userId = requireOwner(event);
 	const file = await dbPrivateMusicStore.get(userId, event.params.id ?? '');
 	if (!file) error(404, 'Private music file not found');
+	const tag = entityTag(file);
+	if (matchesEntityTag(event.request.headers.get('if-none-match'), tag)) {
+		return new Response(null, { status: 304, headers: responseHeaders(file) });
+	}
 	const rangeHeader = event.request.headers.get('range');
-	const range = parseByteRange(rangeHeader, file.sizeBytes);
-	if (rangeHeader && !range) {
+	const canUseRange = Boolean(
+		rangeHeader &&
+		(!event.request.headers.has('if-range') || event.request.headers.get('if-range') === tag)
+	);
+	const range = canUseRange ? parseByteRange(rangeHeader, file.sizeBytes) : null;
+	if (canUseRange && !range) {
 		return new Response(null, {
 			status: 416,
 			headers: {
@@ -69,6 +97,9 @@ export const HEAD: RequestHandler = async (event) => {
 	const userId = requireOwner(event);
 	const file = await dbPrivateMusicStore.get(userId, event.params.id ?? '');
 	if (!file) error(404, 'Private music file not found');
+	if (matchesEntityTag(event.request.headers.get('if-none-match'), entityTag(file))) {
+		return new Response(null, { status: 304, headers: responseHeaders(file) });
+	}
 	return new Response(null, { headers: responseHeaders(file) });
 };
 
