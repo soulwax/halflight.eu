@@ -1,4 +1,4 @@
-import { SvelteDate, SvelteMap, SvelteSet } from 'svelte/reactivity';
+import { SvelteDate } from 'svelte/reactivity';
 import type { TrackSummary } from '#lib/tidal/models';
 import { player } from './player.svelte';
 
@@ -20,6 +20,20 @@ export interface CustomPlaylist {
 }
 
 const STORAGE_KEY = 'syn_custom_playlists';
+
+/**
+ * Postgres is the durable source of truth for Halflight playlists. A browser
+ * cache can make the first render feel immediate, but it must never restore a
+ * playlist the owner already deleted from another tab or device.
+ */
+export function reconcilePlaylistsWithServer(
+	_cachedPlaylists: CustomPlaylist[],
+	serverPlaylists: CustomPlaylist[]
+): CustomPlaylist[] {
+	return [...serverPlaylists].sort(
+		(a, b) => new SvelteDate(b.updatedAt).getTime() - new SvelteDate(a.updatedAt).getTime()
+	);
+}
 
 export class CustomPlaylistsManager {
 	playlists = $state<CustomPlaylist[]>([]);
@@ -66,35 +80,7 @@ export class CustomPlaylistsManager {
 			if (res.ok) {
 				const data = (await res.json()) as { playlists: CustomPlaylist[] };
 				if (Array.isArray(data.playlists)) {
-					// Index existing local playlists by ID
-					const localMap = new SvelteMap(this.playlists.map((p) => [p.id, p]));
-
-					// Merge: server playlists take priority
-					for (const serverPl of data.playlists) {
-						localMap.set(serverPl.id, serverPl);
-					}
-
-					// If there are unsaved local playlists, push them to the server
-					const serverIds = new SvelteSet(data.playlists.map((p) => p.id));
-					for (const [id, pl] of localMap.entries()) {
-						if (!serverIds.has(id)) {
-							// Push local playlist to server
-							fetch('/api/playlists', {
-								method: 'POST',
-								headers: { 'Content-Type': 'application/json' },
-								body: JSON.stringify({
-									id: pl.id,
-									title: pl.title,
-									description: pl.description,
-									items: pl.items
-								})
-							}).catch(() => {});
-						}
-					}
-
-					this.playlists = Array.from(localMap.values()).sort(
-						(a, b) => new SvelteDate(b.updatedAt).getTime() - new SvelteDate(a.updatedAt).getTime()
-					);
+					this.playlists = reconcilePlaylistsWithServer(this.playlists, data.playlists);
 					this.save();
 				}
 			}

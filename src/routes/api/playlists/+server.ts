@@ -17,7 +17,7 @@ interface CreatePlaylistPayload {
 }
 
 export const GET: RequestHandler = async (event) => {
-	if (!event.locals.user) {
+	if (!event.locals.user || !event.locals.isAdministrator) {
 		error(401, 'Unauthorized');
 	}
 
@@ -31,7 +31,7 @@ export const GET: RequestHandler = async (event) => {
 };
 
 export const POST: RequestHandler = async (event) => {
-	if (!event.locals.user) {
+	if (!event.locals.user || !event.locals.isAdministrator) {
 		error(401, 'Unauthorized');
 	}
 

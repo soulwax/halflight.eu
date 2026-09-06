@@ -31,9 +31,13 @@ import { POST } from './+server';
 
 const fetchMock = vi.fn();
 
-function makeEvent(body: Record<string, unknown> = {}, user: { id: string } | null = { id: 'u1' }) {
+function makeEvent(
+	body: Record<string, unknown> = {},
+	user: { id: string } | null = { id: 'u1' },
+	isAdministrator = true
+) {
 	return {
-		locals: { user },
+		locals: { user, isAdministrator },
 		request: {
 			json: vi.fn().mockResolvedValue(body)
 		},
@@ -55,6 +59,12 @@ describe('POST /api/playlists/sync', () => {
 
 	it('rejects unauthenticated requests with 401', async () => {
 		await expect(POST(makeEvent({}, null))).rejects.toMatchObject({
+			status: 401
+		});
+	});
+
+	it('rejects a signed-in non-owner request with 401', async () => {
+		await expect(POST(makeEvent({}, { id: 'other-user' }, false))).rejects.toMatchObject({
 			status: 401
 		});
 	});

@@ -28,10 +28,11 @@ function makeEvent(
 	method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
 	params: Record<string, string> = {},
 	body?: Record<string, unknown>,
-	user: { id: string } | null = { id: 'u1' }
+	user: { id: string } | null = { id: 'u1' },
+	isAdministrator = true
 ) {
 	return {
-		locals: { user },
+		locals: { user, isAdministrator },
 		params,
 		request: {
 			json: vi.fn().mockResolvedValue(body ?? {})
@@ -54,6 +55,14 @@ describe('API /api/playlists', () => {
 	describe('GET /api/playlists', () => {
 		it('rejects unauthenticated requests with 401', async () => {
 			await expect(GET(makeEvent('GET', {}, undefined, null))).rejects.toMatchObject({
+				status: 401
+			});
+		});
+
+		it('rejects a signed-in non-owner request with 401', async () => {
+			await expect(
+				GET(makeEvent('GET', {}, undefined, { id: 'other-user' }, false))
+			).rejects.toMatchObject({
 				status: 401
 			});
 		});
