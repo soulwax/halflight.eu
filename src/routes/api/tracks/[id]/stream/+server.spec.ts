@@ -21,6 +21,7 @@ vi.mock('#lib/server/tidal', async (importOriginal) => ({
 }));
 
 import type { Cookies } from '@sveltejs/kit';
+import { TidalApiError } from '#lib/server/tidal';
 import { GET } from './+server';
 
 function event(trackId = '123', user: { id: string } | null = { id: 'owner-1' }) {
@@ -87,5 +88,16 @@ describe('GET /api/tracks/[id]/stream', () => {
 			'123',
 			expect.objectContaining({ quality: 'LOSSLESS' })
 		);
+	});
+
+	it('reports a removed catalogue asset as unavailable rather than a Link failure', async () => {
+		mocks.resolveTrackStream.mockRejectedValueOnce(
+			new TidalApiError(401, 'Asset is not ready for playback', null, '/v1/tracks/123/playbackinfo')
+		);
+
+		const response = await GET(event());
+
+		expect(response.status).toBe(404);
+		expect(await response.json()).toEqual({ error: 'track_unavailable', requiresFullAuth: false });
 	});
 });

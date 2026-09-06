@@ -1,14 +1,22 @@
-import { eq, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, lt, sql } from 'drizzle-orm';
+import { createHash } from 'node:crypto';
 import * as v from 'valibot';
 import { db } from '#lib/server/db';
-import { playbackState } from '#lib/server/db/schema';
+import { playbackOperationResult, playbackState } from '#lib/server/db/schema';
 import { log } from '#lib/server/log';
-import { createQueueEntry, isQueueEntryId, type QueueEntry } from '#lib/player/queue-entry.js';
+import {
+	createQueueEntry,
+	isQueueEntryId,
+	toDisplayTrack,
+	type QueueEntry
+} from '#lib/player/queue-entry.js';
 import type { AlbumReference, ArtistReference, TrackSummary } from '#lib/tidal/models';
 
 export const MAX_PLAYBACK_QUEUE_LENGTH = 100;
 export const MAX_PLAYBACK_HISTORY_LENGTH = 50;
 const MAX_POSITION_SECONDS = 60 * 60 * 24;
+const MAX_PLAYBACK_OPERATION_RESULTS = 50;
+const PLAYBACK_OPERATION_RESULT_RETENTION_MS = 24 * 60 * 60 * 1_000;
 export const PLAYBACK_STATE_ORIGINS = ['listening-room', 'halflight-now'] as const;
 
 export type PlaybackStateOrigin = (typeof PLAYBACK_STATE_ORIGINS)[number];
@@ -78,6 +86,33 @@ export interface PlaybackStateStore {
 export interface PlaybackStateSaveResult {
 	state: PlaybackState;
 	conflict: boolean;
+}
+
+export type QueueIntent =
+	| { type: 'queue.append'; entries: QueueEntry[] }
+	| { type: 'queue.prepend'; entry: QueueEntry }
+	| { type: 'queue.remove'; entryId: string }
+	| { type: 'queue.move'; entryId: string; beforeEntryId?: string; afterEntryId?: string }
+	| { type: 'queue.clear' }
+	| { type: 'queue.replace'; entries: QueueEntry[] };
+
+export interface PlaybackIntent {
+	version: 2;
+	expectedRevision: number;
+	operationId: string;
+	origin: PlaybackStateOrigin;
+	intent: QueueIntent;
+}
+
+export interface PlaybackIntentResult extends PlaybackStateSaveResult {
+	/** The response was recovered from a previous accepted operation. */
+	duplicate: boolean;
+	/** The intent was well-formed but cannot apply to the current queue. */
+	invalid?: boolean;
+}
+
+export interface PlaybackIntentStore {
+	apply(userId: string, intent: PlaybackIntent): Promise<PlaybackIntentResult>;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -226,6 +261,132 @@ export function parsePlaybackStateRevision(value: unknown): number | null {
 	return parsed.success ? parsed.output : null;
 }
 
+function parseRequiredQueueEntry(value: unknown): QueueEntry | null {
+	const record = asRecord(value);
+	if (!record || !isQueueEntryId(record.entryId)) return null;
+	const track = parsePlaybackTrack(record);
+	return track ? createQueueEntry(track, record.entryId) : null;
+}
+
+function parseRequiredQueueEntries(value: unknown): QueueEntry[] | null {
+	if (!Array.isArray(value)) return null;
+	const entries = value.map(parseRequiredQueueEntry);
+	if (entries.some((entry) => entry === null)) return null;
+	const queueEntries = entries as QueueEntry[];
+	if (new Set(queueEntries.map((entry) => entry.entryId)).size !== queueEntries.length) return null;
+	return queueEntries.slice(0, MAX_PLAYBACK_QUEUE_LENGTH);
+}
+
+/** Parse a versioned, idempotent queue mutation. */
+export function parsePlaybackIntent(value: unknown): PlaybackIntent | null {
+	const body = asRecord(value);
+	if (!body || body.version !== 2 || !isQueueEntryId(body.operationId)) return null;
+	const expectedRevision = parsePlaybackStateRevision(body.expectedRevision);
+	const origin = parsePlaybackStateOrigin(body.origin);
+	const rawIntent = asRecord(body.intent);
+	if (expectedRevision === null || !origin || !rawIntent || typeof rawIntent.type !== 'string')
+		return null;
+
+	let intent: QueueIntent | null = null;
+	switch (rawIntent.type) {
+		case 'queue.append': {
+			const entries = parseRequiredQueueEntries(rawIntent.entries);
+			intent = entries ? { type: rawIntent.type, entries } : null;
+			break;
+		}
+		case 'queue.prepend': {
+			const entry = parseRequiredQueueEntry(rawIntent.entry);
+			intent = entry ? { type: rawIntent.type, entry } : null;
+			break;
+		}
+		case 'queue.remove':
+			intent = isQueueEntryId(rawIntent.entryId)
+				? { type: rawIntent.type, entryId: rawIntent.entryId }
+				: null;
+			break;
+		case 'queue.move':
+			intent =
+				isQueueEntryId(rawIntent.entryId) &&
+				(rawIntent.beforeEntryId == null || isQueueEntryId(rawIntent.beforeEntryId)) &&
+				(rawIntent.afterEntryId == null || isQueueEntryId(rawIntent.afterEntryId))
+					? {
+							type: rawIntent.type,
+							entryId: rawIntent.entryId,
+							...(rawIntent.beforeEntryId ? { beforeEntryId: rawIntent.beforeEntryId } : {}),
+							...(rawIntent.afterEntryId ? { afterEntryId: rawIntent.afterEntryId } : {})
+						}
+					: null;
+			break;
+		case 'queue.clear':
+			intent = { type: rawIntent.type };
+			break;
+		case 'queue.replace': {
+			const entries = parseRequiredQueueEntries(rawIntent.entries);
+			intent = entries ? { type: rawIntent.type, entries } : null;
+			break;
+		}
+	}
+
+	return intent
+		? { version: 2, expectedRevision, operationId: body.operationId, origin, intent }
+		: null;
+}
+
+/** Apply a validated queue intent without mutating the authoritative queue. */
+export function applyQueueIntent(queue: QueueEntry[], intent: QueueIntent): QueueEntry[] | null {
+	const next = queue.slice();
+	const existingIds = new Set(next.map((entry) => entry.entryId));
+	const addEntries = (entries: QueueEntry[], at: 'start' | 'end') => {
+		if (entries.some((entry) => existingIds.has(entry.entryId))) return false;
+		if (at === 'start') next.unshift(...entries);
+		else next.push(...entries);
+		return true;
+	};
+
+	switch (intent.type) {
+		case 'queue.append':
+			if (!addEntries(intent.entries, 'end')) return null;
+			break;
+		case 'queue.prepend':
+			if (!addEntries([intent.entry], 'start')) return null;
+			break;
+		case 'queue.remove': {
+			const index = next.findIndex((entry) => entry.entryId === intent.entryId);
+			if (index === -1) return null;
+			next.splice(index, 1);
+			break;
+		}
+		case 'queue.move': {
+			const index = next.findIndex((entry) => entry.entryId === intent.entryId);
+			if (index === -1) return null;
+			const [entry] = next.splice(index, 1);
+			if (!entry) return null;
+			if (intent.beforeEntryId) {
+				const before = next.findIndex((item) => item.entryId === intent.beforeEntryId);
+				if (before === -1) return null;
+				next.splice(before, 0, entry);
+			} else if (intent.afterEntryId) {
+				const after = next.findIndex((item) => item.entryId === intent.afterEntryId);
+				if (after === -1) return null;
+				next.splice(after + 1, 0, entry);
+			} else {
+				next.push(entry);
+			}
+			break;
+		}
+		case 'queue.clear':
+			return [];
+		case 'queue.replace':
+			return intent.entries.slice(0, MAX_PLAYBACK_QUEUE_LENGTH);
+	}
+
+	return next.slice(0, MAX_PLAYBACK_QUEUE_LENGTH);
+}
+
+function playbackIntentFingerprint(intent: PlaybackIntent): string {
+	return createHash('sha256').update(JSON.stringify(intent)).digest('hex');
+}
+
 function parseJson(value: string | null): unknown {
 	if (!value) return null;
 	try {
@@ -238,14 +399,17 @@ function parseJson(value: string | null): unknown {
 function fromRow(row: {
 	currentTrackJson: string | null;
 	queueJson: string;
+	queueEntriesJson?: string;
 	historyJson: string;
 	currentTime: number;
 	revision: number;
 	lastOrigin: string | null;
 }): PlaybackState {
+	const entryQueue = parseJson(row.queueEntriesJson ?? null);
 	const input = parsePlaybackState({
 		currentTrack: parseJson(row.currentTrackJson),
-		queue: parseJson(row.queueJson),
+		queue:
+			Array.isArray(entryQueue) && entryQueue.length > 0 ? entryQueue : parseJson(row.queueJson),
 		history: parseJson(row.historyJson),
 		currentTime: row.currentTime
 	});
@@ -264,6 +428,7 @@ export const dbPlaybackStateStore: PlaybackStateStore = {
 			.select({
 				currentTrackJson: playbackState.currentTrackJson,
 				queueJson: playbackState.queueJson,
+				queueEntriesJson: playbackState.queueEntriesJson,
 				historyJson: playbackState.historyJson,
 				currentTime: playbackState.currentTime,
 				revision: playbackState.revision,
@@ -277,7 +442,8 @@ export const dbPlaybackStateStore: PlaybackStateStore = {
 	async write(userId, state, expectedRevision, origin) {
 		const values = {
 			currentTrackJson: state.currentTrack ? JSON.stringify(state.currentTrack) : null,
-			queueJson: JSON.stringify(state.queue),
+			queueJson: JSON.stringify(state.queue.map(toDisplayTrack)),
+			queueEntriesJson: JSON.stringify(state.queue),
 			historyJson: JSON.stringify(state.history),
 			currentTime: state.currentTime,
 			lastOrigin: origin,
@@ -294,12 +460,180 @@ export const dbPlaybackStateStore: PlaybackStateStore = {
 			.returning({
 				currentTrackJson: playbackState.currentTrackJson,
 				queueJson: playbackState.queueJson,
+				queueEntriesJson: playbackState.queueEntriesJson,
 				historyJson: playbackState.historyJson,
 				currentTime: playbackState.currentTime,
 				revision: playbackState.revision,
 				lastOrigin: playbackState.lastOrigin
 			});
 		return rows[0] ? fromRow(rows[0]) : null;
+	}
+};
+
+function parseStoredPlaybackState(value: unknown): PlaybackState | null {
+	const record = asRecord(value);
+	if (!record) return null;
+	const input = parsePlaybackState(record);
+	const revision = parsePlaybackStateRevision(record.revision);
+	if (!input || revision === null) return null;
+	return {
+		...input,
+		revision,
+		lastOrigin: record.lastOrigin == null ? null : parsePlaybackStateOrigin(record.lastOrigin)
+	};
+}
+
+export const dbPlaybackIntentStore: PlaybackIntentStore = {
+	async apply(userId, intent) {
+		const fingerprint = playbackIntentFingerprint(intent);
+		return db.transaction(async (tx) => {
+			const operationRows = await tx
+				.select({
+					requestFingerprint: playbackOperationResult.requestFingerprint,
+					resultJson: playbackOperationResult.resultJson
+				})
+				.from(playbackOperationResult)
+				.where(
+					and(
+						eq(playbackOperationResult.userId, userId),
+						eq(playbackOperationResult.operationId, intent.operationId)
+					)
+				)
+				.limit(1);
+			const operation = operationRows[0];
+			if (operation && operation.requestFingerprint === fingerprint) {
+				const state = parseStoredPlaybackState(parseJson(operation.resultJson));
+				if (state) return { state, conflict: false, duplicate: true };
+			}
+
+			const stateRows = await tx
+				.select({
+					currentTrackJson: playbackState.currentTrackJson,
+					queueJson: playbackState.queueJson,
+					queueEntriesJson: playbackState.queueEntriesJson,
+					historyJson: playbackState.historyJson,
+					currentTime: playbackState.currentTime,
+					revision: playbackState.revision,
+					lastOrigin: playbackState.lastOrigin
+				})
+				.from(playbackState)
+				.where(eq(playbackState.userId, userId))
+				.limit(1);
+			const current = stateRows[0] ? fromRow(stateRows[0]) : EMPTY_PLAYBACK_STATE;
+
+			if (operation) {
+				return { state: current, conflict: true, duplicate: false, invalid: true };
+			}
+			if (current.revision !== intent.expectedRevision) {
+				return { state: current, conflict: true, duplicate: false };
+			}
+
+			const queue = applyQueueIntent(current.queue, intent.intent);
+			if (!queue) return { state: current, conflict: false, duplicate: false, invalid: true };
+
+			const now = new Date();
+			const values = {
+				currentTrackJson: current.currentTrack ? JSON.stringify(current.currentTrack) : null,
+				queueJson: JSON.stringify(queue.map(toDisplayTrack)),
+				queueEntriesJson: JSON.stringify(queue),
+				historyJson: JSON.stringify(current.history),
+				currentTime: current.currentTime,
+				lastOrigin: intent.origin,
+				updatedAt: now
+			};
+			const savedRows = await tx
+				.insert(playbackState)
+				.values({ userId, ...values, revision: intent.expectedRevision + 1 })
+				.onConflictDoUpdate({
+					target: playbackState.userId,
+					set: { ...values, revision: sql`${playbackState.revision} + 1` },
+					setWhere: sql`${playbackState.revision} = ${intent.expectedRevision}`
+				})
+				.returning({
+					currentTrackJson: playbackState.currentTrackJson,
+					queueJson: playbackState.queueJson,
+					queueEntriesJson: playbackState.queueEntriesJson,
+					historyJson: playbackState.historyJson,
+					currentTime: playbackState.currentTime,
+					revision: playbackState.revision,
+					lastOrigin: playbackState.lastOrigin
+				});
+			const saved = savedRows[0] ? fromRow(savedRows[0]) : null;
+			if (!saved) {
+				const concurrentOperations = await tx
+					.select({
+						requestFingerprint: playbackOperationResult.requestFingerprint,
+						resultJson: playbackOperationResult.resultJson
+					})
+					.from(playbackOperationResult)
+					.where(
+						and(
+							eq(playbackOperationResult.userId, userId),
+							eq(playbackOperationResult.operationId, intent.operationId)
+						)
+					)
+					.limit(1);
+				const concurrent = concurrentOperations[0];
+				if (concurrent?.requestFingerprint === fingerprint) {
+					const recovered = parseStoredPlaybackState(parseJson(concurrent.resultJson));
+					if (recovered) return { state: recovered, conflict: false, duplicate: true };
+				}
+				const latestRows = await tx
+					.select({
+						currentTrackJson: playbackState.currentTrackJson,
+						queueJson: playbackState.queueJson,
+						queueEntriesJson: playbackState.queueEntriesJson,
+						historyJson: playbackState.historyJson,
+						currentTime: playbackState.currentTime,
+						revision: playbackState.revision,
+						lastOrigin: playbackState.lastOrigin
+					})
+					.from(playbackState)
+					.where(eq(playbackState.userId, userId))
+					.limit(1);
+				return {
+					state: latestRows[0] ? fromRow(latestRows[0]) : EMPTY_PLAYBACK_STATE,
+					conflict: true,
+					duplicate: false
+				};
+			}
+
+			await tx.insert(playbackOperationResult).values({
+				userId,
+				operationId: intent.operationId,
+				requestFingerprint: fingerprint,
+				resultJson: JSON.stringify(saved)
+			});
+
+			const expiry = new Date(now.getTime() - PLAYBACK_OPERATION_RESULT_RETENTION_MS);
+			await tx
+				.delete(playbackOperationResult)
+				.where(
+					and(
+						eq(playbackOperationResult.userId, userId),
+						lt(playbackOperationResult.createdAt, expiry)
+					)
+				);
+			const overflow = await tx
+				.select({ operationId: playbackOperationResult.operationId })
+				.from(playbackOperationResult)
+				.where(eq(playbackOperationResult.userId, userId))
+				.orderBy(desc(playbackOperationResult.createdAt))
+				.offset(MAX_PLAYBACK_OPERATION_RESULTS);
+			if (overflow.length > 0) {
+				await tx.delete(playbackOperationResult).where(
+					and(
+						eq(playbackOperationResult.userId, userId),
+						inArray(
+							playbackOperationResult.operationId,
+							overflow.map((row) => row.operationId)
+						)
+					)
+				);
+			}
+
+			return { state: saved, conflict: false, duplicate: false };
+		});
 	}
 };
 
@@ -328,4 +662,13 @@ export function savePlaybackState(
 		if (saved) return { state: saved, conflict: false };
 		return { state: (await store.read(userId)) ?? EMPTY_PLAYBACK_STATE, conflict: true };
 	});
+}
+
+/** Apply an entry-targeted, replay-safe queue operation. */
+export function applyPlaybackIntent(
+	userId: string,
+	intent: PlaybackIntent,
+	store: PlaybackIntentStore = dbPlaybackIntentStore
+): Promise<PlaybackIntentResult> {
+	return store.apply(userId, intent);
 }

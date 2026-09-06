@@ -1,0 +1,1 @@
+ALTER TABLE "playback_operation_result" ADD COLUMN "request_fingerprint" text NOT NULL;

@@ -3,6 +3,7 @@ import {
 	describePlaybackDelivery,
 	getConnectionStatus,
 	getRequestedStreamQuality,
+	isTrackUnavailableForPlayback,
 	resolveTrackStream,
 	TidalApiError,
 	TidalAuthError,
@@ -63,6 +64,9 @@ export const GET: RequestHandler = async (event) => {
 			requiresFullAuth: false
 		});
 	} catch (cause) {
+		if (isTrackUnavailableForPlayback(cause)) {
+			return json({ error: 'track_unavailable', requiresFullAuth: false }, { status: 404 });
+		}
 		if (cause instanceof TidalQualityDeniedError) {
 			return json(
 				{ error: 'plan_no_streaming', message: cause.message, requiresFullAuth: false },

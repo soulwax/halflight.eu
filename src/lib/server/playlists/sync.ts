@@ -9,6 +9,7 @@ import {
 	TidalAuthError,
 	TidalPlaybackNotLinkedError,
 	TidalQualityDeniedError,
+	isTrackUnavailableForPlayback,
 	type TidalRequestContext
 } from '#lib/server/tidal';
 import * as tidalApi from '#lib/server/tidal/api';
@@ -20,6 +21,7 @@ import {
 	createPlaylist as createPlaylistRemote
 } from '#lib/server/tidal/api';
 import { normalisePlaylistDetail, normaliseSearchResults } from '#lib/server/tidal/normalise';
+import type { TokenRowStore } from '#lib/server/tidal/store';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -27,6 +29,8 @@ export interface SyncContext {
 	userId: string;
 	fetch: typeof fetch;
 	cookies: Cookies;
+	/** Optional explicit token storage for trusted background/import work. */
+	store?: TokenRowStore;
 	/** Only verify streams when the owner has linked TIDAL Link playback. */
 	validateStreams?: boolean;
 }
@@ -84,6 +88,12 @@ const STREAM_PROBE_HEADERS = {
 	'User-Agent': 'TIDAL_ANDROID/1039 okhttp/3.13.1'
 };
 
+/**
+ * TIDAL reports a removed or otherwise unavailable asset as a 401 from the
+ * playback manifest endpoint. It is distinct from an invalid account token:
+ * the response describes this specific asset, so an import may safely seek a
+ * replacement instead of preserving a track the player can never load.
+ */
 function normaliseMatchText(value: string): string {
 	return value
 		.toLocaleLowerCase()
@@ -145,6 +155,7 @@ async function checkStreamability(
 		await probe.body?.cancel();
 		return 'playable';
 	} catch (cause) {
+		if (isTrackUnavailableForPlayback(cause)) return 'not_playable';
 		// A missing playback credential, plan-wide refusal, throttle, or server
 		// outage says nothing about this individual track. Keep it rather than
 		// turning a temporary account problem into destructive data loss.
@@ -277,7 +288,11 @@ export function diffPlaylistItems(localIds: string[], remoteIds: string[]): Play
  * Otherwise a new local record is created with `source = 'tidal'`.
  */
 export async function pullPlaylist(tidalPlaylistId: string, ctx: SyncContext): Promise<SyncResult> {
-	const tidalCtx: TidalRequestContext = { fetch: ctx.fetch, cookies: ctx.cookies };
+	const tidalCtx: TidalRequestContext = {
+		fetch: ctx.fetch,
+		cookies: ctx.cookies,
+		store: ctx.store
+	};
 	const result: SyncResult = {
 		playlistId: '',
 		tidalPlaylistId,

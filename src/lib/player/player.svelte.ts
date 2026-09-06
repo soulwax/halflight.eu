@@ -1035,6 +1035,90 @@ export class PlayerState {
 		};
 	}
 
+	private queueOperationId(command: QueueCommand): string {
+		if (!command.operationId) command.operationId = `operation_${crypto.randomUUID()}`;
+		return command.operationId;
+	}
+
+	private queueIntentPayload(command: QueueCommand): Record<string, unknown> {
+		switch (command.type) {
+			case 'append':
+				return { type: 'queue.append', entries: command.entries };
+			case 'prepend':
+				return { type: 'queue.prepend', entry: command.entry };
+			case 'remove':
+				return { type: 'queue.remove', entryId: command.entryId };
+			case 'move':
+				return {
+					type: 'queue.move',
+					entryId: command.entryId,
+					...(command.beforeEntryId ? { beforeEntryId: command.beforeEntryId } : {}),
+					...(command.afterEntryId ? { afterEntryId: command.afterEntryId } : {})
+				};
+			case 'clear':
+				return { type: 'queue.clear' };
+			case 'replace':
+				return { type: 'queue.replace', entries: command.entries };
+		}
+	}
+
+	/**
+	 * Send queue edits as named operations before the resume snapshot. A lost
+	 * response can safely be retried with the same operation ID; a stale write
+	 * returns the authoritative entry-aware queue for the normal rebase path.
+	 */
+	private async persistQueueCommands(): Promise<boolean> {
+		while (this.queueCommands.length > 0) {
+			const command = this.queueCommands[0];
+			if (!command) return true;
+			const operationId = this.queueOperationId(command);
+			const response = await fetch('/api/playback-state/intents', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({
+					version: 2,
+					expectedRevision: this.playbackStateRevision,
+					operationId,
+					origin: this.origin,
+					intent: this.queueIntentPayload(command)
+				}),
+				keepalive: true
+			});
+			const state = (await response.json().catch(() => null)) as SavedPlaybackState | null;
+			if (
+				!state ||
+				!Array.isArray(state.queue) ||
+				typeof state.revision !== 'number' ||
+				!Number.isSafeInteger(state.revision)
+			) {
+				this.persistenceStatus = 'offline';
+				return false;
+			}
+
+			if (response.status === 409) {
+				if (this.reconciliationAttempts >= 1) {
+					this.persistenceStatus = 'conflict';
+					return false;
+				}
+				this.reconciliationBase = state;
+				this.playbackStateRevision = state.revision;
+				this.queue = rebaseQueue(state.queue, this.queueCommands, MAX_QUEUE_LENGTH);
+				this.reconciliationAttempts += 1;
+				continue;
+			}
+			if (!response.ok) {
+				this.persistenceStatus = 'offline';
+				return false;
+			}
+
+			this.playbackStateRevision = state.revision;
+			if (this.queueCommands[0]?.operationId === operationId) this.queueCommands.shift();
+			this.reconciliationBase = null;
+			this.reconciliationAttempts = 0;
+		}
+		return true;
+	}
+
 	/**
 	 * Refresh a queue after the automatic stale-write retry has also conflicted.
 	 * The currently audible track remains local; only deliberate queue commands
@@ -1098,8 +1182,9 @@ export class PlayerState {
 		}
 
 		this.persistenceInFlight = true;
-		const snapshot = this.snapshotPlaybackState();
 		try {
+			if (this.queueCommands.length > 0 && !(await this.persistQueueCommands())) return;
+			const snapshot = this.snapshotPlaybackState();
 			const response = await fetch('/api/playback-state', {
 				method: 'PUT',
 				headers: { 'content-type': 'application/json' },

@@ -148,6 +148,20 @@
       "when": 1788655580437,
       "tag": "0020_glamorous_chameleon",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1788672172862,
+      "tag": "0021_slow_khan",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1788672722635,
+      "tag": "0022_tidy_ben_parker",
+      "breakpoints": true
     }
   ]
 }

@@ -410,8 +410,22 @@ describe('PlayerState', () => {
 
 	it('attributes a persisted write to the site the player is acting as', async () => {
 		const fetchSpy = vi.fn((url: string, _init?: RequestInit) => {
+			if (String(url) === '/api/playback-state/intents') {
+				return Promise.resolve(
+					new Response(
+						JSON.stringify({
+							currentTrack: null,
+							queue: persistedQueue(sampleTrack1),
+							history: [],
+							currentTime: 0,
+							revision: 1
+						}),
+						{ status: 200 }
+					)
+				);
+			}
 			if (String(url) === '/api/playback-state') {
-				return Promise.resolve(new Response(JSON.stringify({ revision: 1 }), { status: 200 }));
+				return Promise.resolve(new Response(JSON.stringify({ revision: 2 }), { status: 200 }));
 			}
 			return Promise.reject(new Error('offline'));
 		});
@@ -423,12 +437,14 @@ describe('PlayerState', () => {
 		player.addToQueue(sampleTrack1);
 
 		await vi.waitFor(
-			() => expect(fetchSpy).toHaveBeenCalledWith('/api/playback-state', expect.anything()),
+			() => expect(fetchSpy).toHaveBeenCalledWith('/api/playback-state/intents', expect.anything()),
 			{ timeout: 2000 }
 		);
-		const call = fetchSpy.mock.calls.find(([url]) => String(url) === '/api/playback-state');
+		const call = fetchSpy.mock.calls.find(([url]) => String(url) === '/api/playback-state/intents');
 		const body = JSON.parse(String(call?.[1]?.body));
 		expect(body.origin).toBe('halflight-now');
+		expect(body).toMatchObject({ version: 2, intent: { type: 'queue.append' } });
+		expect(body.operationId).toMatch(/^operation_/);
 	});
 
 	it('serializes a changed queue behind an in-flight persistence write', async () => {
@@ -436,42 +452,69 @@ describe('PlayerState', () => {
 		const firstResponse = new Promise<Response>((resolve) => {
 			resolveFirst = resolve;
 		});
-		let persistenceCalls = 0;
+		let intentCalls = 0;
 		const fetchSpy = vi.fn((url: string, _init?: RequestInit) => {
-			if (url !== '/api/playback-state') return Promise.reject(new Error('offline'));
-			persistenceCalls += 1;
-			return persistenceCalls === 1
+			if (url === '/api/playback-state') {
+				return Promise.resolve(new Response(JSON.stringify({ revision: 3 }), { status: 200 }));
+			}
+			if (url !== '/api/playback-state/intents') return Promise.reject(new Error('offline'));
+			intentCalls += 1;
+			return intentCalls === 1
 				? firstResponse
-				: Promise.resolve(new Response(JSON.stringify({ revision: 2 }), { status: 200 }));
+				: Promise.resolve(
+						new Response(
+							JSON.stringify({
+								currentTrack: null,
+								queue: persistedQueue(sampleTrack1, sampleTrack2),
+								history: [],
+								currentTime: 0,
+								revision: 2
+							}),
+							{ status: 200 }
+						)
+					);
 		});
 		vi.stubGlobal('fetch', fetchSpy);
 
 		const player = new PlayerState();
 		player.restorePlaybackState({ currentTrack: null, queue: [], history: [], currentTime: 0 });
 		player.addToQueue(sampleTrack1);
-		await vi.waitFor(() => expect(persistenceCalls).toBe(1));
+		await vi.waitFor(() => expect(intentCalls).toBe(1));
 
 		player.addToQueue(sampleTrack2);
-		resolveFirst?.(new Response(JSON.stringify({ revision: 1 }), { status: 200 }));
+		resolveFirst?.(
+			new Response(
+				JSON.stringify({
+					currentTrack: null,
+					queue: persistedQueue(sampleTrack1),
+					history: [],
+					currentTime: 0,
+					revision: 1
+				}),
+				{ status: 200 }
+			)
+		);
 
-		await vi.waitFor(() => expect(persistenceCalls).toBe(2));
-		const persistenceWrites = fetchSpy.mock.calls.filter(([url]) => url === '/api/playback-state');
+		await vi.waitFor(() => expect(intentCalls).toBe(2));
+		const persistenceWrites = fetchSpy.mock.calls.filter(
+			([url]) => url === '/api/playback-state/intents'
+		);
 		const secondBody = JSON.parse(String(persistenceWrites[1]?.[1]?.body));
 		expect(secondBody).toMatchObject({
-			revision: 1,
-			queue: [
-				expect.objectContaining({ id: 'track-1' }),
-				expect.objectContaining({ id: 'track-2' })
-			]
+			expectedRevision: 1,
+			intent: { type: 'queue.append', entries: [expect.objectContaining({ id: 'track-2' })] }
 		});
 	});
 
 	it('rebases a stale local queue edit and retries without interrupting playback', async () => {
-		let persistenceCalls = 0;
+		let intentCalls = 0;
 		const fetchSpy = vi.fn((url: string, _init?: RequestInit) => {
-			if (url !== '/api/playback-state') return Promise.reject(new Error('offline'));
-			persistenceCalls += 1;
-			return persistenceCalls === 1
+			if (url === '/api/playback-state') {
+				return Promise.resolve(new Response(JSON.stringify({ revision: 5 }), { status: 200 }));
+			}
+			if (url !== '/api/playback-state/intents') return Promise.reject(new Error('offline'));
+			intentCalls += 1;
+			return intentCalls === 1
 				? Promise.resolve(
 						new Response(
 							JSON.stringify({
@@ -484,7 +527,21 @@ describe('PlayerState', () => {
 							{ status: 409 }
 						)
 					)
-				: Promise.resolve(new Response(JSON.stringify({ revision: 5 }), { status: 200 }));
+				: Promise.resolve(
+						new Response(
+							JSON.stringify({
+								currentTrack: sampleTrack2,
+								queue: [
+									...persistedQueue(sampleTrack2),
+									{ ...sampleTrack1, entryId: 'queue-local' }
+								],
+								history: [],
+								currentTime: 19,
+								revision: 5
+							}),
+							{ status: 200 }
+						)
+					);
 		});
 		vi.stubGlobal('fetch', fetchSpy);
 
@@ -493,27 +550,23 @@ describe('PlayerState', () => {
 		player.addToQueue(sampleTrack1);
 
 		await vi.waitFor(() => expect(player.persistenceStatus).toBe('saved'));
-		expect(persistenceCalls).toBe(2);
+		expect(intentCalls).toBe(2);
 		expect(player.currentTrack).toBeNull();
 		expectQueuedTracks(player, [sampleTrack2, sampleTrack1]);
 		const writes = (fetchSpy.mock.calls as Array<[string, RequestInit?]>).filter(
-			([url]) => url === '/api/playback-state'
+			([url]) => url === '/api/playback-state/intents'
 		);
 		const retry = JSON.parse(String(writes[1]?.[1]?.body));
 		expect(retry).toMatchObject({
-			revision: 4,
-			queue: [
-				expect.objectContaining({ id: 'track-2', entryId: 'persisted-1' }),
-				expect.objectContaining({ id: 'track-1', entryId: expect.any(String) })
-			]
+			expectedRevision: 4,
+			intent: { type: 'queue.append', entries: [expect.objectContaining({ id: 'track-1' })] }
 		});
 	});
 
 	it('refreshes a repeatedly conflicted queue without changing the audible track', async () => {
-		let writes = 0;
+		let intentWrites = 0;
 		const fetchSpy = vi.fn((url: string, init?: RequestInit) => {
-			if (url !== '/api/playback-state') return Promise.reject(new Error('offline'));
-			if (!init?.method || init.method === 'GET') {
+			if (url === '/api/playback-state' && (!init?.method || init.method === 'GET')) {
 				return Promise.resolve(
 					new Response(
 						JSON.stringify({
@@ -527,8 +580,12 @@ describe('PlayerState', () => {
 					)
 				);
 			}
-			writes += 1;
-			if (writes === 1) {
+			if (url === '/api/playback-state') {
+				return Promise.resolve(new Response(JSON.stringify({ revision: 8 }), { status: 200 }));
+			}
+			if (url !== '/api/playback-state/intents') return Promise.reject(new Error('offline'));
+			intentWrites += 1;
+			if (intentWrites === 1) {
 				return Promise.resolve(
 					new Response(
 						JSON.stringify({
@@ -542,7 +599,7 @@ describe('PlayerState', () => {
 					)
 				);
 			}
-			if (writes === 2) {
+			if (intentWrites === 2) {
 				return Promise.resolve(
 					new Response(
 						JSON.stringify({
@@ -556,7 +613,18 @@ describe('PlayerState', () => {
 					)
 				);
 			}
-			return Promise.resolve(new Response(JSON.stringify({ revision: 7 }), { status: 200 }));
+			return Promise.resolve(
+				new Response(
+					JSON.stringify({
+						currentTrack: sampleTrack3,
+						queue: [...persistedQueue(sampleTrack3), { ...sampleTrack1, entryId: 'queue-local' }],
+						history: [],
+						currentTime: 42,
+						revision: 7
+					}),
+					{ status: 200 }
+				)
+			);
 		});
 		vi.stubGlobal('fetch', fetchSpy);
 
@@ -574,15 +642,13 @@ describe('PlayerState', () => {
 		expectQueuedTracks(player, [sampleTrack3, sampleTrack1]);
 		const persistenceWrites = fetchSpy.mock.calls.filter(
 			([url, init]) =>
-				url === '/api/playback-state' && (init as RequestInit | undefined)?.method === 'PUT'
+				url === '/api/playback-state/intents' &&
+				(init as RequestInit | undefined)?.method === 'POST'
 		);
 		const refreshedWrite = JSON.parse(String(persistenceWrites[2]?.[1]?.body));
 		expect(refreshedWrite).toMatchObject({
-			revision: 6,
-			queue: [
-				expect.objectContaining({ id: 'track-3', entryId: 'persisted-1' }),
-				expect.objectContaining({ id: 'track-1', entryId: expect.any(String) })
-			]
+			expectedRevision: 6,
+			intent: { type: 'queue.append', entries: [expect.objectContaining({ id: 'track-1' })] }
 		});
 	});
 

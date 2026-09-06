@@ -62,6 +62,7 @@ export {
 	resolveTrackStream,
 	parseTrackStream,
 	parseManifestXml,
+	isTrackUnavailableForPlayback,
 	describePlaybackDelivery,
 	QUALITY_LADDER,
 	TidalQualityDeniedError,

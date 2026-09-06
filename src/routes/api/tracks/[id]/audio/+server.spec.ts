@@ -20,7 +20,7 @@ vi.mock('#lib/server/tidal', async (importOriginal) => ({
 }));
 
 import type { Cookies } from '@sveltejs/kit';
-import { __resetSegmentCache } from '#lib/server/tidal';
+import { __resetSegmentCache, TidalApiError } from '#lib/server/tidal';
 import { GET } from './+server';
 
 // The route fetches CDN media with the *global* fetch (not `event.fetch`), because
@@ -80,6 +80,14 @@ describe('GET /api/tracks/[id]/audio', () => {
 			expect.objectContaining({ headers: expect.any(Headers) })
 		);
 		expect(new Headers(fetchMock.mock.calls[0][1].headers).get('Range')).toBe('bytes=0-1');
+	});
+
+	it('does not disguise a removed catalogue asset as a playback-Link failure', async () => {
+		mocks.resolveTrackStream.mockRejectedValueOnce(
+			new TidalApiError(401, 'Asset is not ready for playback', null, '/v1/tracks/123/playbackinfo')
+		);
+
+		await expect(GET(event())).rejects.toMatchObject({ status: 404 });
 	});
 
 	describe('segmented (HiRes DASH) delivery', () => {

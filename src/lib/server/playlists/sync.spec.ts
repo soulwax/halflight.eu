@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { TidalApiError } from '#lib/server/tidal';
 import { diffPlaylistItems, rankReplacementTracks, sanitiseImportedTracks } from './sync';
+import { isTrackUnavailableForPlayback } from '#lib/server/tidal';
 
 describe('diffPlaylistItems', () => {
 	it('detects added tracks', () => {
@@ -100,6 +102,23 @@ describe('rankReplacementTracks', () => {
 });
 
 describe('sanitiseImportedTracks', () => {
+	it('recognises TIDAL’s track-level unavailable-asset response', () => {
+		const cause = new TidalApiError(
+			401,
+			'Asset is not ready for playback',
+			null,
+			'/v1/tracks/92932530/playbackinfopostpaywall'
+		);
+
+		expect(isTrackUnavailableForPlayback(cause)).toBe(true);
+	});
+
+	it('does not mistake a generic 401 as an unavailable track', () => {
+		const cause = new TidalApiError(401, 'Unauthorized', null, '/v1/tracks/1/playbackinfo');
+
+		expect(isTrackUnavailableForPlayback(cause)).toBe(false);
+	});
+
 	it('replaces a known-unplayable import with a verified TIDAL alternative', async () => {
 		const unavailable = {
 			kind: 'track' as const,

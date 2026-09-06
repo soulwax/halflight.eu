@@ -2,6 +2,7 @@ import { error, type RequestHandler } from '@sveltejs/kit';
 import {
 	getConnectionStatus,
 	getRequestedStreamQuality,
+	isTrackUnavailableForPlayback,
 	resolveTrackStream,
 	streamSegmentedAudio,
 	TidalApiError,
@@ -35,6 +36,7 @@ export const GET: RequestHandler = async (event) => {
 			ctx: { fetch: event.fetch, cookies: event.cookies }
 		});
 	} catch (cause) {
+		if (isTrackUnavailableForPlayback(cause)) error(404, 'Track unavailable from TIDAL');
 		if (cause instanceof TidalQualityDeniedError) error(403, cause.message);
 		if (
 			cause instanceof TidalPlaybackNotLinkedError ||

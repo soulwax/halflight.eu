@@ -4,7 +4,9 @@ import { createQueueEntry } from '#lib/player/queue-entry.js';
 import {
 	EMPTY_PLAYBACK_STATE,
 	MAX_PLAYBACK_HISTORY_LENGTH,
+	applyQueueIntent,
 	parsePlaybackState,
+	parsePlaybackIntent,
 	parsePlaybackStateOrigin,
 	parsePlaybackStateRevision,
 	savePlaybackState,
@@ -139,5 +141,42 @@ describe('playback state', () => {
 		expect(parsePlaybackStateRevision(12)).toBe(12);
 		expect(parsePlaybackStateRevision(-1)).toBeNull();
 		expect(parsePlaybackStateRevision(1.5)).toBeNull();
+	});
+
+	it('requires stable entry IDs for queue intents while retaining duplicate track occurrences', () => {
+		const first = { ...track, entryId: 'entry-first' };
+		const second = { ...track, entryId: 'entry-second' };
+		const intent = parsePlaybackIntent({
+			version: 2,
+			expectedRevision: 4,
+			operationId: 'operation-1',
+			origin: 'halflight-now',
+			intent: { type: 'queue.remove', entryId: 'entry-second' }
+		});
+
+		expect(intent).toMatchObject({
+			expectedRevision: 4,
+			origin: 'halflight-now',
+			intent: { type: 'queue.remove', entryId: 'entry-second' }
+		});
+		expect(
+			applyQueueIntent([first, second], intent!.intent)?.map((entry) => entry.entryId)
+		).toEqual(['entry-first']);
+		expect(
+			parsePlaybackIntent({
+				version: 2,
+				expectedRevision: 4,
+				operationId: 'operation-2',
+				origin: 'halflight-now',
+				intent: { type: 'queue.append', entries: [track] }
+			})
+		).toBeNull();
+	});
+
+	it('does not apply an intent that reuses an existing entry identity', () => {
+		const existing = { ...track, entryId: 'entry-existing' };
+		const duplicate = { ...track, entryId: 'entry-existing' };
+
+		expect(applyQueueIntent([existing], { type: 'queue.append', entries: [duplicate] })).toBeNull();
 	});
 });

@@ -9,12 +9,18 @@ import { isQueueEntryId, type QueueEntry } from './queue-entry.js';
  * This keeps deliberate duplicate tracks independently removable and movable.
  */
 export type QueueCommand =
-	| { type: 'append'; entries: QueueEntry[] }
-	| { type: 'prepend'; entry: QueueEntry }
-	| { type: 'remove'; entryId: string }
-	| { type: 'move'; entryId: string; beforeEntryId?: string; afterEntryId?: string }
-	| { type: 'clear' }
-	| { type: 'replace'; entries: QueueEntry[] };
+	| { type: 'append'; entries: QueueEntry[]; operationId?: string }
+	| { type: 'prepend'; entry: QueueEntry; operationId?: string }
+	| { type: 'remove'; entryId: string; operationId?: string }
+	| {
+			type: 'move';
+			entryId: string;
+			beforeEntryId?: string;
+			afterEntryId?: string;
+			operationId?: string;
+	  }
+	| { type: 'clear'; operationId?: string }
+	| { type: 'replace'; entries: QueueEntry[]; operationId?: string };
 
 function removeByEntryId(queue: QueueEntry[], entryId: string): QueueEntry | null {
 	if (!isQueueEntryId(entryId)) return null;

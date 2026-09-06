@@ -104,12 +104,44 @@ export const playbackState = pgTable('playback_state', {
 		.references(() => user.id, { onDelete: 'cascade' }),
 	currentTrackJson: text('current_track_json'),
 	queueJson: text('queue_json').notNull().default('[]'),
+	// New writes keep the entry-aware queue separately while rolling deployments
+	// can still read the legacy snapshot column.
+	queueEntriesJson: text('queue_entries_json').notNull().default('[]'),
 	historyJson: text('history_json').notNull().default('[]'),
 	currentTime: integer('current_time').notNull().default(0),
 	revision: integer('revision').notNull().default(0),
 	lastOrigin: text('last_origin'),
 	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 });
+
+/**
+ * Short-lived idempotency outcomes for accepted playback intents.
+ *
+ * The playback writer prunes this table by age and count in the same database
+ * transaction as a state mutation. It is deliberately a small retry window,
+ * never an append-only activity log; `resultJson` contains only the safe,
+ * bounded result returned to the client.
+ */
+export const playbackOperationResult = pgTable(
+	'playback_operation_result',
+	{
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		operationId: text('operation_id').notNull(),
+		requestFingerprint: text('request_fingerprint').notNull(),
+		resultJson: text('result_json').notNull(),
+		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+	},
+	(table) => [
+		primaryKey({ columns: [table.userId, table.operationId] }),
+		index('playback_operation_result_user_created_idx').on(table.userId, table.createdAt),
+		check(
+			'playback_operation_result_operation_id_length',
+			sql`char_length(${table.operationId}) between 1 and 128`
+		)
+	]
+);
 
 /**
  * User visual preferences and customization settings.

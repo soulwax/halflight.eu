@@ -18,6 +18,20 @@ export const QUALITY_LADDER: TrackAudioQuality[] = ['HI_RES_LOSSLESS', 'LOSSLESS
 const SUBSTATUS_QUALITY_NOT_ALLOWED = 5003;
 
 /**
+ * TIDAL's legacy playback endpoint uses this otherwise-auth-like response for
+ * a catalogue item which has been removed or is not available to play. The
+ * response is asset-specific, so callers must not present it as a request to
+ * reconnect the account.
+ */
+export function isTrackUnavailableForPlayback(cause: unknown): boolean {
+	return (
+		cause instanceof TidalApiError &&
+		cause.status === 401 &&
+		/asset is not ready for playback/i.test(cause.statusText)
+	);
+}
+
+/**
  * Every quality the account is entitled to was refused (`subStatus 5003`) — the
  * plan has no streaming entitlement (e.g. free tier or lapsed subscription).
  */
