@@ -43,6 +43,33 @@ export interface PageOptions {
 	cursor?: string;
 }
 
+const MAX_PAGINATION_PAGES = 50;
+
+async function collectPages(
+	firstPage: Document<Resource[]>,
+	ctx: Ctx | undefined,
+	operation: string
+): Promise<{ items: Resource[]; included: Resource[] }> {
+	const items: Resource[] = [];
+	const included: Resource[] = [];
+	let page = firstPage;
+
+	for (let pageCount = 0; ; pageCount += 1) {
+		items.push(...(Array.isArray(page.data) ? page.data : [page.data]));
+		included.push(...(page.included ?? []));
+		const next = page.links?.next;
+		if (!next) return { items, included };
+		if (pageCount + 1 >= MAX_PAGINATION_PAGES) {
+			// A partial playlist is worse than a visible import failure: it silently
+			// changes the owner's ordered selection. Make the caller retry instead.
+			throw new Error(`TIDAL ${operation} pagination did not finish.`);
+		}
+		// TIDAL controls the pagination token format. Following the supplied link
+		// avoids assuming cursor pagination when an endpoint changes its scheme.
+		page = await tidalJson<Document<Resource[]>>(next, {}, ctx);
+	}
+}
+
 /** The authenticated user's profile resource (`/users/me`). */
 export function getCurrentUser(ctx?: Ctx): Promise<Document<Resource>> {
 	return tidalJson(`/users/me`, {}, ctx);
@@ -75,20 +102,7 @@ export async function getFullCollection(
 	ctx?: Ctx,
 	opts: PageOptions = {}
 ): Promise<{ items: Resource[]; included: Resource[] }> {
-	const items: Resource[] = [];
-	const included: Resource[] = [];
-	let page = await getCollectionPage(kind, opts, ctx);
-	for (let guard = 0; guard < 50; guard++) {
-		items.push(...(Array.isArray(page.data) ? page.data : [page.data]));
-		included.push(...(page.included ?? []));
-		const next = page.links?.next;
-		if (!next) break;
-		// TIDAL controls the pagination token format. Following the supplied link
-		// avoids silently stopping after its common 20-item first page when that
-		// format changes (for example, cursor → offset/after pagination).
-		page = await tidalJson<Document<Resource[]>>(next, {}, ctx);
-	}
-	return { items, included };
+	return collectPages(await getCollectionPage(kind, opts, ctx), ctx, `${kind} collection`);
 }
 
 interface LegacyPlaylistPage {
@@ -208,17 +222,7 @@ export async function getFullPlaylistItems(
 	ctx?: Ctx,
 	opts: PageOptions = {}
 ): Promise<{ items: Resource[]; included: Resource[] }> {
-	const items: Resource[] = [];
-	const included: Resource[] = [];
-	let page = await getPlaylistItems(id, opts, ctx);
-	for (let guard = 0; guard < 50; guard++) {
-		items.push(...(Array.isArray(page.data) ? page.data : [page.data]));
-		included.push(...(page.included ?? []));
-		const next = page.links?.next;
-		if (!next) break;
-		page = await tidalJson<Document<Resource[]>>(next, {}, ctx);
-	}
-	return { items, included };
+	return collectPages(await getPlaylistItems(id, opts, ctx), ctx, 'playlist item');
 }
 
 /**
@@ -258,30 +262,27 @@ export async function getFullPlaylist(
 		(expectedCount !== undefined && expectedCount > initialItems.length) ||
 		initialItems.length === 0
 	) {
-		try {
-			const fullItems = await getFullPlaylistItems(id, ctx, {
-				countryCode: opts.countryCode,
-				include: ['artists', 'albums']
-			});
-			if (fullItems.items.length > 0) {
-				return {
-					...document,
-					data: {
-						...data,
-						relationships: {
-							...relationships,
-							items: {
-								...(itemsRel ?? {}),
-								data: fullItems.items
-							}
-						}
-					},
-					included: [...(document.included ?? []), ...fullItems.included, ...fullItems.items]
-				};
-			}
-		} catch {
-			// Best-effort: fall back to returning the initial document
+		const fullItems = await getFullPlaylistItems(id, ctx, {
+			countryCode: opts.countryCode,
+			include: ['artists', 'albums']
+		});
+		if (expectedCount !== undefined && fullItems.items.length < expectedCount) {
+			throw new Error('TIDAL playlist items were incomplete.');
 		}
+		return {
+			...document,
+			data: {
+				...data,
+				relationships: {
+					...relationships,
+					items: {
+						...(itemsRel ?? {}),
+						data: fullItems.items
+					}
+				}
+			},
+			included: [...(document.included ?? []), ...fullItems.included, ...fullItems.items]
+		};
 	}
 
 	return document;

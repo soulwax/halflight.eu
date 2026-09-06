@@ -23,14 +23,18 @@ import { GET, POST } from './+server';
 const fetchMock = vi.fn();
 
 function makeEvent(
-	body: Record<string, unknown> = {},
+	body: unknown = {},
 	user: { id: string } | null = { id: 'u1' },
-	isAdministrator = true
+	isAdministrator = true,
+	jsonError?: unknown
 ) {
 	return {
 		locals: { user, isAdministrator },
 		request: {
-			json: vi.fn().mockResolvedValue(body)
+			json:
+				jsonError === undefined
+					? vi.fn().mockResolvedValue(body)
+					: vi.fn().mockRejectedValue(jsonError)
 		},
 		fetch: fetchMock,
 		cookies: {} as unknown as Cookies
@@ -88,10 +92,15 @@ describe('API /api/playlists/import', () => {
 			});
 		});
 
-		it('rejects empty or missing tidalPlaylistIds with 400', async () => {
+		it('returns a recoverable result for an empty playlist selection', async () => {
 			mocks.getConnectionStatus.mockResolvedValue({ connected: true });
-			await expect(POST(makeEvent({ tidalPlaylistIds: [] }))).rejects.toMatchObject({
-				status: 400
+			const res = await POST(makeEvent({ tidalPlaylistIds: [] }));
+			expect(res.status).toBe(200);
+			const json = await res.json();
+			expect(json).toMatchObject({
+				totalImported: 0,
+				totalErrors: 0,
+				error: 'invalid_playlist_selection'
 			});
 		});
 
@@ -105,7 +114,7 @@ describe('API /api/playlists/import', () => {
 				tracksRemoved: 0,
 				tracksSkipped: 1,
 				tracksReplaced: 2,
-				streamValidation: 'verified'
+				streamValidation: 'deferred'
 			});
 
 			const res = await POST(makeEvent({ tidalPlaylistIds: ['pl-1'] }));
@@ -115,7 +124,47 @@ describe('API /api/playlists/import', () => {
 			expect(json.totalErrors).toBe(0);
 			expect(json.totalTracksSkipped).toBe(1);
 			expect(json.totalTracksReplaced).toBe(2);
-			expect(mocks.pullPlaylist).toHaveBeenCalledWith('pl-1', expect.anything());
+			expect(json.streamValidation).toBe('deferred');
+			expect(mocks.pullPlaylist).toHaveBeenCalledWith(
+				'pl-1',
+				expect.not.objectContaining({ validateStreams: expect.anything() })
+			);
+		});
+
+		it('does not surface malformed playlist identifiers as an HTTP 400', async () => {
+			mocks.getConnectionStatus.mockResolvedValue({ connected: true });
+			const res = await POST(makeEvent({ tidalPlaylistIds: ['ok', 7] }));
+			expect(res.status).toBe(200);
+			expect((await res.json()).error).toBe('invalid_playlist_selection');
+			expect(mocks.pullPlaylist).not.toHaveBeenCalled();
+		});
+
+		it('does not surface malformed JSON as an HTTP 400', async () => {
+			mocks.getConnectionStatus.mockResolvedValue({ connected: true });
+			const res = await POST(
+				makeEvent({}, { id: 'u1' }, true, new SyntaxError('Unexpected end of JSON input'))
+			);
+			expect(res.status).toBe(200);
+			expect((await res.json()).error).toBe('invalid_playlist_selection');
+		});
+
+		it('returns a TIDAL import failure in the normal result payload', async () => {
+			mocks.getConnectionStatus.mockResolvedValue({ connected: true });
+			mocks.pullPlaylist.mockResolvedValue({
+				playlistId: '',
+				tidalPlaylistId: 'pl-1',
+				status: 'error',
+				tracksAdded: 0,
+				tracksRemoved: 0,
+				tracksSkipped: 0,
+				tracksReplaced: 0,
+				streamValidation: 'deferred',
+				error: 'Unable to import this playlist from TIDAL. Please try again.'
+			});
+
+			const res = await POST(makeEvent({ tidalPlaylistIds: ['pl-1'] }));
+			expect(res.status).toBe(200);
+			expect(await res.json()).toMatchObject({ totalImported: 0, totalErrors: 1 });
 		});
 	});
 });

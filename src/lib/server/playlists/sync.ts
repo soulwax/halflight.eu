@@ -1,13 +1,4 @@
-import {
-	getConnectionStatus,
-	isTrackUnavailableForPlayback,
-	resolveTrackStream,
-	TidalApiError,
-	TidalAuthError,
-	TidalPlaybackNotLinkedError,
-	TidalQualityDeniedError,
-	type TidalRequestContext
-} from '#lib/server/tidal';
+import { getConnectionStatus, type TidalRequestContext } from '#lib/server/tidal';
 import * as tidalApi from '#lib/server/tidal/api';
 import {
 	addPlaylistItems,
@@ -16,9 +7,9 @@ import {
 	replacePlaylistItems,
 	updatePlaylist as updatePlaylistRemote
 } from '#lib/server/tidal/api';
-import { normalisePlaylistDetail, normaliseSearchResults } from '#lib/server/tidal/normalise';
-import { readRecord, type TokenRowStore } from '#lib/server/tidal/store';
-import type { PlaylistDetail, TrackSummary } from '#lib/tidal/models';
+import { normalisePlaylistDetail } from '#lib/server/tidal/normalise';
+import type { TokenRowStore } from '#lib/server/tidal/store';
+import type { PlaylistDetail } from '#lib/tidal/models';
 import type { Cookies } from '@sveltejs/kit';
 import type { SavedPlaylist } from './index';
 import { createUserPlaylist, getUserPlaylists, updateUserPlaylist } from './index';
@@ -31,8 +22,6 @@ export interface SyncContext {
 	cookies: Cookies;
 	/** Optional explicit token storage for trusted background/import work. */
 	store?: TokenRowStore;
-	/** Only verify streams when the owner has linked TIDAL Link playback. */
-	validateStreams?: boolean;
 }
 
 export interface SyncResult {
@@ -41,12 +30,12 @@ export interface SyncResult {
 	status: 'synced' | 'created' | 'conflict' | 'error' | 'skipped';
 	tracksAdded: number;
 	tracksRemoved: number;
-	/** Imported tracks omitted after TIDAL confirmed they cannot be streamed. */
+	/** Always zero: imports preserve the source playlist rather than rewriting it. */
 	tracksSkipped: number;
-	/** Unstreamable imports substituted with a verified TIDAL alternative. */
+	/** Always zero: imports never substitute a different TIDAL recording. */
 	tracksReplaced: number;
-	/** `unavailable` means browsing was connected but playback could not be checked. */
-	streamValidation: 'verified' | 'unavailable';
+	/** Imports deliberately defer playback checks until the owner plays a track. */
+	streamValidation: 'deferred';
 	error?: string;
 }
 
@@ -60,200 +49,6 @@ export interface PlaylistDiff {
 	added: string[];
 	removed: string[];
 	reordered: boolean;
-}
-
-export interface ImportTrackSanitization {
-	items: TrackSummary[];
-	skipped: number;
-	replaced: number;
-}
-
-type Streamability = 'playable' | 'not_playable' | 'unverified';
-
-interface ImportVerificationDependencies {
-	checkStreamability?: (
-		track: TrackSummary,
-		tidalCtx: TidalRequestContext
-	) => Promise<Streamability>;
-	findReplacementCandidates?: (
-		track: TrackSummary,
-		tidalCtx: TidalRequestContext
-	) => Promise<TrackSummary[]>;
-}
-
-const MAX_ALTERNATIVE_CANDIDATES = 12;
-const STREAM_PROBE_HEADERS = {
-	Accept: '*/*',
-	Range: 'bytes=0-1',
-	'User-Agent': 'TIDAL_ANDROID/1039 okhttp/3.13.1'
-};
-
-/**
- * TIDAL reports a removed or otherwise unavailable asset as a 401 from the
- * playback manifest endpoint. It is distinct from an invalid account token:
- * the response describes this specific asset, so an import may safely seek a
- * replacement instead of preserving a track the player can never load.
- */
-function normaliseMatchText(value: string): string {
-	return value
-		.toLocaleLowerCase()
-		.normalize('NFKD')
-		.replace(/[\u0300-\u036f]/g, '')
-		.replace(/[^\p{L}\p{N}]+/gu, ' ')
-		.trim();
-}
-
-/**
- * Prefer the closest catalogue equivalent first: exact title, matching primary
- * artist, same album and a similar running time. TIDAL's own similar-track
- * results fill the remaining slots, so a replacement remains musically useful
- * rather than being a random search hit.
- */
-export function rankReplacementTracks(
-	source: TrackSummary,
-	candidates: TrackSummary[]
-): TrackSummary[] {
-	const sourceTitle = normaliseMatchText(source.title);
-	const sourceArtist = normaliseMatchText(source.artists[0]?.name ?? '');
-	const sourceAlbum = normaliseMatchText(source.album?.title ?? '');
-
-	return [...candidates]
-		.filter((candidate) => candidate.id && candidate.id !== source.id)
-		.sort((a, b) => scoreReplacement(b) - scoreReplacement(a));
-
-	function scoreReplacement(candidate: TrackSummary): number {
-		let score = 0;
-		if (normaliseMatchText(candidate.title) === sourceTitle) score += 100;
-		if (normaliseMatchText(candidate.artists[0]?.name ?? '') === sourceArtist) score += 60;
-		if (normaliseMatchText(candidate.album?.title ?? '') === sourceAlbum) score += 25;
-		if (source.duration && candidate.duration) {
-			score += Math.max(0, 20 - Math.min(20, Math.abs(source.duration - candidate.duration) / 3));
-		}
-		return score + (candidate.popularity ?? 0) / 1000;
-	}
-}
-
-async function checkStreamability(
-	track: TrackSummary,
-	tidalCtx: TidalRequestContext
-): Promise<Streamability> {
-	try {
-		// HIGH deliberately lets resolveTrackStream fall back through TIDAL's
-		// entitlement ladder. The import check therefore mirrors real playback
-		// without retaining a signed media URL. Probe the resolved source as well:
-		// a successful manifest can still contain an expired or unreachable CDN URL.
-		const stream = await resolveTrackStream(track.id, { quality: 'HIGH', ctx: tidalCtx });
-		const probe = await fetch(stream.streamUrl, {
-			headers: STREAM_PROBE_HEADERS,
-			redirect: 'follow'
-		});
-		if (!probe.ok && probe.status !== 206) {
-			return probe.status >= 500 || probe.status === 429 ? 'unverified' : 'not_playable';
-		}
-		// Do not retain or consume the response body. The signed URL is scoped to
-		// this short verification request and never enters playlist state.
-		await probe.body?.cancel();
-		return 'playable';
-	} catch (cause) {
-		if (isTrackUnavailableForPlayback(cause)) return 'not_playable';
-		// A missing playback credential, plan-wide refusal, throttle, or server
-		// outage says nothing about this individual track. Keep it rather than
-		// turning a temporary account problem into destructive data loss.
-		if (
-			cause instanceof TidalPlaybackNotLinkedError ||
-			cause instanceof TidalAuthError ||
-			cause instanceof TidalQualityDeniedError ||
-			(cause instanceof TidalApiError &&
-				(cause.status === 401 ||
-					cause.status === 403 ||
-					cause.status === 429 ||
-					cause.status >= 500))
-		) {
-			return 'unverified';
-		}
-		return cause instanceof TidalApiError ? 'not_playable' : 'unverified';
-	}
-}
-
-async function findReplacementCandidates(
-	track: TrackSummary,
-	tidalCtx: TidalRequestContext
-): Promise<TrackSummary[]> {
-	const query = [track.artists[0]?.name, track.title].filter(Boolean).join(' ').trim();
-	const documents = await Promise.allSettled([
-		query
-			? tidalApi.search(query, { types: ['tracks'], include: ['artists', 'albums'] }, tidalCtx)
-			: Promise.resolve(null),
-		tidalApi.getTrackRelationship(
-			track.id,
-			'similarTracks',
-			{ include: ['artists', 'albums'] },
-			tidalCtx
-		)
-	]);
-
-	const candidates: TrackSummary[] = [];
-	const seen = new Set<string>();
-	for (const document of documents) {
-		if (document.status !== 'fulfilled' || !document.value) continue;
-		for (const candidate of normaliseSearchResults(document.value).tracks) {
-			if (!seen.has(candidate.id)) {
-				seen.add(candidate.id);
-				candidates.push(candidate);
-			}
-		}
-	}
-	return rankReplacementTracks(track, candidates).slice(0, MAX_ALTERNATIVE_CANDIDATES);
-}
-
-/**
- * Keep imported playlists truthful to the playback account. A known-bad TIDAL
- * item is never written to Halflight; an equivalent, verified alternative is
- * preferred, otherwise the item is omitted. Transient verification failures
- * are preserved so imports remain non-destructive during an outage.
- */
-export async function sanitiseImportedTracks(
-	items: TrackSummary[],
-	tidalCtx: TidalRequestContext,
-	validateStreams: boolean,
-	dependencies: ImportVerificationDependencies = {}
-): Promise<ImportTrackSanitization> {
-	if (!validateStreams) return { items, skipped: 0, replaced: 0 };
-	const verify = dependencies.checkStreamability ?? checkStreamability;
-	const findAlternatives = dependencies.findReplacementCandidates ?? findReplacementCandidates;
-
-	const sanitised: TrackSummary[] = [];
-	let skipped = 0;
-	let replaced = 0;
-
-	for (const track of items) {
-		const availability = await verify(track, tidalCtx);
-		if (availability === 'playable' || availability === 'unverified') {
-			sanitised.push(track);
-			continue;
-		}
-
-		const alternatives = await findAlternatives(track, tidalCtx);
-		let replacement: TrackSummary | undefined;
-		for (const candidate of alternatives) {
-			if ((await verify(candidate, tidalCtx)) === 'playable') {
-				replacement = candidate;
-				break;
-			}
-		}
-
-		if (replacement) {
-			sanitised.push({
-				...replacement,
-				provenance: `Replaced unavailable TIDAL track ${track.id}`
-			});
-			replaced += 1;
-		} else {
-			skipped += 1;
-		}
-	}
-
-	return { items: sanitised, skipped, replaced };
 }
 
 // ─── Pure diff logic ────────────────────────────────────────────────────────
@@ -301,59 +96,24 @@ export async function pullPlaylist(tidalPlaylistId: string, ctx: SyncContext): P
 		tracksRemoved: 0,
 		tracksSkipped: 0,
 		tracksReplaced: 0,
-		streamValidation: ctx.validateStreams === false ? 'unavailable' : 'verified'
+		streamValidation: 'deferred'
 	};
 
 	try {
-		// Fetch TIDAL playlist with items included
-		const document = await tidalApi.getPlaylist(tidalPlaylistId, { include: ['items'] }, tidalCtx);
-
-		// If the initial fetch didn't include items or was capped at the first page (20 tracks), fetch all items
-		let detail: PlaylistDetail | null = normalisePlaylistDetail(document);
-		const expectedCount = detail?.numberOfItems ?? 0;
-		if (detail && (detail.items.length === 0 || detail.items.length < expectedCount)) {
-			const { items, included } = await tidalApi.getFullPlaylistItems(tidalPlaylistId, tidalCtx, {
-				include: ['artists', 'albums']
-			});
-			if (items.length > 0) {
-				const relationships =
-					(document.data as { relationships?: Record<string, unknown> })?.relationships ?? {};
-				// Re-normalise with the full item set
-				const fullDoc = {
-					...document,
-					data: {
-						...(document.data as object),
-						relationships: {
-							...relationships,
-							items: {
-								...((relationships.items as object) ?? {}),
-								data: items
-							}
-						}
-					},
-					included: [
-						...((document as { included?: unknown[] }).included ?? []),
-						...items,
-						...included
-					]
-				};
-				detail = normalisePlaylistDetail(fullDoc) ?? detail;
-			}
-		}
+		// Capture one complete, ordered source playlist. Import is intentionally
+		// separate from playback: checking every signed stream serially made large
+		// imports slow and replaced/omitted the owner's actual choices.
+		const document = await tidalApi.getFullPlaylist(
+			tidalPlaylistId,
+			{ include: ['artists', 'albums'] },
+			tidalCtx
+		);
+		const detail: PlaylistDetail | null = normalisePlaylistDetail(document);
 
 		if (!detail) {
 			result.error = 'Failed to normalise TIDAL playlist';
 			return result;
 		}
-
-		const sanitised = await sanitiseImportedTracks(
-			detail.items,
-			tidalCtx,
-			ctx.validateStreams !== false
-		);
-		detail = { ...detail, items: sanitised.items };
-		result.tracksSkipped = sanitised.skipped;
-		result.tracksReplaced = sanitised.replaced;
 
 		// Find existing local record
 		const localPlaylists = await getUserPlaylists(ctx.userId);
@@ -400,8 +160,10 @@ export async function pullPlaylist(tidalPlaylistId: string, ctx: SyncContext): P
 			result.status = 'created';
 			result.tracksAdded = detail.items.length;
 		}
-	} catch (err) {
-		result.error = err instanceof Error ? err.message : 'Unknown error pulling playlist';
+	} catch {
+		// Provider errors may include request paths or raw response details. Keep
+		// those server-side and give the owner an actionable, stable result.
+		result.error = 'Unable to import this playlist from TIDAL. Please try again.';
 	}
 
 	return result;
@@ -428,7 +190,7 @@ export async function pushPlaylist(
 		tracksRemoved: 0,
 		tracksSkipped: 0,
 		tracksReplaced: 0,
-		streamValidation: 'unavailable'
+		streamValidation: 'deferred'
 	};
 
 	try {
@@ -648,18 +410,10 @@ export async function listImportablePlaylists(ctx: SyncContext) {
 	}
 
 	try {
-		const token = await readRecord(ctx.store);
-		if (!token?.userId) {
-			return {
-				playlists: [],
-				error: 'TIDAL account identity is unavailable. Reconnect TIDAL and try again.'
-			};
-		}
-
-		const [{ items, included }, ownedPlaylists] = await Promise.all([
-			tidalApi.getFullCollection('playlists', tidalCtx),
-			tidalApi.getOwnedPlaylists(token.userId, tidalCtx)
-		]);
+		// The v2 user collection is authenticated, paginated, and side-loads the
+		// actual playlist resources. The legacy owner endpoint returns HTTP 400 for
+		// the current account, and its failure used to hide this otherwise valid list.
+		const { items, included } = await tidalApi.getFullCollection('playlists', tidalCtx);
 		const { normalisePlaylist } = await import('#lib/server/tidal/normalise');
 
 		// Get already-imported TIDAL IDs
@@ -677,20 +431,15 @@ export async function listImportablePlaylists(ctx: SyncContext) {
 				return normalisePlaylist(resolved as never);
 			})
 			.filter((playlist): playlist is NonNullable<typeof playlist> => Boolean(playlist));
-		const playlistsById = new Map(collectionPlaylists.map((playlist) => [playlist.id, playlist]));
-		for (const playlist of ownedPlaylists) {
-			if (!playlistsById.has(playlist.id)) playlistsById.set(playlist.id, playlist);
-		}
-
-		const playlists = [...playlistsById.values()]
+		const playlists = collectionPlaylists
 			.map((playlist) => ({ ...playlist, isImported: importedTidalIds.has(playlist.id) }))
 			.sort((a, b) => a.title.localeCompare(b.title));
 
 		return { playlists, error: null };
-	} catch (err) {
+	} catch {
 		return {
 			playlists: [],
-			error: err instanceof Error ? err.message : 'Failed to list TIDAL playlists'
+			error: 'upstream_unavailable'
 		};
 	}
 }

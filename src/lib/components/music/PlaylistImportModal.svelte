@@ -39,16 +39,17 @@
 		try {
 			const res = await fetch('/api/playlists/import');
 			if (!res.ok) {
-				const data = await res.json().catch(() => ({}));
-				throw new Error(data.message || data.error || 'Failed to load TIDAL playlists');
+				throw new Error(m.playlist_import_load_failed());
 			}
 			const data = (await res.json()) as { playlists: ImportablePlaylist[]; error?: string | null };
 			if (data.error) {
-				throw new Error(data.error);
+				throw new Error(
+					data.error === 'not_connected' ? m.tidal_not_connected() : m.playlist_import_load_failed()
+				);
 			}
 			playlists = data.playlists || [];
 		} catch (err) {
-			errorMessage = err instanceof Error ? err.message : 'Unknown error';
+			errorMessage = err instanceof Error ? err.message : m.playlist_import_load_failed();
 		} finally {
 			isLoading = false;
 		}
@@ -86,8 +87,7 @@
 			});
 
 			if (!res.ok) {
-				const err = await res.json().catch(() => ({}));
-				throw new Error(err.message || err.error || 'Import failed');
+				throw new Error(m.playlist_import_some_failed({ count: selectedIds.size }));
 			}
 
 			const data = (await res.json()) as {
@@ -95,16 +95,18 @@
 				totalErrors: number;
 				totalTracksSkipped: number;
 				totalTracksReplaced: number;
-				streamValidation: 'verified' | 'unavailable';
+				streamValidation: 'deferred';
+				error?: 'invalid_playlist_selection';
 			};
-			const importSummary = `${m.playlist_import_done()} (${data.totalImported})`;
-			if (data.streamValidation === 'unavailable') {
-				successMessage = `${importSummary} ${m.playlist_import_streams_unavailable()}`;
-			} else if (data.totalTracksSkipped || data.totalTracksReplaced) {
-				successMessage = `${importSummary} ${m.playlist_import_streams_checked()} ${m.playlist_import_streams_adjusted({ replaced: data.totalTracksReplaced, skipped: data.totalTracksSkipped })}`;
-			} else {
-				successMessage = `${importSummary} ${m.playlist_import_streams_checked()}`;
+			if (data.error === 'invalid_playlist_selection') {
+				errorMessage = m.playlist_import_selection_invalid();
+				return;
 			}
+
+			const importSummary = `${m.playlist_import_done()} (${data.totalImported})`;
+			successMessage = data.totalErrors
+				? `${importSummary} ${m.playlist_import_some_failed({ count: data.totalErrors })}`
+				: `${importSummary} ${m.playlist_import_source_preserved()}`;
 
 			// Refresh client-side custom playlist store
 			await customPlaylists.syncWithServer();
@@ -112,12 +114,19 @@
 			// Reload the list to update `isImported` badges
 			await loadPlaylists();
 			selectedIds.clear();
+			if (data.totalErrors > 0) {
+				errorMessage = m.playlist_import_some_failed({ count: data.totalErrors });
+				return;
+			}
 
 			setTimeout(() => {
 				customPlaylists.closeImport();
 			}, 1200);
 		} catch (err) {
-			errorMessage = err instanceof Error ? err.message : 'Import failed';
+			errorMessage =
+				err instanceof Error
+					? err.message
+					: m.playlist_import_some_failed({ count: selectedIds.size });
 		} finally {
 			isImporting = false;
 		}

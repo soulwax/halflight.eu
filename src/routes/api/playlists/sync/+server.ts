@@ -43,8 +43,7 @@ export const POST: RequestHandler = async (event) => {
 	const ctx = {
 		userId: user.id,
 		fetch: event.fetch,
-		cookies: event.cookies,
-		validateStreams: connection.hasPlayback
+		cookies: event.cookies
 	};
 
 	switch (body.action) {

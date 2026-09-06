@@ -533,7 +533,6 @@ export function normalisePlaylistDetail(document: unknown): PlaylistDetail | nul
 	const accessType = readAttribute(resource, ['accessType', 'access_type']);
 
 	const tracks: TrackSummary[] = [];
-	const seen = new Set<string>();
 
 	const itemRel = resource.relationships.items ?? resource.relationships.tracks;
 	if (isRecord(itemRel)) {
@@ -543,14 +542,14 @@ export function normalisePlaylistDetail(document: unknown): PlaylistDetail | nul
 			if (!ident) continue;
 			const resolved = readResource(included.get(includedKey(ident))) ?? ident;
 			const track = normaliseTrack(resolved, included);
-			if (track && !seen.has(track.id)) {
-				seen.add(track.id);
-				tracks.push(track);
-			}
+			// A playlist is an ordered sequence, not a set. Deliberate repeated
+			// tracks must survive a pull exactly as the owner arranged them.
+			if (track) tracks.push(track);
 		}
 	}
 
 	if (!tracks.length) {
+		const seen = new Set<string>();
 		for (const item of included.values()) {
 			const ident = readResource(item);
 			if (ident && ident.type === 'tracks') {

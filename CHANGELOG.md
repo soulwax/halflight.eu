@@ -37,6 +37,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Playlist import now uses TIDAL's authenticated v2 collection, follows complete item pagination,
+  preserves source order and duplicates, and defers stream checks instead of rewriting playlists.
+- TIDAL playlist import failures and malformed import requests now return recoverable in-app results
+  instead of exposing a raw HTTP 400 response.
 - TIDAL assets reported as unavailable for playback are no longer presented as a broken Link authorization, and imports now seek a playable replacement instead of retaining the known-bad item.
 - Deleted playlists can no longer be resurrected from a stale browser cache during background sync; the database-owned playlist snapshot is now authoritative.
 - Playlist imports, reads, synchronization, and mutations now require the owner account.

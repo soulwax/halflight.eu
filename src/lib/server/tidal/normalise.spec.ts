@@ -450,6 +450,31 @@ describe('normalisePlaylistDetail', () => {
 		expect(detail?.duration).toBe(210);
 		expect(detail?.numberOfItems).toBe(1);
 	});
+
+	it('preserves duplicate tracks in their source playlist order', () => {
+		const detail = normalisePlaylistDetail({
+			data: {
+				id: 'pl-1',
+				type: 'playlists',
+				attributes: { title: 'Ordered playlist', numberOfItems: 3 },
+				relationships: {
+					items: {
+						data: [
+							{ id: 'trk-1', type: 'tracks' },
+							{ id: 'trk-2', type: 'tracks' },
+							{ id: 'trk-1', type: 'tracks' }
+						]
+					}
+				}
+			},
+			included: [
+				{ id: 'trk-1', type: 'tracks', attributes: { title: 'First' } },
+				{ id: 'trk-2', type: 'tracks', attributes: { title: 'Second' } }
+			]
+		});
+
+		expect(detail?.items.map((track) => track.id)).toEqual(['trk-1', 'trk-2', 'trk-1']);
+	});
 });
 
 describe('normaliseMixDetail', () => {

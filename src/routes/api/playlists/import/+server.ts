@@ -2,6 +2,23 @@ import { error, json, type RequestHandler } from '@sveltejs/kit';
 import { listImportablePlaylists, pullPlaylist } from '#lib/server/playlists/sync';
 import { getConnectionStatus } from '#lib/server/tidal';
 
+const deferredStreamValidation = 'deferred' as const;
+
+function invalidImportSelection() {
+	// The chooser can only submit IDs it rendered, but a stale tab or interrupted
+	// request must not turn an import attempt into a browser-visible 400. Keep
+	// this in the normal import response shape so the client can recover in place.
+	return json({
+		imported: [],
+		totalImported: 0,
+		totalErrors: 0,
+		totalTracksSkipped: 0,
+		totalTracksReplaced: 0,
+		streamValidation: deferredStreamValidation,
+		error: 'invalid_playlist_selection'
+	});
+}
+
 /**
  * GET /api/playlists/import
  *
@@ -42,22 +59,25 @@ export const POST: RequestHandler = async (event) => {
 		return json({ imported: [], error: 'not_connected' }, { status: 503 });
 	}
 
-	const body = (await event.request.json()) as { tidalPlaylistIds?: string[] };
+	const body = (await event.request.json().catch(() => null)) as {
+		tidalPlaylistIds?: unknown;
+	} | null;
+	const tidalPlaylistIds = body?.tidalPlaylistIds;
 	if (
-		!body.tidalPlaylistIds ||
-		!Array.isArray(body.tidalPlaylistIds) ||
-		body.tidalPlaylistIds.length === 0
+		!Array.isArray(tidalPlaylistIds) ||
+		tidalPlaylistIds.length === 0 ||
+		tidalPlaylistIds.some((id) => typeof id !== 'string' || !id.trim() || id.length > 128)
 	) {
-		error(400, 'tidalPlaylistIds array required');
+		return invalidImportSelection();
 	}
 
-	// Limit to 50 at once to avoid timeouts
-	const ids = body.tidalPlaylistIds.slice(0, 50);
+	// A small batch bounds the work and keeps a failed source playlist isolated.
+	// De-duplicate only the request; duplicate tracks inside a playlist stay intact.
+	const ids = [...new Set(tidalPlaylistIds.map((id) => id.trim()))].slice(0, 10);
 	const ctx = {
 		userId: user.id,
 		fetch: event.fetch,
-		cookies: event.cookies,
-		validateStreams: connection.hasPlayback
+		cookies: event.cookies
 	};
 	const imported = [];
 
@@ -72,6 +92,6 @@ export const POST: RequestHandler = async (event) => {
 		totalErrors: imported.filter((r) => r.status === 'error').length,
 		totalTracksSkipped: imported.reduce((total, result) => total + result.tracksSkipped, 0),
 		totalTracksReplaced: imported.reduce((total, result) => total + result.tracksReplaced, 0),
-		streamValidation: connection.hasPlayback ? 'verified' : 'unavailable'
+		streamValidation: deferredStreamValidation
 	});
 };

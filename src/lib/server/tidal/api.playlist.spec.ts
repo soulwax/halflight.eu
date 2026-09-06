@@ -213,6 +213,25 @@ describe('TIDAL playlist API wrappers', () => {
 		expect(res.included).toHaveLength(7); // initial t1 + page1/2 included (t1, t2, t3) + page1/2 items (t1, t2, t3)
 	});
 
+	it('rejects an incomplete playlist rather than importing a partial order', async () => {
+		expect.assertions(1);
+		vi.mocked(tidalJson)
+			.mockResolvedValueOnce({
+				data: {
+					id: 'p1',
+					type: 'playlists',
+					attributes: { numberOfItems: 2 },
+					relationships: { items: { data: [{ id: 't1', type: 'tracks' }] } }
+				}
+			} as any)
+			.mockResolvedValueOnce({
+				data: [{ id: 't1', type: 'tracks' }],
+				included: [{ id: 't1', type: 'tracks' }]
+			} as any);
+
+		await expect(getFullPlaylist('p1')).rejects.toThrow('TIDAL playlist items were incomplete.');
+	});
+
 	it('lists every owner playlist across legacy pages', async () => {
 		expect.assertions(3);
 		vi.mocked(tidalJson)
