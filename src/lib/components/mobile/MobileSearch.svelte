@@ -6,7 +6,6 @@
 		ListPlus,
 		ListStart,
 		Loader2,
-		Music2,
 		Play,
 		Radio,
 		Search,
@@ -15,6 +14,8 @@
 	import { onDestroy, onMount } from 'svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { player } from '#lib/player/player.svelte.js';
+	import MobileTrackRow from './MobileTrackRow.svelte';
+
 	import type {
 		AlbumSummary,
 		ArtistSummary,
@@ -270,49 +271,44 @@
 					<h2 id="mobile-search-tracks">{m.search_tracks()}</h2>
 					<div class="track-list">
 						{#each results.tracks as track (track.id)}
-							<article class="track-result">
-								<div class="track-copy">
-									<Music2 size={18} aria-hidden="true" />
-									<span>
-										<strong>{track.title}</strong>
-										<small>{artistLine(track)}</small>
-									</span>
-								</div>
-								<div class="track-actions">
-									<button
-										type="button"
-										onclick={() => play(track)}
-										aria-label={m.player_play_track()}
-									>
-										<Play size={16} fill="currentColor" />
-									</button>
-									<button
-										type="button"
-										onclick={() =>
-											player.playNext(track, m.now_search_provenance({ query: trimmedQuery }))}
-										aria-label={m.player_play_next()}
-									>
-										<ListStart size={16} />
-									</button>
-									<button
-										type="button"
-										onclick={() =>
-											player.addToQueue(track, m.now_search_provenance({ query: trimmedQuery }))}
-										aria-label={m.player_add_to_queue()}
-									>
-										<ListPlus size={16} />
-									</button>
-									<button
-										type="button"
-										onclick={() => void startRadio(track)}
-										disabled={startingRadioId !== null}
-										aria-busy={startingRadioId === track.id}
-										aria-label={m.player_start_radio()}
-									>
-										<Radio size={16} />
-									</button>
-								</div>
-							</article>
+							<MobileTrackRow {track} onActivate={() => play(track)}>
+								{#snippet actions()}
+									<div class="track-actions">
+										<button
+											type="button"
+											onclick={() => play(track)}
+											aria-label={m.player_play_track()}
+										>
+											<Play size={16} fill="currentColor" />
+										</button>
+										<button
+											type="button"
+											onclick={() =>
+												player.playNext(track, m.now_search_provenance({ query: trimmedQuery }))}
+											aria-label={m.player_play_next()}
+										>
+											<ListStart size={16} />
+										</button>
+										<button
+											type="button"
+											onclick={() =>
+												player.addToQueue(track, m.now_search_provenance({ query: trimmedQuery }))}
+											aria-label={m.player_add_to_queue()}
+										>
+											<ListPlus size={16} />
+										</button>
+										<button
+											type="button"
+											onclick={() => void startRadio(track)}
+											disabled={startingRadioId !== null}
+											aria-busy={startingRadioId === track.id}
+											aria-label={m.player_start_radio()}
+										>
+											<Radio size={16} />
+										</button>
+									</div>
+								{/snippet}
+							</MobileTrackRow>
 						{/each}
 					</div>
 				</section>
@@ -417,9 +413,8 @@
 	.track-list,
 	.catalogue-list {
 		display: grid;
-		border-top: 1px solid var(--border-subtle);
+		gap: 0.2rem;
 	}
-	.track-result,
 	.catalogue-result {
 		display: flex;
 		align-items: center;
@@ -427,25 +422,16 @@
 		border-bottom: 1px solid var(--border-subtle);
 		padding: 0.75rem 0;
 	}
-	.track-result {
-		flex-wrap: wrap;
-	}
-	.track-copy,
 	.catalogue-result {
 		min-width: 0;
 		flex: 1;
 		color: var(--text-primary);
 	}
-	.track-copy {
-		flex-basis: 100%;
-	}
-	.track-copy,
 	.catalogue-result {
 		display: flex;
 		align-items: center;
 		gap: 0.65rem;
 	}
-	.track-copy > span,
 	.catalogue-result > span {
 		display: grid;
 		min-width: 0;

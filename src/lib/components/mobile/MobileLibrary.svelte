@@ -5,6 +5,7 @@
 	import { player } from '#lib/player/player.svelte.js';
 	import type { MobileLibraryData } from '#lib/tidal/mobile-library';
 	import type { TrackSummary } from '#lib/tidal/models';
+	import MobileTrackRow from './MobileTrackRow.svelte';
 
 	let { data }: { data: MobileLibraryData } = $props();
 	let confirmation: HTMLDialogElement;
@@ -108,40 +109,37 @@
 	{:else if !data.tracks.length}
 		<p class="notice">{m.now_library_empty_favorites()}</p>
 	{:else}
-		<ul class="library-list">
+		<ul class="favorite-track-list">
 			{#each data.tracks as track (track.id)}
 				<li>
-					<div class="identity">
-						{@render artwork(track)}
-						<div class="copy">
-							<h2>{track.title}</h2>
-							<p>{track.artists.map((artist) => artist.name).join(', ')}</p>
-						</div>
-					</div>
-					<div class="actions track-actions">
-						<button
-							type="button"
-							aria-label={m.now_library_play({ title: track.title })}
-							onclick={() => play(track.title, [track])}
-						>
-							<Play size={18} aria-hidden="true" />{m.player_play_track()}
-						</button>
-						<button
-							type="button"
-							aria-label={m.player_play_next()}
-							onclick={() => {
-								player.playNext(track, m.now_library_favorites());
-								feedback = m.now_library_next_added({ title: track.title });
-							}}><ListStart size={18} aria-hidden="true" /></button
-						>
-						<button
-							type="button"
-							aria-label={m.player_add_to_queue()}
-							onclick={() => enqueue(track.title, [track])}
-						>
-							<ListPlus size={18} aria-hidden="true" />
-						</button>
-					</div>
+					<MobileTrackRow {track} onActivate={() => play(track.title, [track])}>
+						{#snippet actions()}
+							<div class="favorite-track-actions">
+								<button
+									type="button"
+									aria-label={m.now_library_play({ title: track.title })}
+									onclick={() => play(track.title, [track])}
+								>
+									<Play size={18} aria-hidden="true" />{m.player_play_track()}
+								</button>
+								<button
+									type="button"
+									aria-label={m.player_play_next()}
+									onclick={() => {
+										player.playNext(track, m.now_library_favorites());
+										feedback = m.now_library_next_added({ title: track.title });
+									}}><ListStart size={18} aria-hidden="true" /></button
+								>
+								<button
+									type="button"
+									aria-label={m.player_add_to_queue()}
+									onclick={() => enqueue(track.title, [track])}
+								>
+									<ListPlus size={18} aria-hidden="true" />
+								</button>
+							</div>
+						{/snippet}
+					</MobileTrackRow>
 				</li>
 			{/each}
 		</ul>
@@ -254,7 +252,7 @@
 		padding: 0;
 		list-style: none;
 	}
-	li {
+	.library-list > li {
 		display: grid;
 		gap: 0.75rem;
 		padding-block: 1rem;
@@ -297,11 +295,40 @@
 	.actions button {
 		flex: 1;
 	}
-	.track-actions button:not(:first-child) {
-		flex: none;
+	.favorite-track-list {
+		margin: 0;
+		padding: 0;
+		list-style: none;
 	}
-	.track-actions button:first-child {
-		min-width: 0;
+	.favorite-track-list > li {
+		border-bottom: 1px solid var(--border-subtle);
+	}
+	.favorite-track-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.125rem;
+	}
+	.favorite-track-actions button {
+		display: grid;
+		width: 2.75rem;
+		min-width: 2.75rem;
+		height: 2.75rem;
+		min-height: 2.75rem;
+		padding: 0;
+		place-items: center;
+		border: 0;
+		background: transparent;
+		color: var(--text-muted);
+	}
+	.favorite-track-actions button:first-child {
+		width: 3rem;
+	}
+	.favorite-track-actions button:active,
+	.favorite-track-actions button:focus-visible {
+		background: var(--surface-selected);
+		color: var(--action);
+		outline: 2px solid var(--focus-ring);
+		outline-offset: 1px;
 	}
 	.notice {
 		padding-block: 2rem;

@@ -187,6 +187,7 @@ describe('MobileSearch.svelte', () => {
 	});
 
 	it('shows every queue verb for a track result', async () => {
+		const play = vi.spyOn(player, 'play').mockImplementation(() => {});
 		vi.stubGlobal(
 			'fetch',
 			vi.fn().mockResolvedValue(
@@ -227,5 +228,12 @@ describe('MobileSearch.svelte', () => {
 		await expect
 			.element(page.getByRole('button', { name: m.player_start_radio(), exact: true }))
 			.toBeInTheDocument();
+
+		await page.getByRole('button', { name: /Mobile Track Mobile Artist/ }).click();
+		expect(play).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'track-1' }),
+			expect.arrayContaining([expect.objectContaining({ id: 'track-1' })]),
+			expect.any(String)
+		);
 	});
 });

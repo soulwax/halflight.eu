@@ -1,5 +1,5 @@
 import { page } from 'vitest/browser';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import MobileLibrary from './MobileLibrary.svelte';
 import { player } from '#lib/player/player.svelte.js';
@@ -29,6 +29,8 @@ beforeEach(() => {
 	player.queue = [];
 	player.currentTrack = null;
 });
+
+afterEach(() => vi.restoreAllMocks());
 
 describe('MobileLibrary.svelte', () => {
 	it('shows the two library views and saved-playlist actions', async () => {
@@ -65,6 +67,16 @@ describe('MobileLibrary.svelte', () => {
 		await expect
 			.element(page.getByRole('status'))
 			.toHaveTextContent(m.now_library_next_added({ title: track.title }));
+	});
+
+	it('plays a favorite when its art-led row is tapped', async () => {
+		const play = vi.spyOn(player, 'play').mockImplementation(() => {});
+		render(MobileLibrary, {
+			data: { ...savedData, tab: 'tracks', playlists: [], tracks: [track] }
+		});
+
+		await page.getByRole('button', { name: /Night Drive Loraine James/ }).click();
+		expect(play).toHaveBeenCalledWith(track, [track], track.title);
 	});
 
 	it('shows a retryable state when the collection is unavailable', async () => {
