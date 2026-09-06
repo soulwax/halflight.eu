@@ -808,13 +808,11 @@ and "music first" are unchanged.
 
 ### Design tokens
 
-Semantic custom properties in `src/routes/layout.css`, consumed through Tailwind: canvas, surface,
-elevated surface, subtle border; primary/secondary/muted text; action accent and contrast; success,
-warning, danger, information; focus ring, selected, skeleton, overlay; spacing, radii, shadows,
-content widths, motion durations and easings. New for this direction: `--glass-*` (vibrancy blur,
-saturation, translucent surface), `--shadow-panel` / `--shadow-float` (soft layered depth),
-`--ease-spring`, and `--module-*` (radius, border, background, elevation) — the single source of
-truth for a tile.
+Semantic custom properties in `src/routes/layout.css`, consumed through Tailwind: canvas (`--bg`),
+surface, subtle line; ink / secondary / muted / faint text; action (deep-blue ink) and its
+contrast; success, warning, danger, information; focus ring; selection (`--sky`) and the editorial
+`--sky` / `--blush` wash; spacing, radii, shallow elevation, content widths, motion durations.
+The local [`docs/style-guide.html`](docs/style-guide.html) is the canonical palette and rhythm.
 
 Halflight has one light reference composition. Artwork, quality, and playback state carry the
 visual energy; the surface system stays quiet. Quality badges colour by fidelity tier (grey lossy,
@@ -826,13 +824,13 @@ Typography and hierarchy rules:
   Artist and release context are intimate secondary information; diagnostic detail never competes.
 - Home sections are few, named like listening invitations, and terminate. No infinite shelves, no
   tiny repeated cards, and no engagement-oriented “because you played” clutter.
-- Use a restrained luminance ladder — canvas, surface, elevated surface — with translucent
-  vibrancy on the chrome so artwork colour bleeds into the frame. One glowing accent is the only
-  saturated element in the UI itself.
-- Motion has a spring: hover and selection scale and settle, a module slides in, the mini player
-  grows into Now Playing. The pulse stays in the shell — it never plays over the artwork, never
-  loops, and never fires during a save, a generation, or a track transition. Honour
-  `prefers-reduced-motion` (immediate state changes, no spring).
+- Use a shallow luminance ladder — off-white canvas, white surface, `--sky` selection — with
+  hairline `--line` dividers and shallow blue elevation. No hard offset shadows, no decorative
+  chrome; the accent is deep-blue ink, not a glow.
+- Motion is quiet: hover and press feedback settle within 120–220ms, a section reveals, the mini
+  player grows into Now Playing. It never plays over the artwork, never loops, and never fires
+  during a save, a generation, or a track transition. Honour `prefers-reduced-motion` with
+  immediate state changes.
 
 ### Core component inventory
 
