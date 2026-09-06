@@ -2,6 +2,7 @@ import { error, json, type RequestHandler } from '@sveltejs/kit';
 import { log } from '#lib/server/log';
 import {
 	dbPrivateMusicStore,
+	MAX_PRIVATE_MUSIC_FILE_BYTES,
 	MAX_PRIVATE_MUSIC_TOTAL_BYTES,
 	parsePrivateMusicUpload
 } from '#lib/server/private-music';
@@ -15,7 +16,15 @@ function requireOwner(event: Parameters<RequestHandler>[0]): string {
 export const GET: RequestHandler = async (event) => {
 	const userId = requireOwner(event);
 	const files = await dbPrivateMusicStore.list(userId);
+	const usedBytes = files.reduce((total, file) => total + file.sizeBytes, 0);
 	return json({
+		storage: {
+			fileCount: files.length,
+			usedBytes,
+			availableBytes: Math.max(0, MAX_PRIVATE_MUSIC_TOTAL_BYTES - usedBytes),
+			maxTotalBytes: MAX_PRIVATE_MUSIC_TOTAL_BYTES,
+			maxFileBytes: MAX_PRIVATE_MUSIC_FILE_BYTES
+		},
 		files: files.map(({ id, fileName, contentType, sizeBytes, createdAt }) => ({
 			id,
 			fileName,

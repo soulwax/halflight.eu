@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Owner-uploaded private music can now be listed, downloaded, and deleted through authenticated API routes backed by a separate S3-compatible bucket.
 - Private-music downloads now support authenticated byte ranges, cache validators, and `HEAD` metadata probes for resumable downloads.
 - Private music can now export owner-only M3U and JSON manifests; explicit hand-offs use the short-lived export bucket.
+- The private-music collection now reports file count and upload capacity from safe owned metadata.
 - Owner-requested playlist exports can now use an isolated, short-lived S3-compatible bucket through authenticated Syn download URLs.
 - A neutral, public `/offline` page for the future PWA navigation fallback, with no account, theme, or session data in its response.
 - Halflight Now now has an installable-shell manifest, owned standard and maskable icons, mobile-only app metadata, and a Settings installation/help flow.

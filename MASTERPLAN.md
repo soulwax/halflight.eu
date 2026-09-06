@@ -2005,7 +2005,8 @@ They use immutable metadata validators so a cache check avoids a bucket read and
 request receives the complete current file. The owner can also export an M3U or JSON manifest: a
 direct response is the default, while an explicit short-lived copy uses the isolated export bucket.
 Manifests contain only same-origin Syn download routes and safe metadata, never object keys. TIDAL
-media remains excluded.
+media remains excluded. The collection response reports used, remaining, per-file, and total capacity
+from owned metadata so clients can make upload choices without probing object storage.
 
 ### Candidate uses and gates
 

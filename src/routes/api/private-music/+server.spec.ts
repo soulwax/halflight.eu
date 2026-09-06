@@ -13,6 +13,7 @@ vi.mock('#lib/server/private-music', () => ({
 		totalBytes: mocks.totalBytes,
 		create: mocks.create
 	},
+	MAX_PRIVATE_MUSIC_FILE_BYTES: 128 * 1024 * 1024,
 	MAX_PRIVATE_MUSIC_TOTAL_BYTES: 512 * 1024 * 1024,
 	parsePrivateMusicUpload: (value: FormDataEntryValue | null) =>
 		value instanceof File
@@ -53,6 +54,13 @@ describe('/api/private-music', () => {
 		]);
 		const response = await GET(event());
 		expect(await response.json()).toEqual({
+			storage: {
+				fileCount: 1,
+				usedBytes: 42,
+				availableBytes: 512 * 1024 * 1024 - 42,
+				maxTotalBytes: 512 * 1024 * 1024,
+				maxFileBytes: 128 * 1024 * 1024
+			},
 			files: [
 				{
 					id: 'file-1',
