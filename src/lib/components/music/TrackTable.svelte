@@ -113,7 +113,7 @@
 		border: 0;
 	}
 
-	@media (max-width: 52rem) {
+	@container (max-width: 52rem) {
 		.tt-hide-narrow {
 			display: none;
 		}

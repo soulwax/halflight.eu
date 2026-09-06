@@ -4,7 +4,7 @@
 	import { m } from '#lib/paraglide/messages.js';
 	import type { ActionData, PageData } from './$types';
 
-	let { data, form }: { data: PageData; form: ActionData } = $props();
+	let { data, form }: { data: PageData; form?: ActionData } = $props();
 
 	type InstallPromptEvent = Event & {
 		prompt(): Promise<void>;

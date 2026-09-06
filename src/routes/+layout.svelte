@@ -5,7 +5,7 @@
 	import AppHeader from '#lib/components/app/AppHeader.svelte';
 	import Footer from '#lib/components/Footer.svelte';
 	import { themeManager } from '#lib/theme/theme.svelte.js';
-	import { isMobileRoute } from '#lib/mobile/routes';
+	import { isMobileRoute, isPublicMobileRoute } from '#lib/mobile/routes';
 	import './layout.css';
 	import favicon from '#lib/assets/favicon.svg';
 	import type { LayoutData } from './$types';
@@ -17,11 +17,13 @@
 	// tokens and theming stay shared (see MASTERPLAN.md "share domain logic,
 	// never whole layouts"), so `layout.css` and `themeManager` stay unconditional.
 	let isMobile = $derived(isMobileRoute(page.url.pathname));
+	let isPublicMobile = $derived(isPublicMobileRoute(page.url.pathname));
 	let isListeningRoom = $derived(
 		page.url.pathname === '/app' || page.url.pathname.startsWith('/app/')
 	);
 
 	$effect(() => {
+		if (isPublicMobile) return;
 		themeManager.init(data.theme, data.visualStyle);
 	});
 </script>

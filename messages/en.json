@@ -452,5 +452,8 @@
 	"mobile_install_action": "Install app",
 	"mobile_install_installed": "Halflight Now is installed on this device.",
 	"mobile_install_help_title": "Add it from your browser",
-	"mobile_install_help_description": "Use your browser’s Share or menu button, then choose Add to Home Screen or Install app."
+	"mobile_install_help_description": "Use your browser’s Share or menu button, then choose Add to Home Screen or Install app.",
+	"offline_title": "You’re offline",
+	"offline_description": "Halflight Now needs a connection to load your listening session and start music. Reconnect, then try again.",
+	"offline_retry": "Try again"
 }

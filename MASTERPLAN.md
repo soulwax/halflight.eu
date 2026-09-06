@@ -1152,6 +1152,11 @@ adoption. Keep worker generation and registration out of unit/Storybook developm
 test the built worker in a dedicated production-preview suite.
 [SvelteKit PWA integration](https://vite-pwa-org.netlify.app/frameworks/sveltekit)
 
+**Compatibility gate (checked 2026-09-06):** the published `@vite-pwa/sveltekit` 1.1.0 peer range
+ends at SvelteKit 2, while this repository uses SvelteKit 3 `next`. Do not force that peer override.
+Keep the manifest and neutral offline route independent until the wrapper supports Kit 3, or a
+separate validated upgrade moves the application to a supported Kit major.
+
 Explicitly inspect the generated precache manifest. The plugin's default file patterns are not
 the application's privacy policy: include only approved public client assets and the neutral
 offline page, not every image, prerendered page, or `__data.json` in the output tree. Start with a
@@ -1986,6 +1991,11 @@ a bucket merely because a future feature might need one.
 The default remains the existing audio proxy. Media retention or processing requires a separately
 verified provider-permission decision before implementation; this plan does not establish that
 permission. The repository's prohibition on mirroring TIDAL content remains authoritative.
+
+The first approved bucket consumer is a short-lived, owner-requested playlist export. It uses the
+server-only S3 adapter with an isolated `HALFLIGHT_EXPORT_BUCKET`, opaque 15-minute object keys,
+and authenticated same-origin retrieval/deletion. Direct exports remain the default; audio,
+artwork, lyrics, tokens, provider URLs, and the separate worker bucket are excluded.
 
 ### Candidate uses and gates
 

@@ -654,56 +654,6 @@
 	font-size: 0.85rem;
 }
 
-.syn-player .queue-toolbar {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: 0.3rem 0.4rem 0.6rem;
-}
-.syn-player .q-label {
-	font-size: 0.62rem;
-	font-weight: 700;
-	letter-spacing: 0.18em;
-	text-transform: uppercase;
-	color: var(--text-muted);
-}
-.syn-player .q-tools {
-	display: flex;
-	gap: 0.4rem;
-}
-.syn-player .q-tools button {
-	border: 1px solid var(--border-subtle);
-	background: transparent;
-	padding: 0.25rem 0.6rem;
-	color: var(--text-muted);
-	font-size: 0.6rem;
-	font-weight: 700;
-	letter-spacing: 0.1em;
-	text-transform: uppercase;
-	cursor: pointer;
-}
-.syn-player .q-tools button:hover {
-	color: var(--accent-gold);
-	border-color: var(--accent-gold-deep);
-}
-.syn-player .q-row-btn {
-	display: grid;
-	place-items: center;
-	width: 1.7rem;
-	height: 1.7rem;
-	border: 0;
-	background: transparent;
-	color: var(--text-muted);
-	cursor: pointer;
-}
-.syn-player .q-row-btn:hover:not(:disabled) {
-	color: var(--accent-gold);
-}
-.syn-player .q-row-btn:disabled {
-	opacity: 0.3;
-	cursor: default;
-}
-
 .syn-player .lyr-status {
 	display: grid;
 	place-items: center;

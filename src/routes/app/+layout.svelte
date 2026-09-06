@@ -1,10 +1,12 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import AppAside from '#lib/components/app/AppAside.svelte';
 	import AppShell from '#lib/components/app/AppShell.svelte';
 	import AppHeader from '#lib/components/app/AppHeader.svelte';
 	import Footer from '#lib/components/Footer.svelte';
 	import Player from '#lib/components/player/Player.svelte';
+	import QueuePanel from '#lib/components/player/panels/QueuePanel.svelte';
 	import AddToPlaylistModal from '#lib/components/music/AddToPlaylistModal.svelte';
 	import { player } from '#lib/player/player.svelte.js';
 	import { themeManager } from '#lib/theme/theme.svelte.js';
@@ -40,10 +42,17 @@
 {#snippet footerRegion()}
 	<Footer />
 {/snippet}
+{#snippet queueAside()}
+	<AppAside title={m.player_queue()}>
+		<QueuePanel />
+	</AppAside>
+{/snippet}
 
 <AppShell
 	{navigation}
 	header={appHeader}
+	aside={queueAside}
+	asideLabel={m.player_queue()}
 	player={playerRegion}
 	footer={footerRegion}
 	currentPath={page.url.pathname}

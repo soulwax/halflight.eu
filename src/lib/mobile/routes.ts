@@ -7,8 +7,27 @@
  * Grows as more mobile routes ship (search, library, settings); nothing
  * outside this module should hard-code a mobile path prefix.
  */
-export const MOBILE_ROOT_PATHS = ['/now', '/home', '/search', '/library', '/settings'] as const;
+export const MOBILE_ROOT_PATHS = [
+	'/now',
+	'/home',
+	'/search',
+	'/library',
+	'/settings',
+	'/offline'
+] as const;
+
+/**
+ * Public mobile routes intentionally avoid the authenticated Halflight shell.
+ * They can be precached without carrying a listening session or account data.
+ */
+export const PUBLIC_MOBILE_ROOT_PATHS = ['/offline'] as const;
 
 export function isMobileRoute(pathname: string): boolean {
 	return MOBILE_ROOT_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+}
+
+export function isPublicMobileRoute(pathname: string): boolean {
+	return PUBLIC_MOBILE_ROOT_PATHS.some(
+		(path) => pathname === path || pathname.startsWith(`${path}/`)
+	);
 }

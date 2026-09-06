@@ -157,6 +157,29 @@ export const generationCooldown = pgTable(
 	]
 );
 
+/**
+ * Owner-uploaded private music. The bytes remain only in the dedicated bucket;
+ * Postgres holds the ownership, opaque object key, and download metadata.
+ */
+export const privateMusicFile = pgTable(
+	'private_music_file',
+	{
+		id: text('id').primaryKey(),
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		objectKey: text('object_key').notNull().unique(),
+		fileName: text('file_name').notNull(),
+		contentType: text('content_type').notNull(),
+		sizeBytes: integer('size_bytes').notNull(),
+		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+	},
+	(table) => [
+		index('private_music_file_user_created_idx').on(table.userId, table.createdAt),
+		check('private_music_file_size_positive', sql`${table.sizeBytes} > 0`)
+	]
+);
+
 /** A user's encrypted Last.fm session key and scrobbling preferences. */
 export const lastfmConnection = pgTable('lastfm_connection', {
 	userId: text('user_id')

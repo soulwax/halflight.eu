@@ -485,7 +485,9 @@ describe('PlayerState', () => {
 		expect(persistenceCalls).toBe(2);
 		expect(player.currentTrack).toBeNull();
 		expect(player.queue).toEqual([sampleTrack2, sampleTrack1]);
-		const writes = fetchSpy.mock.calls.filter(([url]) => url === '/api/playback-state');
+		const writes = (fetchSpy.mock.calls as Array<[string, RequestInit?]>).filter(
+			([url]) => url === '/api/playback-state'
+		);
 		const retry = JSON.parse(String(writes[1]?.[1]?.body));
 		expect(retry).toMatchObject({ revision: 4, queue: [sampleTrack2, sampleTrack1] });
 	});

@@ -3,12 +3,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => {
 	return {
 		getUserPlaylists: vi.fn(),
-		getPlaylist: vi.fn()
+		getPlaylist: vi.fn(),
+		exportBucket: { enabled: true, put: vi.fn() }
 	};
 });
 
 vi.mock('#lib/server/playlists', () => ({
 	getUserPlaylists: mocks.getUserPlaylists
+}));
+
+vi.mock('#lib/server/export-bucket', () => ({
+	exportBucket: mocks.exportBucket
 }));
 
 vi.mock('#lib/server/tidal', async (importOriginal) => {
@@ -22,7 +27,7 @@ vi.mock('#lib/server/tidal', async (importOriginal) => {
 });
 
 import type { Cookies } from '@sveltejs/kit';
-import { GET } from './+server';
+import { GET, POST } from './+server';
 
 const fetchMock = vi.fn();
 
@@ -47,6 +52,7 @@ describe('GET /api/playlists/[id]/export', () => {
 	beforeEach(() => {
 		mocks.getUserPlaylists.mockReset();
 		mocks.getPlaylist.mockReset();
+		mocks.exportBucket.put.mockReset();
 		fetchMock.mockReset();
 	});
 
@@ -117,5 +123,37 @@ describe('GET /api/playlists/[id]/export', () => {
 		expect(body.title).toBe('Synth Classics');
 		expect(body.tracks).toHaveLength(1);
 		expect(body.tracks[0].title).toBe('Blue Monday');
+	});
+
+	it('creates a short-lived bucket export behind an authenticated Syn URL', async () => {
+		mocks.getUserPlaylists.mockResolvedValue([
+			{
+				id: 'pl_1',
+				userId: 'u1',
+				title: 'Synth Classics',
+				items: [
+					{
+						kind: 'track',
+						id: '202',
+						title: 'Blue Monday',
+						artists: [{ id: 'a2', name: 'New Order' }]
+					}
+				]
+			}
+		]);
+		mocks.exportBucket.put.mockResolvedValue({
+			id: '1234567890123-123e4567-e89b-12d3-a456-426614174000.m3u8',
+			expiresAt: '2026-01-01T00:15:00.000Z'
+		});
+
+		const response = await POST(makeEvent({ id: 'pl_1' }) as unknown as Parameters<typeof POST>[0]);
+
+		expect(response.status).toBe(201);
+		expect(await response.json()).toMatchObject({
+			downloadUrl: '/api/exports/1234567890123-123e4567-e89b-12d3-a456-426614174000.m3u8'
+		});
+		expect(mocks.exportBucket.put).toHaveBeenCalledWith(
+			expect.objectContaining({ format: 'm3u8', fileName: 'Synth Classics.m3u8' })
+		);
 	});
 });

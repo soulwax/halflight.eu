@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isMobileRoute } from './routes';
+import { isMobileRoute, isPublicMobileRoute } from './routes';
 
 describe('isMobileRoute', () => {
 	it('matches an exact mobile root path', () => {
@@ -8,6 +8,7 @@ describe('isMobileRoute', () => {
 		expect(isMobileRoute('/search')).toBe(true);
 		expect(isMobileRoute('/library')).toBe(true);
 		expect(isMobileRoute('/settings')).toBe(true);
+		expect(isMobileRoute('/offline')).toBe(true);
 	});
 
 	it('matches a nested path under a mobile root', () => {
@@ -23,5 +24,12 @@ describe('isMobileRoute', () => {
 	it('does not match a path that merely starts with the same letters', () => {
 		expect(isMobileRoute('/nowhere')).toBe(false);
 		expect(isMobileRoute('/homepage')).toBe(false);
+	});
+
+	it('marks only the offline recovery page as public', () => {
+		expect(isPublicMobileRoute('/offline')).toBe(true);
+		expect(isPublicMobileRoute('/offline/retry')).toBe(true);
+		expect(isPublicMobileRoute('/home')).toBe(false);
+		expect(isPublicMobileRoute('/app')).toBe(false);
 	});
 });

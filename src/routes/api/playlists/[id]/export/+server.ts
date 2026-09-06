@@ -1,36 +1,40 @@
-import { error, type RequestHandler } from '@sveltejs/kit';
+import { error, json, type RequestHandler } from '@sveltejs/kit';
+import { exportBucket, type ExportFormat } from '#lib/server/export-bucket';
+import { log } from '#lib/server/log';
 import { getUserPlaylists } from '#lib/server/playlists';
 import { generateM3u, sanitizeFileName, tidalApi } from '#lib/server/tidal';
 import { normalisePlaylistDetail } from '#lib/server/tidal/normalise';
 import type { TrackSummary } from '#lib/tidal/models';
 
-export const GET: RequestHandler = async (event) => {
-	const user = event.locals.user;
-	if (!user) {
-		throw error(401, 'Unauthorized');
-	}
+interface PlaylistExport {
+	content: string;
+	contentType: string;
+	fileName: string;
+	format: ExportFormat;
+}
 
+async function buildPlaylistExport(
+	event: Parameters<RequestHandler>[0],
+	includeStreamLinks: boolean
+): Promise<PlaylistExport> {
+	const user = event.locals.user;
+	if (!user) error(401, 'Unauthorized');
 	const playlistId = event.params.id;
-	if (!playlistId) {
-		throw error(400, 'Missing playlist ID');
-	}
+	if (!playlistId) error(400, 'Missing playlist ID');
 
 	const url = new URL(event.request.url);
 	const format = (url.searchParams.get('format') || 'm3u8').toLowerCase();
-	const streamLinks = url.searchParams.get('stream') === 'true';
+	if (format !== 'm3u8' && format !== 'json') error(400, 'Unsupported export format');
 
 	let playlistTitle = 'Playlist';
 	let tracks: TrackSummary[] = [];
-
-	// 1. Check if it's one of user's saved account playlists
 	const userPlaylists = await getUserPlaylists(user.id);
-	const localMatch = userPlaylists.find((p) => p.id === playlistId);
+	const localMatch = userPlaylists.find((playlist) => playlist.id === playlistId);
 
 	if (localMatch) {
 		playlistTitle = localMatch.title;
 		tracks = localMatch.items || [];
 	} else {
-		// 2. Try fetching as a TIDAL playlist
 		try {
 			const doc = await tidalApi.getPlaylist(
 				playlistId,
@@ -48,21 +52,22 @@ export const GET: RequestHandler = async (event) => {
 				if (items.length > 0) {
 					const relationships =
 						(doc.data as { relationships?: Record<string, unknown> })?.relationships ?? {};
-					const fullDoc = {
-						...doc,
-						data: {
-							...(doc.data as object),
-							relationships: {
-								...relationships,
-								items: {
-									...((relationships.items as object) ?? {}),
-									data: items
+					detail =
+						normalisePlaylistDetail({
+							...doc,
+							data: {
+								...(doc.data as object),
+								relationships: {
+									...relationships,
+									items: { ...((relationships.items as object) ?? {}), data: items }
 								}
-							}
-						},
-						included: [...((doc as { included?: unknown[] }).included ?? []), ...items, ...included]
-					};
-					detail = normalisePlaylistDetail(fullDoc) ?? detail;
+							},
+							included: [
+								...((doc as { included?: unknown[] }).included ?? []),
+								...items,
+								...included
+							]
+						}) ?? detail;
 				}
 			}
 			if (detail) {
@@ -70,52 +75,73 @@ export const GET: RequestHandler = async (event) => {
 				tracks = detail.items || [];
 			}
 		} catch {
-			// Not found
+			// The same not-found response protects whether a remote playlist exists.
 		}
 	}
 
-	if (!tracks.length && !localMatch) {
-		throw error(404, 'Playlist not found or contains no tracks');
-	}
-
+	if (!tracks.length && !localMatch) error(404, 'Playlist not found or contains no tracks');
 	const safeTitle = sanitizeFileName(playlistTitle, 'syn_playlist');
-
 	if (format === 'json') {
-		const jsonContent = JSON.stringify(
-			{
-				title: playlistTitle,
-				exportedAt: new Date().toISOString(),
-				trackCount: tracks.length,
-				tracks
-			},
-			null,
-			2
-		);
-
-		return new Response(jsonContent, {
-			status: 200,
-			headers: {
-				'Content-Type': 'application/json; charset=utf-8',
-				'Content-Disposition': `attachment; filename="${safeTitle}.json"`,
-				'Cache-Control': 'no-cache'
-			}
-		});
+		return {
+			content: JSON.stringify(
+				{
+					title: playlistTitle,
+					exportedAt: new Date().toISOString(),
+					trackCount: tracks.length,
+					tracks
+				},
+				null,
+				2
+			),
+			contentType: 'application/json; charset=utf-8',
+			fileName: `${safeTitle}.json`,
+			format: 'json'
+		};
 	}
 
-	// Default: M3U8
-	const baseUrl = streamLinks ? `${url.protocol}//${url.host}` : undefined;
-	const m3uContent = generateM3u({
-		title: playlistTitle,
-		tracks,
-		baseUrl
-	});
+	const baseUrl = includeStreamLinks ? `${url.protocol}//${url.host}` : undefined;
+	return {
+		content: generateM3u({ title: playlistTitle, tracks, baseUrl }),
+		contentType: 'audio/x-mpegurl; charset=utf-8',
+		fileName: `${safeTitle}.m3u8`,
+		format: 'm3u8'
+	};
+}
 
-	return new Response(m3uContent, {
+/** Direct, no-retention export. This remains the default for ordinary downloads. */
+export const GET: RequestHandler = async (event) => {
+	const artifact = await buildPlaylistExport(
+		event,
+		new URL(event.request.url).searchParams.get('stream') === 'true'
+	);
+	return new Response(artifact.content, {
 		status: 200,
 		headers: {
-			'Content-Type': 'audio/x-mpegurl; charset=utf-8',
-			'Content-Disposition': `attachment; filename="${safeTitle}.m3u8"`,
+			'Content-Type': artifact.contentType,
+			'Content-Disposition': `attachment; filename="${artifact.fileName}"`,
 			'Cache-Control': 'no-cache'
 		}
 	});
+};
+
+/** Stores an explicit owner export for a short hand-off window. */
+export const POST: RequestHandler = async (event) => {
+	if (!event.locals.user || !event.locals.isAdministrator) error(401, 'Unauthorized');
+	if (!exportBucket.enabled) error(503, 'Export storage is not configured');
+	try {
+		const artifact = await buildPlaylistExport(event, false);
+		const stored = await exportBucket.put({
+			content: new TextEncoder().encode(artifact.content),
+			contentType: artifact.contentType,
+			fileName: artifact.fileName,
+			format: artifact.format
+		});
+		return json(
+			{ id: stored.id, expiresAt: stored.expiresAt, downloadUrl: `/api/exports/${stored.id}` },
+			{ status: 201 }
+		);
+	} catch (cause) {
+		log.warn('playlist export bucket write failed', { cause });
+		error(503, 'Export storage is temporarily unavailable');
+	}
 };

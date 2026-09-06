@@ -13,16 +13,18 @@
 		<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&display=swap" />
 		<script>
 			try {
-				var theme =
-					localStorage.getItem('syn-theme') ||
-					(document.cookie.match(/(?:^|;\s*)syn-theme=([^;]+)/) || [])[1] ||
-					'bauhaus-dark';
-				var visualStyle =
-					localStorage.getItem('syn-visual-style') ||
-					(document.cookie.match(/(?:^|;\s*)syn-visual-style=([^;]+)/) || [])[1] ||
-					'art-deco';
-				document.documentElement.dataset.theme = theme;
-				document.documentElement.dataset.style = visualStyle;
+				if (window.location.pathname !== '/offline') {
+					var theme =
+						localStorage.getItem('syn-theme') ||
+						(document.cookie.match(/(?:^|;\s*)syn-theme=([^;]+)/) || [])[1] ||
+						'bauhaus-dark';
+					var visualStyle =
+						localStorage.getItem('syn-visual-style') ||
+						(document.cookie.match(/(?:^|;\s*)syn-visual-style=([^;]+)/) || [])[1] ||
+						'art-deco';
+					document.documentElement.dataset.theme = theme;
+					document.documentElement.dataset.style = visualStyle;
+				}
 			} catch (e) {}
 		</script>
 		%sveltekit.head%

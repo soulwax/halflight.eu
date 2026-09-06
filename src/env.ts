@@ -47,6 +47,46 @@ export const variables = defineEnvVars({
 		description:
 			'Optional Redis URL for short-lived server-side derived caches and coordination. It is never browser-reachable.'
 	},
+	HALFLIGHT_EXPORT_BUCKET: {
+		schema: optional,
+		description: 'Optional S3-compatible bucket used only for short-lived owner-requested exports.'
+	},
+	HALFLIGHT_EXPORT_BUCKET_ENDPOINT: {
+		schema: optional,
+		description: 'Optional S3-compatible endpoint for the short-lived export bucket.'
+	},
+	HALFLIGHT_EXPORT_BUCKET_REGION: {
+		schema: optional,
+		description: 'Optional S3 region for the short-lived export bucket. Defaults to auto.'
+	},
+	HALFLIGHT_EXPORT_BUCKET_ACCESS_KEY_ID: {
+		schema: optional,
+		description: 'Server-only access key for the short-lived export bucket.'
+	},
+	HALFLIGHT_EXPORT_BUCKET_SECRET_ACCESS_KEY: {
+		schema: optional,
+		description: 'Server-only secret key for the short-lived export bucket.'
+	},
+	HALFLIGHT_PRIVATE_MUSIC_BUCKET: {
+		schema: optional,
+		description: 'Optional isolated S3-compatible bucket for owner-uploaded private music files.'
+	},
+	HALFLIGHT_PRIVATE_MUSIC_BUCKET_ENDPOINT: {
+		schema: optional,
+		description: 'Optional S3-compatible endpoint for the private music bucket.'
+	},
+	HALFLIGHT_PRIVATE_MUSIC_BUCKET_REGION: {
+		schema: optional,
+		description: 'Optional S3 region for the private music bucket. Defaults to auto.'
+	},
+	HALFLIGHT_PRIVATE_MUSIC_BUCKET_ACCESS_KEY_ID: {
+		schema: optional,
+		description: 'Server-only access key for the private music bucket.'
+	},
+	HALFLIGHT_PRIVATE_MUSIC_BUCKET_SECRET_ACCESS_KEY: {
+		schema: optional,
+		description: 'Server-only secret key for the private music bucket.'
+	},
 	LASTFM_API_KEY: { schema: optional, description: 'Last.fm API key.' },
 	LASTFM_APPLICATION_NAME: {
 		schema: optional,
