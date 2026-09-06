@@ -47,9 +47,24 @@
 			.filter(Boolean)
 			.join(' ')
 	);
+	const narrowGridTemplate = $derived(
+		[
+			'var(--tt-art-size, 2.75rem)',
+			'minmax(0, 1fr)',
+			cols.duration ? '3.5rem' : null,
+			rowActions ? 'auto' : null
+		]
+			.filter(Boolean)
+			.join(' ')
+	);
 </script>
 
-<div class="track-table" role="table" style:--tt-grid={gridTemplate}>
+<div
+	class="track-table"
+	role="table"
+	style:--tt-grid={gridTemplate}
+	style:--tt-grid-narrow={narrowGridTemplate}
+>
 	<div class="tt-head" role="row">
 		<span class="sr-only" role="columnheader">{m.track_col_art()}</span>
 		<span role="columnheader">{m.track_col_title()}</span>
@@ -114,6 +129,9 @@
 	}
 
 	@container (max-width: 52rem) {
+		.tt-head {
+			grid-template-columns: var(--tt-grid-narrow);
+		}
 		.tt-hide-narrow {
 			display: none;
 		}

@@ -12,7 +12,7 @@ describe('PlayerVolume.svelte', () => {
 	});
 
 	it('renders volume slider with 125% max headroom and percentage readout', async () => {
-		render(PlayerVolume);
+		await render(PlayerVolume);
 
 		const slider = page.getByRole('slider', { name: m.player_volume() });
 		await expect.element(slider).toBeInTheDocument();
@@ -25,7 +25,7 @@ describe('PlayerVolume.svelte', () => {
 	});
 
 	it('toggles mute when mute button is clicked', async () => {
-		render(PlayerVolume);
+		await render(PlayerVolume);
 
 		const muteBtn = page.getByRole('button', { name: m.player_mute() });
 		await expect.element(muteBtn).toBeInTheDocument();
@@ -42,7 +42,7 @@ describe('PlayerVolume.svelte', () => {
 
 	it('displays overloudness headroom percentage when volume > 100%', async () => {
 		player.setVolume(1.25);
-		render(PlayerVolume);
+		await render(PlayerVolume);
 
 		const readout = page.getByRole('button', { name: m.player_volume_reset() });
 		await expect.element(readout).toHaveTextContent('125%');
@@ -53,7 +53,7 @@ describe('PlayerVolume.svelte', () => {
 
 	it('resets volume to 100% when readout is clicked', async () => {
 		player.setVolume(0.5);
-		render(PlayerVolume);
+		await render(PlayerVolume);
 
 		const readout = page.getByRole('button', { name: m.player_volume_reset() });
 		await expect.element(readout).toHaveTextContent('50%');
@@ -65,7 +65,7 @@ describe('PlayerVolume.svelte', () => {
 
 	it('adjusts volume when slider is clicked with mouse', async () => {
 		player.setVolume(1.0);
-		render(PlayerVolume);
+		await render(PlayerVolume);
 
 		const slider = page.getByRole('slider', { name: m.player_volume() });
 		await slider.click({ position: { x: 10, y: 7 } });
@@ -74,7 +74,7 @@ describe('PlayerVolume.svelte', () => {
 
 	it('adjusts volume via keyboard arrow keys, home, end, and 1', async () => {
 		player.setVolume(1.0);
-		render(PlayerVolume);
+		await render(PlayerVolume);
 
 		const slider = page.getByRole('slider', { name: m.player_volume() });
 		const el = slider.element();
@@ -97,7 +97,7 @@ describe('PlayerVolume.svelte', () => {
 
 	it('resets volume to 100% on double click', async () => {
 		player.setVolume(0.5);
-		render(PlayerVolume);
+		await render(PlayerVolume);
 
 		const slider = page.getByRole('slider', { name: m.player_volume() });
 		slider.element().dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
@@ -106,7 +106,7 @@ describe('PlayerVolume.svelte', () => {
 
 	it('smoothly updates volume when dragged with pointer', async () => {
 		player.setVolume(1.0);
-		render(PlayerVolume);
+		await render(PlayerVolume);
 
 		const track = document.querySelector('.vol-track') as HTMLElement;
 		expect(track).not.toBeNull();

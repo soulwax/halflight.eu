@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The wide Listening Room now has a pinned queue context panel; its queue controls and track tables adapt to the width of the shell region that contains them.
 - Owner-uploaded private music can now be listed, downloaded, and deleted through authenticated API routes backed by a separate S3-compatible bucket.
 - Owner-requested playlist exports can now use an isolated, short-lived S3-compatible bucket through authenticated Syn download URLs.
 - A neutral, public `/offline` page for the future PWA navigation fallback, with no account, theme, or session data in its response.

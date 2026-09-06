@@ -2461,7 +2461,9 @@ Goal: the difference between "a good playlist" and "uncannily accurate".
       a useful gap and processing permission is established. (L)
 - [ ] Bounded generation-pool reuse; persist only IDs and derived values if cross-process reuse
       becomes necessary. (M)
-- [ ] `AppAside` as generation provenance and pinned queue — migration steps 4–5. (M)
+- [ ] `AppAside` as generation provenance and pinned queue — migration steps 4–5. (M) Pinned
+      queue and container-aware track tables are shipped; generation provenance and breakpoint
+      stories remain.
 - [ ] Verified write scopes for save/remove and playlist creation. (M)
 
 Exit: the owner reaches for Halflight instead of TIDAL's own mixes.

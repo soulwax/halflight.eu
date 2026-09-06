@@ -255,7 +255,10 @@
 		gap: 0.35rem;
 	}
 
-	@media (max-width: 52rem) {
+	@container (max-width: 52rem) {
+		.tt-row {
+			grid-template-columns: var(--tt-grid-narrow);
+		}
 		.tt-hide-narrow {
 			display: none;
 		}
