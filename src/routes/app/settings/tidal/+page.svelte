@@ -340,13 +340,13 @@
 	}
 
 	.indicator-blue {
-		background: var(--bauhaus-blue);
+		background: var(--action);
 	}
 	.indicator-yellow {
-		background: var(--bauhaus-yellow);
+		background: var(--accent-gold);
 	}
 	.indicator-red {
-		background: var(--bauhaus-red);
+		background: var(--danger);
 	}
 
 	.device-auth-card {
@@ -527,7 +527,7 @@
 	}
 
 	.button:hover {
-		box-shadow: var(--shadow-bauhaus);
+		box-shadow: var(--shadow-panel);
 		transform: translate(-1px, -1px);
 	}
 

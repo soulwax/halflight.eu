@@ -221,7 +221,7 @@
 
 <section class="search-page" aria-labelledby="search-title">
 	<header class="search-header">
-		<p class="deco-eyebrow">HALFLIGHT // EXPLORATION</p>
+		<p class="eyebrow">HALFLIGHT // EXPLORATION</p>
 		<h1 id="search-title" class="search-title">{m.search_title()}</h1>
 		<p class="intro">{m.search_subtitle()}</p>
 	</header>
@@ -420,7 +420,7 @@
 		border-color: var(--action);
 		background: var(--surface-selected);
 		outline: none;
-		box-shadow: var(--shadow-bauhaus);
+		box-shadow: var(--shadow-panel);
 	}
 
 	.search-spinner {
@@ -435,9 +435,9 @@
 		justify-content: space-between;
 		gap: 1rem;
 		padding: 0.85rem 1.25rem;
-		border: 1px solid var(--bauhaus-blue);
+		border: 1px solid var(--action);
 		border-radius: var(--radius-md);
-		background: color-mix(in oklch, var(--bauhaus-blue) 12%, var(--surface-canvas));
+		background: color-mix(in oklch, var(--action) 12%, var(--surface-canvas));
 		margin-bottom: 1.5rem;
 	}
 
@@ -446,7 +446,7 @@
 		font-size: 0.75rem;
 		font-weight: 800;
 		letter-spacing: 0.1em;
-		color: var(--bauhaus-blue);
+		color: var(--action);
 	}
 
 	.result-summary {

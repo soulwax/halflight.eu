@@ -174,7 +174,7 @@
 
 	.similar-card:hover {
 		border-color: var(--border-strong);
-		box-shadow: var(--shadow-bauhaus);
+		box-shadow: var(--shadow-panel);
 		transform: translate(-1px, -1px);
 	}
 

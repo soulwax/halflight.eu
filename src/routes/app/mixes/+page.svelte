@@ -35,7 +35,7 @@
 
 <section class="mixes-page" aria-labelledby="mixes-title">
 	<header class="mixes-header">
-		<p class="deco-eyebrow">HALFLIGHT // AUTOMATED COMPOSITION</p>
+		<p class="eyebrow">HALFLIGHT // AUTOMATED COMPOSITION</p>
 		<h1 id="mixes-title" class="mixes-title">{m.mixes_title()}</h1>
 		<p class="intro">{m.mixes_subtitle()}</p>
 	</header>
@@ -192,13 +192,13 @@
 	}
 
 	.tab-blue {
-		background: var(--bauhaus-blue);
+		background: var(--action);
 	}
 	.tab-yellow {
 		background: var(--accent-gold);
 	}
 	.tab-red {
-		background: var(--accent-oxblood);
+		background: var(--danger);
 	}
 
 	.mix-showcase {
@@ -206,7 +206,7 @@
 		border: 1px solid var(--border-subtle);
 		background: var(--surface-raised);
 		border-radius: var(--radius-lg);
-		box-shadow: var(--shadow-raised);
+		box-shadow: var(--shadow-panel);
 	}
 
 	.song-cards-grid {

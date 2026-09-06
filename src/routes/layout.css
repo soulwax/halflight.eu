@@ -28,11 +28,6 @@
 	--accent-jade: #0e7f8c;
 	--accent-oxblood: #c22a52;
 
-	/* Legacy triad names still referenced by a few component styles. */
-	--bauhaus-blue: var(--ink);
-	--bauhaus-red: var(--accent-oxblood);
-	--bauhaus-yellow: var(--accent-gold);
-
 	--surface-canvas: var(--paper);
 	--surface-raised: var(--surface);
 	--surface-selected: var(--sky);
@@ -106,92 +101,18 @@
 	/* One clean UI sans at real weights. No display serif, no uppercase transforms. */
 	--font-display: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
 	--font-mono: 'Roboto Mono', ui-monospace, 'SFMono-Regular', Consolas, monospace;
-	--style-body-font: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
 
-	/* ---- Contours: hairline dividers and a quiet lift. ---- */
 	--hairline: 1px solid var(--border-subtle);
-	--rule-gold: linear-gradient(
-		90deg,
-		transparent,
-		var(--line) 8%,
-		var(--sky-deep) 50%,
-		var(--line) 92%,
-		transparent
-	);
-	/* Legacy shadow names, repointed at the shallow set. */
-	--shadow-raised: var(--shadow-panel);
-	--shadow-bauhaus: var(--shadow-panel);
-	--shadow-bauhaus-hover: var(--shadow-float);
 }
 
-/* Shared surface language — one editorial system, no per-route restyling. */
-:root {
-	--style-pattern: none;
-	--style-pattern-size: 44px 44px;
-	--style-pattern-repeat: no-repeat;
-	--style-pattern-attachment: scroll;
-	--style-pattern-position: top left;
-
-	--style-panel-radius: var(--radius-lg);
-	--style-panel-border: 1px;
-	--style-panel-shadow: var(--shadow-panel);
-
-	--style-card-radius: var(--radius-md);
-	--style-cover-radius: var(--radius-sm);
-	--style-card-border-width: 1px;
-	--style-card-border-color: var(--line);
-	--style-card-shadow: none;
-	--style-card-hover-shadow: 0 12px 24px -16px rgb(6 48 100 / 0.14);
-	--style-card-hover-border-color: color-mix(in oklab, var(--action) 55%, var(--line));
-	--style-card-hover-transform: translateY(-1px);
-
-	--style-button-radius: var(--radius-md);
-	--style-button-border-width: 1px;
-	--style-button-shadow: none;
-	--style-button-hover-shadow: 0 8px 18px -12px rgb(6 48 100 / 0.16);
-	--style-button-hover-transform: translateY(-1px);
-	--style-button-active-shadow: none;
-	--style-button-active-transform: translateY(0);
-	--style-button-spacing: 0.01em;
-	--style-button-transform: none;
-
-	--style-badge-radius: var(--radius-full);
-	--style-badge-border-width: 1px;
-	--style-badge-spacing: 0.03em;
-
-	--style-input-radius: var(--radius-md);
-	--style-input-border-width: 1px;
-
-	--style-heading-spacing: -0.02em;
-	--style-heading-transform: none;
-	--style-heading-font: var(--font-display);
+.font-display {
+	font-family: var(--font-display);
 }
 
-.app-style-canvas {
-	background-image: var(--style-pattern);
-	background-size: var(--style-pattern-size, 44px 44px);
-	background-repeat: var(--style-pattern-repeat, repeat);
-	background-attachment: var(--style-pattern-attachment, scroll);
-	background-position: var(--style-pattern-position, top left);
-}
-
-:where(h1, h2, h3, .font-display) {
-	font-family: var(--style-heading-font);
-	letter-spacing: var(--style-heading-spacing);
-	text-transform: var(--style-heading-transform);
-}
-
-:where(.preferences-card, .info-card, .auth-card, .state-card, .theme-dropdown-menu) {
-	border-radius: var(--style-card-radius, var(--style-panel-radius));
-	border-width: var(--style-card-border-width, var(--style-panel-border, 1px));
-	box-shadow: var(--style-card-shadow, var(--style-panel-shadow));
-	border-color: var(--style-card-border-color, var(--border-subtle));
-}
-
-@media (prefers-reduced-motion: reduce) {
-	.app-style-canvas {
-		background-attachment: initial;
-	}
+:where(.preferences-card, .info-card, .auth-card, .state-card) {
+	border-radius: var(--radius-lg);
+	border: 1px solid var(--line);
+	box-shadow: none;
 }
 
 @layer base {
@@ -208,7 +129,7 @@
 		margin: 0;
 		background: var(--surface-canvas);
 		color: var(--text-primary);
-		font-family: var(--style-body-font);
+		font-family: var(--font-display);
 		font-size: var(--fs-base);
 		letter-spacing: 0;
 		line-height: 1.55;
@@ -218,7 +139,7 @@
 	h1,
 	h2,
 	h3 {
-		font-family: var(--style-heading-font);
+		font-family: var(--font-display);
 		font-weight: 600;
 		letter-spacing: -0.014em;
 		line-height: 1.18;
@@ -243,93 +164,17 @@
 }
 
 @layer components {
-	/* ---- Deco building blocks ---- */
+	/* ---- App chrome ---- */
 
-	/* A quiet editorial kicker shared by route and entity headers. */
-	.deco-eyebrow {
+	/* Small editorial kicker shared by route and entity headers. */
+	.eyebrow {
 		display: inline-block;
-		color: var(--action);
-		font-family: var(--style-body-font);
-		font-size: var(--fs-xs);
-		font-weight: 700;
+		color: var(--slate);
+		font-size: var(--fs-2xs);
+		font-weight: 600;
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
 	}
-
-	/* A centred thin–thick–thin rule with a diamond node — the classic deco divider. */
-	.deco-rule {
-		position: relative;
-		height: 1px;
-		border: 0;
-		margin: var(--space-section) 0;
-		background: var(--rule-gold);
-	}
-	.deco-rule::after {
-		content: '';
-		position: absolute;
-		top: 50%;
-		left: 50%;
-		width: 7px;
-		height: 7px;
-		translate: -50% -50%;
-		rotate: 45deg;
-		background: var(--accent-gold);
-		box-shadow: 0 0 0 4px var(--surface-canvas);
-	}
-
-	/* Panel: hairline border + an inset second rule (double-line deco frame) + notched top corners. */
-	.deco-panel {
-		position: relative;
-		background: var(--surface-raised);
-		border: var(--hairline);
-		box-shadow:
-			inset 0 0 0 1px transparent,
-			inset 0 0 0 5px transparent;
-		padding: var(--space-panel);
-		border-radius: var(--radius-lg);
-	}
-	.deco-panel::before {
-		content: '';
-		position: absolute;
-		inset: 6px;
-		border: 1px solid color-mix(in oklab, var(--accent-gold) 22%, transparent);
-		pointer-events: none;
-	}
-	.deco-panel--stepped {
-		clip-path: polygon(
-			14px 0,
-			calc(100% - 14px) 0,
-			calc(100% - 14px) 7px,
-			100% 7px,
-			100% calc(100% - 14px),
-			calc(100% - 14px) calc(100% - 14px),
-			calc(100% - 14px) 100%,
-			14px 100%,
-			14px calc(100% - 14px),
-			0 calc(100% - 14px),
-			0 7px,
-			14px 7px
-		);
-	}
-
-	/* Sunburst corner flourish — attach to a positioned container. */
-	.deco-sunburst::after {
-		content: '';
-		position: absolute;
-		top: 0;
-		right: 0;
-		width: 84px;
-		height: 84px;
-		background: repeating-conic-gradient(
-			from 0deg at 100% 0,
-			color-mix(in oklab, var(--accent-gold) 30%, transparent) 0deg 4deg,
-			transparent 4deg 12deg
-		);
-		mask: radial-gradient(120% 120% at 100% 0, #000 40%, transparent 72%);
-		pointer-events: none;
-	}
-
-	/* ---- App chrome ---- */
 
 	.app-skip-link {
 		position: fixed;
@@ -337,14 +182,12 @@
 		top: 0.75rem;
 		left: 0.75rem;
 		transform: translateY(-200%);
-		border: 1px solid var(--accent-gold);
-		background: var(--surface-raised);
-		padding: 0.7rem 1rem;
-		color: var(--accent-gold);
-		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 0.18em;
-		border-radius: 0;
+		border: 1px solid var(--action);
+		background: var(--surface);
+		padding: 0.6rem 0.9rem;
+		color: var(--action);
+		font-weight: 600;
+		border-radius: var(--radius-md);
 	}
 
 	.app-skip-link:focus {
@@ -357,7 +200,7 @@
 		display: flex;
 		color: var(--text-muted);
 		text-decoration: none;
-		border-radius: 0;
+		border-radius: var(--radius-md);
 		transition:
 			color 140ms ease,
 			background-color 140ms ease,
@@ -416,7 +259,7 @@
 	}
 
 	.app-account-link:hover {
-		border-color: var(--accent-gold-deep);
+		border-color: var(--action);
 	}
 
 	.app-mobile-nav-link {
@@ -441,7 +284,7 @@
 		border: 1px solid var(--border-subtle);
 		border-radius: var(--radius-lg);
 		background: var(--surface-raised);
-		box-shadow: var(--shadow-raised);
+		box-shadow: var(--shadow-panel);
 		margin-top: 1.5rem;
 		max-width: 44rem;
 	}
@@ -545,15 +388,15 @@
 		padding: 0.55rem 1.15rem;
 		font-size: 0.82rem;
 		font-weight: 700;
-		letter-spacing: var(--style-button-spacing, 0.08em);
-		text-transform: var(--style-button-transform, uppercase);
+		letter-spacing: 0.01em;
+		text-transform: none;
 		text-decoration: none;
-		border-radius: var(--style-button-radius, var(--radius-md));
-		border: var(--style-button-border-width, 1px) solid var(--border-subtle);
+		border-radius: var(--radius-md);
+		border: 1px solid var(--border-subtle);
 		background: var(--surface-raised);
 		color: var(--text-primary);
 		cursor: pointer;
-		box-shadow: var(--style-button-shadow, none);
+		box-shadow: none;
 		transition: all 0.14s cubic-bezier(0.16, 1, 0.3, 1);
 		white-space: nowrap;
 	}
@@ -561,13 +404,13 @@
 	.btn-base:hover:not(:disabled) {
 		border-color: var(--border-strong);
 		background: var(--surface-selected);
-		box-shadow: var(--style-button-hover-shadow, 2px 2px 0px var(--border-strong));
-		transform: var(--style-button-hover-transform, translate(-1px, -1px));
+		box-shadow: var(--shadow-panel);
+		transform: translateY(-1px);
 	}
 
 	.btn-base:active:not(:disabled) {
-		box-shadow: var(--style-button-active-shadow, none);
-		transform: var(--style-button-active-transform, translate(0, 0));
+		box-shadow: none;
+		transform: translateY(0);
 	}
 
 	.btn-base:disabled {
@@ -582,10 +425,10 @@
 	}
 
 	.btn-primary:hover:not(:disabled) {
-		border-color: var(--accent-gold-deep);
-		background: var(--accent-gold-deep);
+		border-color: color-mix(in oklab, var(--action) 82%, black);
+		background: color-mix(in oklab, var(--action) 82%, black);
 		color: var(--action-contrast);
-		box-shadow: var(--style-button-hover-shadow, 2px 2px 0px var(--border-strong));
+		box-shadow: var(--shadow-panel);
 	}
 
 	.btn-danger {
@@ -610,20 +453,19 @@
 		flex-direction: column;
 		gap: 0.55rem;
 		padding: 0.75rem;
-		border: var(--style-card-border-width, 1px) solid
-			var(--style-card-border-color, var(--border-subtle));
+		border: 1px solid var(--line);
 		background: var(--surface-raised);
-		border-radius: var(--style-card-radius, var(--radius-md));
-		box-shadow: var(--style-card-shadow, none);
+		border-radius: var(--radius-md);
+		box-shadow: none;
 		color: inherit;
 		text-decoration: none;
 		transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1);
 	}
 
 	.media-card:hover {
-		border-color: var(--style-card-hover-border-color, var(--border-strong));
-		box-shadow: var(--style-card-hover-shadow, var(--shadow-bauhaus));
-		transform: var(--style-card-hover-transform, translate(-1px, -1px));
+		border-color: color-mix(in oklab, var(--action) 45%, var(--line));
+		box-shadow: var(--shadow-panel);
+		transform: translateY(-1px);
 	}
 
 	.media-card-cover {
@@ -632,7 +474,7 @@
 		aspect-ratio: 1;
 		object-fit: cover;
 		border: 1px solid var(--border-subtle);
-		border-radius: var(--style-cover-radius, var(--radius-sm));
+		border-radius: var(--radius-sm);
 		background: var(--surface-canvas);
 	}
 
@@ -676,7 +518,7 @@
 		gap: 0.85rem;
 		padding: 0.65rem 0.9rem;
 		border-bottom: 1px solid var(--border-subtle);
-		border-radius: var(--style-card-radius, var(--radius-sm));
+		border-radius: var(--radius-sm);
 		transition:
 			background-color 0.12s ease,
 			transform 0.12s ease;
@@ -692,7 +534,7 @@
 		width: 1.85rem;
 		height: 1.85rem;
 		border: 1px solid var(--border-subtle);
-		border-radius: var(--style-cover-radius, var(--radius-sm));
+		border-radius: var(--radius-sm);
 		background: var(--surface-canvas);
 		color: var(--text-primary);
 		cursor: pointer;
@@ -708,15 +550,15 @@
 		select,
 		textarea
 	) {
-		border-radius: var(--style-input-radius, var(--radius-md));
-		border-width: var(--style-input-border-width, 1px);
+		border-radius: var(--radius-md);
+		border-width: 1px;
 	}
 
 	/* ---- Unified Badges & Status Pills ---- */
 	:where(.badge, .app-badge, .status-pill) {
-		border-radius: var(--style-badge-radius, var(--radius-sm));
-		border-width: var(--style-badge-border-width, 1px);
-		letter-spacing: var(--style-badge-spacing, 0.08em);
+		border-radius: var(--radius-full);
+		border-width: 1px;
+		letter-spacing: 0.03em;
 	}
 
 	.track-row-play:hover {

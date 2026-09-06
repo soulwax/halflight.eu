@@ -69,7 +69,7 @@
 
 <a class="app-skip-link" href="#main-content">{skipLinkLabel}</a>
 
-<div class="app-style-canvas app-shell-canvas">
+<div class="app-shell-canvas">
 	<div
 		class="app-shell"
 		style={railCollapsed

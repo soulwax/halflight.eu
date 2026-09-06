@@ -112,7 +112,7 @@
 		border: 1px solid var(--border-subtle);
 		border-radius: var(--radius-lg);
 		background: var(--surface-raised);
-		box-shadow: var(--shadow-raised);
+		box-shadow: var(--shadow-panel);
 	}
 
 	.generated-set-header {

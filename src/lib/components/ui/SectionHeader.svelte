@@ -23,7 +23,7 @@
 <div class="section-header-wrap">
 	<div class="section-header-title-area">
 		{#if eyebrow}
-			<p class="deco-eyebrow">{eyebrow}</p>
+			<p class="eyebrow">{eyebrow}</p>
 		{/if}
 		<div class="flex items-center gap-2.5">
 			{#if children}

@@ -66,7 +66,7 @@
 	cursor: default;
 }
 .syn-player .title-idle {
-	font-family: var(--style-body-font);
+	font-family: var(--font-display);
 	font-size: 0.9rem;
 	color: var(--text-muted);
 }

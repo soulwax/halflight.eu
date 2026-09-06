@@ -48,7 +48,7 @@
 
 <section class="library" aria-labelledby="library-title">
 	<header class="library-header">
-		<p class="deco-eyebrow">HALFLIGHT // PERSONAL CATALOGUE</p>
+		<p class="eyebrow">HALFLIGHT // PERSONAL CATALOGUE</p>
 		<h1 id="library-title" class="library-title">{m.library_title()}</h1>
 		<p class="intro">{m.library_subtitle()}</p>
 	</header>
@@ -248,7 +248,7 @@
 		border: 1px solid var(--border-subtle);
 		background: var(--surface-raised);
 		border-radius: var(--radius-lg);
-		box-shadow: var(--shadow-raised);
+		box-shadow: var(--shadow-panel);
 	}
 
 	.custom-grid {

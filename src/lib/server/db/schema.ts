@@ -144,18 +144,6 @@ export const playbackOperationResult = pgTable(
 );
 
 /**
- * User visual preferences and customization settings.
- */
-export const userSettings = pgTable('user_settings', {
-	userId: text('user_id')
-		.primaryKey()
-		.references(() => user.id, { onDelete: 'cascade' }),
-	theme: text('theme').notNull().default('tokyo-night'),
-	visualStyle: text('visual_style').notNull().default('bauhaus'),
-	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
-});
-
-/**
  * Syn-owned, derived listening preferences. This deliberately stores no TIDAL
  * catalogue text, artwork, audio, or event history: only identifiers and the
  * weights/controls calculated from the owner's live signals.

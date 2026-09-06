@@ -197,19 +197,18 @@
 		align-items: center;
 		gap: 0.8rem;
 		padding: 0.7rem 0.8rem;
-		border: var(--style-card-border-width, 2px) solid
-			var(--style-card-border-color, var(--border-subtle));
+		border: 1px solid var(--line);
 		background: var(--surface-raised);
-		border-radius: var(--style-card-radius, var(--radius-md, 10px));
-		box-shadow: var(--style-card-shadow, none);
+		border-radius: var(--radius-md);
+		box-shadow: none;
 		position: relative;
-		transition: all 140ms cubic-bezier(0.16, 1, 0.3, 1);
+		transition: all var(--dur-med) var(--ease-out);
 	}
 
 	.song-card:hover {
-		border-color: var(--style-card-hover-border-color, var(--border-strong));
-		box-shadow: var(--style-card-hover-shadow, var(--shadow-bauhaus));
-		transform: var(--style-card-hover-transform, translate(-1px, -1px));
+		border-color: color-mix(in oklab, var(--action) 45%, var(--line));
+		box-shadow: var(--shadow-panel);
+		transform: translateY(-1px);
 	}
 
 	.artwork-wrap {
@@ -219,7 +218,7 @@
 		flex: 0 0 auto;
 		overflow: hidden;
 		border: 1px solid var(--border-strong);
-		border-radius: var(--style-cover-radius, var(--radius-sm, 6px));
+		border-radius: var(--radius-sm);
 		background: var(--surface-canvas);
 	}
 

@@ -13,7 +13,7 @@
 	<meta name="description" content={m.sign_in_subtitle()} />
 </svelte:head>
 
-<main class="auth-page app-style-canvas">
+<main class="auth-page">
 	<section class="auth-card" aria-labelledby="sign-in-title">
 		<img class="brand-logo" src={synLogo} alt={m.brand_name()} />
 		<h1 id="sign-in-title">{m.sign_in_title()}</h1>
@@ -113,7 +113,7 @@
 		border: 1px solid var(--border-subtle);
 		border-radius: 1.5rem;
 		background: var(--surface-raised);
-		box-shadow: var(--shadow-raised);
+		box-shadow: var(--shadow-panel);
 	}
 
 	.brand-logo {
@@ -197,7 +197,7 @@
 	.mode-tabs button.active {
 		background: var(--surface-raised);
 		color: var(--text-primary);
-		box-shadow: var(--shadow-raised);
+		box-shadow: var(--shadow-panel);
 	}
 
 	.auth-form {

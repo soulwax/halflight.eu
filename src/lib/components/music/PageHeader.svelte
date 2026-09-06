@@ -47,7 +47,7 @@
 
 	<div class="entity-heading-area">
 		{#if eyebrow}
-			<p class="deco-eyebrow">{eyebrow}</p>
+			<p class="eyebrow">{eyebrow}</p>
 		{/if}
 		<h1 class="entity-title">{title}</h1>
 
