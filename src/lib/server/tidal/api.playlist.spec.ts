@@ -1,14 +1,15 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-	updatePlaylist,
 	deletePlaylistRemote,
+	getFullPlaylist,
+	getOwnedPlaylists,
 	removePlaylistItems,
 	replacePlaylistItems,
-	getFullPlaylist
+	updatePlaylist
 } from './api';
-import { tidalJson, getAccessToken } from './client';
-import { TidalApiError } from './errors';
+import { getAccessToken, tidalJson } from './client';
 import { TIDAL_API_BASE } from './config';
+import { TidalApiError } from './errors';
 
 vi.mock('./client', () => ({
 	tidalJson: vi.fn(),
@@ -210,5 +211,36 @@ describe('TIDAL playlist API wrappers', () => {
 		);
 		expect((res.data as any).relationships.items.data).toHaveLength(3);
 		expect(res.included).toHaveLength(7); // initial t1 + page1/2 included (t1, t2, t3) + page1/2 items (t1, t2, t3)
+	});
+
+	it('lists every owner playlist across legacy pages', async () => {
+		expect.assertions(3);
+		vi.mocked(tidalJson)
+			.mockResolvedValueOnce({
+				items: [
+					{ uuid: 'owner-1', title: 'First', numberOfTracks: 2 },
+					{ uuid: 'owner-2', title: 'Second' }
+				],
+				total: 3
+			} as any)
+			.mockResolvedValueOnce({
+				items: [{ uuid: 'owner-3', title: 'Third', description: 'A set' }],
+				total: 3
+			} as any);
+
+		const playlists = await getOwnedPlaylists('tidal-user');
+
+		expect(playlists).toEqual([
+			{ kind: 'playlist', id: 'owner-1', title: 'First', numberOfItems: 2 },
+			{ kind: 'playlist', id: 'owner-2', title: 'Second' },
+			{ kind: 'playlist', id: 'owner-3', title: 'Third', description: 'A set' }
+		]);
+		expect(tidalJson).toHaveBeenCalledTimes(2);
+		expect(tidalJson).toHaveBeenNthCalledWith(
+			2,
+			'https://api.tidal.com/v1/users/tidal-user/playlists?limit=100&offset=2',
+			{},
+			undefined
+		);
 	});
 });

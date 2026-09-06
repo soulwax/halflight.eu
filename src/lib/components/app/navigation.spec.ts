@@ -11,6 +11,13 @@ describe('isCurrentNavigationItem', () => {
 		expect(isCurrentNavigationItem(search, '/app/search')).toBe(true);
 	});
 
+	it('matches localized current paths and navigation targets', () => {
+		expect(isCurrentNavigationItem(search, '/de-de/app/search')).toBe(true);
+		expect(isCurrentNavigationItem({ ...search, href: '/de-de/app/search' }, '/app/search')).toBe(
+			true
+		);
+	});
+
 	it('activates a section from its sub-pages', () => {
 		expect(isCurrentNavigationItem(search, '/app/search/results')).toBe(true);
 		expect(isCurrentNavigationItem(settings, '/app/settings/tidal/callback')).toBe(true);

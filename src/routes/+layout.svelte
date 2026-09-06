@@ -1,13 +1,13 @@
 <script lang="ts">
-	import type { Snippet } from 'svelte';
-	import { page } from '$app/state';
-	import { locales, localizeHref } from '#lib/paraglide/runtime';
+	import favicon from '#lib/assets/favicon.svg';
 	import AppHeader from '#lib/components/app/AppHeader.svelte';
 	import Footer from '#lib/components/Footer.svelte';
 	import { isMobileRoute } from '#lib/mobile/routes';
-	import './layout.css';
-	import favicon from '#lib/assets/favicon.svg';
+	import { deLocalizeHref, locales, localizeHref } from '#lib/paraglide/runtime';
+	import { page } from '$app/state';
+	import type { Snippet } from 'svelte';
 	import type { LayoutData } from './$types';
+	import './layout.css';
 
 	let { data, children }: { data: LayoutData; children: Snippet } = $props();
 
@@ -17,7 +17,8 @@
 	// layouts"), so `layout.css` stays unconditional.
 	let isMobile = $derived(isMobileRoute(page.url.pathname));
 	let isListeningRoom = $derived(
-		page.url.pathname === '/app' || page.url.pathname.startsWith('/app/')
+		deLocalizeHref(page.url.pathname) === '/app' ||
+			deLocalizeHref(page.url.pathname).startsWith('/app/')
 	);
 </script>
 

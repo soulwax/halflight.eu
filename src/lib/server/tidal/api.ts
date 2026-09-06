@@ -3,7 +3,8 @@
  * around {@link tidalJson}; anything not covered here is still reachable through
  * `tidalJson('/whatever')` or the `/tidal/api/*` proxy route.
  */
-import { tidalFetch, tidalJson, getAccessToken, type TidalRequestContext } from './client';
+import type { PlaylistSummary } from '#lib/tidal/models';
+import { getAccessToken, tidalFetch, tidalJson, type TidalRequestContext } from './client';
 import { TIDAL_API_BASE } from './config';
 import { TidalApiError } from './errors';
 import type { Document, Resource } from './jsonapi';
@@ -88,6 +89,84 @@ export async function getFullCollection(
 		page = await tidalJson<Document<Resource[]>>(next, {}, ctx);
 	}
 	return { items, included };
+}
+
+interface LegacyPlaylistPage {
+	items?: unknown;
+	total?: unknown;
+}
+
+function readLegacyPlaylistPage(value: unknown): { items: unknown[]; total?: number } {
+	if (Array.isArray(value)) return { items: value };
+	if (!value || typeof value !== 'object') return { items: [] };
+
+	const page = value as LegacyPlaylistPage;
+	return {
+		items: Array.isArray(page.items) ? page.items : [],
+		total: typeof page.total === 'number' && Number.isFinite(page.total) ? page.total : undefined
+	};
+}
+
+function normaliseLegacyPlaylist(value: unknown): PlaylistSummary | null {
+	if (!value || typeof value !== 'object') return null;
+	const playlist = value as Record<string, unknown>;
+	const id = typeof playlist.uuid === 'string' ? playlist.uuid : playlist.id;
+	if (typeof id !== 'string' || !id) return null;
+
+	return {
+		kind: 'playlist',
+		id,
+		title: typeof playlist.title === 'string' && playlist.title ? playlist.title : id,
+		...(typeof playlist.description === 'string' && playlist.description
+			? { description: playlist.description }
+			: {}),
+		...(typeof playlist.numberOfTracks === 'number' && Number.isFinite(playlist.numberOfTracks)
+			? { numberOfItems: playlist.numberOfTracks }
+			: {})
+	};
+}
+
+/**
+ * List every playlist created by the authenticated TIDAL user. The v2 user
+ * collection only covers saved playlists, while this legacy endpoint is the
+ * authoritative owner list needed by the import workflow.
+ */
+export async function getOwnedPlaylists(
+	tidalUserId: string,
+	ctx?: Ctx
+): Promise<PlaylistSummary[]> {
+	const playlists: PlaylistSummary[] = [];
+	const seen = new Set<string>();
+	const limit = 100;
+
+	for (let offset = 0; offset < 5_000;) {
+		const page = readLegacyPlaylistPage(
+			await tidalJson(
+				`https://api.tidal.com/v1/users/${encodeURIComponent(tidalUserId)}/playlists?limit=${limit}&offset=${offset}`,
+				{},
+				ctx
+			)
+		);
+
+		for (const item of page.items) {
+			const playlist = normaliseLegacyPlaylist(item);
+			if (playlist && !seen.has(playlist.id)) {
+				seen.add(playlist.id);
+				playlists.push(playlist);
+			}
+		}
+
+		const nextOffset = offset + page.items.length;
+		if (
+			page.items.length === 0 ||
+			(page.total !== undefined ? nextOffset >= page.total : page.items.length < limit)
+		) {
+			break;
+		}
+		offset = nextOffset;
+	}
+
+	return playlists;
 }
 
 /** A playlist and (optionally) its items. */

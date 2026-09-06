@@ -1,27 +1,27 @@
-import type { Cookies } from '@sveltejs/kit';
-import type { PlaylistDetail, TrackSummary } from '#lib/tidal/models';
-import type { SavedPlaylist } from './index';
-import { getUserPlaylists, createUserPlaylist, updateUserPlaylist } from './index';
 import {
 	getConnectionStatus,
+	isTrackUnavailableForPlayback,
 	resolveTrackStream,
 	TidalApiError,
 	TidalAuthError,
 	TidalPlaybackNotLinkedError,
 	TidalQualityDeniedError,
-	isTrackUnavailableForPlayback,
 	type TidalRequestContext
 } from '#lib/server/tidal';
 import * as tidalApi from '#lib/server/tidal/api';
 import {
 	addPlaylistItems,
+	createPlaylist as createPlaylistRemote,
 	removePlaylistItems,
 	replacePlaylistItems,
-	updatePlaylist as updatePlaylistRemote,
-	createPlaylist as createPlaylistRemote
+	updatePlaylist as updatePlaylistRemote
 } from '#lib/server/tidal/api';
 import { normalisePlaylistDetail, normaliseSearchResults } from '#lib/server/tidal/normalise';
-import type { TokenRowStore } from '#lib/server/tidal/store';
+import { readRecord, type TokenRowStore } from '#lib/server/tidal/store';
+import type { PlaylistDetail, TrackSummary } from '#lib/tidal/models';
+import type { Cookies } from '@sveltejs/kit';
+import type { SavedPlaylist } from './index';
+import { createUserPlaylist, getUserPlaylists, updateUserPlaylist } from './index';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -636,7 +636,11 @@ export async function pushAllPlaylists(ctx: SyncContext): Promise<SyncBatchResul
  * Returns PlaylistSummary[] with an `isImported` flag.
  */
 export async function listImportablePlaylists(ctx: SyncContext) {
-	const tidalCtx: TidalRequestContext = { fetch: ctx.fetch, cookies: ctx.cookies };
+	const tidalCtx: TidalRequestContext = {
+		fetch: ctx.fetch,
+		cookies: ctx.cookies,
+		store: ctx.store
+	};
 
 	const connection = await getConnectionStatus();
 	if (!connection.connected) {
@@ -644,7 +648,18 @@ export async function listImportablePlaylists(ctx: SyncContext) {
 	}
 
 	try {
-		const { items, included } = await tidalApi.getFullCollection('playlists', tidalCtx);
+		const token = await readRecord(ctx.store);
+		if (!token?.userId) {
+			return {
+				playlists: [],
+				error: 'TIDAL account identity is unavailable. Reconnect TIDAL and try again.'
+			};
+		}
+
+		const [{ items, included }, ownedPlaylists] = await Promise.all([
+			tidalApi.getFullCollection('playlists', tidalCtx),
+			tidalApi.getOwnedPlaylists(token.userId, tidalCtx)
+		]);
 		const { normalisePlaylist } = await import('#lib/server/tidal/normalise');
 
 		// Get already-imported TIDAL IDs
@@ -653,7 +668,7 @@ export async function listImportablePlaylists(ctx: SyncContext) {
 			localPlaylists.filter((p) => p.tidalPlaylistId).map((p) => p.tidalPlaylistId!)
 		);
 
-		const playlists = (items as Array<{ id: string; type: string }>)
+		const collectionPlaylists = (items as Array<{ id: string; type: string }>)
 			.map((item: { id: string; type: string }) => {
 				const resolved =
 					(included as Array<{ id?: string; type?: string }> | undefined)?.find(
@@ -661,11 +676,15 @@ export async function listImportablePlaylists(ctx: SyncContext) {
 					) ?? item;
 				return normalisePlaylist(resolved as never);
 			})
-			.filter(Boolean)
-			.map((p) => ({
-				...p!,
-				isImported: importedTidalIds.has(p!.id)
-			}));
+			.filter((playlist): playlist is NonNullable<typeof playlist> => Boolean(playlist));
+		const playlistsById = new Map(collectionPlaylists.map((playlist) => [playlist.id, playlist]));
+		for (const playlist of ownedPlaylists) {
+			if (!playlistsById.has(playlist.id)) playlistsById.set(playlist.id, playlist);
+		}
+
+		const playlists = [...playlistsById.values()]
+			.map((playlist) => ({ ...playlist, isImported: importedTidalIds.has(playlist.id) }))
+			.sort((a, b) => a.title.localeCompare(b.title));
 
 		return { playlists, error: null };
 	} catch (err) {
