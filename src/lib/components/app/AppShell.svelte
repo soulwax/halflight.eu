@@ -117,16 +117,25 @@
 <style>
 	.app-shell-canvas {
 		min-height: 100dvh;
-		background: var(--surface-canvas);
+		background:
+			radial-gradient(
+				90% 55% at 18% 0%,
+				color-mix(in oklab, var(--accent-gold) 7%, transparent),
+				transparent 60%
+			),
+			var(--surface-canvas);
 		color: var(--text-primary);
 	}
 
 	.app-shell {
+		--shell-inset: 0.6rem;
 		display: grid;
 		min-height: 100dvh;
 		width: 100%;
 		height: 100dvh;
 		overflow: hidden;
+		gap: var(--shell-inset);
+		padding: var(--shell-inset);
 		grid-template-columns: var(--shell-rail-current) minmax(0, 1fr);
 		grid-template-rows: var(--shell-header-h) minmax(0, 1fr) var(--shell-player-h) var(
 				--shell-footer-h
@@ -138,22 +147,35 @@
 			'footer footer';
 	}
 
+	/* Chrome regions: translucent vibrancy so artwork colour bleeds into the frame. */
 	.app-shell-rail {
 		grid-area: rail;
 		min-height: 0;
 		z-index: var(--z-rail);
+		border-radius: var(--radius-lg);
+		background: var(--glass-surface);
+		backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+		overflow: hidden;
 	}
 	.app-shell-header {
 		grid-area: header;
 		min-width: 0;
 		z-index: var(--z-header);
+		border-radius: var(--radius-lg);
+		background: var(--glass-surface);
+		backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+		overflow: hidden;
 	}
+	/* Main: a floating rounded pane on the dark ground. */
 	.app-shell-main {
 		grid-area: main;
 		min-width: 0;
 		overflow: auto;
 		container-type: inline-size;
 		padding: var(--shell-gutter);
+		border-radius: var(--radius-xl);
+		background: var(--surface-raised);
+		box-shadow: var(--shadow-panel);
 	}
 	.app-shell-main-content {
 		width: min(100%, var(--content-max));
@@ -163,8 +185,9 @@
 		display: none;
 		min-width: 0;
 		overflow: auto;
-		border-left: var(--hairline);
+		border-radius: var(--radius-xl);
 		background: var(--surface-raised);
+		box-shadow: var(--shadow-panel);
 		container-type: inline-size;
 		z-index: var(--z-aside);
 	}
@@ -172,6 +195,9 @@
 		grid-area: player;
 		min-width: 0;
 		z-index: var(--z-player);
+		border-radius: var(--radius-lg);
+		overflow: hidden;
+		box-shadow: var(--shadow-float);
 	}
 	.app-shell-footer {
 		grid-area: footer;

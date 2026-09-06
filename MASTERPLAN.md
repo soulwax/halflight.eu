@@ -780,20 +780,45 @@ Bounded, derived, and always reversible.
 ## Design direction
 
 Halflight should be visually distinct from TIDAL while respecting TIDAL's content and attribution
-rules. Apple Music’s calm, album-forward hierarchy is the north star; Halflight translates it into
-a dark, high-contrast half-light world: inked neutral surfaces, softened illumination, restrained
-accent, generous artwork, and strong, spacious typography.
+rules.
+
+**Desktop (Listening Room) north star: macOS composure with a dopamine pulse, built from modules.**
+The pure phone experience (Halflight Now) is designed separately and does not inherit this system.
+
+- **macOS composure.** Deep dark ground; content lives on _floating, rounded panes_ that sit
+  inset from the window edge with soft, diffuse, layered shadows — never hard poster offsets or
+  hairline "metal rules". Chrome (rail, header, player) is translucent **vibrancy**: a blurred,
+  slightly saturated wash of the surface colour so artwork colour bleeds through. Type is the
+  system UI face (SF on macOS) at its real weights — no display serif, no uppercase transforms in
+  the default composition. Corners are generously rounded (10px controls, 14px panes, 20px sheets).
+- **Dopamine pulse.** One confident, _saturated_ accent that actually glows — it tints the primary
+  action, the active nav item, the scrubber, and the now-playing focus. Selection and hover are
+  felt: a quick scale, a spring settle, a colour bloom. Energy is welcome in the shell; it never
+  crosses onto the artwork, and it never fires during a save, a generation, or while a track is
+  mid-transition.
+- **Modular.** Every region and every content block is a discrete **module** — one radius, one
+  border treatment, one elevation, consumed from tokens (`--module-*`). Home is a short stack of
+  named modules; the player, queue, provenance, and generation controls each read as their own
+  tile. Modules can be shown, hidden, and (later) rearranged without restyling.
+
+Apple Music's album-forward hierarchy still governs _what_ leads: artwork, artist, title, release
+context, and the act of listening come first; metrics and diagnostics recede. "Audio outranks UI"
+and "music first" are unchanged.
 
 ### Design tokens
 
 Semantic custom properties in `src/routes/layout.css`, consumed through Tailwind: canvas, surface,
 elevated surface, subtle border; primary/secondary/muted text; action accent and contrast; success,
 warning, danger, information; focus ring, selected, skeleton, overlay; spacing, radii, shadows,
-content widths, motion durations.
+content widths, motion durations and easings. New for this direction: `--glass-*` (vibrancy blur,
+saturation, translucent surface), `--shadow-panel` / `--shadow-float` (soft layered depth),
+`--ease-spring`, and `--module-*` (radius, border, background, elevation) — the single source of
+truth for a tile.
 
-Halflight has one dark reference composition. The interface stays neutral and quiet so artwork,
-quality, and playback state carry the colour; there are no palette or art-direction preferences.
-Quality badges colour by fidelity tier (grey lossy, cyan lossless, gold HiRes) via `qualityTier()`.
+Halflight has one dark reference composition. The interface is quiet everywhere except the
+accent: a single saturated colour that glows on the primary action and the now-playing focus.
+Artwork, quality, and playback state still carry the rest of the colour. Quality badges colour by
+fidelity tier (grey lossy, cyan lossless, gold HiRes) via `qualityTier()`.
 
 Typography and hierarchy rules:
 
@@ -801,10 +826,13 @@ Typography and hierarchy rules:
   Artist and release context are intimate secondary information; diagnostic detail never competes.
 - Home sections are few, named like listening invitations, and terminate. No infinite shelves, no
   tiny repeated cards, and no engagement-oriented “because you played” clutter.
-- Use a restrained luminance ladder — canvas, surface, elevated surface, then one warm focal light —
-  so the eye lands on music before controls. Gradients imply changing light, never decoration.
-- Motion is spatial and functional: artwork settles, panels reveal context, the mini player grows
-  into Now Playing. It never bounces, loops, or asks for attention while music is playing.
+- Use a restrained luminance ladder — canvas, surface, elevated surface — with translucent
+  vibrancy on the chrome so artwork colour bleeds into the frame. One glowing accent is the only
+  saturated element in the UI itself.
+- Motion has a spring: hover and selection scale and settle, a module slides in, the mini player
+  grows into Now Playing. The pulse stays in the shell — it never plays over the artwork, never
+  loops, and never fires during a save, a generation, or a track transition. Honour
+  `prefers-reduced-motion` (immediate state changes, no spring).
 
 ### Core component inventory
 

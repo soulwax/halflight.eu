@@ -5,11 +5,15 @@
 :root {
 	color-scheme: dark;
 
-	/* ---- Deco palette: warm charcoal ground, ivory ink, brass + jade accents ---- */
-	--accent-gold: oklch(0.82 0.1 86);
-	--accent-gold-deep: oklch(0.7 0.1 82);
-	--accent-jade: oklch(0.64 0.075 168);
-	--accent-oxblood: oklch(0.53 0.13 24);
+	/* ---- Reference palette: deep charcoal ground, bright ink, one glowing amber accent ---- */
+	--accent-gold: oklch(0.83 0.17 82);
+	--accent-gold-deep: oklch(0.74 0.17 72);
+	--accent-jade: oklch(0.72 0.14 168);
+	--accent-oxblood: oklch(0.62 0.19 22);
+	/* The dopamine pulse: a soft bloom the accent casts on primary actions and now-playing. */
+	--accent-glow:
+		0 0 0 1px color-mix(in oklab, var(--accent-gold) 40%, transparent),
+		0 6px 22px -6px color-mix(in oklab, var(--accent-gold) 55%, transparent);
 
 	/* Legacy triad names kept so component styles stay wired — repointed to the deco set. */
 	--bauhaus-blue: oklch(0.55 0.06 214);
@@ -33,12 +37,12 @@
 	--danger-subtle: oklch(0.28 0.06 24);
 	--focus-ring: var(--accent-gold);
 
-	/* ---- Deco geometry: sharp, near-flat. Curves are the exception, not the default. ---- */
-	--radius-xs: 0px;
-	--radius-sm: 1px;
-	--radius-md: 2px;
-	--radius-lg: 3px;
-	--radius-xl: 4px;
+	/* ---- macOS geometry: generously rounded. Corners are soft by default. ---- */
+	--radius-xs: 4px;
+	--radius-sm: 7px;
+	--radius-md: 10px;
+	--radius-lg: 14px;
+	--radius-xl: 20px;
 	--radius-full: 9999px;
 
 	/* ---- Type scale: a music app is dense; the work playing gets the presence. ---- */
@@ -51,10 +55,28 @@
 	--fs-xl: 1.5rem; /* 24px — page titles */
 	--fs-2xl: 2rem; /* 32px — the one hero line per view, no bigger */
 
-	/* ---- Motion: brief, functional, single easing curve. ---- */
+	/* ---- Motion: an ease-out base plus a spring for the dopamine pulse. ---- */
 	--ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-	--dur-fast: 120ms;
-	--dur-med: 180ms;
+	--ease-spring: cubic-bezier(0.34, 1.4, 0.5, 1);
+	--dur-fast: 130ms;
+	--dur-med: 220ms;
+	--dur-slow: 380ms;
+
+	/* ---- Vibrancy: translucent chrome that lets artwork colour through. ---- */
+	--glass-blur: 22px;
+	--glass-saturate: 1.7;
+	--glass-surface: color-mix(in oklab, var(--surface-raised) 72%, transparent);
+	--glass-canvas: color-mix(in oklab, var(--surface-canvas) 68%, transparent);
+
+	/* ---- Soft, layered depth — no inset lines, no hard offsets. ---- */
+	--shadow-panel: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 30px -12px rgba(0, 0, 0, 0.5);
+	--shadow-float: 0 2px 6px rgba(0, 0, 0, 0.32), 0 24px 60px -18px rgba(0, 0, 0, 0.6);
+
+	/* ---- Module: the single contract for a tile (region or content block). ---- */
+	--module-radius: var(--radius-lg);
+	--module-border: 1px solid color-mix(in oklab, var(--border-subtle) 80%, transparent);
+	--module-bg: var(--surface-raised);
+	--module-shadow: var(--shadow-panel);
 
 	/* ---- Vertical rhythm — tight enough that content, not whitespace, fills the view. ---- */
 	--space-section: clamp(1.75rem, 3.5vw, 2.75rem);
@@ -77,9 +99,12 @@
 	--z-overlay: 50;
 	--z-toast: 60;
 
-	--font-display: 'Marcellus', ui-serif, Georgia, 'Times New Roman', serif;
-	--font-mono: ui-monospace, 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
-	--style-body-font: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+	/* One UI face at real weights — SF on macOS. No display serif in the default composition. */
+	--font-display:
+		-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, Roboto, sans-serif;
+	--font-mono: ui-monospace, 'SF Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+	--style-body-font:
+		-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, Roboto, sans-serif;
 
 	/* ---- Contours: hairline metal rules + a quiet lift, never a hard poster offset ---- */
 	--hairline: 1px solid var(--border-subtle);
@@ -91,14 +116,10 @@
 		var(--border-subtle) 92%,
 		transparent
 	);
-	--shadow-raised:
-		0 1px 0 0 color-mix(in oklab, var(--accent-gold) 12%, transparent) inset,
-		0 18px 48px -24px rgba(0, 0, 0, 0.7);
-	--shadow-bauhaus:
-		0 1px 0 0 color-mix(in oklab, var(--accent-gold) 10%, transparent) inset,
-		0 12px 32px -20px rgba(0, 0, 0, 0.6);
-	--shadow-bauhaus-hover:
-		0 0 0 1px var(--accent-gold-deep) inset, 0 16px 40px -20px rgba(0, 0, 0, 0.65);
+	/* Legacy shadow names, repointed at the soft layered set. */
+	--shadow-raised: var(--shadow-panel);
+	--shadow-bauhaus: var(--shadow-panel);
+	--shadow-bauhaus-hover: var(--shadow-float);
 }
 
 :root[data-theme='catppuccin-mocha'] {
@@ -1169,8 +1190,8 @@
 	h3 {
 		font-family: var(--style-heading-font);
 		font-weight: 600;
-		letter-spacing: 0.01em;
-		line-height: 1.2;
+		letter-spacing: -0.014em;
+		line-height: 1.18;
 		text-wrap: balance;
 	}
 
@@ -1186,8 +1207,8 @@
 
 	:focus-visible {
 		outline: 2px solid var(--focus-ring);
-		outline-offset: 3px;
-		border-radius: 0;
+		outline-offset: 2px;
+		border-radius: var(--radius-sm);
 	}
 }
 
@@ -1342,14 +1363,11 @@
 	}
 
 	.app-nav-link-current {
-		background: linear-gradient(
-			90deg,
-			color-mix(in oklab, var(--accent-gold) 12%, transparent),
-			transparent 70%
-		);
+		background: color-mix(in oklab, var(--accent-gold) 20%, transparent);
 		color: var(--text-primary);
-		font-weight: 700;
-		box-shadow: inset 3px 0 0 var(--accent-gold);
+		font-weight: 650;
+		border-radius: var(--radius-md);
+		box-shadow: 0 1px 3px color-mix(in oklab, var(--accent-gold) 30%, transparent);
 	}
 
 	.app-mobile-nav-link-current {
