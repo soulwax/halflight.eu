@@ -1,3 +1,5 @@
+import { deLocalizeUrl } from '#lib/paraglide/runtime';
+
 /**
  * Single source of truth for "is this URL part of Halflight Now (the mobile
  * site)". The mobile site currently lives inside this same SvelteKit app as a
@@ -23,11 +25,15 @@ export const MOBILE_ROOT_PATHS = [
 export const PUBLIC_MOBILE_ROOT_PATHS = ['/offline'] as const;
 
 export function isMobileRoute(pathname: string): boolean {
-	return MOBILE_ROOT_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+	const deLocalizedPathname = deLocalizeUrl(pathname).pathname;
+	return MOBILE_ROOT_PATHS.some(
+		(path) => deLocalizedPathname === path || deLocalizedPathname.startsWith(`${path}/`)
+	);
 }
 
 export function isPublicMobileRoute(pathname: string): boolean {
+	const deLocalizedPathname = deLocalizeUrl(pathname).pathname;
 	return PUBLIC_MOBILE_ROOT_PATHS.some(
-		(path) => pathname === path || pathname.startsWith(`${path}/`)
+		(path) => deLocalizedPathname === path || deLocalizedPathname.startsWith(`${path}/`)
 	);
 }

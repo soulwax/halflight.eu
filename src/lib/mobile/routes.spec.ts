@@ -15,6 +15,11 @@ describe('isMobileRoute', () => {
 		expect(isMobileRoute('/now/queue')).toBe(true);
 	});
 
+	it('matches localized mobile paths', () => {
+		expect(isMobileRoute('/de-de/home')).toBe(true);
+		expect(isMobileRoute('/de-de/now/queue')).toBe(true);
+	});
+
 	it('does not match the desktop app or an unrelated path', () => {
 		expect(isMobileRoute('/app')).toBe(false);
 		expect(isMobileRoute('/app/library')).toBe(false);
@@ -29,6 +34,7 @@ describe('isMobileRoute', () => {
 	it('marks only the offline recovery page as public', () => {
 		expect(isPublicMobileRoute('/offline')).toBe(true);
 		expect(isPublicMobileRoute('/offline/retry')).toBe(true);
+		expect(isPublicMobileRoute('/de-de/offline')).toBe(true);
 		expect(isPublicMobileRoute('/home')).toBe(false);
 		expect(isPublicMobileRoute('/app')).toBe(false);
 	});
