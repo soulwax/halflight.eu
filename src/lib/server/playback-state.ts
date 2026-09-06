@@ -3,6 +3,7 @@ import * as v from 'valibot';
 import { db } from '#lib/server/db';
 import { playbackState } from '#lib/server/db/schema';
 import { log } from '#lib/server/log';
+import { createQueueEntry, isQueueEntryId, type QueueEntry } from '#lib/player/queue-entry.js';
 import type { AlbumReference, ArtistReference, TrackSummary } from '#lib/tidal/models';
 
 export const MAX_PLAYBACK_QUEUE_LENGTH = 100;
@@ -12,19 +13,19 @@ export const PLAYBACK_STATE_ORIGINS = ['listening-room', 'halflight-now'] as con
 
 export type PlaybackStateOrigin = (typeof PLAYBACK_STATE_ORIGINS)[number];
 
-const trackIdSchema = v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(128));
+const entryIdSchema = v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(128));
 const queueCommandSchema = v.union([
-	v.object({ type: v.literal('append'), tracks: v.array(v.unknown()) }),
-	v.object({ type: v.literal('prepend'), track: v.unknown() }),
-	v.object({ type: v.literal('remove'), trackId: trackIdSchema }),
+	v.object({ type: v.literal('append'), entries: v.array(v.unknown()) }),
+	v.object({ type: v.literal('prepend'), entry: v.unknown() }),
+	v.object({ type: v.literal('remove'), entryId: entryIdSchema }),
 	v.object({
 		type: v.literal('move'),
-		trackId: trackIdSchema,
-		beforeTrackId: v.optional(trackIdSchema),
-		afterTrackId: v.optional(trackIdSchema)
+		entryId: entryIdSchema,
+		beforeEntryId: v.optional(entryIdSchema),
+		afterEntryId: v.optional(entryIdSchema)
 	}),
 	v.object({ type: v.literal('clear') }),
-	v.object({ type: v.literal('replace'), tracks: v.array(v.unknown()) })
+	v.object({ type: v.literal('replace'), entries: v.array(v.unknown()) })
 ]);
 
 /**
@@ -46,7 +47,7 @@ const playbackStateRevisionSchema = v.pipe(v.number(), v.safeInteger(), v.minVal
 
 export interface PlaybackState {
 	currentTrack: TrackSummary | null;
-	queue: TrackSummary[];
+	queue: QueueEntry[];
 	history: TrackSummary[];
 	currentTime: number;
 	revision: number;
@@ -179,6 +180,27 @@ function parseTrackList(value: unknown, maximum: number): TrackSummary[] | null 
 		.slice(0, maximum);
 }
 
+/**
+ * Validate one queued occurrence, preserving a client-supplied `entryId` when it
+ * is safe and minting one otherwise, so legacy rows written before the entry-id
+ * protocol still resume with stable, independently addressable entries.
+ */
+export function parseQueueEntry(value: unknown): QueueEntry | null {
+	const track = parsePlaybackTrack(value);
+	if (!track) return null;
+	const record = asRecord(value);
+	const entryId = record && isQueueEntryId(record.entryId) ? record.entryId : undefined;
+	return createQueueEntry(track, entryId);
+}
+
+function parseQueueEntryList(value: unknown, maximum: number): QueueEntry[] | null {
+	if (!Array.isArray(value)) return null;
+	return value
+		.map(parseQueueEntry)
+		.filter((entry): entry is QueueEntry => entry !== null)
+		.slice(0, maximum);
+}
+
 /** Parse the only playback-state shape accepted by the API. */
 export function parsePlaybackState(value: unknown): PlaybackStateInput | null {
 	const parsed = v.safeParse(playbackStateSnapshotSchema, value);
@@ -186,7 +208,7 @@ export function parsePlaybackState(value: unknown): PlaybackStateInput | null {
 	const state = parsed.output;
 	const currentTrack = state.currentTrack === null ? null : parsePlaybackTrack(state.currentTrack);
 	if (state.currentTrack !== null && !currentTrack) return null;
-	const queue = parseTrackList(state.queue, MAX_PLAYBACK_QUEUE_LENGTH);
+	const queue = parseQueueEntryList(state.queue, MAX_PLAYBACK_QUEUE_LENGTH);
 	const history = parseTrackList(state.history, MAX_PLAYBACK_HISTORY_LENGTH);
 	if (!queue || !history) return null;
 	return { currentTrack, queue, history, currentTime: state.currentTime };

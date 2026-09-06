@@ -53,14 +53,14 @@
 		<p class="pt-6 text-center text-(--text-muted)">{m.player_queue_empty()}</p>
 	{:else}
 		<div class="flex-1 divide-y divide-(--border-subtle) overflow-y-auto">
-			{#each player.queue as track, i (`${track.id}-${i}`)}
-				<MobileTrackRow {track} onActivate={() => player.playFromQueue(i)}>
+			{#each player.queue as entry, i (entry.entryId)}
+				<MobileTrackRow track={entry} onActivate={() => player.playFromQueue(entry.entryId)}>
 					{#snippet actions()}
 						<button
 							type="button"
 							class="flex h-9 w-9 items-center justify-center text-(--text-muted) disabled:opacity-30"
 							disabled={i === 0}
-							onclick={() => player.moveQueueItem(i, -1)}
+							onclick={() => player.moveQueueItem(entry.entryId, -1)}
 							aria-label={m.player_move_up()}
 						>
 							<ArrowUp size={15} />
@@ -69,7 +69,7 @@
 							type="button"
 							class="flex h-9 w-9 items-center justify-center text-(--text-muted) disabled:opacity-30"
 							disabled={i === player.queue.length - 1}
-							onclick={() => player.moveQueueItem(i, 1)}
+							onclick={() => player.moveQueueItem(entry.entryId, 1)}
 							aria-label={m.player_move_down()}
 						>
 							<ArrowDown size={15} />
@@ -77,7 +77,7 @@
 						<button
 							type="button"
 							class="flex h-9 w-9 items-center justify-center text-(--text-muted)"
-							onclick={() => player.removeFromQueue(i)}
+							onclick={() => player.removeFromQueue(entry.entryId)}
 							aria-label={m.player_remove_from_queue()}
 						>
 							<Trash2 size={15} />

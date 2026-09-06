@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { AlertCircle, Check, Download, ListMusic, Play, Sliders, Sparkles } from '@lucide/svelte';
+	import { AlertCircle, Sliders, Sparkles } from '@lucide/svelte';
 
 	import { player } from '#lib/player/player.svelte.js';
 	import { customPlaylists } from '#lib/player/customPlaylists.svelte.js';
 	import { m } from '#lib/paraglide/messages';
+	import GeneratedSet from '#lib/components/music/GeneratedSet.svelte';
 	import Button from '#lib/components/ui/Button.svelte';
-	import Badge from '#lib/components/ui/Badge.svelte';
 	import type { TrackSummary } from '#lib/tidal/models';
 	import type { ActionData, PageData } from './$types';
 	import type { ProvisionalSet, ProvisionalTrack } from '#lib/server/taste/generate';
@@ -28,13 +28,6 @@
 	const currentSet = $derived<ProvisionalSet | null>(
 		form?.success && form?.set ? (form.set as ProvisionalSet) : null
 	);
-
-	function formatDuration(sec?: number): string {
-		if (!sec) return '';
-		const m = Math.floor(sec / 60);
-		const s = Math.floor(sec % 60);
-		return `${m}:${s.toString().padStart(2, '0')}`;
-	}
 
 	function toTrackSummary(t: ProvisionalTrack): TrackSummary {
 		return {
@@ -267,94 +260,13 @@
 
 	<!-- Provisional Generated Set Section -->
 	{#if currentSet}
-		<section class="space-y-4" aria-labelledby="provisional-set-heading">
-			<div class="border border-[var(--border-subtle)] bg-[var(--surface-raised)] p-5">
-				<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-					<div>
-						<div class="flex items-center gap-2">
-							<Badge variant="accent">PROVISIONAL QUEUE</Badge>
-							{#if currentSet.degraded}
-								<Badge variant="tag">PARTIAL GRAPH</Badge>
-							{/if}
-						</div>
-						<h2 id="provisional-set-heading" class="mt-2 text-xl font-bold tracking-tight">
-							{currentSet.summary}
-						</h2>
-						{#if currentSet.degraded}
-							<p class="mt-2 max-w-xl text-sm text-[var(--text-muted)]">
-								{m.generate_degraded()}
-							</p>
-						{/if}
-					</div>
-
-					<div class="flex flex-wrap items-center gap-2">
-						<Button variant="primary" size="sm" onclick={playWholeSet}>
-							<Play size={14} class="mr-1.5" />
-							Play Set
-						</Button>
-
-						<Button variant="secondary" size="sm" onclick={saveToPlaylists} disabled={saveSuccess}>
-							{#if saveSuccess}
-								<Check size={14} class="mr-1.5 text-[var(--accent-jade)]" />
-								Saved!
-							{:else}
-								<ListMusic size={14} class="mr-1.5" />
-								Save Playlist
-							{/if}
-						</Button>
-
-						<Button variant="secondary" size="sm" onclick={downloadM3U8} title="Export as M3U8">
-							<Download size={13} />
-						</Button>
-					</div>
-				</div>
-			</div>
-
-			<!-- Track List with Provenance Chips -->
-			<div
-				class="divide-y divide-[var(--border-subtle)] border border-[var(--border-subtle)] bg-[var(--surface-raised)]"
-			>
-				{#each currentSet.tracks as track, i (track.id)}
-					<div
-						class="group flex items-center justify-between gap-4 p-3.5 hover:bg-[var(--surface-canvas)]"
-					>
-						<div class="flex min-w-0 items-center gap-3">
-							<span class="w-6 text-center font-mono text-xs text-[var(--text-muted)]">
-								{i + 1}
-							</span>
-
-							<button
-								type="button"
-								class="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-[var(--surface-canvas)] text-[var(--text-muted)] group-hover:text-[var(--text-primary)]"
-								onclick={() => playSingleTrack(track)}
-								aria-label="Play {track.title}"
-							>
-								<Play size={14} />
-							</button>
-
-							<div class="min-w-0">
-								<p class="truncate text-sm font-bold text-[var(--text-primary)]">
-									{track.title}
-								</p>
-								<div class="flex flex-wrap items-center gap-2">
-									<span class="text-xs text-[var(--text-muted)]">
-										{track.artists.map((a) => a.name).join(', ')}
-									</span>
-									<span
-										class="py-0.2 inline-flex items-center rounded border border-[var(--border-subtle)] bg-[var(--surface-canvas)] px-1.5 text-[0.68rem] text-[var(--accent-gold)]"
-									>
-										{track.provenance}
-									</span>
-								</div>
-							</div>
-						</div>
-
-						<div class="shrink-0 font-mono text-xs text-[var(--text-muted)]">
-							{formatDuration(track.duration)}
-						</div>
-					</div>
-				{/each}
-			</div>
-		</section>
+		<GeneratedSet
+			set={currentSet}
+			{saveSuccess}
+			onPlay={playWholeSet}
+			onPlayTrack={playSingleTrack}
+			onSave={saveToPlaylists}
+			onExport={downloadM3U8}
+		/>
 	{/if}
 </section>

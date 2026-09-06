@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PlayerState } from './player.svelte';
 import type { TrackSummary } from '#lib/tidal/models';
+import type { QueueEntry } from './queue-entry';
 
 // The player persists preferences to localStorage; isolate every case from it.
 beforeEach(() => {
@@ -40,13 +41,22 @@ const sampleTrack3: TrackSummary = {
 	artists: [{ id: 'artist-3', name: 'Artist 3' }]
 };
 
+function persistedQueue(...tracks: TrackSummary[]): QueueEntry[] {
+	return tracks.map((track, index) => ({ ...track, entryId: `persisted-${index + 1}` }));
+}
+
+function expectQueuedTracks(player: PlayerState, tracks: TrackSummary[]): void {
+	expect(player.queue.map(({ entryId: _entryId, ...track }) => track)).toEqual(tracks);
+}
+
 describe('PlayerState', () => {
 	it('plays a track and slices remaining context tracks into the queue', () => {
 		const player = new PlayerState();
 		player.play(sampleTrack2, [sampleTrack1, sampleTrack2, sampleTrack3]);
 
 		expect(player.currentTrack).toEqual(sampleTrack2);
-		expect(player.queue).toEqual([sampleTrack3]);
+		expectQueuedTracks(player, [sampleTrack3]);
+		expect(player.queue[0]?.entryId).toMatch(/^queue_/);
 		expect(player.hasNext).toBe(true);
 		expect(player.hasPrevious).toBe(false);
 	});
@@ -69,14 +79,14 @@ describe('PlayerState', () => {
 		expect(player.currentTrack?.provenance).toBe('Appears on three of your playlists');
 	});
 
-	it('adds tracks to queue and removes by index', () => {
+	it('adds tracks to queue and removes one occurrence by stable entry ID', () => {
 		const player = new PlayerState();
 		player.addToQueue(sampleTrack1);
 		player.addToQueue(sampleTrack2);
 		expect(player.queueCount).toBe(2);
 
-		player.removeFromQueue(0);
-		expect(player.queue).toEqual([sampleTrack2]);
+		player.removeFromQueue(player.queue[0]!.entryId);
+		expectQueuedTracks(player, [sampleTrack2]);
 
 		player.clearQueue();
 		expect(player.queue).toEqual([]);
@@ -87,7 +97,7 @@ describe('PlayerState', () => {
 		player.addToQueue(sampleTrack2, 'Search');
 		player.playNext(sampleTrack1, 'Album · Discovery');
 
-		expect(player.queue).toEqual([
+		expectQueuedTracks(player, [
 			{ ...sampleTrack1, provenance: 'Album · Discovery' },
 			{ ...sampleTrack2, provenance: 'Search' }
 		]);
@@ -103,13 +113,13 @@ describe('PlayerState', () => {
 		expect(next).toEqual(sampleTrack2);
 		expect(player.currentTrack).toEqual(sampleTrack2);
 		expect(player.history).toEqual([sampleTrack1]);
-		expect(player.queue).toEqual([sampleTrack3]);
+		expectQueuedTracks(player, [sampleTrack3]);
 		expect(player.hasPrevious).toBe(true);
 
 		const prev = player.previous();
 		expect(prev).toEqual(sampleTrack1);
 		expect(player.currentTrack).toEqual(sampleTrack1);
-		expect(player.queue).toEqual([sampleTrack2, sampleTrack3]);
+		expectQueuedTracks(player, [sampleTrack2, sampleTrack3]);
 	});
 
 	it('plays directly from queue', () => {
@@ -118,9 +128,9 @@ describe('PlayerState', () => {
 		player.addToQueue(sampleTrack2);
 		player.addToQueue(sampleTrack3);
 
-		player.playFromQueue(1);
+		player.playFromQueue(player.queue[1]!.entryId);
 		expect(player.currentTrack).toEqual(sampleTrack3);
-		expect(player.queue).toEqual([sampleTrack2]);
+		expectQueuedTracks(player, [sampleTrack2]);
 		expect(player.history).toEqual([sampleTrack1]);
 	});
 
@@ -252,13 +262,13 @@ describe('PlayerState', () => {
 		const player = new PlayerState();
 		player.restorePlaybackState({
 			currentTrack: sampleTrack1,
-			queue: [sampleTrack2],
+			queue: persistedQueue(sampleTrack2),
 			history: [sampleTrack3],
 			currentTime: 67.8
 		});
 
 		expect(player.currentTrack).toEqual(sampleTrack1);
-		expect(player.queue).toEqual([sampleTrack2]);
+		expectQueuedTracks(player, [sampleTrack2]);
 		expect(player.history).toEqual([sampleTrack3]);
 		expect(player.currentTime).toBe(67);
 		expect(player.isPlaying).toBe(false);
@@ -269,10 +279,11 @@ describe('PlayerState', () => {
 		player.play(sampleTrack1);
 		player.addMultipleToQueue([sampleTrack2, sampleTrack3]);
 
-		player.moveQueueItem(1, -1);
-		expect(player.queue).toEqual([sampleTrack3, sampleTrack2]);
-		player.moveQueueItem(0, -1); // no-op at the top edge
-		expect(player.queue).toEqual([sampleTrack3, sampleTrack2]);
+		const second = player.queue[1]!.entryId;
+		player.moveQueueItem(second, -1);
+		expectQueuedTracks(player, [sampleTrack3, sampleTrack2]);
+		player.moveQueueItem(second, -1); // no-op at the top edge
+		expectQueuedTracks(player, [sampleTrack3, sampleTrack2]);
 	});
 
 	it('repeat-one replays the current track on an automatic advance', () => {
@@ -285,7 +296,7 @@ describe('PlayerState', () => {
 
 		player.next(true);
 		expect(player.currentTrack).toEqual(sampleTrack1);
-		expect(player.queue).toEqual([sampleTrack2]);
+		expectQueuedTracks(player, [sampleTrack2]);
 	});
 
 	it('repeat-all refills the queue from history once it empties', () => {
@@ -297,7 +308,7 @@ describe('PlayerState', () => {
 		player.next(); // -> track2, history [track1], queue []
 		const looped = player.next(); // queue empty + repeat all -> refill
 		expect(looped).toEqual(sampleTrack1);
-		expect(player.queue).toEqual([sampleTrack2]);
+		expectQueuedTracks(player, [sampleTrack2]);
 	});
 
 	it('shuffle queues every other context track and toggleShuffle is idempotent state', () => {
@@ -465,7 +476,7 @@ describe('PlayerState', () => {
 						new Response(
 							JSON.stringify({
 								currentTrack: sampleTrack2,
-								queue: [sampleTrack2],
+								queue: persistedQueue(sampleTrack2),
 								history: [],
 								currentTime: 19,
 								revision: 4
@@ -484,12 +495,18 @@ describe('PlayerState', () => {
 		await vi.waitFor(() => expect(player.persistenceStatus).toBe('saved'));
 		expect(persistenceCalls).toBe(2);
 		expect(player.currentTrack).toBeNull();
-		expect(player.queue).toEqual([sampleTrack2, sampleTrack1]);
+		expectQueuedTracks(player, [sampleTrack2, sampleTrack1]);
 		const writes = (fetchSpy.mock.calls as Array<[string, RequestInit?]>).filter(
 			([url]) => url === '/api/playback-state'
 		);
 		const retry = JSON.parse(String(writes[1]?.[1]?.body));
-		expect(retry).toMatchObject({ revision: 4, queue: [sampleTrack2, sampleTrack1] });
+		expect(retry).toMatchObject({
+			revision: 4,
+			queue: [
+				expect.objectContaining({ id: 'track-2', entryId: 'persisted-1' }),
+				expect.objectContaining({ id: 'track-1', entryId: expect.any(String) })
+			]
+		});
 	});
 
 	it('refreshes a repeatedly conflicted queue without changing the audible track', async () => {
@@ -501,7 +518,7 @@ describe('PlayerState', () => {
 					new Response(
 						JSON.stringify({
 							currentTrack: sampleTrack2,
-							queue: [sampleTrack3],
+							queue: persistedQueue(sampleTrack3),
 							history: [],
 							currentTime: 42,
 							revision: 6
@@ -516,7 +533,7 @@ describe('PlayerState', () => {
 					new Response(
 						JSON.stringify({
 							currentTrack: sampleTrack2,
-							queue: [sampleTrack2],
+							queue: persistedQueue(sampleTrack2),
 							history: [],
 							currentTime: 19,
 							revision: 4
@@ -530,7 +547,7 @@ describe('PlayerState', () => {
 					new Response(
 						JSON.stringify({
 							currentTrack: sampleTrack3,
-							queue: [sampleTrack3],
+							queue: persistedQueue(sampleTrack3),
 							history: [],
 							currentTime: 24,
 							revision: 5
@@ -554,7 +571,7 @@ describe('PlayerState', () => {
 
 		expect(player.persistenceStatus).toBe('saved');
 		expect(player.currentTrack).toBeNull();
-		expect(player.queue).toEqual([sampleTrack3, sampleTrack1]);
+		expectQueuedTracks(player, [sampleTrack3, sampleTrack1]);
 		const persistenceWrites = fetchSpy.mock.calls.filter(
 			([url, init]) =>
 				url === '/api/playback-state' && (init as RequestInit | undefined)?.method === 'PUT'
@@ -562,7 +579,10 @@ describe('PlayerState', () => {
 		const refreshedWrite = JSON.parse(String(persistenceWrites[2]?.[1]?.body));
 		expect(refreshedWrite).toMatchObject({
 			revision: 6,
-			queue: [sampleTrack3, sampleTrack1]
+			queue: [
+				expect.objectContaining({ id: 'track-3', entryId: 'persisted-1' }),
+				expect.objectContaining({ id: 'track-1', entryId: expect.any(String) })
+			]
 		});
 	});
 

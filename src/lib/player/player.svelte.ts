@@ -9,6 +9,12 @@ import {
 	updatePositionState
 } from './media-session.js';
 import { rebaseQueue, type QueueCommand } from './playback-reconciliation.js';
+import {
+	createQueueEntries,
+	createQueueEntry,
+	toDisplayTrack,
+	type QueueEntry
+} from './queue-entry.js';
 import { streamPreloader, type PreloadedStreamData } from './stream-preloader.js';
 
 /** Which site persisted a queue/position write — see MASTERPLAN.md's session contract. */
@@ -16,7 +22,7 @@ export type PlaybackOrigin = 'listening-room' | 'halflight-now';
 
 export interface SavedPlaybackState {
 	currentTrack: TrackSummary | null;
-	queue: TrackSummary[];
+	queue: QueueEntry[];
 	history: TrackSummary[];
 	currentTime: number;
 	revision?: number;
@@ -63,7 +69,8 @@ function shuffled<T>(items: T[]): T[] {
 
 export class PlayerState {
 	currentTrack = $state<TrackSummary | null>(null);
-	queue = $state<TrackSummary[]>([]);
+	/** Each queued occurrence has its own stable identity, including duplicate tracks. */
+	queue = $state<QueueEntry[]>([]);
 	history = $state<TrackSummary[]>([]);
 	isExpanded = $state(false);
 	isCoverExpanded = $state(false);
@@ -407,10 +414,14 @@ export class PlayerState {
 
 		if (contextualTracks && contextualTracks.length > 0) {
 			if (this.shuffle) {
-				this.queue = shuffled(contextualTracks.filter((candidate) => candidate.id !== track.id));
+				this.queue = createQueueEntries(
+					shuffled(contextualTracks.filter((candidate) => candidate.id !== track.id))
+				);
 			} else {
 				const at = contextualTracks.findIndex((candidate) => candidate.id === track.id);
-				this.queue = at === -1 ? [...contextualTracks] : contextualTracks.slice(at + 1);
+				this.queue = createQueueEntries(
+					at === -1 ? [...contextualTracks] : contextualTracks.slice(at + 1)
+				);
 			}
 		}
 
@@ -549,7 +560,9 @@ export class PlayerState {
 		const patched = (t: TrackSummary): TrackSummary =>
 			t.id === track.id && !t.imageUrl ? { ...t, imageUrl: url } : t;
 		if (this.currentTrack) this.currentTrack = patched(this.currentTrack);
-		this.queue = this.queue.map(patched);
+		this.queue = this.queue.map((entry) =>
+			entry.id === track.id && !entry.imageUrl ? { ...entry, imageUrl: url } : entry
+		);
 		this.history = this.history.map(patched);
 	}
 
@@ -832,9 +845,9 @@ export class PlayerState {
 	}
 
 	addToQueue(track: TrackSummary, provenance?: string): void {
-		const queuedTrack = this.withProvenance(track, provenance);
+		const queuedTrack = createQueueEntry(this.withProvenance(track, provenance));
 		this.queue.push(queuedTrack);
-		this.queueCommands.push({ type: 'append', tracks: [queuedTrack] });
+		this.queueCommands.push({ type: 'append', entries: [queuedTrack] });
 		if (this.queue.length === 1) {
 			streamPreloader.preload(queuedTrack.id);
 		}
@@ -843,25 +856,27 @@ export class PlayerState {
 
 	/** Insert a track directly after the current one without interrupting playback. */
 	playNext(track: TrackSummary, provenance?: string): void {
-		const queuedTrack = this.withProvenance(track, provenance);
+		const queuedTrack = createQueueEntry(this.withProvenance(track, provenance));
 		this.queue.unshift(queuedTrack);
-		this.queueCommands.push({ type: 'prepend', track: queuedTrack });
+		this.queueCommands.push({ type: 'prepend', entry: queuedTrack });
 		streamPreloader.preload(queuedTrack.id);
 		this.schedulePersistence();
 	}
 
 	addMultipleToQueue(tracks: TrackSummary[]): void {
-		this.queue.push(...tracks);
-		this.queueCommands.push({ type: 'append', tracks: tracks.slice() });
+		const entries = createQueueEntries(tracks);
+		this.queue.push(...entries);
+		this.queueCommands.push({ type: 'append', entries });
 		this.schedulePersistence();
 	}
 
-	removeFromQueue(index: number): void {
-		if (index >= 0 && index < this.queue.length) {
-			const [removed] = this.queue.splice(index, 1);
-			if (removed) this.queueCommands.push({ type: 'remove', trackId: removed.id });
-			this.schedulePersistence();
-		}
+	/** Remove one queue occurrence by its stable entry identity. */
+	removeFromQueue(entryId: string): void {
+		const index = this.queue.findIndex((entry) => entry.entryId === entryId);
+		if (index === -1) return;
+		this.queue.splice(index, 1);
+		this.queueCommands.push({ type: 'remove', entryId });
+		this.schedulePersistence();
 	}
 
 	clearQueue(): void {
@@ -871,8 +886,9 @@ export class PlayerState {
 		this.schedulePersistence();
 	}
 
-	/** Move a queued track one slot up (`-1`) or down (`1`). */
-	moveQueueItem(index: number, direction: -1 | 1): void {
+	/** Move one queue occurrence up (`-1`) or down (`1`) by stable identity. */
+	moveQueueItem(entryId: string, direction: -1 | 1): void {
+		const index = this.queue.findIndex((entry) => entry.entryId === entryId);
 		const target = index + direction;
 		if (index < 0 || index >= this.queue.length || target < 0 || target >= this.queue.length)
 			return;
@@ -881,12 +897,12 @@ export class PlayerState {
 		if (moved) {
 			this.queueCommands.push({
 				type: 'move',
-				trackId: moved.id,
+				entryId: moved.entryId,
 				...(direction === -1 && this.queue[target + 1]
-					? { beforeTrackId: this.queue[target + 1].id }
+					? { beforeEntryId: this.queue[target + 1].entryId }
 					: {}),
 				...(direction === 1 && this.queue[target - 1]
-					? { afterTrackId: this.queue[target - 1].id }
+					? { afterEntryId: this.queue[target - 1].entryId }
 					: {})
 			});
 		}
@@ -910,12 +926,13 @@ export class PlayerState {
 			const loop = [...this.history, ...(this.currentTrack ? [this.currentTrack] : [])];
 			if (loop.length === 0) return null;
 			this.history = [];
-			this.queue = this.shuffle ? shuffled(loop) : loop;
+			this.queue = createQueueEntries(this.shuffle ? shuffled(loop) : loop);
 		}
 
 		if (this.currentTrack) this.history.push(this.currentTrack);
 		const index = this.shuffle ? Math.floor(Math.random() * this.queue.length) : 0;
-		const [nextTrack] = this.queue.splice(index, 1);
+		const [nextEntry] = this.queue.splice(index, 1);
+		const nextTrack = toDisplayTrack(nextEntry);
 		this.switchToTrack(nextTrack);
 		return nextTrack;
 	}
@@ -933,19 +950,21 @@ export class PlayerState {
 
 		const prevTrack = this.history.pop()!;
 		if (this.currentTrack) {
-			this.queue.unshift(this.currentTrack);
+			this.queue.unshift(createQueueEntry(this.currentTrack));
 		}
 		this.switchToTrack(prevTrack);
 		return prevTrack;
 	}
 
-	playFromQueue(index: number): void {
-		if (index < 0 || index >= this.queue.length) return;
+	/** Start a specific queued occurrence by its stable entry identity. */
+	playFromQueue(entryId: string): void {
+		const index = this.queue.findIndex((entry) => entry.entryId === entryId);
+		if (index === -1) return;
 		if (this.currentTrack) {
 			this.history.push(this.currentTrack);
 		}
-		const [targetTrack] = this.queue.splice(index, 1);
-		this.switchToTrack(targetTrack);
+		const [targetEntry] = this.queue.splice(index, 1);
+		this.switchToTrack(toDisplayTrack(targetEntry));
 	}
 
 	toggleExpanded(): void {
@@ -1000,7 +1019,7 @@ export class PlayerState {
 	}
 
 	private recordQueueReplacement(): void {
-		this.queueCommands = [{ type: 'replace', tracks: this.queue.slice(0, MAX_QUEUE_LENGTH) }];
+		this.queueCommands = [{ type: 'replace', entries: this.queue.slice(0, MAX_QUEUE_LENGTH) }];
 	}
 
 	private snapshotPlaybackState(): PlaybackPersistenceSnapshot {

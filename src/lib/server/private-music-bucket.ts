@@ -29,7 +29,7 @@ export interface PrivateMusicBucketConfig {
 export interface PrivateMusicBucket {
 	readonly enabled: boolean;
 	put(key: string, content: Uint8Array, contentType: string): Promise<void>;
-	get(key: string): Promise<ReadableStream<Uint8Array> | null>;
+	get(key: string, range?: string): Promise<ReadableStream<Uint8Array> | null>;
 	delete(key: string): Promise<void>;
 }
 
@@ -89,10 +89,14 @@ export function createPrivateMusicBucket(
 				})
 			);
 		},
-		async get(key) {
+		async get(key, range) {
 			if (!validKey(key)) return null;
 			const response = (await bucketClient.send(
-				new GetObjectCommand({ Bucket: config.bucket, Key: key })
+				new GetObjectCommand({
+					Bucket: config.bucket,
+					Key: key,
+					...(range ? { Range: range } : {})
+				})
 			)) as { Body?: { transformToWebStream?: () => ReadableStream<Uint8Array> } };
 			return response.Body?.transformToWebStream?.() ?? null;
 		},

@@ -14,12 +14,13 @@ vi.mock('#lib/server/private-music-bucket', () => ({
 	privateMusicBucket: { get: mocks.getObject, delete: mocks.deleteObject }
 }));
 
-import { DELETE, GET } from './+server';
+import { DELETE, GET, HEAD } from './+server';
 
-function event() {
+function event(request = new Request('https://syn.test/api/private-music/file-1')) {
 	return {
 		locals: { user: { id: 'owner' }, isAdministrator: true },
-		params: { id: 'file-1' }
+		params: { id: 'file-1' },
+		request
 	} as unknown as Parameters<typeof GET>[0];
 }
 
@@ -51,7 +52,46 @@ describe('/api/private-music/[id]', () => {
 		);
 		const response = await GET(event());
 		expect(response.headers.get('Content-Disposition')).toContain('demo.flac');
+		expect(response.headers.get('Accept-Ranges')).toBe('bytes');
 		expect(await response.text()).toBe('audio');
+	});
+
+	it('serves valid byte ranges without disclosing the object location', async () => {
+		mocks.get.mockResolvedValue(file);
+		mocks.getObject.mockResolvedValue(new ReadableStream());
+		const response = await GET(
+			event(
+				new Request('https://syn.test/api/private-music/file-1', {
+					headers: { Range: 'bytes=1-3' }
+				})
+			)
+		);
+		expect(response.status).toBe(206);
+		expect(response.headers.get('Content-Range')).toBe('bytes 1-3/5');
+		expect(response.headers.get('Content-Length')).toBe('3');
+		expect(mocks.getObject).toHaveBeenCalledWith(file.objectKey, 'bytes=1-3');
+	});
+
+	it('rejects invalid byte ranges before reading from storage', async () => {
+		mocks.get.mockResolvedValue(file);
+		const response = await GET(
+			event(
+				new Request('https://syn.test/api/private-music/file-1', { headers: { Range: 'bytes=9-' } })
+			)
+		);
+		expect(response.status).toBe(416);
+		expect(response.headers.get('Content-Range')).toBe('bytes */5');
+		expect(mocks.getObject).not.toHaveBeenCalled();
+	});
+
+	it('responds to metadata probes without reading bytes from storage', async () => {
+		mocks.get.mockResolvedValue(file);
+		const response = await HEAD(
+			event(new Request('https://syn.test/api/private-music/file-1', { method: 'HEAD' }))
+		);
+		expect(response.headers.get('Content-Length')).toBe('5');
+		expect(response.headers.get('Accept-Ranges')).toBe('bytes');
+		expect(mocks.getObject).not.toHaveBeenCalled();
 	});
 
 	it('deletes bytes before removing the owner metadata', async () => {

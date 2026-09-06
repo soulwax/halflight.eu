@@ -3,6 +3,7 @@ import { describe, expect, it, beforeEach } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import QueuePanel from './QueuePanel.svelte';
 import { player } from '#lib/player/player.svelte.js';
+import { createQueueEntry } from '#lib/player/queue-entry.js';
 import { m } from '#lib/paraglide/messages.js';
 import type { TrackSummary } from '#lib/tidal/models';
 
@@ -13,6 +14,8 @@ const mk = (id: string, title: string): TrackSummary => ({
 	duration: 180,
 	artists: [{ id: 'a', name: 'A' }]
 });
+
+const entry = (id: string, title: string) => createQueueEntry(mk(id, title));
 
 beforeEach(() => {
 	player.queue = [];
@@ -26,7 +29,7 @@ describe('QueuePanel.svelte', () => {
 	});
 
 	it('lists the queued tracks as a table with remove controls', async () => {
-		player.queue = [mk('1', 'One'), mk('2', 'Two')];
+		player.queue = [entry('1', 'One'), entry('2', 'Two')];
 		render(QueuePanel);
 
 		await expect.element(page.getByRole('link', { name: 'One' })).toBeInTheDocument();
@@ -38,7 +41,7 @@ describe('QueuePanel.svelte', () => {
 	});
 
 	it('offers save + clear when there is a queue', async () => {
-		player.queue = [mk('1', 'One')];
+		player.queue = [entry('1', 'One')];
 		render(QueuePanel);
 		await expect
 			.element(page.getByRole('button', { name: m.player_clear_queue() }))

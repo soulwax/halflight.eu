@@ -1999,7 +1999,9 @@ artwork, lyrics, tokens, provider URLs, and the separate worker bucket are exclu
 
 Owner-uploaded private music is a separate capability: bytes use `HALFLIGHT_PRIVATE_MUSIC_BUCKET`,
 while Postgres records only ownership, an opaque key, filename, type, size, and creation time. The
-owner can list, download, and delete files through same-origin APIs. TIDAL media remains excluded.
+owner can list, download, and delete files through same-origin APIs. Downloads support authenticated
+`HEAD` metadata probes and single byte ranges for reliable resumption without exposing bucket URLs.
+TIDAL media remains excluded.
 
 ### Candidate uses and gates
 

@@ -9,9 +9,16 @@
 	import synLogo from '#lib/assets/syn-logo.svg';
 	import MiniPlayer from '#lib/components/mobile/MiniPlayer.svelte';
 	import NowTabBar from '#lib/components/mobile/NowTabBar.svelte';
+	import {
+		managesMobileScroll,
+		mobileScrollKey,
+		shouldFocusMobileDestination
+	} from '#lib/mobile/navigation';
 	import type { LayoutData } from './$types';
 
 	let { data, children }: { data: LayoutData; children: Snippet } = $props();
+	let mainElement: HTMLElement;
+	const scrollPositions = new Map<string, number>();
 
 	// Halflight Now writes are attributed separately from the desktop Listening
 	// Room (see player.svelte.ts's `origin` field / MASTERPLAN's session
@@ -28,11 +35,37 @@
 	// which the shared global CSS rule (layout.css) cannot reach because the
 	// View Transitions API isn't a `transition-duration`.
 	onNavigate((navigation) => {
-		if (!document.startViewTransition) return;
-		if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-		return new Promise((finishTransition) => {
+		const routeNavigation = {
+			from: navigation.from?.url ?? null,
+			to: navigation.to?.url ?? null,
+			shallow: navigation.shallow
+		};
+		const managesScroll = managesMobileScroll(routeNavigation);
+		if (managesScroll && routeNavigation.from) {
+			scrollPositions.set(mobileScrollKey(routeNavigation.from), mainElement.scrollTop);
+		}
+
+		const afterNavigate = () => {
+			if (!managesScroll || !routeNavigation.to) return;
+			mainElement.scrollTop = scrollPositions.get(mobileScrollKey(routeNavigation.to)) ?? 0;
+
+			if (!shouldFocusMobileDestination(routeNavigation)) return;
+			const heading = mainElement.querySelector<HTMLElement>('h1');
+			if (!heading) return;
+			if (!heading.hasAttribute('tabindex')) heading.tabIndex = -1;
+			heading.focus({ preventScroll: true });
+		};
+
+		if (
+			!document.startViewTransition ||
+			window.matchMedia('(prefers-reduced-motion: reduce)').matches
+		) {
+			return afterNavigate;
+		}
+
+		return new Promise<() => void>((finishTransition) => {
 			document.startViewTransition(async () => {
-				finishTransition();
+				finishTransition(afterNavigate);
 				await navigation.complete;
 			});
 		});
@@ -59,7 +92,7 @@
 			<Settings size={20} aria-hidden="true" />
 		</a>
 	</header>
-	<main id="main-content" class="min-h-0 flex-1 overflow-y-auto">
+	<main bind:this={mainElement} id="main-content" class="min-h-0 flex-1 overflow-y-auto">
 		{@render children()}
 	</main>
 	{#if !isOnNowRoute}

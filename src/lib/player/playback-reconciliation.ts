@@ -1,71 +1,71 @@
-import type { TrackSummary } from '#lib/tidal/models.js';
+import { isQueueEntryId, type QueueEntry } from './queue-entry.js';
 
 /**
  * Queue edits made after the last accepted playback-state revision. They are
  * deliberately expressed as commands rather than another full snapshot so a
  * 409 response can be rebased on the server queue without replacing it.
  *
- * Track ids are the only stable queue identity in the current protocol. The
- * first matching item is therefore targeted; a future entry-id protocol can
- * refine that behaviour without changing the persistence flow.
+ * Entry IDs identify a queue occurrence independently of its TIDAL track ID.
+ * This keeps deliberate duplicate tracks independently removable and movable.
  */
 export type QueueCommand =
-	| { type: 'append'; tracks: TrackSummary[] }
-	| { type: 'prepend'; track: TrackSummary }
-	| { type: 'remove'; trackId: string }
-	| { type: 'move'; trackId: string; beforeTrackId?: string; afterTrackId?: string }
+	| { type: 'append'; entries: QueueEntry[] }
+	| { type: 'prepend'; entry: QueueEntry }
+	| { type: 'remove'; entryId: string }
+	| { type: 'move'; entryId: string; beforeEntryId?: string; afterEntryId?: string }
 	| { type: 'clear' }
-	| { type: 'replace'; tracks: TrackSummary[] };
+	| { type: 'replace'; entries: QueueEntry[] };
 
-function removeFirstById(queue: TrackSummary[], trackId: string): TrackSummary | null {
-	const index = queue.findIndex((track) => track.id === trackId);
+function removeByEntryId(queue: QueueEntry[], entryId: string): QueueEntry | null {
+	if (!isQueueEntryId(entryId)) return null;
+	const index = queue.findIndex((entry) => entry.entryId === entryId);
 	return index === -1 ? null : (queue.splice(index, 1)[0] ?? null);
 }
 
 /** Reapply deliberate local queue commands to an authoritative remote queue. */
 export function rebaseQueue(
-	remoteQueue: TrackSummary[],
+	remoteQueue: QueueEntry[],
 	commands: readonly QueueCommand[],
 	maximumLength: number
-): TrackSummary[] {
+): QueueEntry[] {
 	let queue = remoteQueue.slice(0, maximumLength);
 
 	for (const command of commands) {
 		switch (command.type) {
 			case 'append':
-				queue.push(...command.tracks);
+				queue.push(...command.entries);
 				break;
 			case 'prepend':
-				queue.unshift(command.track);
+				queue.unshift(command.entry);
 				break;
 			case 'remove':
-				removeFirstById(queue, command.trackId);
+				removeByEntryId(queue, command.entryId);
 				break;
 			case 'move': {
-				const track = removeFirstById(queue, command.trackId);
-				if (!track) break;
-				if (command.beforeTrackId) {
-					const before = queue.findIndex((item) => item.id === command.beforeTrackId);
+				const entry = removeByEntryId(queue, command.entryId);
+				if (!entry) break;
+				if (command.beforeEntryId && isQueueEntryId(command.beforeEntryId)) {
+					const before = queue.findIndex((item) => item.entryId === command.beforeEntryId);
 					if (before !== -1) {
-						queue.splice(before, 0, track);
+						queue.splice(before, 0, entry);
 						break;
 					}
 				}
-				if (command.afterTrackId) {
-					const after = queue.findIndex((item) => item.id === command.afterTrackId);
+				if (command.afterEntryId && isQueueEntryId(command.afterEntryId)) {
+					const after = queue.findIndex((item) => item.entryId === command.afterEntryId);
 					if (after !== -1) {
-						queue.splice(after + 1, 0, track);
+						queue.splice(after + 1, 0, entry);
 						break;
 					}
 				}
-				queue.push(track);
+				queue.push(entry);
 				break;
 			}
 			case 'clear':
 				queue = [];
 				break;
 			case 'replace':
-				queue = command.tracks.slice();
+				queue = command.entries.slice();
 				break;
 		}
 		queue = queue.slice(0, maximumLength);

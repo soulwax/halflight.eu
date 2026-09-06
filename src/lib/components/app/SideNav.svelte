@@ -67,7 +67,11 @@
 						class="app-nav-link"
 						title={collapsed ? item.label : undefined}
 					>
-						<span class="nav-monogram" aria-hidden="true">{item.label.slice(0, 1)}</span>
+						{#if item.icon}
+							<item.icon size={17} aria-hidden="true" />
+						{:else}
+							<span class="nav-monogram" aria-hidden="true">{item.label.slice(0, 1)}</span>
+						{/if}
 						<span class="side-nav-label">{item.label}</span>
 					</a>
 				</li>
@@ -106,15 +110,21 @@
 </aside>
 
 <style>
+	/* Expanded rail: label carries the item. The monogram is only a fallback for
+	   an item without an icon, and only in the collapsed rail. */
+	.nav-monogram {
+		display: none;
+	}
+
 	.rail-toggle {
 		display: grid;
-		width: 2.25rem;
-		height: 2.25rem;
+		width: 2rem;
+		height: 2rem;
 		place-items: center;
 		border: var(--hairline);
 		background: var(--surface-canvas);
 		color: var(--text-muted);
-		font-size: 1.35rem;
+		font-size: 1.1rem;
 		line-height: 1;
 		cursor: pointer;
 	}

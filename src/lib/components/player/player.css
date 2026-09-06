@@ -61,29 +61,25 @@
 	cursor: grabbing;
 }
 
-.syn-player.idle {
-	flex-direction: row;
-	align-items: center;
-	gap: 0.75rem;
-	padding: 0.65rem 1.15rem;
-	font-size: 0.72rem;
-	letter-spacing: 0.16em;
-	text-transform: uppercase;
+/* Idle: the player still reads as the player — same bar chrome, controls just
+   wait for a track. It is never a second status line beside the footer. */
+.syn-player.idle .seek-track input,
+.syn-player.idle .cover-idle {
+	cursor: default;
+}
+.syn-player .title-idle {
+	font-family: var(--style-body-font);
+	font-size: 0.9rem;
 	color: var(--text-muted);
-}
-.syn-player .idle-dot {
-	width: 6px;
-	height: 6px;
-	rotate: 45deg;
-	background: var(--accent-gold-deep);
-}
-.syn-player .idle-text {
-	flex: 1;
 }
 .syn-player .idle-cta {
 	color: var(--accent-gold);
 	text-decoration: none;
-	font-weight: 700;
+	font-weight: 600;
+	font-size: 0.72rem;
+}
+.syn-player .idle-cta:hover {
+	text-decoration: underline;
 }
 
 /* seek */

@@ -9,8 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Generated taste results now use a reusable listening-set module with set-level playback, save, and export actions plus an explainable per-track sequence.
 - The wide Listening Room now has a pinned queue context panel; its queue controls and track tables adapt to the width of the shell region that contains them.
 - Owner-uploaded private music can now be listed, downloaded, and deleted through authenticated API routes backed by a separate S3-compatible bucket.
+- Private-music downloads now support authenticated byte ranges and `HEAD` metadata probes for resumable downloads.
 - Owner-requested playlist exports can now use an isolated, short-lived S3-compatible bucket through authenticated Syn download URLs.
 - A neutral, public `/offline` page for the future PWA navigation fallback, with no account, theme, or session data in its response.
 - Halflight Now now has an installable-shell manifest, owned standard and maskable icons, mobile-only app metadata, and a Settings installation/help flow.

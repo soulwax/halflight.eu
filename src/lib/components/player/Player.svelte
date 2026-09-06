@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { Disc, Play, SkipBack, SkipForward } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { player } from '#lib/player/player.svelte.js';
 	import { handlePlayerKeydown } from '#lib/player/shortcuts.js';
@@ -119,8 +120,35 @@
 	</section>
 {:else}
 	<section class="syn-player idle" aria-label={m.player_now_playing()}>
-		<span class="idle-dot"></span>
-		<span class="idle-text">{m.player_idle()}</span>
-		<a class="idle-cta" href={resolve('/app/search')}>{m.nav_search()}</a>
+		<div class="seek" aria-hidden="true">
+			<span class="time">0:00</span>
+			<div class="seek-track"><span class="seek-fill" style="width:0"></span></div>
+			<span class="time">0:00</span>
+		</div>
+		<div class="bar">
+			<div class="identity">
+				<span class="cover cover-idle" aria-hidden="true">
+					<span class="cover-fallback"><Disc size={18} /></span>
+				</span>
+				<div class="meta">
+					<span class="title title-idle">{m.player_idle()}</span>
+					<span class="sub">
+						<a class="idle-cta" href={resolve('/app/search')}>{m.player_idle_cta()}</a>
+					</span>
+				</div>
+			</div>
+			<div class="transport">
+				<button type="button" class="t-btn" disabled aria-label={m.player_previous()}>
+					<SkipBack size={16} />
+				</button>
+				<button type="button" class="t-btn play" disabled aria-label={m.player_play_track()}>
+					<Play size={17} fill="currentColor" />
+				</button>
+				<button type="button" class="t-btn" disabled aria-label={m.player_next()}>
+					<SkipForward size={16} />
+				</button>
+			</div>
+			<div class="actions"></div>
+		</div>
 	</section>
 {/if}

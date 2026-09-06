@@ -23,6 +23,9 @@
 	--border-strong: oklch(0.56 0.03 80);
 	--text-primary: oklch(0.94 0.008 78);
 	--text-muted: oklch(0.72 0.014 78);
+	/* One rung between primary ink and muted — used for supporting copy. Derived
+	   so every palette gets it for free. */
+	--text-secondary: color-mix(in oklab, var(--text-primary) 74%, var(--text-muted));
 
 	--action: var(--accent-gold);
 	--action-contrast: oklch(0.18 0.01 70);
@@ -38,19 +41,34 @@
 	--radius-xl: 4px;
 	--radius-full: 9999px;
 
-	/* ---- Generous vertical rhythm ---- */
-	--space-section: clamp(3rem, 7vw, 5.25rem);
-	--space-panel: clamp(1.75rem, 3.5vw, 2.75rem);
-	--content-max: 74rem;
+	/* ---- Type scale: a music app is dense; the work playing gets the presence. ---- */
+	--fs-2xs: 0.6875rem; /* 11px — micro labels, counts */
+	--fs-xs: 0.75rem; /* 12px — eyebrows, metadata */
+	--fs-sm: 0.8125rem; /* 13px — secondary UI */
+	--fs-base: 0.875rem; /* 14px — body */
+	--fs-md: 1rem; /* 16px — h3, lead copy */
+	--fs-lg: 1.1875rem; /* 19px — section headings */
+	--fs-xl: 1.5rem; /* 24px — page titles */
+	--fs-2xl: 2rem; /* 32px — the one hero line per view, no bigger */
+
+	/* ---- Motion: brief, functional, single easing curve. ---- */
+	--ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+	--dur-fast: 120ms;
+	--dur-med: 180ms;
+
+	/* ---- Vertical rhythm — tight enough that content, not whitespace, fills the view. ---- */
+	--space-section: clamp(1.75rem, 3.5vw, 2.75rem);
+	--space-panel: clamp(1.25rem, 2.5vw, 2rem);
+	--content-max: 82rem;
 
 	/* ---- Listening Room shell: one grid owns the desktop app geometry. ---- */
-	--shell-rail-w: 18rem;
-	--shell-rail-w-collapsed: 4.5rem;
-	--shell-aside-w: 22rem;
-	--shell-header-h: 3.5rem;
+	--shell-rail-w: 14.5rem;
+	--shell-rail-w-collapsed: 4rem;
+	--shell-aside-w: 20rem;
+	--shell-header-h: 3.25rem;
 	--shell-player-h: auto;
 	--shell-footer-h: 0.625rem;
-	--shell-gutter: clamp(1.25rem, 3vw, 3.5rem);
+	--shell-gutter: clamp(1rem, 2vw, 2.25rem);
 	--z-rail: 10;
 	--z-header: 20;
 	--z-aside: 15;
@@ -1094,16 +1112,29 @@
 			var(--surface-canvas);
 		color: var(--text-primary);
 		font-family: var(--style-body-font);
+		font-size: var(--fs-base);
 		letter-spacing: 0;
-		line-height: 1.6;
+		line-height: 1.55;
 	}
 
 	h1,
 	h2,
 	h3 {
 		font-family: var(--style-heading-font);
-		font-weight: 400;
+		font-weight: 600;
 		letter-spacing: 0.01em;
+		line-height: 1.2;
+		text-wrap: balance;
+	}
+
+	h1 {
+		font-size: var(--fs-xl);
+	}
+	h2 {
+		font-size: var(--fs-lg);
+	}
+	h3 {
+		font-size: var(--fs-md);
 	}
 
 	:focus-visible {
@@ -1237,13 +1268,23 @@
 
 	.app-nav-link {
 		position: relative;
-		min-height: 3rem;
+		min-height: 2.25rem;
 		align-items: center;
-		padding: 0.7rem 1.15rem 0.7rem 1.35rem;
-		font-size: 0.83rem;
-		font-weight: 600;
-		letter-spacing: 0.14em;
-		text-transform: uppercase;
+		gap: 0.7rem;
+		padding: 0.4rem 0.8rem 0.4rem 0.9rem;
+		font-size: var(--fs-sm);
+		font-weight: 550;
+		letter-spacing: 0.01em;
+		text-transform: none;
+	}
+
+	.app-nav-link svg {
+		flex-shrink: 0;
+		opacity: 0.7;
+	}
+	.app-nav-link-current svg {
+		opacity: 1;
+		color: var(--accent-gold);
 	}
 
 	.app-nav-link:hover,

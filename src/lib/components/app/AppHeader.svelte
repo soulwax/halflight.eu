@@ -18,7 +18,7 @@
 </script>
 
 <header
-	class="app-header flex h-14 w-full shrink-0 items-center gap-3 border-b border-[var(--border-subtle)] bg-[var(--surface-raised)]/95 px-4 backdrop-blur-md sm:px-6"
+	class="app-header flex h-full min-h-12 w-full shrink-0 items-center gap-3 border-b border-[var(--border-subtle)] bg-[var(--surface-raised)]/95 px-3 backdrop-blur-md sm:px-5"
 >
 	<!-- Leftmost: Logo -->
 	<div class="flex items-center">

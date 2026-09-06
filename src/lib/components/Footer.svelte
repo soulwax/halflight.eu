@@ -9,7 +9,7 @@
 </script>
 
 <footer
-	class="app-footer flex h-[10px] w-full shrink-0 items-center justify-center overflow-hidden px-2 text-center text-[8px] leading-[10px] text-[var(--text-muted)] select-none"
+	class="app-footer flex h-[10px] w-full shrink-0 items-center justify-center overflow-hidden bg-(--surface-canvas) px-2 text-center text-[8px] leading-[10px] text-[color-mix(in_oklab,var(--text-muted)_55%,transparent)] select-none"
 	title={footerNotice}
 >
 	<p class="m-0 truncate leading-[10px]">

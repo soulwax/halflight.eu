@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { TrackSummary } from '#lib/tidal/models';
+import { createQueueEntry } from '#lib/player/queue-entry.js';
 import {
 	EMPTY_PLAYBACK_STATE,
 	MAX_PLAYBACK_HISTORY_LENGTH,
@@ -20,6 +21,10 @@ const track: TrackSummary = {
 	duration: 210
 };
 
+const queued = createQueueEntry(track);
+const asQueued = (t: TrackSummary) =>
+	expect.objectContaining({ ...t, entryId: expect.any(String) });
+
 describe('playback state', () => {
 	it('accepts only one of two simultaneous writes for the same revision', async () => {
 		let persisted: PlaybackState = { ...EMPTY_PLAYBACK_STATE };
@@ -36,7 +41,7 @@ describe('playback state', () => {
 		};
 		const first: PlaybackStateInput = {
 			currentTrack: null,
-			queue: [track],
+			queue: [queued],
 			history: [],
 			currentTime: 12
 		};
@@ -61,7 +66,7 @@ describe('playback state', () => {
 	it('accepts a bounded resume state', () => {
 		expect(
 			parsePlaybackState({ currentTrack: track, queue: [track], history: [], currentTime: 42 })
-		).toEqual({ currentTrack: track, queue: [track], history: [], currentTime: 42 });
+		).toEqual({ currentTrack: track, queue: [asQueued(track)], history: [], currentTime: 42 });
 	});
 
 	it('rejects a malformed current track but not the whole request', () => {
@@ -84,7 +89,8 @@ describe('playback state', () => {
 			currentTime: 0
 		});
 		expect(state).not.toBeNull();
-		expect(state?.queue).toEqual([track, track]);
+		expect(state?.queue).toEqual([asQueued(track), asQueued(track)]);
+		expect(state?.queue.every((entry) => typeof entry.entryId === 'string')).toBe(true);
 		expect(state?.history).toHaveLength(MAX_PLAYBACK_HISTORY_LENGTH);
 	});
 
@@ -94,7 +100,7 @@ describe('playback state', () => {
 		).toBeNull();
 	});
 
-	it('accepts snapshots from older clients but rejects unknown queue commands', () => {
+	it('accepts a snapshot with valid entry-id queue commands but rejects unknown ones', () => {
 		expect(
 			parsePlaybackState({ currentTrack: null, queue: [], history: [], currentTime: 0 })
 		).toEqual({ currentTrack: null, queue: [], history: [], currentTime: 0 });
@@ -104,7 +110,7 @@ describe('playback state', () => {
 				queue: [],
 				history: [],
 				currentTime: 0,
-				queueCommands: [{ type: 'append', tracks: [track] }]
+				queueCommands: [{ type: 'append', entries: [queued] }]
 			})
 		).toEqual({ currentTrack: null, queue: [], history: [], currentTime: 0 });
 		expect(

@@ -1,6 +1,10 @@
+import type { LucideIcon } from '@lucide/svelte';
+
 export interface AppNavigationItem {
 	href: string;
 	label: string;
+	/** A lucide icon component rendered beside the label in the rail and mobile nav. */
+	icon?: LucideIcon;
 	/** Override automatic exact/prefix matching when a route needs a custom active state. */
 	current?: boolean;
 }

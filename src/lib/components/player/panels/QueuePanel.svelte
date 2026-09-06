@@ -34,14 +34,18 @@
 	<TrackTable
 		tracks={player.queue}
 		columns={['album', 'date', 'duration']}
-		onRowActivate={(_, index) => player.playFromQueue(index)}
+		onRowActivate={(_, index) => {
+			const entry = player.queue[index];
+			if (entry) player.playFromQueue(entry.entryId);
+		}}
 	>
 		{#snippet rowActions(_track, i)}
+			{@const entryId = player.queue[i]?.entryId}
 			<button
 				type="button"
 				class="q-row-btn"
-				disabled={i === 0}
-				onclick={() => player.moveQueueItem(i, -1)}
+				disabled={i === 0 || !entryId}
+				onclick={() => entryId && player.moveQueueItem(entryId, -1)}
 				aria-label={m.player_move_up()}
 			>
 				<ArrowUp size={13} />
@@ -49,8 +53,8 @@
 			<button
 				type="button"
 				class="q-row-btn"
-				disabled={i === player.queue.length - 1}
-				onclick={() => player.moveQueueItem(i, 1)}
+				disabled={i === player.queue.length - 1 || !entryId}
+				onclick={() => entryId && player.moveQueueItem(entryId, 1)}
 				aria-label={m.player_move_down()}
 			>
 				<ArrowDown size={13} />
@@ -58,7 +62,7 @@
 			<button
 				type="button"
 				class="q-row-btn"
-				onclick={() => player.removeFromQueue(i)}
+				onclick={() => entryId && player.removeFromQueue(entryId)}
 				aria-label={m.player_remove_from_queue()}
 			>
 				<Trash2 size={13} />

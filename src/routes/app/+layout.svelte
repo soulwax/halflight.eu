@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import { Disc3, Home, Library, Radio, Search, Sparkles, Waves } from '@lucide/svelte';
 	import AppAside from '#lib/components/app/AppAside.svelte';
 	import AppShell from '#lib/components/app/AppShell.svelte';
 	import AppHeader from '#lib/components/app/AppHeader.svelte';
@@ -17,13 +18,13 @@
 	let { data, children }: { data: LayoutData; children: Snippet } = $props();
 
 	const navigation = $derived([
-		{ href: resolve('/app'), label: m.nav_home() },
-		{ href: resolve('/app/generate'), label: m.nav_generate() },
-		{ href: resolve('/app/search'), label: m.nav_search() },
-		{ href: resolve('/app/library'), label: m.nav_library() },
-		{ href: resolve('/app/mixes'), label: m.nav_mixes() },
-		{ href: resolve('/app/settings/taste'), label: m.nav_taste() },
-		{ href: resolve('/app/settings/lastfm'), label: m.nav_lastfm() }
+		{ href: resolve('/app'), label: m.nav_home(), icon: Home },
+		{ href: resolve('/app/generate'), label: m.nav_generate(), icon: Sparkles },
+		{ href: resolve('/app/search'), label: m.nav_search(), icon: Search },
+		{ href: resolve('/app/library'), label: m.nav_library(), icon: Library },
+		{ href: resolve('/app/mixes'), label: m.nav_mixes(), icon: Disc3 },
+		{ href: resolve('/app/settings/taste'), label: m.nav_taste(), icon: Waves },
+		{ href: resolve('/app/settings/lastfm'), label: m.nav_lastfm(), icon: Radio }
 	]);
 
 	$effect(() => {

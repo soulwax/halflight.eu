@@ -3,26 +3,17 @@ import { expandTasteGraph, type GraphExpansionBudget, type GraphExpansionClient 
 import { filterCandidates } from './candidates';
 import { scoreCandidates } from './score';
 import { sequenceCandidates } from './sequence';
-import { explainTrack, explainSet, type SetExplanation } from './explain';
+import { explainTrack, explainSet } from './explain';
+import type { ProvisionalSet, ProvisionalTrack } from '#lib/taste/provisional';
+
+// Re-exported so existing `#lib/server/taste/generate` importers keep working;
+// the shape itself is defined in a browser-safe module.
+export type { ProvisionalSet, ProvisionalTrack };
 
 export interface GenerateKnobs {
 	targetCount?: number;
 	familiarity?: number;
 	seedArtistId?: string;
-}
-
-export interface ProvisionalTrack {
-	id: string;
-	title: string;
-	artists: Array<{ id: string; name: string }>;
-	duration?: number;
-	releaseDate?: string;
-	provenance: string;
-}
-
-export interface ProvisionalSet extends SetExplanation {
-	tracks: ProvisionalTrack[];
-	generatedAt: string;
 }
 
 export interface GenerateTasteSetOptions {

@@ -37,8 +37,6 @@
 		>
 			{#if nowPlayingArtwork}
 				<img class="continuation-artwork" src={nowPlayingArtwork} alt="" />
-			{:else}
-				<div class="continuation-light" aria-hidden="true"></div>
 			{/if}
 
 			<div class="continuation-copy">
@@ -178,20 +176,20 @@
 
 <style>
 	.home {
-		max-width: 76rem;
+		max-width: var(--content-max);
 		margin: 0 auto;
-		padding: clamp(1.5rem, 3vw, 3rem) clamp(1rem, 3vw, 2.5rem) 3rem;
+		padding: clamp(0.75rem, 1.5vw, 1.5rem) 0 3rem;
 	}
 
 	.home-intro {
-		max-width: 42rem;
-		margin-bottom: clamp(2.5rem, 6vw, 5rem);
+		max-width: 44rem;
+		margin-bottom: var(--space-section);
 	}
 
 	.eyebrow {
-		margin: 0 0 0.65rem;
+		margin: 0 0 0.35rem;
 		color: var(--text-muted);
-		font-size: 0.72rem;
+		font-size: var(--fs-2xs);
 		font-weight: 650;
 		letter-spacing: 0.11em;
 		text-transform: uppercase;
@@ -202,73 +200,53 @@
 	.generation h2,
 	.section-heading h2 {
 		margin: 0;
-		letter-spacing: -0.045em;
+		letter-spacing: -0.02em;
 		color: var(--text-primary);
 	}
 
 	.home-intro h1 {
-		font-size: clamp(2.25rem, 5vw, 4.5rem);
-		font-weight: 650;
-		line-height: 0.98;
+		font-size: var(--fs-xl);
+		font-weight: 600;
+		line-height: 1.1;
 	}
 
 	.home-intro > p:last-child {
-		margin: 1.2rem 0 0;
+		margin: 0.5rem 0 0;
 		max-width: 34rem;
 		color: var(--text-secondary);
-		font-size: 1.05rem;
-		line-height: 1.6;
+		font-size: var(--fs-sm);
+		line-height: 1.55;
 	}
 
 	.continuation {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr) auto;
 		align-items: center;
-		gap: 2rem;
-		min-height: 13rem;
-		padding: clamp(1.5rem, 3vw, 2.5rem);
+		gap: 1.25rem;
+		padding: 1rem 1.25rem;
 		border: 1px solid var(--border-subtle);
-		border-radius: 1.5rem;
+		border-radius: var(--radius-lg);
 		background:
 			radial-gradient(
-				circle at 85% 8%,
-				color-mix(in oklab, var(--action) 18%, transparent),
-				transparent 36%
+				circle at 92% 12%,
+				color-mix(in oklab, var(--action) 12%, transparent),
+				transparent 40%
 			),
 			var(--surface-raised);
 		overflow: hidden;
 	}
 
 	.continuation.has-artwork {
-		grid-template-columns: clamp(7rem, 14vw, 11rem) minmax(0, 1fr) auto;
-	}
-
-	.continuation-artwork,
-	.continuation-light {
-		width: 100%;
-		max-width: 11rem;
-		aspect-ratio: 1;
-		border-radius: 1rem;
-		box-shadow: 0 1.25rem 2.5rem color-mix(in srgb, #000 32%, transparent);
+		grid-template-columns: 4rem minmax(0, 1fr) auto;
 	}
 
 	.continuation-artwork {
+		width: 4rem;
+		max-width: 4rem;
+		aspect-ratio: 1;
+		border-radius: var(--radius-md);
+		box-shadow: 0 0.5rem 1.25rem color-mix(in srgb, #000 32%, transparent);
 		object-fit: cover;
-	}
-
-	.continuation-light {
-		background:
-			radial-gradient(
-				circle at 62% 32%,
-				color-mix(in oklab, var(--action) 58%, #fff),
-				transparent 15%
-			),
-			radial-gradient(
-				circle at 45% 55%,
-				color-mix(in oklab, var(--action) 25%, var(--surface-canvas)),
-				transparent 54%
-			),
-			var(--surface-canvas);
 	}
 
 	.continuation-copy {
@@ -276,15 +254,16 @@
 	}
 
 	.continuation h2 {
-		font-size: clamp(1.55rem, 3vw, 2.5rem);
-		font-weight: 620;
-		line-height: 1.08;
+		font-size: var(--fs-lg);
+		font-weight: 600;
+		line-height: 1.15;
 	}
 
 	.continuation-copy > p:last-child,
 	.generation p {
-		margin: 0.7rem 0 0;
+		margin: 0.25rem 0 0;
 		color: var(--text-secondary);
+		font-size: var(--fs-sm);
 		line-height: 1.5;
 	}
 
@@ -294,49 +273,52 @@
 
 	.generation {
 		display: flex;
-		align-items: end;
+		align-items: center;
 		justify-content: space-between;
-		gap: 2rem;
-		padding: 2.5rem 0;
-		border-bottom: 1px solid var(--border-subtle);
+		gap: 1.5rem;
+		margin-top: var(--space-section);
+		padding: 1rem 1.25rem;
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-lg);
+		background: var(--surface-raised);
 	}
 
 	.generation > div {
-		max-width: 36rem;
+		max-width: 40rem;
 	}
 
 	.generation h2 {
-		font-size: clamp(1.55rem, 3vw, 2.25rem);
-		font-weight: 620;
+		font-size: var(--fs-md);
+		font-weight: 600;
 	}
 
 	.home-section {
-		margin-top: clamp(3rem, 6vw, 5.5rem);
+		margin-top: var(--space-section);
 	}
 
 	.section-heading {
 		display: flex;
-		align-items: end;
+		align-items: baseline;
 		justify-content: space-between;
 		gap: 1.5rem;
-		margin-bottom: 1.4rem;
+		margin-bottom: 0.85rem;
 	}
 
 	.section-heading h2 {
-		font-size: clamp(1.35rem, 2.5vw, 1.85rem);
-		font-weight: 620;
+		font-size: var(--fs-lg);
+		font-weight: 600;
 	}
 
 	.section-heading a,
 	.shortcuts a {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.45rem;
+		gap: 0.4rem;
 		color: var(--text-secondary);
-		font-size: 0.9rem;
-		font-weight: 600;
+		font-size: var(--fs-sm);
+		font-weight: 550;
 		text-decoration: none;
-		transition: color 160ms ease;
+		transition: color var(--dur-med) var(--ease-out);
 	}
 
 	.section-heading a:hover,
@@ -346,34 +328,33 @@
 
 	.track-grid {
 		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 0.85rem;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 0.6rem;
 	}
 
 	.saved-set-grid {
 		display: grid;
 		grid-template-columns: repeat(4, minmax(0, 1fr));
-		gap: 0.85rem;
+		gap: 0.6rem;
 	}
 
 	.saved-set {
 		display: grid;
 		grid-template-columns: auto minmax(0, 1fr) auto;
 		align-items: center;
-		gap: 0.8rem;
-		min-height: 6.5rem;
-		padding: 1rem;
+		gap: 0.7rem;
+		padding: 0.7rem 0.8rem;
 		border: 1px solid var(--border-subtle);
-		border-radius: 1rem;
+		border-radius: var(--radius-md);
 		background: var(--surface-raised);
 	}
 
 	.saved-set-icon {
 		display: grid;
-		width: 2.6rem;
+		width: 2.25rem;
 		aspect-ratio: 1;
 		place-items: center;
-		border-radius: 0.75rem;
+		border-radius: var(--radius-sm);
 		background: color-mix(in oklab, var(--action) 12%, var(--surface-canvas));
 		color: var(--action);
 	}
@@ -390,21 +371,21 @@
 	.saved-set h3 {
 		overflow: hidden;
 		color: var(--text-primary);
-		font-size: 0.9rem;
-		font-weight: 620;
+		font-size: var(--fs-sm);
+		font-weight: 600;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 
 	.saved-set p {
-		margin-top: 0.3rem;
+		margin-top: 0.15rem;
 		color: var(--text-muted);
-		font-size: 0.78rem;
+		font-size: var(--fs-2xs);
 	}
 
 	.saved-set-play {
 		display: grid;
-		width: 2.25rem;
+		width: 2rem;
 		aspect-ratio: 1;
 		place-items: center;
 		border: 0;
@@ -413,8 +394,8 @@
 		color: var(--surface-canvas);
 		cursor: pointer;
 		transition:
-			scale 160ms ease,
-			opacity 160ms ease;
+			scale var(--dur-med) var(--ease-out),
+			opacity var(--dur-med) var(--ease-out);
 	}
 
 	.saved-set-play:hover:not(:disabled) {
