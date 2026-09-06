@@ -37,7 +37,7 @@ function makeEvent(
 	user: { id: string } | null = { id: 'u1' }
 ) {
 	return {
-		locals: { user },
+		locals: { user, isAdministrator: Boolean(user) },
 		params,
 		request: {
 			url,

@@ -1997,6 +1997,10 @@ server-only S3 adapter with an isolated `HALFLIGHT_EXPORT_BUCKET`, opaque 15-min
 and authenticated same-origin retrieval/deletion. Direct exports remain the default; audio,
 artwork, lyrics, tokens, provider URLs, and the separate worker bucket are excluded.
 
+Owner-uploaded private music is a separate capability: bytes use `HALFLIGHT_PRIVATE_MUSIC_BUCKET`,
+while Postgres records only ownership, an opaque key, filename, type, size, and creation time. The
+owner can list, download, and delete files through same-origin APIs. TIDAL media remains excluded.
+
 ### Candidate uses and gates
 
 | Use                  | Potential benefit                                                    | What must be proved first                                                                                                          |

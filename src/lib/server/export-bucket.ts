@@ -87,14 +87,14 @@ function isConfigured(config: ExportBucketConfig): config is Required<ExportBuck
 
 const unavailableExportBucket: ExportBucket = {
 	enabled: false,
-	async put() {
-		throw new Error('Export bucket is not configured.');
+	put() {
+		return Promise.reject(new Error('Export bucket is not configured.'));
 	},
-	async get() {
-		return null;
+	get() {
+		return Promise.resolve(null);
 	},
-	async delete() {
-		return false;
+	delete() {
+		return Promise.resolve(false);
 	}
 };
 
