@@ -78,22 +78,24 @@
 	);
 </script>
 
-<div class="flex min-h-dvh flex-col bg-(--surface-canvas) text-(--text-primary)">
-	<header
-		class="relative flex h-12 shrink-0 items-center justify-center border-b border-(--border-subtle) bg-(--surface-raised)/95 backdrop-blur-md"
-	>
-		<a href={resolve('/(mobile)/home')} aria-label={m.brand_name()}>
+<div class="mobile-shell flex min-h-dvh flex-col bg-(--surface-canvas) text-(--text-primary)">
+	<header class="mobile-app-header relative flex shrink-0 items-center justify-center">
+		<a class="mobile-brand" href={resolve('/(mobile)/home')} aria-label={m.brand_name()}>
 			<img src={synLogo} alt="" class="h-6 w-auto" />
 		</a>
 		<a
 			href={resolve('/(mobile)/settings')}
-			class="absolute right-1 flex h-11 w-11 items-center justify-center text-(--text-muted) hover:text-(--text-primary) focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-(--focus-ring)"
+			class="mobile-header-action absolute right-1 flex h-12 w-12 items-center justify-center text-(--text-muted) hover:text-(--text-primary) focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-(--focus-ring)"
 			aria-label={m.mobile_settings_title()}
 		>
 			<Settings size={20} aria-hidden="true" />
 		</a>
 	</header>
-	<main bind:this={mainElement} id="main-content" class="min-h-0 flex-1 overflow-y-auto">
+	<main
+		bind:this={mainElement}
+		id="main-content"
+		class="mobile-scroll-region min-h-0 flex-1 overflow-y-auto"
+	>
 		{@render children()}
 	</main>
 	{#if !isOnNowRoute}
@@ -101,3 +103,55 @@
 	{/if}
 	<NowTabBar currentPath={page.url.pathname} />
 </div>
+
+<style>
+	.mobile-shell {
+		min-height: 100dvh;
+		background:
+			radial-gradient(
+				120% 44% at 50% -8%,
+				color-mix(in oklab, var(--action) 15%, transparent),
+				transparent 70%
+			),
+			var(--surface-canvas);
+		isolation: isolate;
+	}
+
+	.mobile-app-header {
+		min-height: calc(3.25rem + env(safe-area-inset-top));
+		padding-top: env(safe-area-inset-top);
+		border-bottom: 1px solid color-mix(in oklab, var(--border-subtle) 82%, transparent);
+		background: color-mix(in oklab, var(--surface-raised) 84%, transparent);
+		backdrop-filter: blur(18px) saturate(1.35);
+		-webkit-backdrop-filter: blur(18px) saturate(1.35);
+	}
+
+	.mobile-brand {
+		display: grid;
+		place-items: center;
+		min-width: 3rem;
+		min-height: 3rem;
+	}
+
+	.mobile-header-action {
+		bottom: 0;
+		border-radius: var(--radius-full);
+	}
+
+	.mobile-scroll-region {
+		overscroll-behavior-y: contain;
+		-webkit-overflow-scrolling: touch;
+		scrollbar-width: none;
+	}
+
+	.mobile-scroll-region::-webkit-scrollbar {
+		display: none;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.mobile-app-header {
+			backdrop-filter: none;
+			-webkit-backdrop-filter: none;
+		}
+	}
+</style>

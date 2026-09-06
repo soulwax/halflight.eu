@@ -17,14 +17,14 @@
 	const artistLine = $derived(track.artists.map((artist) => artist.name).join(', '));
 </script>
 
-<div class="flex items-center gap-3 py-2">
+<div class="mobile-track-row flex items-center gap-3 py-2">
 	<button
 		type="button"
 		class="flex min-w-0 flex-1 items-center gap-3 text-left"
 		onclick={onActivate}
 	>
 		<span
-			class="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden border border-(--border-subtle) bg-(--surface-selected)"
+			class="mobile-track-art flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden border border-(--border-subtle) bg-(--surface-selected)"
 		>
 			{#if cover}
 				<img src={cover} alt="" class="h-full w-full object-cover" />
@@ -45,3 +45,19 @@
 		</div>
 	{/if}
 </div>
+
+<style>
+	.mobile-track-row {
+		border-radius: var(--radius-md);
+		transition: background-color var(--dur-fast) var(--ease-out);
+	}
+
+	.mobile-track-row:focus-within,
+	.mobile-track-row:hover {
+		background: color-mix(in oklab, var(--editorial-sky, var(--surface-selected)) 46%, transparent);
+	}
+
+	.mobile-track-art {
+		border-radius: var(--radius-sm);
+	}
+</style>

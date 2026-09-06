@@ -17,7 +17,7 @@
 
 {#if track}
 	<div
-		class="flex h-14 shrink-0 items-center gap-3 border-t border-(--border-subtle) bg-(--surface-raised) px-3"
+		class="mobile-mini-player flex h-15 shrink-0 items-center gap-3 border-t border-(--border-subtle) bg-(--surface-raised) px-3"
 	>
 		<a
 			href={resolve('/(mobile)/now')}
@@ -25,7 +25,7 @@
 			aria-label={m.now_open_full_player()}
 		>
 			<span
-				class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden border border-(--border-subtle) bg-(--surface-selected)"
+				class="mobile-mini-art flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden border border-(--border-subtle) bg-(--surface-selected)"
 				style:view-transition-name="syn-now-art"
 			>
 				{#if cover}
@@ -57,3 +57,24 @@
 		</button>
 	</div>
 {/if}
+
+<style>
+	.mobile-mini-player {
+		min-height: 3.75rem;
+		background: color-mix(in oklab, var(--surface-raised) 88%, transparent);
+		backdrop-filter: blur(18px) saturate(1.3);
+		-webkit-backdrop-filter: blur(18px) saturate(1.3);
+	}
+
+	.mobile-mini-art {
+		border-radius: var(--radius-sm);
+		box-shadow: 0 6px 16px -10px rgb(0 0 0 / 80%);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.mobile-mini-player {
+			backdrop-filter: none;
+			-webkit-backdrop-filter: none;
+		}
+	}
+</style>

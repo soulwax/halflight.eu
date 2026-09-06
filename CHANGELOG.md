@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Reframed Syn around the mobile-first Halflight light system: deep-blue ink, paper surfaces, sky selection, and restrained blush editorial accents now carry the desktop shell, player, and mobile chrome.
 - Reworked the Listening Room’s desktop hierarchy around a compact, recognisable docked player,
   quieter rail and header controls, and denser music-first home and track-card compositions.
 

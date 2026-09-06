@@ -3,7 +3,7 @@
 @plugin '@tailwindcss/typography';
 
 :root {
-	color-scheme: dark;
+	color-scheme: light;
 
 	/* ---- Reference palette: deep charcoal ground, bright ink, one glowing amber accent ---- */
 	--accent-gold: oklch(0.83 0.17 82);
@@ -205,10 +205,9 @@
 	--danger: #ff758f;
 	--danger-subtle: #301923;
 	--focus-ring: #9abaff;
-	--shadow-raised: 0 1px 0 rgb(255 255 255 / 5%) inset, 0 20px 56px -28px rgb(0 0 0 / 88%);
-	--shadow-bauhaus: 0 12px 32px -22px rgb(0 0 0 / 72%);
-	--shadow-bauhaus-hover:
-		0 0 0 1px rgb(122 167 255 / 48%) inset, 0 18px 40px -24px rgb(0 0 0 / 85%);
+	--shadow-raised: 0 1px 2px rgb(6 48 100 / 5%), 0 12px 28px -18px rgb(6 48 100 / 24%);
+	--shadow-bauhaus: 0 12px 24px -16px rgb(6 48 100 / 22%);
+	--shadow-bauhaus-hover: 0 0 0 1px rgb(13 95 174 / 18%), 0 16px 32px -18px rgb(6 48 100 / 28%);
 }
 
 :root[data-theme='dracula'] {
@@ -1042,13 +1041,13 @@
 	--style-card-border-width: 1px;
 	--style-card-border-color: var(--border-subtle);
 	--style-card-shadow: none;
-	--style-card-hover-shadow: 0 12px 32px -22px rgb(0 0 0 / 84%);
+	--style-card-hover-shadow: 0 12px 24px -16px rgb(6 48 100 / 22%);
 	--style-card-hover-border-color: color-mix(in oklab, var(--action) 65%, var(--border-subtle));
 	--style-card-hover-transform: translateY(-1px);
 	--style-button-radius: 0.625rem !important;
 	--style-button-border-width: 1px;
 	--style-button-shadow: none;
-	--style-button-hover-shadow: 0 8px 22px -15px rgb(0 0 0 / 90%);
+	--style-button-hover-shadow: 0 8px 18px -12px rgb(6 48 100 / 24%);
 	--style-button-hover-transform: translateY(-1px);
 	--style-button-active-shadow: none;
 	--style-button-active-transform: translateY(0);
@@ -1070,26 +1069,30 @@
 :root[data-theme],
 :root[data-style],
 :root[data-theme][data-style] {
-	--surface-canvas: #090b10;
-	--surface-raised: #11151f;
-	--surface-selected: #1a2230;
-	--border-subtle: #273245;
-	--border-strong: #3c4b63;
-	--text-primary: #f4f7ff;
-	--text-muted: #98a5bb;
-	--text-secondary: #c6d0e2;
-	--accent-gold: #7aa7ff;
-	--accent-gold-deep: #4e7fe0;
-	--accent-jade: #55d6be;
-	--accent-oxblood: #ff758f;
-	--bauhaus-blue: #7aa7ff;
-	--bauhaus-red: #ff758f;
-	--bauhaus-yellow: #7aa7ff;
-	--action: #7aa7ff;
-	--action-contrast: #080d18;
-	--danger: #ff758f;
-	--danger-subtle: #301923;
-	--focus-ring: #9abaff;
+	/* Halflight light: guide-derived blue ink, paper and quiet sky states. */
+	--surface-canvas: #f5f8fb;
+	--surface-raised: #ffffff;
+	--surface-selected: #bfe7f4;
+	--border-subtle: #e7edf5;
+	--border-strong: #cfd9e7;
+	--text-primary: #063064;
+	--text-muted: #7c8aa8;
+	--text-secondary: #4d6288;
+	--accent-gold: #7fc9e0;
+	--accent-gold-deep: #0d5fae;
+	--accent-jade: #54bfb3;
+	--accent-oxblood: #e0245e;
+	--bauhaus-blue: #7fc9e0;
+	--bauhaus-red: #e0245e;
+	--bauhaus-yellow: #7fc9e0;
+	--action: #0d5fae;
+	--action-contrast: #ffffff;
+	--danger: #d92057;
+	--danger-subtle: #fff0f4;
+	--focus-ring: #0d5fae;
+	--editorial-sky: #bfe7f4;
+	--editorial-blush: #f1cdec;
+	--editorial-faint: #aeb8cc;
 	--font-display:
 		Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 	--font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
@@ -1107,13 +1110,13 @@
 	--style-card-border-width: 1px;
 	--style-card-border-color: var(--border-subtle);
 	--style-card-shadow: none;
-	--style-card-hover-shadow: 0 12px 32px -22px rgb(0 0 0 / 84%);
+	--style-card-hover-shadow: 0 12px 24px -16px rgb(6 48 100 / 22%);
 	--style-card-hover-border-color: color-mix(in oklab, var(--action) 65%, var(--border-subtle));
 	--style-card-hover-transform: translateY(-1px);
 	--style-button-radius: 0.625rem !important;
 	--style-button-border-width: 1px;
 	--style-button-shadow: none;
-	--style-button-hover-shadow: 0 8px 22px -15px rgb(0 0 0 / 90%);
+	--style-button-hover-shadow: 0 8px 18px -12px rgb(6 48 100 / 24%);
 	--style-button-hover-transform: translateY(-1px);
 	--style-button-active-shadow: none;
 	--style-button-active-transform: translateY(0);
@@ -1126,10 +1129,9 @@
 	--style-input-border-width: 1px;
 	--style-heading-spacing: -0.025em;
 	--style-heading-transform: none;
-	--shadow-raised: 0 1px 0 rgb(255 255 255 / 5%) inset, 0 20px 56px -28px rgb(0 0 0 / 88%);
-	--shadow-bauhaus: 0 12px 32px -22px rgb(0 0 0 / 72%);
-	--shadow-bauhaus-hover:
-		0 0 0 1px rgb(122 167 255 / 48%) inset, 0 18px 40px -24px rgb(0 0 0 / 85%);
+	--shadow-raised: 0 1px 2px rgb(6 48 100 / 5%), 0 12px 28px -18px rgb(6 48 100 / 24%);
+	--shadow-bauhaus: 0 12px 24px -16px rgb(6 48 100 / 22%);
+	--shadow-bauhaus-hover: 0 0 0 1px rgb(13 95 174 / 18%), 0 16px 32px -18px rgb(6 48 100 / 28%);
 }
 
 .app-style-canvas {
@@ -1174,7 +1176,7 @@
 		background:
 			radial-gradient(
 				120% 80% at 50% -20%,
-				color-mix(in oklab, var(--accent-gold) 6%, transparent),
+				color-mix(in oklab, var(--editorial-sky, var(--accent-gold)) 38%, transparent),
 				transparent 60%
 			),
 			var(--surface-canvas);
@@ -1562,7 +1564,7 @@
 	.btn-danger {
 		border-color: var(--danger);
 		background: var(--danger);
-		color: var(--text-primary);
+		color: #ffffff;
 	}
 
 	.btn-sm {

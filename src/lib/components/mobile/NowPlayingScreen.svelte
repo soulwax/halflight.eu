@@ -85,7 +85,7 @@
 		<div class="flex flex-1 flex-col items-center justify-center gap-6">
 			{#key track.id}
 				<div
-					class="aspect-square w-full max-w-sm overflow-hidden border border-(--border-subtle) bg-(--surface-selected)"
+					class="now-artwork aspect-square w-full max-w-sm overflow-hidden border border-(--border-subtle) bg-(--surface-selected)"
 					style:view-transition-name="syn-now-art"
 					transition:fade={{ duration: prefersReducedMotion ? 0 : 200 }}
 				>
@@ -154,7 +154,7 @@
 				</button>
 				<button
 					type="button"
-					class="flex h-16 w-16 items-center justify-center rounded-full bg-(--action) text-(--action-contrast)"
+					class="now-primary-control flex h-16 w-16 items-center justify-center rounded-full bg-(--action) text-(--action-contrast)"
 					onclick={() => {
 						haptics.tick();
 						player.togglePlayPause();
@@ -192,3 +192,28 @@
 		</div>
 	{/if}
 </div>
+
+<style>
+	.now-artwork {
+		border-radius: var(--radius-xl);
+		box-shadow: 0 24px 42px -26px rgb(6 48 100 / 44%);
+	}
+
+	.now-primary-control {
+		box-shadow: 0 10px 22px -12px color-mix(in oklab, var(--action) 62%, transparent);
+		transition:
+			transform var(--dur-fast) var(--ease-out),
+			box-shadow var(--dur-fast) var(--ease-out);
+	}
+
+	.now-primary-control:hover {
+		transform: scale(1.04);
+		box-shadow: 0 13px 27px -12px color-mix(in oklab, var(--action) 68%, transparent);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.now-primary-control {
+			transition: none;
+		}
+	}
+</style>

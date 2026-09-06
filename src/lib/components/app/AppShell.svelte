@@ -119,16 +119,21 @@
 		min-height: 100dvh;
 		background:
 			radial-gradient(
-				90% 55% at 18% 0%,
-				color-mix(in oklab, var(--accent-gold) 7%, transparent),
-				transparent 60%
+				90% 52% at 0% 0%,
+				color-mix(in oklab, var(--editorial-sky) 58%, transparent),
+				transparent 68%
+			),
+			radial-gradient(
+				64% 46% at 100% 0%,
+				color-mix(in oklab, var(--editorial-blush) 38%, transparent),
+				transparent 70%
 			),
 			var(--surface-canvas);
 		color: var(--text-primary);
 	}
 
 	.app-shell {
-		--shell-inset: 0.6rem;
+		--shell-inset: 0;
 		display: grid;
 		min-height: 100dvh;
 		width: 100%;
@@ -152,30 +157,24 @@
 		grid-area: rail;
 		min-height: 0;
 		z-index: var(--z-rail);
-		border-radius: var(--radius-lg);
-		background: var(--glass-surface);
-		backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+		background: var(--surface-raised);
 		overflow: hidden;
 	}
 	.app-shell-header {
 		grid-area: header;
 		min-width: 0;
 		z-index: var(--z-header);
-		border-radius: var(--radius-lg);
-		background: var(--glass-surface);
-		backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+		background: var(--surface-raised);
 		overflow: hidden;
 	}
-	/* Main: a floating rounded pane on the dark ground. */
+	/* The listening surface stays quiet so music and artwork lead. */
 	.app-shell-main {
 		grid-area: main;
 		min-width: 0;
 		overflow: auto;
 		container-type: inline-size;
-		padding: var(--shell-gutter);
-		border-radius: var(--radius-xl);
-		background: var(--surface-raised);
-		box-shadow: var(--shadow-panel);
+		padding: clamp(1.5rem, 3vw, 2.5rem) var(--shell-gutter);
+		background: transparent;
 	}
 	.app-shell-main-content {
 		width: min(100%, var(--content-max));
@@ -185,9 +184,8 @@
 		display: none;
 		min-width: 0;
 		overflow: auto;
-		border-radius: var(--radius-xl);
+		border-left: 1px solid var(--border-subtle);
 		background: var(--surface-raised);
-		box-shadow: var(--shadow-panel);
 		container-type: inline-size;
 		z-index: var(--z-aside);
 	}
@@ -195,9 +193,8 @@
 		grid-area: player;
 		min-width: 0;
 		z-index: var(--z-player);
-		border-radius: var(--radius-lg);
+		border-top: 1px solid var(--border-subtle);
 		overflow: hidden;
-		box-shadow: var(--shadow-float);
 	}
 	.app-shell-footer {
 		grid-area: footer;

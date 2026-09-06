@@ -35,12 +35,8 @@
 
 <aside
 	class:side-nav-collapsed={collapsed}
-	class="side-nav relative hidden h-full w-full shrink-0 border-r border-[var(--border-subtle)] bg-[var(--surface-raised)] md:flex md:flex-col"
+	class="side-nav hidden h-full w-full shrink-0 bg-[var(--surface-raised)] md:flex md:flex-col"
 >
-	<span
-		class="pointer-events-none absolute inset-y-0 right-[3px] w-px bg-[color-mix(in_oklab,var(--accent-gold)_28%,transparent)]"
-	></span>
-
 	{#if onToggleRail && collapseRailLabel && expandRailLabel}
 		<div class="flex justify-end px-3 pt-3">
 			<button
@@ -119,8 +115,9 @@
 		width: 2rem;
 		height: 2rem;
 		place-items: center;
-		border: var(--hairline);
-		background: var(--surface-canvas);
+		border: 0;
+		border-radius: var(--radius-sm);
+		background: transparent;
 		color: var(--text-muted);
 		font-size: 1.1rem;
 		line-height: 1;
@@ -128,8 +125,8 @@
 	}
 	.rail-toggle:hover,
 	.rail-toggle:focus-visible {
-		border-color: var(--accent-gold);
-		color: var(--accent-gold);
+		background: var(--surface-selected);
+		color: var(--action);
 		outline: none;
 	}
 	.side-nav-collapsed .rail-toggle {
