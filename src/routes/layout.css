@@ -161,32 +161,33 @@
 	--shadow-bauhaus-hover: 0 0 0 1px #7aa2f7 inset, 0 16px 40px -20px rgba(0, 0, 0, 0.8);
 }
 
-/* Server-rendered pages have no data attribute until the client restores the
-   saved preference. Match the product default during that short interval. */
+/* One system, deliberately dark: this override also neutralises an old
+   `data-theme` value stored by an earlier version of the product. */
 :root:not([data-theme]) {
-	--surface-canvas: #1a1b26;
-	--surface-raised: #16161e;
-	--surface-selected: #24283b;
-	--border-subtle: #292e42;
-	--border-strong: #414868;
-	--text-primary: #c0caf5;
-	--text-muted: #7982a9;
-	--accent-gold: #e0af68;
-	--accent-gold-deep: #d09852;
-	--accent-jade: #73daca;
-	--accent-oxblood: #f7768e;
-	--bauhaus-blue: #7aa2f7;
-	--bauhaus-red: #f7768e;
-	--bauhaus-yellow: #e0af68;
-	--action: #7aa2f7;
-	--action-contrast: #15161e;
-	--danger: #f7768e;
-	--danger-subtle: #3b2434;
-	--focus-ring: #7aa2f7;
-	--shadow-raised: 0 1px 0 0 rgba(122, 162, 247, 0.1) inset, 0 18px 48px -24px rgba(0, 0, 0, 0.85);
-	--shadow-bauhaus:
-		0 1px 0 0 rgba(122, 162, 247, 0.08) inset, 0 12px 32px -20px rgba(0, 0, 0, 0.75);
-	--shadow-bauhaus-hover: 0 0 0 1px #7aa2f7 inset, 0 16px 40px -20px rgba(0, 0, 0, 0.8);
+	--surface-canvas: #090b10;
+	--surface-raised: #11151f;
+	--surface-selected: #1a2230;
+	--border-subtle: #273245;
+	--border-strong: #3c4b63;
+	--text-primary: #f4f7ff;
+	--text-muted: #98a5bb;
+	--text-secondary: #c6d0e2;
+	--accent-gold: #7aa7ff;
+	--accent-gold-deep: #4e7fe0;
+	--accent-jade: #55d6be;
+	--accent-oxblood: #ff758f;
+	--bauhaus-blue: #7aa7ff;
+	--bauhaus-red: #ff758f;
+	--bauhaus-yellow: #7aa7ff;
+	--action: #7aa7ff;
+	--action-contrast: #080d18;
+	--danger: #ff758f;
+	--danger-subtle: #301923;
+	--focus-ring: #9abaff;
+	--shadow-raised: 0 1px 0 rgb(255 255 255 / 5%) inset, 0 20px 56px -28px rgb(0 0 0 / 88%);
+	--shadow-bauhaus: 0 12px 32px -22px rgb(0 0 0 / 72%);
+	--shadow-bauhaus-hover:
+		0 0 0 1px rgb(122 167 255 / 48%) inset, 0 18px 40px -24px rgb(0 0 0 / 85%);
 }
 
 :root[data-theme='dracula'] {
@@ -1001,67 +1002,113 @@
 	--style-heading-transform: none;
 }
 
-/* Match the selected default until ThemeManager adds data-style after hydration. */
+/* Stable geometry replaces selectable art directions. */
 :root:not([data-style]) {
-	--style-body-font: 'Avenir Next', Avenir, 'Century Gothic', Futura, sans-serif;
-	--style-heading-font: Futura, 'Avenir Next', 'Century Gothic', Arial, sans-serif;
-	--font-mono: 'SFMono-Regular', 'Roboto Mono', Consolas, monospace;
-	--style-pattern:
-		linear-gradient(
-			90deg,
-			color-mix(in oklab, var(--border-strong) 14%, transparent) 1px,
-			transparent 1px
-		),
-		linear-gradient(
-			0deg,
-			color-mix(in oklab, var(--border-strong) 14%, transparent) 1px,
-			transparent 1px
-		),
-		linear-gradient(
-			90deg,
-			color-mix(in oklab, var(--bauhaus-red) 18%, transparent) 1px,
-			transparent 1px
-		),
-		linear-gradient(
-			0deg,
-			color-mix(in oklab, var(--bauhaus-blue) 18%, transparent) 1px,
-			transparent 1px
-		);
-	--style-pattern-size: 32px 32px, 32px 32px, 160px 160px, 160px 160px;
-	--style-pattern-repeat: repeat;
-	--style-pattern-attachment: scroll;
+	--style-body-font:
+		Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+	--style-heading-font:
+		Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+	--font-display:
+		Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+	--font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+	--style-pattern: none;
+	--style-pattern-repeat: no-repeat;
+	--style-panel-radius: 0.9rem !important;
+	--style-panel-border: 1px;
+	--style-panel-shadow: var(--shadow-raised);
+	--style-card-radius: 0.8rem !important;
+	--style-cover-radius: 0.65rem !important;
+	--style-card-border-width: 1px;
+	--style-card-border-color: var(--border-subtle);
+	--style-card-shadow: none;
+	--style-card-hover-shadow: 0 12px 32px -22px rgb(0 0 0 / 84%);
+	--style-card-hover-border-color: color-mix(in oklab, var(--action) 65%, var(--border-subtle));
+	--style-card-hover-transform: translateY(-1px);
+	--style-button-radius: 0.625rem !important;
+	--style-button-border-width: 1px;
+	--style-button-shadow: none;
+	--style-button-hover-shadow: 0 8px 22px -15px rgb(0 0 0 / 90%);
+	--style-button-hover-transform: translateY(-1px);
+	--style-button-active-shadow: none;
+	--style-button-active-transform: translateY(0);
+	--style-button-spacing: 0.01em;
+	--style-button-transform: none;
+	--style-badge-radius: 9999px !important;
+	--style-badge-border-width: 1px;
+	--style-badge-spacing: 0.03em;
+	--style-input-radius: 0.625rem;
+	--style-input-border-width: 1px;
+	--style-heading-spacing: -0.025em;
+	--style-heading-transform: none;
+}
 
-	--style-panel-radius: 0px !important;
-	--style-panel-border: 2px;
-	--style-panel-shadow:
-		4px 4px 0px 0px var(--surface-canvas), 4px 4px 0px 1.5px var(--border-strong);
-
-	--style-card-radius: 0px !important;
-	--style-cover-radius: 0px !important;
-	--style-card-border-width: 2px;
-	--style-card-border-color: var(--border-strong);
-	--style-card-shadow: 3px 3px 0px 0px var(--surface-canvas), 3px 3px 0px 1px var(--border-strong);
-	--style-card-hover-shadow: 5px 5px 0px 0px var(--surface-canvas), 5px 5px 0px 1.5px var(--action);
-	--style-card-hover-border-color: var(--action);
-	--style-card-hover-transform: translate(-2px, -2px);
-
-	--style-button-radius: 0px !important;
-	--style-button-border-width: 2px;
-	--style-button-shadow: 2px 2px 0px var(--border-strong);
-	--style-button-hover-shadow: 4px 4px 0px var(--action);
-	--style-button-hover-transform: translate(-2px, -2px);
-	--style-button-spacing: 0.11em;
-	--style-button-transform: uppercase;
-
-	--style-badge-radius: 0px !important;
-	--style-badge-border-width: 2px;
-	--style-badge-spacing: 0.12em;
-
-	--style-input-radius: 0px !important;
-	--style-input-border-width: 2px;
-
-	--style-heading-spacing: 0.09em;
-	--style-heading-transform: uppercase;
+/* Legacy attributes can remain on an already-open tab during deployment. They
+   are intentionally cosmetic no-ops: every route renders the one Listening
+   Room system below. */
+:root,
+:root[data-theme],
+:root[data-style],
+:root[data-theme][data-style] {
+	--surface-canvas: #090b10;
+	--surface-raised: #11151f;
+	--surface-selected: #1a2230;
+	--border-subtle: #273245;
+	--border-strong: #3c4b63;
+	--text-primary: #f4f7ff;
+	--text-muted: #98a5bb;
+	--text-secondary: #c6d0e2;
+	--accent-gold: #7aa7ff;
+	--accent-gold-deep: #4e7fe0;
+	--accent-jade: #55d6be;
+	--accent-oxblood: #ff758f;
+	--bauhaus-blue: #7aa7ff;
+	--bauhaus-red: #ff758f;
+	--bauhaus-yellow: #7aa7ff;
+	--action: #7aa7ff;
+	--action-contrast: #080d18;
+	--danger: #ff758f;
+	--danger-subtle: #301923;
+	--focus-ring: #9abaff;
+	--font-display:
+		Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+	--font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+	--style-body-font:
+		Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+	--style-heading-font:
+		Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+	--style-pattern: none;
+	--style-pattern-repeat: no-repeat;
+	--style-panel-radius: 0.9rem !important;
+	--style-panel-border: 1px;
+	--style-panel-shadow: var(--shadow-raised);
+	--style-card-radius: 0.8rem !important;
+	--style-cover-radius: 0.65rem !important;
+	--style-card-border-width: 1px;
+	--style-card-border-color: var(--border-subtle);
+	--style-card-shadow: none;
+	--style-card-hover-shadow: 0 12px 32px -22px rgb(0 0 0 / 84%);
+	--style-card-hover-border-color: color-mix(in oklab, var(--action) 65%, var(--border-subtle));
+	--style-card-hover-transform: translateY(-1px);
+	--style-button-radius: 0.625rem !important;
+	--style-button-border-width: 1px;
+	--style-button-shadow: none;
+	--style-button-hover-shadow: 0 8px 22px -15px rgb(0 0 0 / 90%);
+	--style-button-hover-transform: translateY(-1px);
+	--style-button-active-shadow: none;
+	--style-button-active-transform: translateY(0);
+	--style-button-spacing: 0.01em;
+	--style-button-transform: none;
+	--style-badge-radius: 9999px !important;
+	--style-badge-border-width: 1px;
+	--style-badge-spacing: 0.03em;
+	--style-input-radius: 0.625rem;
+	--style-input-border-width: 1px;
+	--style-heading-spacing: -0.025em;
+	--style-heading-transform: none;
+	--shadow-raised: 0 1px 0 rgb(255 255 255 / 5%) inset, 0 20px 56px -28px rgb(0 0 0 / 88%);
+	--shadow-bauhaus: 0 12px 32px -22px rgb(0 0 0 / 72%);
+	--shadow-bauhaus-hover:
+		0 0 0 1px rgb(122 167 255 / 48%) inset, 0 18px 40px -24px rgb(0 0 0 / 85%);
 }
 
 .app-style-canvas {

@@ -2,11 +2,6 @@
 export { default as Badge } from './components/ui/Badge.svelte';
 export { default as Button } from './components/ui/Button.svelte';
 export { default as SectionHeader } from './components/ui/SectionHeader.svelte';
-export { default as ThemeSelector } from './components/ui/ThemeSelector.svelte';
-
-// Theme Management
-export * from './theme/theme.svelte.js';
-
 // Music Domain Components
 export { default as StateCard } from './components/music/StateCard.svelte';
 export { default as MediaCard } from './components/music/MediaCard.svelte';

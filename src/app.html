@@ -8,25 +8,6 @@
 
 		<meta name="text-scale" content="scale" />
 
-		<link rel="preconnect" href="https://fonts.googleapis.com" />
-		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-		<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&display=swap" />
-		<script>
-			try {
-				if (window.location.pathname !== '/offline') {
-					var theme =
-						localStorage.getItem('syn-theme') ||
-						(document.cookie.match(/(?:^|;\s*)syn-theme=([^;]+)/) || [])[1] ||
-						'bauhaus-dark';
-					var visualStyle =
-						localStorage.getItem('syn-visual-style') ||
-						(document.cookie.match(/(?:^|;\s*)syn-visual-style=([^;]+)/) || [])[1] ||
-						'art-deco';
-					document.documentElement.dataset.theme = theme;
-					document.documentElement.dataset.style = visualStyle;
-				}
-			} catch (e) {}
-		</script>
 		%sveltekit.head%
 	</head>
 

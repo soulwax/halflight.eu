@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { Check, ExternalLink, Loader2, Music, Palette, Sparkles } from '@lucide/svelte';
-	import ThemeSelector from '#lib/components/ui/ThemeSelector.svelte';
+	import { Check, ExternalLink, Loader2, Music, Sparkles } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 
 	import type { ActionData, PageData } from './$types';
@@ -272,21 +271,6 @@
 
 			<button class="button" type="submit">{m.streaming_settings_save()}</button>
 		</form>
-	</section>
-
-	<section class="preferences-card" aria-labelledby="theme-settings-title">
-		<div class="card-indicator indicator-yellow"></div>
-		<div class="mb-2 flex items-center gap-2">
-			<Palette size={20} class="text-[var(--action)]" />
-			<h2 id="theme-settings-title" class="text-xl font-bold">Appearance</h2>
-		</div>
-		<p class="mb-4 text-sm text-[var(--text-muted)]">
-			Pair a colour theme with an art direction. Both choices are persisted locally and synchronized
-			to your account.
-		</p>
-		<div class="max-w-xs">
-			<ThemeSelector id="settings-theme-dropdown" />
-		</div>
 	</section>
 
 	<section class="info-card" aria-labelledby="privacy-title">

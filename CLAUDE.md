@@ -152,7 +152,7 @@ store so they need no DB or network.
 
 Everything under `src/lib/` that is _not_ in `server/` is browser-reachable:
 
-- `components/ui/` — primitives (`Button`, `Badge`, `SectionHeader`, `ThemeSelector`).
+- `components/ui/` — primitives (`Button`, `Badge`, `SectionHeader`).
 - `components/music/` — domain widgets (`MediaCard`, `SongCard`, `PageHeader`/`PageActions`,
   `StateCard`, `AddToPlaylistModal`, `PlaylistGeneratorModal`). Track listings render as a
   `<table>` via `TrackTable` (configurable `album` / `date` / `duration` columns, a
@@ -167,14 +167,13 @@ Everything under `src/lib/` that is _not_ in `server/` is browser-reachable:
   `player.svelte.ts` state class.
 - `player/` — `player.svelte.ts` (the `$state` engine), `playback-assessment.ts`,
   `customPlaylists.svelte.ts`.
-- `theme/` — `types.ts` (palette names) + `theme.svelte.ts` (applies CSS vars).
 - `tidal/` — `models.ts` (display contracts), `resource.ts` (`parseTidalResource`),
   `page-state.ts`.
 - `format.ts` / `m3u.ts` / `version.ts` — shared pure helpers (`formatDuration`,
   `formatClock`, `formatReleaseDate`, `qualityTier`, …); `m3u.ts` is the single
   Extended-M3U builder that the server (`server/tidal/m3u.ts`) and browser
   (`utils/m3u.ts`) wrappers both call.
-- `index.ts` is the `#lib` barrel — it re-exports the UI/music components and theme store only.
+- `index.ts` is the `#lib` barrel — it re-exports the shared UI and music components.
 
 Svelte compiles in **runes + async mode**, and SvelteKit `experimental.remoteFunctions`
 is on (`vite.config.ts`). Async mode is **disabled under vitest** (`async: !process.env.VITEST`)
@@ -194,15 +193,14 @@ component that reads a `$derived` — keep `await` out of markup.
   **308-redirects** to `/app/settings/tidal` (`/tidal/+page.server.ts`).
 - `/api/**` — JSON handlers the client fetches: `favorites`, `search`,
   `generate-playlist`, `playback-state`, `playlists` (+ `[id]`, `[id]/export`),
-  `settings/theme`, `tidal/device-auth` (+ `/poll`), `tracks/[id]/{stream,audio,lyrics}`.
+  `tidal/device-auth` (+ `/poll`), `tracks/[id]/{stream,audio,lyrics}`.
 
 ### Other
 
 - **Playlist generation** (`/api/generate-playlist`, `PlaylistGeneratorModal`) is
   deterministic: a curated map of vibe/era → search queries feeding TIDAL search. No LLM.
-- **Themes**: dark-only, eight named palettes (`src/lib/theme/types.ts`), persisted in
-  `user_settings.theme`, applied by `theme.svelte.ts`; CSS variables in
-  `src/routes/layout.css`.
+- **Appearance**: one dark Listening Room system, defined by semantic CSS variables in
+  `src/routes/layout.css`; it deliberately has no palette or art-direction preferences.
 - **TIDAL streaming lineage**: the stream-manifest parsers (`stream.ts`,
   `segmented.ts`), `parseTidalResource`, `buildM3u`, `parseLrc`, the review-text
   sanitiser, and the device-auth client id were ported from the Python

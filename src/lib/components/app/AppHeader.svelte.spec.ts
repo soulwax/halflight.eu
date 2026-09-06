@@ -19,10 +19,6 @@ describe('AppHeader.svelte', () => {
 		// Sign out button should not be present
 		await expect.element(page.getByRole('button', { name: 'Sign out' })).not.toBeInTheDocument();
 
-		// Style/Theme selector trigger is present
-		const themeTrigger = page.getByRole('button', { name: /Current colour theme:/ });
-		await expect.element(themeTrigger).toBeInTheDocument();
-
 		// Settings icon button links to /app/settings/tidal
 		const settingsLink = page.getByRole('link', { name: 'Settings' });
 		await expect.element(settingsLink).toBeInTheDocument();
@@ -62,7 +58,7 @@ describe('AppHeader.svelte', () => {
 			.not.toBeInTheDocument();
 	});
 
-	it('renders admin button between theme selector and settings when user is an administrator', async () => {
+	it('renders the administration and settings actions for an administrator', async () => {
 		render(AppHeader, {
 			user: {
 				name: 'soulwax',

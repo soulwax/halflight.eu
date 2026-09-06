@@ -4,8 +4,7 @@
 	import { locales, localizeHref } from '#lib/paraglide/runtime';
 	import AppHeader from '#lib/components/app/AppHeader.svelte';
 	import Footer from '#lib/components/Footer.svelte';
-	import { themeManager } from '#lib/theme/theme.svelte.js';
-	import { isMobileRoute, isPublicMobileRoute } from '#lib/mobile/routes';
+	import { isMobileRoute } from '#lib/mobile/routes';
 	import './layout.css';
 	import favicon from '#lib/assets/favicon.svg';
 	import type { LayoutData } from './$types';
@@ -14,25 +13,19 @@
 
 	// Halflight Now (the `(mobile)` route group) owns its own compact header,
 	// tab bar, and mini player — it must not inherit the desktop chrome. Design
-	// tokens and theming stay shared (see MASTERPLAN.md "share domain logic,
-	// never whole layouts"), so `layout.css` and `themeManager` stay unconditional.
+	// tokens stay shared (see MASTERPLAN.md "share domain logic, never whole
+	// layouts"), so `layout.css` stays unconditional.
 	let isMobile = $derived(isMobileRoute(page.url.pathname));
-	let isPublicMobile = $derived(isPublicMobileRoute(page.url.pathname));
 	let isListeningRoom = $derived(
 		page.url.pathname === '/app' || page.url.pathname.startsWith('/app/')
 	);
-
-	$effect(() => {
-		if (isPublicMobile) return;
-		themeManager.init(data.theme, data.visualStyle);
-	});
 </script>
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
 	{#if isMobile}
 		<link rel="manifest" href="/manifest.webmanifest" />
-		<meta name="theme-color" content="#1d1a16" />
+		<meta name="theme-color" content="#0b1020" />
 		<meta name="apple-mobile-web-app-capable" content="yes" />
 		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 		<meta name="apple-mobile-web-app-title" content="Halflight" />

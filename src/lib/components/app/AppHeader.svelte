@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { LogIn, LogOut, Settings, Shield } from '@lucide/svelte';
 	import HeaderSearch from '#lib/components/app/HeaderSearch.svelte';
-	import ThemeSelector from '#lib/components/ui/ThemeSelector.svelte';
 	import synLogo from '#lib/assets/syn-logo.svg';
 	import { m } from '#lib/paraglide/messages.js';
 
@@ -41,10 +40,6 @@
 
 	<!-- Right: Style Chooser Dropdown, Admin Button, Settings Icon, and Login/Logout Button -->
 	<div class="flex shrink-0 items-center gap-2.5 sm:gap-4">
-		<div class="hidden w-44 sm:block sm:w-52">
-			<ThemeSelector compact={true} id="header-theme-selector" />
-		</div>
-
 		{#if user?.isAdministrator}
 			<a
 				href="/app/admin"
