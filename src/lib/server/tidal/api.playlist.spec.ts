@@ -162,7 +162,7 @@ describe('TIDAL playlist API wrappers', () => {
 	});
 
 	it('getFullPlaylist fetches remaining items when numberOfItems exceeds initial items', async () => {
-		expect.assertions(4);
+		expect.assertions(5);
 		// First call: initial getPlaylist with 1 item but numberOfItems is 3
 		vi.mocked(tidalJson).mockResolvedValueOnce({
 			data: {
@@ -204,6 +204,12 @@ describe('TIDAL playlist API wrappers', () => {
 		const res = await getFullPlaylist('p1');
 		expect(tidalJson).toHaveBeenCalledTimes(3);
 		expect(tidalJson).toHaveBeenNthCalledWith(
+			2,
+			'/playlists/p1/relationships/items?include=items%2Cartists%2Calbums',
+			{},
+			undefined
+		);
+		expect(tidalJson).toHaveBeenNthCalledWith(
 			3,
 			'https://openapi.tidal.com/playlists/p1/relationships/items?page%5Boffset%5D=2',
 			{},
@@ -224,7 +230,7 @@ describe('TIDAL playlist API wrappers', () => {
 			}
 		} as any);
 
-		await getFullPlaylist('p1', { include: ['artists', 'albums'] });
+		await getFullPlaylist('p1', { include: ['items', 'artists', 'albums'] });
 
 		expect(tidalJson).toHaveBeenCalledWith(
 			'/playlists/p1?include=items%2Citems.artists%2Citems.albums',

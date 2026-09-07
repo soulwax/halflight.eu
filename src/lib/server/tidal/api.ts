@@ -49,10 +49,12 @@ export interface PageOptions {
  * and album (`items.artists`, rather than a top-level `artists`). Flat paths
  * are rejected with a 400 `GENERIC_REQUEST_ERROR`.
  */
-function playlistItemIncludes(include: string[] = []): string[] {
+function playlistIncludes(include: string[] = []): string[] {
 	return [
-		'items',
-		...include.map((path) => (path === 'artists' || path === 'albums' ? `items.${path}` : path))
+		...new Set([
+			'items',
+			...include.map((path) => (path === 'artists' || path === 'albums' ? `items.${path}` : path))
+		])
 	];
 }
 
@@ -220,7 +222,10 @@ export function getPlaylistItems(
 ): Promise<Document<Resource[]>> {
 	return tidalJson(
 		`/playlists/${encodeURIComponent(id)}/relationships/items${qs({
-			include: playlistItemIncludes(opts.include),
+			// This endpoint's primary data is already the playlist's tracks. Its
+			// direct resource includes are therefore rooted at the tracks, unlike
+			// `GET /playlists/:id`, which starts at the playlist document.
+			include: ['items', ...(opts.include ?? [])],
 			'page[cursor]': opts.cursor,
 			countryCode: opts.countryCode
 		})}`,
@@ -247,11 +252,7 @@ export async function getFullPlaylist(
 	opts: PageOptions = {},
 	ctx?: Ctx
 ): Promise<Document<Resource>> {
-	const document = await getPlaylist(
-		id,
-		{ ...opts, include: playlistItemIncludes(opts.include) },
-		ctx
-	);
+	const document = await getPlaylist(id, { ...opts, include: playlistIncludes(opts.include) }, ctx);
 	const data = document.data as Resource | undefined;
 	if (!data) return document;
 
