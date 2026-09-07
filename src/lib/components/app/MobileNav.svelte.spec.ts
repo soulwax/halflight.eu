@@ -17,6 +17,8 @@ describe('MobileNav.svelte', () => {
 		await expect
 			.element(nav.getByRole('link', { name: 'Mixes' }))
 			.toHaveAttribute('aria-current', 'page');
+		expect(nav.element().classList.contains('mobile-listening-room-nav')).toBe(true);
+		expect(nav.element().classList.contains('fixed')).toBe(false);
 	});
 
 	it('renders a sign-out submit button when an action is supplied', async () => {

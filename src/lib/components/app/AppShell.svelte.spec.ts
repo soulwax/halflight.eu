@@ -53,5 +53,9 @@ describe('AppShell', () => {
 		await expect.element(page.getByText('Up next')).toBeInTheDocument();
 		await expect.element(page.getByText('Room player')).toBeInTheDocument();
 		await expect.element(page.getByText('Room footer')).toBeInTheDocument();
+
+		const footerRegion = page.getByText('Room footer').element().parentElement;
+		expect(footerRegion?.classList.contains('app-shell-footer')).toBe(true);
+		expect(footerRegion?.querySelector('.mobile-listening-room-nav')).not.toBeNull();
 	});
 });

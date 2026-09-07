@@ -108,11 +108,12 @@
 		{/if}
 
 		{#if player}<div class="app-shell-player">{@render player()}</div>{/if}
-		{#if footer}<div class="app-shell-footer">{@render footer()}</div>{/if}
+		<div class="app-shell-footer">
+			{#if footer}{@render footer()}{/if}
+			<MobileNav {navigation} {currentPath} {navigationLabel} {signOutAction} {signOutLabel} />
+		</div>
 	</div>
 </div>
-
-<MobileNav {navigation} {currentPath} {navigationLabel} {signOutAction} {signOutLabel} />
 
 <style>
 	.app-shell-canvas {
@@ -218,14 +219,18 @@
 
 	@media (max-width: 63.99rem) {
 		.app-shell {
+			--shell-footer-h: auto;
 			grid-template-columns: minmax(0, 1fr);
 			grid-template-areas: 'header' 'main' 'player' 'footer';
 		}
 		.app-shell-rail {
 			display: none;
 		}
-		.app-shell-main {
-			padding-bottom: calc(var(--shell-gutter) + 4.5rem);
+		.app-shell-footer {
+			display: flex;
+			min-height: 0;
+			flex-direction: column;
+			background: var(--surface-raised);
 		}
 	}
 </style>

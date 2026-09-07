@@ -9,7 +9,7 @@
 	import Button from '#lib/components/ui/Button.svelte';
 	import type { TrackSummary } from '#lib/tidal/models';
 	import type { ActionData, PageData } from './$types';
-	import type { ProvisionalSet, ProvisionalTrack } from '#lib/server/taste/generate';
+	import type { ProvisionalSet, ProvisionalTrack } from '#lib/paraglide/server/taste/generate.ts';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 

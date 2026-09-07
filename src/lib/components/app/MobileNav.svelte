@@ -14,7 +14,7 @@
 </script>
 
 <nav
-	class="fixed inset-x-0 bottom-0 z-20 border-t-2 border-[var(--border-strong)] bg-[var(--surface-raised)] px-2 pt-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden"
+	class="mobile-listening-room-nav shrink-0 border-t-2 border-[var(--border-strong)] bg-[var(--surface-raised)] px-2 pt-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden"
 	aria-label={navigationLabel}
 >
 	<ul class="grid auto-cols-fr grid-flow-col overflow-x-auto">

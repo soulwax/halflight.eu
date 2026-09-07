@@ -47,6 +47,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- On narrow Listening Room layouts, the bottom navigation now occupies the shell's reserved footer
+  row instead of covering the docked player and attribution footer.
 - TIDAL playlist imports now request nested track artist and album relationships, avoiding the
   provider's `GENERIC_REQUEST_ERROR` response for playlists larger than its first page.
 - Owner-scoped TIDAL, playback, taste, Last.fm, and listening-shell paths now reject signed-in
