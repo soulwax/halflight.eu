@@ -12,6 +12,7 @@ import { rebaseQueue, type QueueCommand } from './playback-reconciliation.js';
 import {
 	createQueueEntries,
 	createQueueEntry,
+	isQueueEntryId,
 	toDisplayTrack,
 	type QueueEntry
 } from './queue-entry.js';
@@ -99,6 +100,32 @@ function needsTrackMetadata(track: TrackSummary): boolean {
 	);
 }
 
+/** Keep an untrusted session refresh from replacing the live player with a partial response. */
+function isSavedPlaybackState(value: unknown): value is SavedPlaybackState & { revision: number } {
+	if (!value || typeof value !== 'object') return false;
+	const state = value as Record<string, unknown>;
+	return (
+		(state.currentTrack === null || isTrackSummary(state.currentTrack)) &&
+		Array.isArray(state.queue) &&
+		state.queue.every((entry) => {
+			return (
+				isTrackSummary(entry) &&
+				typeof entry === 'object' &&
+				entry !== null &&
+				isQueueEntryId((entry as QueueEntry).entryId)
+			);
+		}) &&
+		Array.isArray(state.history) &&
+		state.history.every(isTrackSummary) &&
+		typeof state.currentTime === 'number' &&
+		Number.isFinite(state.currentTime) &&
+		state.currentTime >= 0 &&
+		typeof state.revision === 'number' &&
+		Number.isSafeInteger(state.revision) &&
+		state.revision >= 0
+	);
+}
+
 export class PlayerState {
 	currentTrack = $state<TrackSummary | null>(null);
 	/** Each queued occurrence has its own stable identity, including duplicate tracks. */
@@ -165,6 +192,10 @@ export class PlayerState {
 	private queueCommands: QueueCommand[] = [];
 	private reconciliationBase: SavedPlaybackState | null = null;
 	private reconciliationAttempts = 0;
+	private sessionSyncTimer: ReturnType<typeof setTimeout> | undefined;
+	private sessionSyncActive = false;
+	private sessionSyncInFlight = false;
+	private sessionSyncFailures = 0;
 	private lastPersistedPosition = 0;
 	private trackStartedAt = 0;
 	private lastObservedPlaybackTime = 0;
@@ -604,6 +635,27 @@ export class PlayerState {
 
 		this.metadataRequests.set(track.id, request);
 		return request;
+	}
+
+	/**
+	 * A saved session can contain several legacy identifier-only entries. Restore
+	 * their display data in small batches so the queue and history become useful
+	 * without delaying playback or overwhelming the metadata endpoint.
+	 */
+	private hydrateTrackMetadata(tracks: Iterable<TrackSummary>): void {
+		const unresolved = new Map<string, TrackSummary>();
+		for (const track of tracks) {
+			if (needsTrackMetadata(track)) unresolved.set(track.id, track);
+		}
+
+		const pending = [...unresolved.values()];
+		void (async () => {
+			for (let start = 0; start < pending.length; start += 4) {
+				await Promise.all(
+					pending.slice(start, start + 4).map((track) => this.resolveTrackMetadata(track))
+				);
+			}
+		})();
 	}
 
 	private applyTrackMetadata(metadata: TrackSummary): void {
@@ -1104,10 +1156,108 @@ export class PlayerState {
 		this.lastPersistedPosition = this.currentTime;
 		this.duration = state.currentTrack?.duration || 0;
 
-		if (this.currentTrack) {
-			void this.resolveCover(this.currentTrack);
-			void this.resolveTrackMetadata(this.currentTrack);
+		if (this.currentTrack) void this.resolveCover(this.currentTrack);
+		this.hydrateTrackMetadata([
+			...(this.currentTrack ? [this.currentTrack] : []),
+			...this.queue,
+			...this.history
+		]);
+	}
+
+	/**
+	 * Reconcile a second open client with the authoritative session. This is a
+	 * display/queue refresh only: it never starts, pauses, seeks, or replaces
+	 * audio that is already playing in this browser.
+	 */
+	async syncPlaybackState(): Promise<void> {
+		if (!isBrowser || this.sessionSyncInFlight || this.persistenceInFlight) return;
+		this.sessionSyncInFlight = true;
+
+		try {
+			const response = await fetch('/api/playback-state', {
+				headers: { accept: 'application/json' },
+				cache: 'no-store'
+			});
+			const state = (await response.json().catch(() => null)) as unknown;
+			if (!response.ok || !isSavedPlaybackState(state)) {
+				this.sessionSyncFailures += 1;
+				return;
+			}
+
+			this.sessionSyncFailures = 0;
+			if (state.revision < this.playbackStateRevision) return;
+
+			if (this.queueCommands.length > 0) {
+				if (state.revision === this.playbackStateRevision) return;
+				this.reconciliationBase = state;
+				this.playbackStateRevision = state.revision;
+				this.queue = rebaseQueue(state.queue, this.queueCommands, MAX_QUEUE_LENGTH);
+				this.reconciliationAttempts = 0;
+				this.hydrateTrackMetadata(this.queue);
+				this.schedulePersistence();
+				return;
+			}
+
+			if (state.revision === this.playbackStateRevision) {
+				if (!this.persistenceInFlight && this.persistenceStatus === 'offline') {
+					this.persistenceStatus = 'saved';
+				}
+				return;
+			}
+
+			this.playbackStateRevision = state.revision;
+			this.queue = state.queue.slice(0, MAX_QUEUE_LENGTH);
+			this.hydrateTrackMetadata(this.queue);
+			// A paused media element is still this device's local listening context.
+			// Do not make its next Play action start the old source under remote art.
+			const hasLocalMedia = Boolean(this.streamUrl || this.audio?.currentSrc);
+			if (!this.isPlaying && !hasLocalMedia) {
+				this.currentTrack = state.currentTrack;
+				this.history = state.history.slice(-MAX_HISTORY_LENGTH);
+				this.currentTime = Math.max(0, Math.floor(state.currentTime));
+				this.duration = state.currentTrack?.duration ?? 0;
+				if (this.currentTrack) void this.resolveCover(this.currentTrack);
+				this.hydrateTrackMetadata([
+					...(this.currentTrack ? [this.currentTrack] : []),
+					...this.history
+				]);
+			}
+
+			if (!this.persistenceInFlight && this.persistenceStatus === 'offline') {
+				this.persistenceStatus = 'saved';
+			}
+		} catch {
+			// A background read is not an unsaved queue edit. Preserve playback and
+			// let the next bounded poll retry without showing a false warning.
+			this.sessionSyncFailures += 1;
+		} finally {
+			this.sessionSyncInFlight = false;
 		}
+	}
+
+	/** Start bounded, visibility-aware session refreshes for an app shell. */
+	startSessionSync(): void {
+		if (!isBrowser || this.sessionSyncActive) return;
+		this.sessionSyncActive = true;
+
+		const refreshWhenVisible = () => {
+			if (document.visibilityState !== 'visible') return;
+			void this.syncPlaybackState().finally(() => this.scheduleSessionSync());
+		};
+
+		document.addEventListener('visibilitychange', refreshWhenVisible);
+		window.addEventListener('focus', refreshWhenVisible);
+		window.addEventListener('online', refreshWhenVisible);
+		refreshWhenVisible();
+	}
+
+	private scheduleSessionSync(): void {
+		if (!this.sessionSyncActive || document.visibilityState !== 'visible') return;
+		if (this.sessionSyncTimer) clearTimeout(this.sessionSyncTimer);
+		const delay = Math.min(30_000, 2_000 * 2 ** this.sessionSyncFailures);
+		this.sessionSyncTimer = setTimeout(() => {
+			void this.syncPlaybackState().finally(() => this.scheduleSessionSync());
+		}, delay);
 	}
 
 	private recordQueueReplacement(): void {

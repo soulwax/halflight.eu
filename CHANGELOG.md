@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Listening Room and Halflight Now now reconcile newer server session revisions while visible, with
+  bounded retry backoff and immediate refresh on focus or reconnection. Remote state never starts,
+  pauses, seeks, or replaces locally loaded audio.
 - Generated taste results now use a reusable listening-set module with set-level playback, save, and export actions plus an explainable per-track sequence.
 - The wide Listening Room now has a pinned queue context panel; its queue controls and track tables adapt to the width of the shell region that contains them.
 - Owner-uploaded private music can now be listed, downloaded, and deleted through authenticated API routes backed by a separate S3-compatible bucket.
@@ -47,6 +50,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Restored and synchronised queues now hydrate legacy identifier-only tracks in bounded batches,
+  so queue and history rows resolve to their real TIDAL metadata without delaying playback.
 - PM2 reloads now apply pending database migrations before rebuilding, preventing playback-state
   persistence from running against an older schema.
 - Restored player sessions now resolve incomplete track metadata live, so opaque provider IDs no

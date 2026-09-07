@@ -274,6 +274,123 @@ describe('PlayerState', () => {
 		expect(player.isPlaying).toBe(false);
 	});
 
+	it('reconciles a newer remote session without starting playback', async () => {
+		const fetchSpy = vi.fn(() =>
+			Promise.resolve(
+				new Response(
+					JSON.stringify({
+						currentTrack: sampleTrack2,
+						queue: persistedQueue(sampleTrack3),
+						history: [sampleTrack1],
+						currentTime: 42,
+						revision: 2
+					}),
+					{ status: 200 }
+				)
+			)
+		);
+		vi.stubGlobal('fetch', fetchSpy);
+
+		const player = new PlayerState();
+		player.restorePlaybackState({
+			currentTrack: sampleTrack1,
+			queue: persistedQueue(sampleTrack2),
+			history: [],
+			currentTime: 7,
+			revision: 1
+		});
+		await player.syncPlaybackState();
+
+		expect(player.currentTrack).toEqual(sampleTrack2);
+		expectQueuedTracks(player, [sampleTrack3]);
+		expect(player.history).toEqual([sampleTrack1]);
+		expect(player.currentTime).toBe(42);
+		expect(player.isPlaying).toBe(false);
+	});
+
+	it('never replaces the audible track or seek position during a remote session refresh', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(() =>
+				Promise.resolve(
+					new Response(
+						JSON.stringify({
+							currentTrack: sampleTrack2,
+							queue: persistedQueue(sampleTrack3),
+							history: [sampleTrack2],
+							currentTime: 42,
+							revision: 2
+						}),
+						{ status: 200 }
+					)
+				)
+			)
+		);
+
+		const player = new PlayerState();
+		player.restorePlaybackState({
+			currentTrack: sampleTrack1,
+			queue: [],
+			history: [],
+			currentTime: 7,
+			revision: 1
+		});
+		player.isPlaying = true;
+		await player.syncPlaybackState();
+
+		expect(player.currentTrack).toEqual(sampleTrack1);
+		expect(player.currentTime).toBe(7);
+		expectQueuedTracks(player, [sampleTrack3]);
+	});
+
+	it('never replaces a paused track whose local media source is still loaded', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(() =>
+				Promise.resolve(
+					new Response(
+						JSON.stringify({
+							currentTrack: sampleTrack2,
+							queue: persistedQueue(sampleTrack3),
+							history: [],
+							currentTime: 42,
+							revision: 2
+						}),
+						{ status: 200 }
+					)
+				)
+			)
+		);
+
+		const player = new PlayerState();
+		player.restorePlaybackState({
+			currentTrack: sampleTrack1,
+			queue: [],
+			history: [],
+			currentTime: 7,
+			revision: 1
+		});
+		player.streamUrl = '/tidal/audio/track-1';
+		await player.syncPlaybackState();
+
+		expect(player.currentTrack).toEqual(sampleTrack1);
+		expect(player.currentTime).toBe(7);
+		expectQueuedTracks(player, [sampleTrack3]);
+	});
+
+	it('does not show an unsaved-queue warning when a background session read fails', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(() => Promise.reject(new Error('offline')))
+		);
+		const player = new PlayerState();
+		player.restorePlaybackState({ currentTrack: null, queue: [], history: [], currentTime: 0 });
+
+		await player.syncPlaybackState();
+
+		expect(player.persistenceStatus).toBe('saved');
+	});
+
 	it('reorders queued tracks with moveQueueItem', () => {
 		const player = new PlayerState();
 		player.play(sampleTrack1);
@@ -445,6 +562,54 @@ describe('PlayerState', () => {
 			title: 'Press the Eject',
 			releaseDate: '1982-01-01'
 		});
+	});
+
+	it('hydrates identifier-only queue and history entries after restoring a session', async () => {
+		const metadataById: Record<string, TrackSummary> = {
+			'track-2': {
+				kind: 'track',
+				id: 'track-2',
+				title: 'A Forest',
+				artists: [{ id: 'artist-2', name: 'The Cure' }],
+				album: { id: 'album-2', title: 'Seventeen Seconds', releaseDate: '1980-04-18' }
+			},
+			'track-3': {
+				kind: 'track',
+				id: 'track-3',
+				title: 'Transmission',
+				artists: [{ id: 'artist-3', name: 'Joy Division' }],
+				album: { id: 'album-3', title: 'Unknown Pleasures', releaseDate: '1979-06-15' }
+			}
+		};
+		vi.stubGlobal(
+			'fetch',
+			vi.fn((url: string) => {
+				const trackId = String(url).match(/\/api\/tracks\/([^/]+)\/metadata$/)?.[1];
+				const track = trackId ? metadataById[trackId] : undefined;
+				return track
+					? Promise.resolve(new Response(JSON.stringify({ track }), { status: 200 }))
+					: Promise.reject(new Error('offline'));
+			})
+		);
+
+		const unresolved = (id: string, artistId: string): TrackSummary => ({
+			kind: 'track',
+			id,
+			title: id,
+			artists: [{ id: artistId, name: artistId }]
+		});
+		const player = new PlayerState();
+		player.restorePlaybackState({
+			currentTrack: null,
+			queue: persistedQueue(unresolved('track-2', 'artist-2')),
+			history: [unresolved('track-3', 'artist-3')],
+			currentTime: 0
+		});
+
+		await vi.waitFor(() => expect(player.queue[0]?.title).toBe('A Forest'));
+		expect(player.queue[0]?.artists).toEqual([{ id: 'artist-2', name: 'The Cure' }]);
+		expect(player.history[0]?.title).toBe('Transmission');
+		expect(player.history[0]?.artists).toEqual([{ id: 'artist-3', name: 'Joy Division' }]);
 	});
 
 	it('does not fetch a cover when the track already has artwork', async () => {

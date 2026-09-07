@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { onMount } from 'svelte';
 	import { onNavigate } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
@@ -28,6 +29,8 @@
 		player.applyStreamingSettings(data.streamingSettings);
 		player.restorePlaybackState(data.playbackState);
 	});
+
+	onMount(() => player.startSessionSync());
 
 	// "The mini player grows into Now Playing" (MASTERPLAN.md). Scoped to this
 	// layout so it only ever wraps mobile-to-mobile navigations — `/app/**`

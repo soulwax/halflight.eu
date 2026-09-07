@@ -13,6 +13,7 @@
 	import { page } from '$app/state';
 	import { Disc3, Home, Library, Radio, Search, Sparkles, Waves } from '@lucide/svelte';
 	import type { Snippet } from 'svelte';
+	import { onMount } from 'svelte';
 	import type { LayoutData } from './$types';
 
 	let { data, children }: { data: LayoutData; children: Snippet } = $props();
@@ -31,6 +32,8 @@
 		player.applyStreamingSettings(data.streamingSettings);
 		player.restorePlaybackState(data.playbackState);
 	});
+
+	onMount(() => player.startSessionSync());
 </script>
 
 {#snippet appHeader()}
