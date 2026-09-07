@@ -18,17 +18,36 @@ All in `src/lib/player/player.svelte.ts`:
 `:761` is the only one that leaves a `playbackReason`. That is the whole diagnostic
 split: **a null `playbackReason` with an embed badge means the metadata leg was fine.**
 
-## Metadata leg failed (`playbackReason` is set)
+## Metadata leg failed (`/stream` returned non-2xx)
 
-`GET /api/tracks/[id]/stream` returns a typed JSON error. Map it:
+Key the diagnosis on the **`error` field in the JSON response body**, not on
+`playbackReason` — five of these six branches send no `reason` at all, so the client
+flattens them into a bare `http_<status>` before anything could read it.
 
-| `playbackReason` | HTTP | Cause                                                               | Where to look                                                                                                                                                      |
-| ---------------- | ---- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `not_linked`     | 403  | `status.hasPlayback` is false — no device (playback) token stored   | `/app/settings/tidal`, then `/api/tidal/device-auth` + `/poll`                                                                                                     |
-| `http_403`       | 403  | `playback_unauthorized` (token rejected) or `plan_no_streaming`     | `getPlaybackToken` in `client.ts`; `TidalQualityDeniedError` in `stream.ts`                                                                                        |
-| `http_404`       | 404  | `track_unavailable` or `stream_unavailable`                         | `isTrackUnavailableForPlayback` — TIDAL returns a **401 with "asset is not ready for playback"** for a delisted track; that is asset-specific, not an auth problem |
-| `http_503`       | 503  | `not_connected` — `status.configured` false, no browse token at all | `/tidal/connect`                                                                                                                                                   |
-| `network_error`  | —    | `fetch` threw                                                       | Offline, dev server down, or the route crashed before responding                                                                                                   |
+| `error` (body)                                 | HTTP | Cause                                                          | Where to look                                                                                                                         |
+| ---------------------------------------------- | ---- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `playback_unauthorized` + `reason: not_linked` | 403  | `status.hasPlayback` false — no device (playback) token stored | `/app/settings/tidal`, then `/api/tidal/device-auth` + `/poll`                                                                        |
+| `playback_unauthorized` (no reason)            | 403  | Playback token present but rejected on use                     | `getPlaybackToken` in `client.ts` → `TidalAuthError`                                                                                  |
+| `plan_no_streaming`                            | 403  | Every tier returned `subStatus 5003`                           | `TidalQualityDeniedError` in `stream.ts`, and the account's plan                                                                      |
+| `track_unavailable`                            | 404  | Delisted / not playable asset                                  | `isTrackUnavailableForPlayback` — TIDAL returns a **401 with "asset is not ready for playback"**; asset-specific, not an auth problem |
+| `stream_unavailable`                           | 404  | Any other resolve failure (the catch-all)                      | `resolveTrackStream`; the manifest parsers                                                                                            |
+| `not_connected`                                | 503  | `status.configured` false — no browse token at all             | `/tidal/connect`                                                                                                                      |
+
+`network_error` never comes from the server: the client sets it when `fetch` itself threw
+(offline, dev server down, or the route crashed before responding).
+
+Note the first two rows share a status **and** an `error` value, and are told apart only
+by the `reason` field. That is the one place `reason` earns its keep — "never linked"
+versus "linked but the token is being refused" send you to completely different fixes,
+and `getConnectionStatus` (`status.ts:49-57`) folds an unreadable token row into the same
+`hasPlayback: false` as a missing one, so a rotated `TIDAL_TOKEN_ENC_KEY` presents
+exactly as "never linked".
+
+That last case is the one place a server log settles it: the catch logs
+`tidal: could not read playback token` before falling through to `hasPlayback: false`.
+Its presence means a row exists but could not be decrypted or parsed — re-linking is the
+fix, and a re-link will keep failing if the encryption key is what changed. Its absence
+means there genuinely is no row.
 
 The 401-means-unavailable case is the one people get wrong. `isTrackUnavailableForPlayback`
 exists precisely so a delisted track is not presented as "reconnect your account". If you
@@ -38,7 +57,7 @@ Distinguish "no streaming plan" from "this track is denied": `TidalQualityDenied
 is thrown only when **every** tier on the ladder came back with `subStatus 5003`. One
 tier failing is normal and gets walked past.
 
-## Byte leg failed (`playbackReason` is null)
+## Byte leg failed (`/stream` returned 2xx)
 
 Nothing recorded why. Get the `/audio` response:
 

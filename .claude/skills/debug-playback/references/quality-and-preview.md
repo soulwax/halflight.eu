@@ -35,10 +35,13 @@ Every other error is rethrown immediately. When every tier returns 5003, it thro
 Two consequences that surprise people:
 
 - With an explicit request, the remaining ladder is the **full** list with the requested
-  tier removed — so a `LOW` request whose first attempt 5003s would next try
-  `HI_RES_LOSSLESS`, i.e. _upward_. In practice `LOW` never 5003s so this stays
-  theoretical, but if you ever see a request for a low tier answered with a higher one,
-  this is why — not a bug in the player.
+  tier removed — so a `LOW` request whose first attempt 5003s tries `HI_RES_LOSSLESS`
+  next, i.e. _upward_. This contradicts the function's own docstring at `stream.ts:6-14`,
+  which promises it walks **down**. Treat it as a real defect, not a curiosity: besides
+  possibly answering a low-tier request with a higher one, a denied request issues its
+  `playbackinfopostpaywall` calls in the wrong order and can make up to three upstream
+  calls where one was intended. The fix is to slice the ladder from the requested tier
+  downward instead of reordering the whole list.
 - A single tier failing is normal and invisible. Only total denial is reported. If you
   need to know which tiers were tried, `TidalQualityDeniedError` carries `triedQualities`,
   but nothing on the success path records the walk. Instrument `resolveTrackStream`

@@ -81,10 +81,35 @@ The only self-healing that does run is `resumeAudioContext()` on `visibilitychan
 `online`, which re-arms a suspended `AudioContext` after a tab wake. That addresses
 silence after sleep, not a mid-track stall.
 
+## Duration is the hidden variable in every seek bug
+
+Before blaming the byte layer, check what `player.duration` actually holds. The metadata
+guard at `player.svelte.ts:251` is:
+
+```ts
+if (this.audio && !isNaN(this.audio.duration) && this.audio.duration > 0)
+```
+
+`Infinity` passes **both** checks, so a stream whose duration the element cannot
+determine sets `duration = Infinity` rather than being rejected. That single value
+degrades a lot of UI at once: `max="Infinity"` is not a valid HTML float so the range
+input silently falls back to a 0–100 scale, any `currentTime / duration` fill fraction
+collapses to 0, a clock formatter renders `0:00`, and `assessPlayback`'s `finitePositive`
+maps it to `null` — which means **no warning badge ever appears** to tell you something
+is wrong. Check the total-time readout first: `0:00` on a track you know the length of is
+the tell.
+
+`seek()` (`:795`) also assigns `this.currentTime = target` _before_ writing
+`this.audio.currentTime`. So the thumb moves even when the element ignores the seek
+entirely, and the next `timeupdate` snaps it back. A bar that jumps and returns means the
+element rejected the seek — it does not mean the seek code is broken.
+
 Buffer percentage comes from `updateBuffer()` (`:307`), which walks `audio.buffered` for
-the range containing `currentTime` and falls back to the highest range's end. On the
-segmented path the whole file arrives at once, so the buffer bar jumps 0 → 100 — a bar
-stuck at 0 there means the concat never completed.
+the range containing `currentTime` and falls back to the highest range's end. It divides
+by `this.audio.duration`, so a bar stuck at 0 has two very different causes: the concat
+never completed, **or** the concat completed fine and the duration is `Infinity`.
+Distinguish them by the transferred size of the `/audio` response before concluding
+anything — the bar alone cannot tell you which.
 
 ## Do not debug `audio-engine.ts`
 

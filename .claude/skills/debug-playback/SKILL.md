@@ -45,7 +45,8 @@ This inventory is the whole point. There is **no `console.*` anywhere in
 
 | Signal                            | Where                                     | What it proves                                                                                                                                                                                                   |
 | --------------------------------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `player.playbackReason`           | `$state`, `player.svelte.ts:116`          | **Only ever set by the metadata leg.** `http_<status>`, `network_error`, or the server's `reason` field.                                                                                                         |
+| `/stream` body `error` field      | DevTools Network tab                      | **The real discriminator.** `not_connected`, `playback_unauthorized`, `track_unavailable`, `plan_no_streaming`, `stream_unavailable`.                                                                            |
+| `player.playbackReason`           | `$state`, `player.svelte.ts:116`          | Set only by the metadata leg, but **write-only** (no reader outside `player.svelte.ts`) and usually just `http_403`. See below.                                                                                  |
 | `player.playbackMode === 'embed'` | `:103`                                    | Catch-all failure. Set from four places: the `<audio>` `error` event (`:287`), `play()` rejection after a good load (`:748`), no metadata at all (`:761`), and `play()` rejection in `togglePlayPause` (`:785`). |
 | `player.requiresFullAuth`         | `:116` area                               | Device (playback) token missing or rejected.                                                                                                                                                                     |
 | `player.assessment`               | `$derived`, `:385`                        | `assessPlayback` verdict — short stream, preview, downgraded tier. Drives the badge.                                                                                                                             |
@@ -53,13 +54,27 @@ This inventory is the whole point. There is **no `console.*` anywhere in
 
 ### The asymmetry that decides your first move
 
-`playbackReason` is set **only** on the metadata leg. So:
+Only the metadata leg records anything about its own failure. So:
 
-- **Embed badge + non-null `playbackReason`** → `/stream` failed. The reason string is
-  your answer; go to `references/silent-and-embed.md`.
-- **Embed badge + `playbackReason === null`** → `/stream` succeeded and the **byte leg**
-  failed. Nothing recorded why. Read the `/audio` request in the Network tab or the PM2
-  log — do not go re-reading `/stream` code.
+- **`/stream` returned non-2xx** → the metadata leg failed. Go to
+  `references/silent-and-embed.md`.
+- **`/stream` returned 2xx and the embed badge appeared** → the **byte leg** failed.
+  Nothing recorded why. Read the `/audio` request in the Network tab or the PM2 log — do
+  not go re-reading `/stream` code.
+
+**Do not lean on `playbackReason` to make this call.** Two verified limitations:
+
+1. It is **write-only** — assigned at `:716`/`:719` and read nowhere else in the repo, no
+   component renders it. You cannot see it without adding instrumentation.
+2. It is usually uninformative anyway. The client reads `errData.reason`
+   (`:716`), but `/stream` sends a `reason` field in **one of its six** error branches
+   (`not_linked`). The other five send only `error`, so `not_connected`,
+   `track_unavailable`, `plan_no_streaming`, `playback_unauthorized` and
+   `stream_unavailable` all collapse into a bare `http_503`/`http_404`/`http_403`.
+
+Read the `/stream` **response body** in the Network tab and use its `error` field — that
+distinction is free there and destroyed by the time it reaches `playbackReason`. Making
+the client read `errData.error` is a small, high-value fix if you are already in here.
 
 The `player` singleton is not exposed on `window`, so you cannot read these fields from
 the DevTools console directly. You don't need to: the **Network tab answers the same
@@ -95,30 +110,24 @@ Watch for the case where **no `/stream` request appears at all**: that is
 
 ## Workflow
 
-1. **Pin the symptom to one observable.** Which badge, which HTTP status, which console
-   error, which `assessment` field. "It doesn't play" is not yet a symptom.
-2. **Split metadata leg vs byte leg** using the asymmetry above. This single split
-   eliminates roughly half the code before you read any of it.
-3. **Open the matching reference file** and work its checks in order:
+1. **Split metadata leg vs byte leg** using the asymmetry above, before reading any
+   player code. This one split eliminates roughly half the stack.
+2. **Open the matching reference file** and work its checks in order:
    - `references/silent-and-embed.md` — won't play, embed fallback, auth/entitlement.
    - `references/stalls-and-seeking.md` — starts then hangs, scrubbing dead, 416/502,
-     segmented DASH, Range forwarding.
+     segmented DASH, Range forwarding, duration.
    - `references/quality-and-preview.md` — wrong tier, preview-as-full-track, codec and
      ladder behaviour.
    - `references/session-state.md` — queue or resume position wrong, 409 conflicts.
-4. **Reproduce at the cheapest level that still shows the bug.** Much of this stack is
-   pure and unit-testable with no DB, network, or browser — manifest parsing
-   (`stream.spec.ts`), Range math (`segmented.spec.ts` / `parseByteRange`), verdicts
-   (`playback-assessment.spec.ts`), queue rebasing (`playback-reconciliation.spec.ts`).
-   A failing `--project server` test beats clicking through the UI every time:
-   `pnpm exec vitest run --project server src/lib/server/tidal/stream.spec.ts`
-5. **Instrument only if 1–4 leave it ambiguous** (see below).
-6. **Confirm by flipping the signal.** Make the suspected cause happen and stop happening
-   on demand, and watch the observable change with it. A cause you cannot toggle is a
-   guess, and this stack punishes guesses — the embed fallback makes many wrong theories
-   look consistent with the evidence.
-7. **Fix, then lock it in with a test** that fails without the fix. Prefer extending an
-   existing `*.spec.ts` beside the module you changed.
+3. **Reproduce against the pure modules where you can.** Manifest parsing
+   (`stream.spec.ts`), Range math (`segmented.spec.ts`), verdicts
+   (`playback-assessment.spec.ts`), queue rebasing (`playback-reconciliation.spec.ts`)
+   all run with no DB, network, or browser. A green suite here is a genuine result: it
+   moves the cause up a layer rather than leaving it unlocated.
+4. **Confirm by flipping the signal** — make the suspected cause start and stop on
+   demand and watch the observable follow. This stack punishes plausible theories
+   specifically because the embed fallback makes most of them look consistent with the
+   evidence, so a cause you cannot toggle is still a guess.
 
 ## Environments
 
