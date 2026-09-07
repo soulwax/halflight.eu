@@ -15,7 +15,8 @@
 		provenance,
 		columns = ['album', 'date', 'duration'],
 		rowActions,
-		onRowActivate
+		onRowActivate,
+		rowKey
 	}: {
 		tracks: TrackSummary[];
 		contextTracks?: TrackSummary[];
@@ -23,7 +24,17 @@
 		columns?: TrackColumn[];
 		rowActions?: Snippet<[TrackSummary, number]>;
 		onRowActivate?: (track: TrackSummary, index: number) => void;
+		/**
+		 * Stable identity for a row. Defaults to position, which is safe for a
+		 * fixed listing but destroys and recreates rows when the list reorders.
+		 * Callers that hold a durable id — the queue's entry id, say — should pass
+		 * it so Svelte moves the row and keeps focus with it.
+		 */
+		rowKey?: (track: TrackSummary, index: number) => string;
 	} = $props();
+
+	const keyOf = (track: TrackSummary, index: number) =>
+		rowKey?.(track, index) ?? `${track.id}-${index}`;
 
 	const cols = $derived({
 		album: columns.includes('album'),
@@ -77,7 +88,7 @@
 		{#if rowActions}<span class="sr-only" role="columnheader">{m.track_col_actions()}</span>{/if}
 	</div>
 
-	{#each tracks as track, index (track.id + '-' + index)}
+	{#each tracks as track, index (keyOf(track, index))}
 		<TrackTableRow {track} {columns} onActivate={() => activate(track, index)}>
 			{#snippet actions()}
 				{@render rowActions?.(track, index)}

@@ -1,11 +1,37 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { ArrowDown, ArrowUp, Trash2 } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { player } from '#lib/player/player.svelte.js';
 	import { customPlaylists } from '#lib/player/customPlaylists.svelte.js';
+	import { describeQueueMove } from '#lib/player/queue-announce.js';
 	import MobileSubScreenHeader from './MobileSubScreenHeader.svelte';
 	import MobileTrackRow from './MobileTrackRow.svelte';
+
+	let announcement = $state('');
+
+	/**
+	 * Reorder, say where the entry landed, and keep the keyboard where it was.
+	 * The list is keyed by entry id, so the button moves with its row; at either
+	 * end that button becomes disabled, so focus goes to the opposite direction.
+	 */
+	async function move(entryId: string, direction: -1 | 1, event: MouseEvent) {
+		const button = event.currentTarget as HTMLButtonElement;
+		player.moveQueueItem(entryId, direction);
+
+		const moved = describeQueueMove(player.queue, entryId);
+		announcement = moved ? m.player_queue_moved(moved) : '';
+
+		await tick();
+		if (!button.isConnected) return;
+		if (!button.disabled) {
+			button.focus();
+			return;
+		}
+		const sibling = direction === -1 ? button.nextElementSibling : button.previousElementSibling;
+		if (sibling instanceof HTMLButtonElement && !sibling.disabled) sibling.focus();
+	}
 
 	function saveQueue() {
 		const tracks = player.currentTrack ? [player.currentTrack, ...player.queue] : [...player.queue];
@@ -57,7 +83,7 @@
 							type="button"
 							class="flex h-9 w-9 items-center justify-center text-(--text-muted) disabled:opacity-30"
 							disabled={i === 0}
-							onclick={() => player.moveQueueItem(entry.entryId, -1)}
+							onclick={(event) => move(entry.entryId, -1, event)}
 							aria-label={m.player_move_up()}
 						>
 							<ArrowUp size={15} />
@@ -66,7 +92,7 @@
 							type="button"
 							class="flex h-9 w-9 items-center justify-center text-(--text-muted) disabled:opacity-30"
 							disabled={i === player.queue.length - 1}
-							onclick={() => player.moveQueueItem(entry.entryId, 1)}
+							onclick={(event) => move(entry.entryId, 1, event)}
 							aria-label={m.player_move_down()}
 						>
 							<ArrowDown size={15} />
@@ -84,4 +110,5 @@
 			{/each}
 		</div>
 	{/if}
+	<p class="sr-only" role="status" aria-live="polite">{announcement}</p>
 </div>

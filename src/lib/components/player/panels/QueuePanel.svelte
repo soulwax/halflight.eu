@@ -1,9 +1,36 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { ArrowDown, ArrowUp, Trash2 } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { player } from '#lib/player/player.svelte.js';
 	import { customPlaylists } from '#lib/player/customPlaylists.svelte.js';
+	import { describeQueueMove } from '#lib/player/queue-announce.js';
 	import TrackTable from '#lib/components/music/TrackTable.svelte';
+
+	let announcement = $state('');
+
+	/**
+	 * Reorder, say where the entry landed, and keep the keyboard where it was.
+	 * Rows are keyed by entry id, so the button survives the move; when the entry
+	 * reaches an end its own control becomes disabled, and focus goes to the
+	 * opposite direction rather than falling back to the document.
+	 */
+	async function move(entryId: string, direction: -1 | 1, event: MouseEvent) {
+		const button = event.currentTarget as HTMLButtonElement;
+		player.moveQueueItem(entryId, direction);
+
+		const moved = describeQueueMove(player.queue, entryId);
+		announcement = moved ? m.player_queue_moved(moved) : '';
+
+		await tick();
+		if (!button.isConnected) return;
+		if (!button.disabled) {
+			button.focus();
+			return;
+		}
+		const sibling = direction === -1 ? button.nextElementSibling : button.previousElementSibling;
+		if (sibling instanceof HTMLButtonElement && !sibling.disabled) sibling.focus();
+	}
 
 	function saveQueue() {
 		const tracks = player.currentTrack ? [player.currentTrack, ...player.queue] : [...player.queue];
@@ -34,6 +61,7 @@
 	<TrackTable
 		tracks={player.queue}
 		columns={['album', 'date', 'duration']}
+		rowKey={(_, index) => player.queue[index]?.entryId ?? `row-${index}`}
 		onRowActivate={(_, index) => {
 			const entry = player.queue[index];
 			if (entry) player.playFromQueue(entry.entryId);
@@ -45,7 +73,7 @@
 				type="button"
 				class="q-row-btn"
 				disabled={i === 0 || !entryId}
-				onclick={() => entryId && player.moveQueueItem(entryId, -1)}
+				onclick={(event) => entryId && move(entryId, -1, event)}
 				aria-label={m.player_move_up()}
 			>
 				<ArrowUp size={13} />
@@ -54,7 +82,7 @@
 				type="button"
 				class="q-row-btn"
 				disabled={i === player.queue.length - 1 || !entryId}
-				onclick={() => entryId && player.moveQueueItem(entryId, 1)}
+				onclick={(event) => entryId && move(entryId, 1, event)}
 				aria-label={m.player_move_down()}
 			>
 				<ArrowDown size={13} />
@@ -70,6 +98,8 @@
 		{/snippet}
 	</TrackTable>
 {/if}
+
+<p class="sr-only" role="status" aria-live="polite">{announcement}</p>
 
 <style>
 	.queue-toolbar {

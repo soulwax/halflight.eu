@@ -64,4 +64,30 @@ describe('QueueScene.svelte', () => {
 		await page.getByRole('button', { name: m.player_clear_queue() }).click();
 		expect(player.queue).toEqual([]);
 	});
+
+	it('announces where a moved entry landed and keeps focus on its controls', async () => {
+		player.queue = [entry('1', 'One'), entry('2', 'Two'), entry('3', 'Three')];
+		await render(QueueScene);
+
+		const down = page.getByRole('button', { name: m.player_move_down() }).first();
+		await down.click();
+		expect(player.queue.map((t) => t.id)).toEqual(['2', '1', '3']);
+
+		await expect
+			.element(page.getByText(m.player_queue_moved({ title: 'One', position: 2, total: 3 })))
+			.toBeInTheDocument();
+		expect(document.activeElement?.getAttribute('aria-label')).toBe(m.player_move_down());
+	});
+
+	it('hands focus to the opposite control when an entry reaches an end', async () => {
+		player.queue = [entry('1', 'One'), entry('2', 'Two')];
+		await render(QueueScene);
+
+		// Move "Two" up to the top; its own Move up button becomes disabled there.
+		await page.getByRole('button', { name: m.player_move_up() }).nth(1).click();
+		expect(player.queue.map((t) => t.id)).toEqual(['2', '1']);
+
+		expect(document.activeElement?.getAttribute('aria-label')).toBe(m.player_move_down());
+		expect((document.activeElement as HTMLButtonElement | null)?.disabled).toBe(false);
+	});
 });
