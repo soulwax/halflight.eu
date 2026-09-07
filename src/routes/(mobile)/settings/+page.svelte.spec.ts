@@ -25,6 +25,17 @@ const data = {
 } as PageData;
 
 describe('mobile settings install flow', () => {
+	it('maps the stored ladder to clear mobile data choices', async () => {
+		render(SettingsPage, { data, form: undefined });
+
+		const saver = page.getByRole('radio', { name: m.mobile_quality_data_saver() });
+		const balanced = page.getByRole('radio', { name: m.mobile_quality_balanced() });
+		const best = page.getByRole('radio', { name: m.mobile_quality_best_available() });
+		await expect.element(saver).toBeInTheDocument();
+		await expect.element(balanced).toBeChecked();
+		await expect.element(best).not.toBeChecked();
+	});
+
 	it('offers browser-specific installation help until the browser makes an install prompt available', async () => {
 		render(SettingsPage, { data, form: undefined });
 

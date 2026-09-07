@@ -36,6 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Halflight Now now presents Data saver, Balanced, and Best available as clear mobile streaming
+  choices, while Now Playing continues to show the format actually delivered.
 - Halflight Now’s player and its queue, lyrics, and credits layers are now full-screen mobile
   scenes. They no longer retain the app header or tab bar, and all player/queue controls meet the
   48px touch-target contract.

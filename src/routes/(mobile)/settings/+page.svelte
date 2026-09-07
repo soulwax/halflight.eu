@@ -15,6 +15,13 @@
 	let installPrompt = $state<InstallPromptEvent | null>(null);
 	let isPromptingInstall = $state(false);
 	let isInstalled = $state(false);
+	const mobileQuality = $derived(
+		data.streamingSettings.preferredQuality === 'LOW'
+			? 'LOW'
+			: data.streamingSettings.preferredQuality === 'HIGH'
+				? 'HIGH'
+				: 'HI_RES_LOSSLESS'
+	);
 
 	function isStandalone(): boolean {
 		return (
@@ -90,29 +97,49 @@
 		{/if}
 
 		<form method="POST" action="?/saveStreamingSettings">
-			<label for="mobile-preferred-quality">
-				<span>{m.streaming_quality_label()}</span>
-				<select id="mobile-preferred-quality" name="preferredQuality">
-					<option value="LOW" selected={data.streamingSettings.preferredQuality === 'LOW'}>
-						{m.streaming_quality_low()}
-					</option>
-					<option value="HIGH" selected={data.streamingSettings.preferredQuality === 'HIGH'}>
-						{m.streaming_quality_high()}
-					</option>
-					<option
-						value="LOSSLESS"
-						selected={data.streamingSettings.preferredQuality === 'LOSSLESS'}
-					>
-						{m.streaming_quality_lossless()}
-					</option>
-					<option
+			<fieldset class="quality-choices" aria-describedby="mobile-quality-note">
+				<legend>{m.mobile_quality_mode_label()}</legend>
+				<label class:chosen={mobileQuality === 'LOW'}>
+					<input
+						type="radio"
+						name="preferredQuality"
+						value="LOW"
+						checked={mobileQuality === 'LOW'}
+						aria-label={m.mobile_quality_data_saver()}
+					/>
+					<span>
+						<strong>{m.mobile_quality_data_saver()}</strong>
+						<small>{m.mobile_quality_data_saver_description()}</small>
+					</span>
+				</label>
+				<label class:chosen={mobileQuality === 'HIGH'}>
+					<input
+						type="radio"
+						name="preferredQuality"
+						value="HIGH"
+						checked={mobileQuality === 'HIGH'}
+						aria-label={m.mobile_quality_balanced()}
+					/>
+					<span>
+						<strong>{m.mobile_quality_balanced()}</strong>
+						<small>{m.mobile_quality_balanced_description()}</small>
+					</span>
+				</label>
+				<label class:chosen={mobileQuality === 'HI_RES_LOSSLESS'}>
+					<input
+						type="radio"
+						name="preferredQuality"
 						value="HI_RES_LOSSLESS"
-						selected={data.streamingSettings.preferredQuality === 'HI_RES_LOSSLESS'}
-					>
-						{m.streaming_quality_hires()}
-					</option>
-				</select>
-			</label>
+						checked={mobileQuality === 'HI_RES_LOSSLESS'}
+						aria-label={m.mobile_quality_best_available()}
+					/>
+					<span>
+						<strong>{m.mobile_quality_best_available()}</strong>
+						<small>{m.mobile_quality_best_available_description()}</small>
+					</span>
+				</label>
+			</fieldset>
+			<p id="mobile-quality-note" class="quality-note">{m.mobile_quality_actual_note()}</p>
 
 			<label for="mobile-streaming-volume">
 				<span>{m.streaming_volume_label()}</span>
@@ -229,12 +256,57 @@
 		gap: 0.45rem;
 		font-weight: 600;
 	}
-	select,
+	fieldset {
+		min-width: 0;
+		border: 0;
+		padding: 0;
+	}
+	legend {
+		margin-bottom: 0.45rem;
+		font-weight: 600;
+	}
+	.quality-choices {
+		display: grid;
+		gap: 0.5rem;
+	}
+	.quality-choices label {
+		display: flex;
+		min-height: 3.5rem;
+		align-items: center;
+		gap: 0.75rem;
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-md);
+		background: var(--surface-canvas);
+		padding: 0.6rem 0.75rem;
+		font-weight: 400;
+	}
+	.quality-choices label.chosen {
+		border-color: var(--action);
+		background: color-mix(in oklab, var(--action) 10%, var(--surface-canvas));
+	}
+	.quality-choices input {
+		width: 1.25rem;
+		height: 1.25rem;
+		accent-color: var(--action);
+	}
+	.quality-choices strong,
+	.quality-choices small {
+		display: block;
+	}
+	.quality-choices small,
+	.quality-note {
+		color: var(--text-muted);
+		font-size: 0.8125rem;
+		font-weight: 400;
+		line-height: 1.35;
+	}
+	.quality-note {
+		margin-top: -0.5rem;
+	}
 	input[type='range'] {
 		width: 100%;
 		min-height: 3rem;
 	}
-	select,
 	button,
 	.button {
 		border: 1px solid var(--border-subtle);
@@ -306,7 +378,6 @@
 	}
 	a:focus-visible,
 	button:focus-visible,
-	select:focus-visible,
 	input:focus-visible {
 		outline: 2px solid var(--focus-ring);
 		outline-offset: 3px;
