@@ -643,7 +643,7 @@ export class PlayerState {
 	 * without delaying playback or overwhelming the metadata endpoint.
 	 */
 	private hydrateTrackMetadata(tracks: Iterable<TrackSummary>): void {
-		const unresolved = new Map<string, TrackSummary>();
+		const unresolved = new SvelteMap<string, TrackSummary>();
 		for (const track of tracks) {
 			if (needsTrackMetadata(track)) unresolved.set(track.id, track);
 		}
