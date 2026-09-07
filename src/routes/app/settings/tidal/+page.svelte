@@ -397,7 +397,7 @@
 	}
 
 	.pill-active {
-		background: var(--surface-sunken);
+		background: var(--paper);
 		color: var(--action);
 		border-color: var(--action);
 	}
@@ -411,7 +411,7 @@
 		margin-top: 1rem;
 		padding: 1.25rem;
 		border-radius: var(--radius-sm, 6px);
-		background: var(--surface-sunken);
+		background: var(--paper);
 		border: 1px solid var(--border-subtle);
 		display: flex;
 		flex-direction: column;

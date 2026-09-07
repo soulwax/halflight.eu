@@ -263,7 +263,7 @@
 	.modal-backdrop {
 		position: fixed;
 		inset: 0;
-		background: rgba(0, 0, 0, 0.75);
+		background: var(--overlay);
 		backdrop-filter: blur(4px);
 		z-index: 90;
 		animation: fadeIn 0.15s ease-out;
@@ -277,9 +277,9 @@
 		width: 90vw;
 		max-width: 34rem;
 		max-height: 85vh;
-		background: var(--surface-1);
-		border: 1px solid var(--border-color);
-		box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+		background: var(--surface);
+		border: 1px solid var(--border-subtle);
+		box-shadow: var(--shadow-float);
 		z-index: 100;
 		display: flex;
 		flex-direction: column;
@@ -291,7 +291,7 @@
 		align-items: center;
 		justify-content: space-between;
 		padding: 1.25rem 1.5rem;
-		border-bottom: 1px solid var(--border-color);
+		border-bottom: 1px solid var(--border-subtle);
 	}
 
 	.title-wrap {
@@ -343,15 +343,15 @@
 	}
 
 	.notice-error {
-		background: rgba(239, 68, 68, 0.1);
-		border-color: rgba(239, 68, 68, 0.3);
-		color: #ef4444;
+		background: var(--danger-subtle);
+		border-color: color-mix(in srgb, var(--danger) 30%, transparent);
+		color: var(--danger);
 	}
 
 	.notice-success {
-		background: rgba(34, 197, 94, 0.1);
-		border-color: rgba(34, 197, 94, 0.3);
-		color: #22c55e;
+		background: var(--success-subtle);
+		border-color: color-mix(in srgb, var(--success) 30%, transparent);
+		color: var(--success);
 	}
 
 	.loading-wrap,
@@ -373,7 +373,7 @@
 		font-size: 0.8rem;
 		color: var(--text-muted);
 		padding-bottom: 0.25rem;
-		border-bottom: 1px solid var(--border-color);
+		border-bottom: 1px solid var(--border-subtle);
 	}
 
 	.select-all-btn {
@@ -402,8 +402,8 @@
 		align-items: center;
 		gap: 0.75rem;
 		padding: 0.6rem 0.75rem;
-		border: 1px solid var(--border-color);
-		background: var(--surface-2);
+		border: 1px solid var(--border-subtle);
+		background: var(--paper);
 		cursor: pointer;
 		transition:
 			background 0.15s ease,
@@ -411,13 +411,13 @@
 	}
 
 	.playlist-item:hover:not(.is-imported) {
-		background: var(--surface-3, rgba(255, 255, 255, 0.05));
+		background: var(--paper);
 		border-color: var(--action);
 	}
 
 	.playlist-item.is-selected {
 		border-color: var(--action);
-		background: rgba(59, 130, 246, 0.08);
+		background: color-mix(in srgb, var(--action) 8%, transparent);
 	}
 
 	.playlist-item.is-imported {
@@ -438,7 +438,7 @@
 	}
 
 	.thumb-placeholder {
-		background: var(--surface-3, rgba(255, 255, 255, 0.05));
+		background: var(--paper);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -481,8 +481,8 @@
 		justify-content: flex-end;
 		gap: 0.75rem;
 		padding: 1rem 1.5rem;
-		border-top: 1px solid var(--border-color);
-		background: var(--surface-2);
+		border-top: 1px solid var(--border-subtle);
+		background: var(--paper);
 	}
 
 	@keyframes fadeIn {

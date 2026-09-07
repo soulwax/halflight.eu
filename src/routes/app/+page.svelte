@@ -245,7 +245,7 @@
 		max-width: 5.5rem;
 		aspect-ratio: 1;
 		border-radius: var(--radius-md);
-		box-shadow: 0 0.5rem 1.25rem color-mix(in srgb, #000 32%, transparent);
+		box-shadow: 0 0.5rem 1.25rem color-mix(in srgb, var(--ink) 32%, transparent);
 		object-fit: cover;
 	}
 

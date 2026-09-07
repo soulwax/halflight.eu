@@ -353,7 +353,7 @@
 		color: var(--text-primary);
 	}
 	dialog::backdrop {
-		background: rgb(0 0 0 / 65%);
+		background: var(--overlay);
 	}
 	dialog h2 {
 		font-size: 1.1rem;

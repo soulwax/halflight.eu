@@ -389,32 +389,32 @@
 	}
 
 	.pill-green {
-		background: rgba(34, 197, 94, 0.15);
-		color: #22c55e;
-		border: 1px solid rgba(34, 197, 94, 0.3);
+		background: var(--success-subtle);
+		color: var(--success);
+		border: 1px solid color-mix(in srgb, var(--success) 30%, transparent);
 	}
 
 	.pill-amber {
-		background: rgba(245, 158, 11, 0.15);
-		color: #f59e0b;
-		border: 1px solid rgba(245, 158, 11, 0.3);
+		background: var(--warning-subtle);
+		color: var(--warning);
+		border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent);
 	}
 
 	.pill-red {
-		background: rgba(239, 68, 68, 0.15);
-		color: #ef4444;
-		border: 1px solid rgba(239, 68, 68, 0.3);
+		background: var(--danger-subtle);
+		color: var(--danger);
+		border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
 	}
 
 	.pill-gray {
-		background: rgba(255, 255, 255, 0.08);
+		background: var(--paper);
 		color: var(--text-muted);
-		border: 1px solid var(--border-color);
+		border: 1px solid var(--border-subtle);
 	}
 
 	.edit-panel {
 		background: var(--surface-raised);
-		border: 1px solid var(--border-color);
+		border: 1px solid var(--border-subtle);
 		padding: 1.5rem;
 		margin-bottom: 2rem;
 		display: flex;
@@ -437,8 +437,8 @@
 
 	.edit-input,
 	.edit-textarea {
-		background: var(--surface-2);
-		border: 1px solid var(--border-color);
+		background: var(--paper);
+		border: 1px solid var(--border-subtle);
 		color: var(--text-primary);
 		padding: 0.5rem 0.75rem;
 		font-size: 0.9rem;
@@ -460,7 +460,7 @@
 		margin-top: 1rem;
 		padding: 0.6rem 1rem;
 		background: var(--surface-raised);
-		border: 1px solid var(--border-color);
+		border: 1px solid var(--border-subtle);
 		font-size: 0.85rem;
 		color: var(--action);
 	}
@@ -472,7 +472,7 @@
 	.modal-backdrop {
 		position: fixed;
 		inset: 0;
-		background: rgba(0, 0, 0, 0.75);
+		background: var(--overlay);
 		backdrop-filter: blur(4px);
 		z-index: 90;
 	}
@@ -484,9 +484,9 @@
 		transform: translate(-50%, -50%);
 		width: 90vw;
 		max-width: 28rem;
-		background: var(--surface-1);
-		border: 1px solid var(--border-color);
-		box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+		background: var(--surface);
+		border: 1px solid var(--border-subtle);
+		box-shadow: var(--shadow-float);
 		z-index: 100;
 	}
 
@@ -495,7 +495,7 @@
 		align-items: center;
 		justify-content: space-between;
 		padding: 1.25rem 1.5rem;
-		border-bottom: 1px solid var(--border-color);
+		border-bottom: 1px solid var(--border-subtle);
 	}
 
 	.modal-header h2 {
@@ -529,8 +529,8 @@
 		justify-content: flex-end;
 		gap: 0.75rem;
 		padding: 1rem 1.5rem;
-		border-top: 1px solid var(--border-color);
-		background: var(--surface-2);
+		border-top: 1px solid var(--border-subtle);
+		background: var(--paper);
 	}
 
 	.attribution {

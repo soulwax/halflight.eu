@@ -128,7 +128,7 @@
 	.modal-backdrop {
 		position: fixed;
 		inset: 0;
-		background: rgba(0, 0, 0, 0.7);
+		background: var(--overlay);
 		z-index: 150;
 		animation: fadeIn 0.15s ease;
 	}
@@ -144,7 +144,7 @@
 		border: 2px solid var(--border-strong);
 		border-radius: var(--radius-xl, 18px);
 		box-shadow:
-			0 24px 56px -8px rgba(0, 0, 0, 0.55),
+			0 24px 56px -8px rgb(6 48 100 / 45%),
 			4px 4px 0px var(--border-strong);
 		z-index: 160;
 		display: flex;

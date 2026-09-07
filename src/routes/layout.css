@@ -41,6 +41,20 @@
 	--action-contrast: #ffffff;
 	--danger: #d92057;
 	--danger-subtle: #fff0f4;
+	/* Status siblings of --danger, tuned the same way: legible on white paper,
+	   muted enough to sit beside sky selection without shouting. */
+	--success: #0e7f6b;
+	--success-subtle: #edf9f5;
+	--warning: #a86400;
+	--warning-subtle: #fff5e9;
+
+	/* Scrim over album art. Deliberately neutral rather than ink-tinted: it
+	   covers arbitrary artwork, where a blue cast reads as a colour error. */
+	--scrim: rgb(0 0 0 / 0.55);
+	--scrim-ink: #ffffff;
+	/* Dialog backdrop. Ink-tinted like the shadows, and one value — modals used
+	   to carry four different blacks between them. */
+	--overlay: rgb(6 48 100 / 0.55);
 	--focus-ring: #0d5fae;
 
 	/* ---- Geometry: one small family of soft radii. ---- */

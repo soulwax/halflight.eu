@@ -371,18 +371,18 @@
 	}
 
 	.sync-synced {
-		background: #22c55e;
-		box-shadow: 0 0 4px rgba(34, 197, 94, 0.5);
+		background: var(--success);
+		box-shadow: 0 0 4px color-mix(in srgb, var(--success) 50%, transparent);
 	}
 
 	.sync-pending {
-		background: #f59e0b;
-		box-shadow: 0 0 4px rgba(245, 158, 11, 0.5);
+		background: var(--warning);
+		box-shadow: 0 0 4px color-mix(in srgb, var(--warning) 50%, transparent);
 	}
 
 	.sync-error {
-		background: #ef4444;
-		box-shadow: 0 0 4px rgba(239, 68, 68, 0.5);
+		background: var(--danger);
+		box-shadow: 0 0 4px color-mix(in srgb, var(--danger) 50%, transparent);
 	}
 
 	.result-group {
