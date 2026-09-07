@@ -17,6 +17,8 @@ const track: TrackSummary = {
 afterEach(() => {
 	player.currentTrack = null;
 	player.isPlaying = false;
+	player.currentTime = 0;
+	player.duration = 0;
 });
 
 describe('MiniPlayer.svelte', () => {
@@ -35,6 +37,20 @@ describe('MiniPlayer.svelte', () => {
 		const link = page.getByRole('link', { name: m.now_open_full_player() });
 		await expect.element(link).toBeInTheDocument();
 		expect(link.element().getAttribute('href')).toBe('/now');
+	});
+
+	it('reflects elapsed progress as the width of a decorative bar', async () => {
+		player.currentTrack = track;
+		player.duration = 240;
+		player.currentTime = 60;
+		const { container } = render(MiniPlayer);
+
+		const fill = container.querySelector<HTMLElement>('.mini-progress-fill');
+		expect(fill).not.toBeNull();
+		expect(fill?.style.width).toBe('25%');
+
+		player.currentTime = 120;
+		await expect.poll(() => fill?.style.width).toBe('50%');
 	});
 
 	it('reflects the player playing state on its play/pause control', async () => {

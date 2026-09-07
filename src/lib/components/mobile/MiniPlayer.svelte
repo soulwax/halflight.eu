@@ -8,6 +8,11 @@
 	const track = $derived(player.currentTrack);
 	const cover = $derived(track ? (track.imageUrl ?? track.album?.imageUrl ?? null) : null);
 	const artistLine = $derived(track ? track.artists.map((artist) => artist.name).join(', ') : '');
+	const progress = $derived(
+		player.duration > 0
+			? Math.min(100, Math.max(0, (player.currentTime / player.duration) * 100))
+			: 0
+	);
 
 	function togglePlayback() {
 		haptics.tick();
@@ -17,8 +22,11 @@
 
 {#if track}
 	<div
-		class="mobile-mini-player flex h-15 shrink-0 items-center gap-3 border-t border-(--border-subtle) bg-(--surface-raised) px-3"
+		class="mobile-mini-player relative flex h-15 shrink-0 items-center gap-3 border-t border-(--border-subtle) bg-(--surface-raised) px-3"
 	>
+		<div class="mini-progress" aria-hidden="true">
+			<div class="mini-progress-fill" style:width="{progress}%"></div>
+		</div>
 		<a
 			href={resolve('/(mobile)/now')}
 			class="flex min-w-0 flex-1 items-center gap-3"
@@ -69,6 +77,19 @@
 	.mobile-mini-art {
 		border-radius: var(--radius-sm);
 		box-shadow: 0 6px 16px -10px rgb(6 48 100 / 60%);
+	}
+
+	.mini-progress {
+		position: absolute;
+		inset: 0 0 auto;
+		height: 2px;
+		overflow: hidden;
+		background: color-mix(in oklab, var(--border-subtle) 55%, transparent);
+	}
+
+	.mini-progress-fill {
+		height: 100%;
+		background: var(--action);
 	}
 
 	@media (prefers-reduced-motion: reduce) {
