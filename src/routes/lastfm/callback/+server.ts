@@ -3,7 +3,7 @@ import { exchangeLastfmToken, LastfmError } from '#lib/server/lastfm';
 import { clearLastfmOAuthCookie, readLastfmOAuthCookie } from '../oauth-cookie';
 
 export const GET: RequestHandler = async (event) => {
-	if (!event.locals.user) redirect(302, '/sign-in');
+	if (!event.locals.user || !event.locals.isAdministrator) redirect(302, '/sign-in');
 	const linkedUserId = readLastfmOAuthCookie(event.cookies);
 	clearLastfmOAuthCookie(event.cookies);
 	if (linkedUserId !== event.locals.user.id) {

@@ -54,6 +54,7 @@
 	"tidal_device_auth_desc": "Authorize Hi-Res streaming playback (FLAC / AAC / Lossless) using TIDAL Device Authentication.",
 	"tidal_device_auth_btn": "Authorize Full Playback",
 	"tidal_device_auth_waiting": "Waiting for authorization on TIDAL...",
+	"tidal_device_auth_error": "TIDAL playback authorization could not be started. Please try again.",
 	"tidal_device_auth_prompt": "To enable full lossless streaming, open TIDAL and confirm the code:",
 	"tidal_device_auth_open": "Open link.tidal.com",
 	"tidal_device_auth_success": "Device authorization successful! Full Hi-Res playback is now enabled.",

@@ -34,6 +34,23 @@ describe('POST /api/tidal/device-auth', () => {
 		});
 	});
 
+	it('rejects a signed-in non-owner with 401', async () => {
+		await expect(POST(makeEvent({ id: 'someone-else' }, false))).rejects.toMatchObject({
+			status: 401
+		});
+	});
+
+	it('returns a safe error when the device authorization request fails', async () => {
+		mocks.requestDeviceAuthorization.mockRejectedValueOnce(
+			new Error('provider response includes private detail')
+		);
+
+		const response = await POST(makeEvent());
+
+		expect(response.status).toBe(500);
+		expect(await response.json()).toEqual({ error: 'device_authorization_unavailable' });
+	});
+
 	it('returns device code and verification URL', async () => {
 		mocks.requestDeviceAuthorization.mockResolvedValueOnce({
 			deviceCode: 'code-123',

@@ -19,9 +19,9 @@ import { GET } from './+server';
 
 const fetchMock = vi.fn();
 
-function makeEvent(user: { id: string } | null = { id: 'u1' }) {
+function makeEvent(user: { id: string } | null = { id: 'u1' }, isAdministrator = true) {
 	return {
-		locals: { user },
+		locals: { user, isAdministrator },
 		request: { json: vi.fn() },
 		fetch: fetchMock,
 		cookies: {} as unknown as Cookies
@@ -38,6 +38,12 @@ describe('GET /api/favorites', () => {
 
 	it('rejects unauthenticated requests with 401', async () => {
 		await expect(GET(makeEvent(null))).rejects.toMatchObject({
+			status: 401
+		});
+	});
+
+	it('rejects signed-in non-owners with 401', async () => {
+		await expect(GET(makeEvent({ id: 'someone-else' }, false))).rejects.toMatchObject({
 			status: 401
 		});
 	});

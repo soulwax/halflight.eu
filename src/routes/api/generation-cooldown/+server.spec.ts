@@ -8,9 +8,13 @@ vi.mock('#lib/server/taste/cooldown', () => ({
 
 import { POST } from './+server';
 
-function event(body: string, user: { id: string } | null = { id: 'owner-1' }) {
+function event(
+	body: string,
+	user: { id: string } | null = { id: 'owner-1' },
+	isAdministrator = true
+) {
 	return {
-		locals: { user },
+		locals: { user, isAdministrator },
 		request: new Request('http://localhost/api/generation-cooldown', {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
@@ -28,6 +32,15 @@ describe('POST /api/generation-cooldown', () => {
 		await expect(POST(event('{"trackIds":["track-1"]}', null))).rejects.toMatchObject({
 			status: 401
 		});
+	});
+
+	it('rejects a signed-in non-owner before persistence', async () => {
+		await expect(
+			POST(event('{"trackIds":["track-1"]}', { id: 'someone-else' }, false))
+		).rejects.toMatchObject({
+			status: 401
+		});
+		expect(mocks.recordGenerationCooldown).not.toHaveBeenCalled();
 	});
 
 	it('rejects malformed or oversized requests before persistence', async () => {

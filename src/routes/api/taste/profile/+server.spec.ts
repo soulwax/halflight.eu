@@ -25,15 +25,19 @@ const profile = {
 	updatedAt: '2026-09-04T00:00:00.000Z'
 };
 
-function eventFor(user = true): Parameters<typeof GET>[0] {
+function eventFor(user = true, isAdministrator = true): Parameters<typeof GET>[0] {
 	return {
-		locals: user ? { user: { id: 'owner-1' } } : {},
+		locals: user ? { user: { id: 'owner-1' }, isAdministrator } : { isAdministrator: false },
 		fetch: vi.fn(),
 		cookies: {}
 	} as unknown as Parameters<typeof GET>[0];
 }
 
 describe('/api/taste/profile', () => {
+	it('rejects signed-in non-owners', async () => {
+		await expect(GET(eventFor(true, false))).rejects.toMatchObject({ status: 401 });
+	});
+
 	it('returns only the signed-in owner profile', async () => {
 		mocks.getTasteProfile.mockResolvedValue(profile);
 

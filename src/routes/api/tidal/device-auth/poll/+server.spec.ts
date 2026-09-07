@@ -18,9 +18,13 @@ vi.mock('#lib/server/tidal', async (importOriginal) => {
 
 import { POST } from './+server';
 
-function makeEvent(body: object, user: { id: string } | null = { id: 'admin-1' }) {
+function makeEvent(
+	body: object,
+	user: { id: string } | null = { id: 'admin-1' },
+	isAdministrator = true
+) {
 	return {
-		locals: { user, isAdministrator: true },
+		locals: { user, isAdministrator },
 		request: new Request('http://localhost:3000/api/tidal/device-auth/poll', {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
@@ -35,6 +39,26 @@ describe('POST /api/tidal/device-auth/poll', () => {
 	beforeEach(() => {
 		mocks.pollDeviceToken.mockReset();
 		mocks.writePlaybackRecord.mockReset();
+	});
+
+	it('rejects a signed-in non-owner before polling the playback token', async () => {
+		await expect(
+			POST(makeEvent({ deviceCode: 'dev-123' }, { id: 'someone-else' }, false))
+		).rejects.toMatchObject({
+			status: 401
+		});
+		expect(mocks.pollDeviceToken).not.toHaveBeenCalled();
+	});
+
+	it('returns a safe failure state when polling fails', async () => {
+		mocks.pollDeviceToken.mockRejectedValueOnce(
+			new Error('provider response includes private detail')
+		);
+
+		const response = await POST(makeEvent({ deviceCode: 'dev-123' }));
+
+		expect(response.status).toBe(400);
+		expect(await response.json()).toEqual({ status: 'error' });
 	});
 
 	it('returns pending while waiting', async () => {

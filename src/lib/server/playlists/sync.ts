@@ -326,8 +326,8 @@ export async function pushPlaylist(
 			lastSyncedAt: new Date(),
 			syncError: null
 		});
-	} catch (err) {
-		const errorMessage = err instanceof Error ? err.message : 'Unknown error pushing playlist';
+	} catch {
+		const errorMessage = 'Unable to sync this playlist with TIDAL.';
 		result.error = errorMessage;
 
 		// Mark error state in DB

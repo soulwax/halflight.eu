@@ -54,6 +54,7 @@
 	"tidal_device_auth_desc": "Autorisiere Hi-Res Streaming-Wiedergabe (FLAC / AAC / Lossless) über TIDAL-Geräteautorisierung.",
 	"tidal_device_auth_btn": "Vollständige Wiedergabe autorisieren",
 	"tidal_device_auth_waiting": "Warte auf Bestätigung in TIDAL...",
+	"tidal_device_auth_error": "Die TIDAL-Wiedergabeautorisierung konnte nicht gestartet werden. Bitte versuche es erneut.",
 	"tidal_device_auth_prompt": "Um volles Lossless-Streaming zu aktivieren, öffne TIDAL und bestätige den Code:",
 	"tidal_device_auth_open": "link.tidal.com öffnen",
 	"tidal_device_auth_success": "Geräteautorisierung erfolgreich! Hi-Res-Wiedergabe ist jetzt aktiv.",

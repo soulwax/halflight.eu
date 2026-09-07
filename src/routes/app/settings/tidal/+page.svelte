@@ -31,8 +31,7 @@
 		try {
 			const res = await fetch('/api/tidal/device-auth', { method: 'POST' });
 			if (!res.ok) {
-				const err = await res.json().catch(() => ({}));
-				throw new Error(err.error || 'Failed to request device authorization');
+				throw new Error('device_authorization_unavailable');
 			}
 
 			deviceData = await res.json();
@@ -43,10 +42,10 @@
 			const intervalMs = Math.max((deviceData?.interval || 2) * 1000, 2000);
 
 			pollTimer = setInterval(() => void pollDeviceAuthorization(), intervalMs);
-		} catch (err) {
+		} catch {
 			deviceLoading = false;
 			deviceStatus = 'error';
-			deviceError = err instanceof Error ? err.message : 'Unknown error';
+			deviceError = m.tidal_device_auth_error();
 		}
 	}
 
@@ -68,9 +67,15 @@
 			} else if (pollData.status === 'expired') {
 				if (pollTimer) clearInterval(pollTimer);
 				deviceStatus = 'expired';
+			} else if (pollData.status === 'error') {
+				if (pollTimer) clearInterval(pollTimer);
+				deviceStatus = 'error';
+				deviceError = m.tidal_device_auth_error();
 			}
 		} catch {
-			// continue polling
+			if (pollTimer) clearInterval(pollTimer);
+			deviceStatus = 'error';
+			deviceError = m.tidal_device_auth_error();
 		}
 	}
 </script>

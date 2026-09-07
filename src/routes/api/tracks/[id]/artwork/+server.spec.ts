@@ -10,9 +10,9 @@ vi.mock('#lib/server/tidal', async (importOriginal) => {
 import type { Cookies } from '@sveltejs/kit';
 import { GET } from './+server';
 
-function makeEvent(user: { id: string } | null = { id: 'owner-1' }) {
+function makeEvent(user: { id: string } | null = { id: 'owner-1' }, isAdministrator = true) {
 	return {
-		locals: { user },
+		locals: { user, isAdministrator },
 		params: { id: '12345' },
 		fetch: vi.fn(),
 		cookies: {} as unknown as Cookies
@@ -28,6 +28,12 @@ describe('GET /api/tracks/[id]/artwork', () => {
 
 	it('rejects unauthenticated requests', async () => {
 		await expect(GET(makeEvent(null))).rejects.toMatchObject({ status: 401 });
+	});
+
+	it('rejects signed-in non-owners', async () => {
+		await expect(GET(makeEvent({ id: 'someone-else' }, false))).rejects.toMatchObject({
+			status: 401
+		});
 	});
 
 	it('proxies a valid image without exposing the CDN to the resolver response', async () => {

@@ -19,9 +19,13 @@ import { GET } from './+server';
 
 const fetchMock = vi.fn();
 
-function makeEvent(trackId = '12345', user: { id: string } | null = { id: 'u1' }) {
+function makeEvent(
+	trackId = '12345',
+	user: { id: string } | null = { id: 'u1' },
+	isAdministrator = true
+) {
 	return {
-		locals: { user },
+		locals: { user, isAdministrator },
 		params: { id: trackId },
 		fetch: fetchMock,
 		cookies: {} as unknown as Cookies

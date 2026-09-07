@@ -21,7 +21,7 @@ function isAuthProblem(cause: unknown): boolean {
 
 /** Server-resolved stream metadata. Audio bytes are available through the matching `/audio` route. */
 export const GET: RequestHandler = async (event) => {
-	if (!event.locals.user) error(401, 'Unauthorized');
+	if (!event.locals.user || !event.locals.isAdministrator) error(401, 'Unauthorized');
 	const trackId = event.params.id;
 	if (!trackId) error(400, 'Track ID required');
 
@@ -68,16 +68,12 @@ export const GET: RequestHandler = async (event) => {
 			return json({ error: 'track_unavailable', requiresFullAuth: false }, { status: 404 });
 		}
 		if (cause instanceof TidalQualityDeniedError) {
-			return json(
-				{ error: 'plan_no_streaming', message: cause.message, requiresFullAuth: false },
-				{ status: 403 }
-			);
+			return json({ error: 'plan_no_streaming', requiresFullAuth: false }, { status: 403 });
 		}
 		if (isAuthProblem(cause)) {
 			return json(
 				{
 					error: 'playback_unauthorized',
-					message: cause instanceof Error ? cause.message : 'Full playback authorization required.',
 					requiresFullAuth: true
 				},
 				{ status: 403 }

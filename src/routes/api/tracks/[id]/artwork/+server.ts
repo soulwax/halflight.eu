@@ -11,7 +11,7 @@ const IMAGE_HEADERS = {
  * CDN address server-side while allowing ordinary `<img>` caching in the UI.
  */
 export const GET: RequestHandler = async (event) => {
-	if (!event.locals.user) error(401, 'Unauthorized');
+	if (!event.locals.user || !event.locals.isAdministrator) error(401, 'Unauthorized');
 	const trackId = event.params.id;
 	if (!trackId) error(400, 'Track ID required');
 

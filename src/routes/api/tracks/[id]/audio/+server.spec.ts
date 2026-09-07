@@ -27,9 +27,9 @@ import { GET } from './+server';
 // SvelteKit's wrapper forwards request context that the media CDN 403s on.
 const fetchMock = vi.fn();
 
-function event(range?: string) {
+function event(range?: string, isAdministrator = true) {
 	return {
-		locals: { user: { id: 'owner-1' } },
+		locals: { user: { id: 'owner-1' }, isAdministrator },
 		params: { id: '123' },
 		url: new URL('https://syn.test/api/tracks/123/audio'),
 		request: new Request('https://syn.test/api/tracks/123/audio', {
@@ -80,6 +80,11 @@ describe('GET /api/tracks/[id]/audio', () => {
 			expect.objectContaining({ headers: expect.any(Headers) })
 		);
 		expect(new Headers(fetchMock.mock.calls[0][1].headers).get('Range')).toBe('bytes=0-1');
+	});
+
+	it('does not resolve media for a signed-in non-owner', async () => {
+		await expect(GET(event(undefined, false))).rejects.toMatchObject({ status: 401 });
+		expect(mocks.resolveTrackStream).not.toHaveBeenCalled();
 	});
 
 	it('does not disguise a removed catalogue asset as a playback-Link failure', async () => {

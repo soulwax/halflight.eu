@@ -20,7 +20,7 @@ const CDN_HEADERS = { Accept: '*/*', 'User-Agent': 'TIDAL_ANDROID/1039 okhttp/3.
  * Range forwarding preserves seeking in the native HTML audio player.
  */
 export const GET: RequestHandler = async (event) => {
-	if (!event.locals.user) error(401, 'Unauthorized');
+	if (!event.locals.user || !event.locals.isAdministrator) error(401, 'Unauthorized');
 	const trackId = event.params.id;
 	if (!trackId) error(400, 'Track ID required');
 
@@ -37,7 +37,9 @@ export const GET: RequestHandler = async (event) => {
 		});
 	} catch (cause) {
 		if (isTrackUnavailableForPlayback(cause)) error(404, 'Track unavailable from TIDAL');
-		if (cause instanceof TidalQualityDeniedError) error(403, cause.message);
+		if (cause instanceof TidalQualityDeniedError) {
+			error(403, 'The requested playback quality is unavailable for this track.');
+		}
 		if (
 			cause instanceof TidalPlaybackNotLinkedError ||
 			cause instanceof TidalAuthError ||
@@ -91,18 +93,12 @@ export const GET: RequestHandler = async (event) => {
 	}
 
 	if (!upstream.ok && upstream.status !== 206) {
-		const snippet = await upstream
-			.clone()
-			.text()
-			.then((t) => t.slice(0, 200))
-			.catch(() => '');
 		log.error('audio proxy: CDN returned an error', {
 			trackId,
 			cdnHost,
-			status: upstream.status,
-			body: snippet
+			status: upstream.status
 		});
-		error(502, `CDN error: ${upstream.status}`);
+		error(502, 'CDN unavailable');
 	}
 
 	const upstreamMimeType = upstream.headers.get('content-type');

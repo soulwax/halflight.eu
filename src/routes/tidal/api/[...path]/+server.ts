@@ -31,7 +31,9 @@ function safeErrorResponse(status: number, message: string): Response {
 }
 
 const handler: RequestHandler = async (event) => {
-	if (!event.locals.user) return safeErrorResponse(401, 'Not authenticated.');
+	if (!event.locals.user || !event.locals.isAdministrator) {
+		return safeErrorResponse(401, 'Not authenticated.');
+	}
 
 	const path = event.params.path ?? '';
 	const method = event.request.method;

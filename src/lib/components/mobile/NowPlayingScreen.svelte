@@ -27,6 +27,15 @@
 	let scrubTime = $state<number | null>(null);
 	const displayedTime = $derived(scrubTime ?? player.currentTime);
 
+	// A scrub preview belongs to the track being touched. If playback advances
+	// before the pointer is released, discard the stale preview rather than
+	// rendering or committing its position against the next track.
+	const trackId = $derived(track?.id);
+	$effect(() => {
+		void trackId;
+		scrubTime = null;
+	});
+
 	function previewSeek(event: Event): void {
 		const next = Number((event.currentTarget as HTMLInputElement).value);
 		if (Number.isFinite(next)) scrubTime = next;

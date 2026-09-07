@@ -13,7 +13,7 @@ import type { RequestHandler } from './$types';
 const TIDAL_LOGIN_ORIGIN = new URL(TIDAL_AUTHORIZE_URL).origin;
 
 export const GET: RequestHandler = (event) => {
-	if (!event.locals.user) redirect(302, '/sign-in');
+	if (!event.locals.user || !event.locals.isAdministrator) redirect(302, '/sign-in');
 
 	let configured = true;
 	try {

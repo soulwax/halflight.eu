@@ -4,7 +4,7 @@ import { auth } from '#lib/server/auth';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = (event) => {
-	if (event.locals.user) redirect(302, '/app');
+	if (event.locals.user && event.locals.isAdministrator) redirect(302, '/app');
 	return {};
 };
 

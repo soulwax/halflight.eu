@@ -11,7 +11,7 @@ const RADIO_INCLUDE = ['albums', 'artists'];
  * receives the TrackSummary contract it needs to start a listening session.
  */
 export const GET: RequestHandler = async (event) => {
-	if (!event.locals.user) error(401, 'Unauthorized');
+	if (!event.locals.user || !event.locals.isAdministrator) error(401, 'Unauthorized');
 
 	const trackId = event.params.id;
 	if (!trackId || trackId.length > MAX_TRACK_ID_LENGTH) error(400, 'Track ID required');

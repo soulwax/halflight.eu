@@ -21,15 +21,24 @@ function redact(fields: Fields): Fields {
 
 function serialiseError(value: unknown): unknown {
 	if (value instanceof Error) {
-		return { name: value.name, message: value.message };
+		// Error text frequently originates with a provider, database, or request
+		// parser. Its class is enough to group failures without retaining a raw
+		// response, secret, or personal data in operational logs.
+		return { name: value.name };
 	}
 	return value;
+}
+
+function serialiseFields(fields: Fields): Fields {
+	return Object.fromEntries(
+		Object.entries(redact(fields)).map(([key, value]) => [key, serialiseError(value)])
+	);
 }
 
 type Level = 'error' | 'warn' | 'info';
 
 function emit(level: Level, message: string, fields?: Fields): void {
-	const safe = fields ? redact(fields) : undefined;
+	const safe = fields ? serialiseFields(fields) : undefined;
 	if (dev) {
 		console[level](`[${level}] ${message}`, safe ?? '');
 		return;
@@ -39,9 +48,7 @@ function emit(level: Level, message: string, fields?: Fields): void {
 			level,
 			message,
 			time: new Date().toISOString(),
-			...(safe
-				? Object.fromEntries(Object.entries(safe).map(([k, v]) => [k, serialiseError(v)]))
-				: {})
+			...(safe ?? {})
 		})
 	);
 }

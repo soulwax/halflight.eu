@@ -110,4 +110,23 @@ describe('NowPlayingScreen.svelte', () => {
 		element.dispatchEvent(new Event('change', { bubbles: true }));
 		expect(player.currentTime).toBe(120);
 	});
+
+	it('discards a scrub preview when playback advances to another track', async () => {
+		player.currentTrack = track;
+		player.duration = track.duration ?? 0;
+		player.currentTime = 12;
+		render(NowPlayingScreen);
+		const slider = page.getByRole('slider', { name: m.player_seek() });
+		const element = slider.element() as HTMLInputElement;
+		element.value = '120';
+		element.dispatchEvent(new Event('input', { bubbles: true }));
+		await expect.element(page.getByText('2:00')).toBeInTheDocument();
+
+		player.currentTrack = { ...track, id: '10', title: 'Stigmata Martyr', duration: 203 };
+		player.duration = 203;
+		player.currentTime = 8;
+
+		await expect.element(slider).toHaveValue('8');
+		await expect.element(page.getByText('0:08')).toBeInTheDocument();
+	});
 });

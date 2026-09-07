@@ -2,7 +2,7 @@ import { error, json, type RequestHandler } from '@sveltejs/kit';
 import { pollDeviceToken, writePlaybackRecord } from '#lib/server/tidal';
 
 export const POST: RequestHandler = async (event) => {
-	if (!event.locals.user) {
+	if (!event.locals.user || !event.locals.isAdministrator) {
 		error(401, 'Unauthorized');
 	}
 
@@ -28,8 +28,7 @@ export const POST: RequestHandler = async (event) => {
 		}
 
 		return json({ status: result.status });
-	} catch (err) {
-		const message = err instanceof Error ? err.message : 'Error polling device token';
-		return json({ status: 'error', error: message }, { status: 400 });
+	} catch {
+		return json({ status: 'error' }, { status: 400 });
 	}
 };

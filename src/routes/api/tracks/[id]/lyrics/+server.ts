@@ -2,7 +2,7 @@ import { error, json, type RequestHandler } from '@sveltejs/kit';
 import { fetchTrackLyrics, getConnectionStatus } from '#lib/server/tidal';
 
 export const GET: RequestHandler = async (event) => {
-	if (!event.locals.user) {
+	if (!event.locals.user || !event.locals.isAdministrator) {
 		error(401, 'Unauthorized');
 	}
 
@@ -25,8 +25,7 @@ export const GET: RequestHandler = async (event) => {
 		});
 
 		return json(lyricsData);
-	} catch (err) {
-		const message = err instanceof Error ? err.message : 'Lyrics not found';
-		return json({ error: 'lyrics_unavailable', message }, { status: 404 });
+	} catch {
+		return json({ error: 'lyrics_unavailable' }, { status: 404 });
 	}
 };

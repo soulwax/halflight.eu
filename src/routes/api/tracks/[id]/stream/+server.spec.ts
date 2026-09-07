@@ -24,9 +24,13 @@ import type { Cookies } from '@sveltejs/kit';
 import { TidalApiError } from '#lib/server/tidal';
 import { GET } from './+server';
 
-function event(trackId = '123', user: { id: string } | null = { id: 'owner-1' }) {
+function event(
+	trackId = '123',
+	user: { id: string } | null = { id: 'owner-1' },
+	isAdministrator = true
+) {
 	return {
-		locals: { user },
+		locals: { user, isAdministrator },
 		params: { id: trackId },
 		url: new URL(`https://syn.test/api/tracks/${trackId}/stream`),
 		fetch: vi.fn(),

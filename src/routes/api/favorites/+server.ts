@@ -3,7 +3,7 @@ import { fetchUserFavorites, getConnectionStatus } from '#lib/server/tidal';
 
 export const GET: RequestHandler = async (event) => {
 	const user = event.locals.user;
-	if (!user) {
+	if (!user || !event.locals.isAdministrator) {
 		throw error(401, 'Unauthorized');
 	}
 
@@ -26,12 +26,12 @@ export const GET: RequestHandler = async (event) => {
 			connected: true,
 			favorites
 		});
-	} catch (err) {
+	} catch {
 		return json(
 			{
 				connected: true,
 				favorites: null,
-				error: err instanceof Error ? err.message : 'failed_to_fetch_favorites'
+				error: 'favorites_unavailable'
 			},
 			{ status: 502 }
 		);

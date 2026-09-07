@@ -38,7 +38,8 @@ export async function getConnectionStatus(store?: TokenRowStore): Promise<TidalC
 	} catch (err) {
 		if (err instanceof TidalConfigError) {
 			configured = false;
-			configError = err.message;
+			configError = 'TIDAL is not configured on this server.';
+			log.error('tidal: configuration is invalid', { cause: err });
 		} else {
 			throw err;
 		}
@@ -78,12 +79,13 @@ export async function getConnectionStatus(store?: TokenRowStore): Promise<TidalC
 			playbackScopes: playback?.scope
 		};
 	} catch (err) {
+		log.error('tidal: could not read browse token', { cause: err });
 		return {
 			connected: false,
 			configured,
 			hasPlayback: Boolean(playback),
 			playbackScopes: playback?.scope,
-			error: err instanceof Error ? err.message : 'Unknown error reading the token record.'
+			error: 'The saved TIDAL connection could not be read.'
 		};
 	}
 }

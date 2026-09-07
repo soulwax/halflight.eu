@@ -45,6 +45,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- TIDAL playlist imports now request nested track artist and album relationships, avoiding the
+  provider's `GENERIC_REQUEST_ERROR` response for playlists larger than its first page.
+- Owner-scoped TIDAL, playback, taste, Last.fm, and listening-shell paths now reject signed-in
+  non-owner accounts; failure, sync, and log paths no longer expose raw upstream details.
+- Mobile Now Playing clears an unfinished seek preview when the track changes, preventing a stale
+  position from appearing on the next track.
+- TIDAL Device Authorization stops polling and presents a localised retry state when its request
+  fails or expires.
 - Playlist import now uses TIDAL's authenticated v2 collection, follows complete item pagination,
   preserves source order and duplicates, and defers stream checks instead of rewriting playlists.
 - TIDAL playlist import failures and malformed import requests now return recoverable in-app results

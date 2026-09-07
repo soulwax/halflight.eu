@@ -38,10 +38,11 @@ describe('log', () => {
 		});
 	});
 
-	it('serialises Error values to name and message only', () => {
-		log.error('boom', { cause: new TypeError('bad input') });
+	it('retains an Error class without writing its message', () => {
+		log.error('boom', { cause: new TypeError('provider response includes private detail') });
 
 		const line = JSON.parse(spy.mock.calls[0][0] as string);
-		expect(line.cause).toEqual({ name: 'TypeError', message: 'bad input' });
+		expect(line.cause).toEqual({ name: 'TypeError' });
+		expect(spy.mock.calls[0][0]).not.toContain('provider response includes private detail');
 	});
 });
