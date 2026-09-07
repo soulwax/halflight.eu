@@ -1,7 +1,7 @@
 import { isPublicMobileRoute } from '#lib/mobile/routes';
 import type { LayoutServerLoad } from './$types';
 
-export const load: LayoutServerLoad = async (event) => {
+export const load: LayoutServerLoad = (event) => {
 	// The offline fallback is deliberately public: it must be safe to precache
 	// and render during a cold launch without serialising a signed-in account or
 	// any listening-session data into the response.
