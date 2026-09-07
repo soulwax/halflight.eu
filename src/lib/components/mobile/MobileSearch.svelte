@@ -14,6 +14,7 @@
 	import { onDestroy, onMount } from 'svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { player } from '#lib/player/player.svelte.js';
+	import MobileScreenHeader from './MobileScreenHeader.svelte';
 	import MobileTrackRow from './MobileTrackRow.svelte';
 
 	import type {
@@ -219,9 +220,7 @@
 <svelte:window onpopstate={restoreFromUrl} />
 
 <section class="mobile-search" aria-labelledby="mobile-search-title">
-	<header>
-		<h1 id="mobile-search-title">{m.now_search_heading()}</h1>
-	</header>
+	<MobileScreenHeader heading={m.now_search_heading()} headingId="mobile-search-title" />
 
 	<form
 		role="search"
@@ -356,18 +355,11 @@
 
 <style>
 	.mobile-search {
-		padding: 1.5rem;
+		padding: clamp(1.5rem, 6vw, 2.5rem) clamp(1.25rem, 5vw, 2rem) clamp(2.5rem, 9vw, 4rem);
 	}
-	header {
-		margin-bottom: 1rem;
-	}
-	h1,
 	h2,
 	p {
 		margin: 0;
-	}
-	h1 {
-		font-size: 1.5rem;
 	}
 	h2 {
 		margin-bottom: 0.5rem;

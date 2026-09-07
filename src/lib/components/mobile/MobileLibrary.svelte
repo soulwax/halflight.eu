@@ -5,6 +5,7 @@
 	import { player } from '#lib/player/player.svelte.js';
 	import type { MobileLibraryData } from '#lib/tidal/mobile-library';
 	import type { TrackSummary } from '#lib/tidal/models';
+	import MobileScreenHeader from './MobileScreenHeader.svelte';
 	import MobileTrackRow from './MobileTrackRow.svelte';
 
 	let { data }: { data: MobileLibraryData } = $props();
@@ -48,10 +49,11 @@
 {/snippet}
 
 <section class="mobile-library" aria-labelledby="mobile-library-title">
-	<header>
-		<h1 id="mobile-library-title">{m.now_tab_library()}</h1>
-		<p>{m.now_library_description()}</p>
-	</header>
+	<MobileScreenHeader
+		heading={m.now_tab_library()}
+		lead={m.now_library_description()}
+		headingId="mobile-library-title"
+	/>
 	<nav class="filters" aria-label={m.now_tab_library()}>
 		<a href={`${libraryHref}?tab=saved`} aria-current={data.tab === 'saved' ? 'page' : undefined}>
 			{m.now_library_saved()}
@@ -179,24 +181,16 @@
 	.mobile-library {
 		max-width: 44rem;
 		margin-inline: auto;
-		padding: 1.5rem 1rem;
+		padding: clamp(1.5rem, 6vw, 2.5rem) clamp(1.25rem, 5vw, 2rem) clamp(2.5rem, 9vw, 4rem);
 	}
-	h1,
 	h2,
 	p {
 		margin: 0;
 	}
-	h1 {
-		font-size: 1.75rem;
-	}
-	header p,
 	.copy p,
 	.notice,
 	.attribution {
 		color: var(--text-muted);
-	}
-	header p {
-		margin-top: 0.4rem;
 	}
 	.filters,
 	.actions,
@@ -206,7 +200,7 @@
 		gap: 0.5rem;
 	}
 	.filters {
-		margin-block: 1.5rem 0.5rem;
+		margin-block: 0 0.5rem;
 	}
 	.filters a {
 		flex: 1;
