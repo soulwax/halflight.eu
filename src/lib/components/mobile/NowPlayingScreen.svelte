@@ -3,6 +3,7 @@
 	import { fade } from 'svelte/transition';
 	import {
 		BadgeInfo,
+		ChevronDown,
 		Disc,
 		ListMusic,
 		Loader2,
@@ -70,33 +71,42 @@
 	<h1 class="sr-only">{m.now_playing_heading()}</h1>
 
 	{#if track}
-		<div class="flex justify-end gap-2">
+		<div class="flex items-center justify-between gap-2">
 			<a
-				href={resolve('/(mobile)/now/lyrics')}
-				class="flex h-10 w-10 items-center justify-center text-(--text-primary)"
-				aria-label={m.now_lyrics_open()}
+				href={resolve('/(mobile)/home')}
+				class="flex h-12 w-12 items-center justify-center text-(--text-primary)"
+				aria-label={m.now_close_player()}
 			>
-				<ScrollText size={20} />
+				<ChevronDown size={24} aria-hidden="true" />
 			</a>
-			<a
-				href={resolve('/(mobile)/now/credits')}
-				class="flex h-10 w-10 items-center justify-center text-(--text-primary)"
-				aria-label={m.now_credits_open()}><BadgeInfo size={20} /></a
-			>
-			<a
-				href={resolve('/(mobile)/now/queue')}
-				class="relative flex h-10 w-10 items-center justify-center text-(--text-primary)"
-				aria-label={m.now_queue_open()}
-			>
-				<ListMusic size={20} />
-				{#if player.queueCount > 0}
-					<span
-						class="absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-(--action) px-1 text-[0.6rem] leading-none text-(--action-contrast)"
-					>
-						{player.queueCount}
-					</span>
-				{/if}
-			</a>
+			<div class="flex gap-2">
+				<a
+					href={resolve('/(mobile)/now/lyrics')}
+					class="flex h-12 w-12 items-center justify-center text-(--text-primary)"
+					aria-label={m.now_lyrics_open()}
+				>
+					<ScrollText size={20} />
+				</a>
+				<a
+					href={resolve('/(mobile)/now/credits')}
+					class="flex h-12 w-12 items-center justify-center text-(--text-primary)"
+					aria-label={m.now_credits_open()}><BadgeInfo size={20} /></a
+				>
+				<a
+					href={resolve('/(mobile)/now/queue')}
+					class="relative flex h-12 w-12 items-center justify-center text-(--text-primary)"
+					aria-label={m.now_queue_open()}
+				>
+					<ListMusic size={20} />
+					{#if player.queueCount > 0}
+						<span
+							class="absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-(--action) px-1 text-[0.6rem] leading-none text-(--action-contrast)"
+						>
+							{player.queueCount}
+						</span>
+					{/if}
+				</a>
+			</div>
 		</div>
 
 		<div class="flex flex-1 flex-col items-center justify-center gap-6">

@@ -54,16 +54,16 @@
 
 	<div class="flex items-center justify-between border-b border-(--border-subtle) pb-2">
 		<span class="text-xs tracking-wide text-(--text-muted) uppercase">{m.player_next_up()}</span>
-		<div class="flex items-center gap-3">
+		<div class="flex items-center gap-1">
 			{#if player.queueCount || player.currentTrack}
-				<button type="button" class="text-sm text-(--action)" onclick={saveQueue}>
+				<button type="button" class="min-h-12 px-2 text-sm text-(--action)" onclick={saveQueue}>
 					{m.player_save_queue()}
 				</button>
 			{/if}
 			{#if player.queueCount}
 				<button
 					type="button"
-					class="text-sm text-(--text-muted)"
+					class="min-h-12 px-2 text-sm text-(--text-muted)"
 					onclick={() => player.clearQueue()}
 				>
 					{m.player_clear_queue()}
@@ -81,7 +81,7 @@
 					{#snippet actions()}
 						<button
 							type="button"
-							class="flex h-9 w-9 items-center justify-center text-(--text-muted) disabled:opacity-30"
+							class="flex h-12 w-12 items-center justify-center text-(--text-muted) disabled:opacity-30"
 							disabled={i === 0}
 							onclick={(event) => move(entry.entryId, -1, event)}
 							aria-label={m.player_move_up()}
@@ -90,7 +90,7 @@
 						</button>
 						<button
 							type="button"
-							class="flex h-9 w-9 items-center justify-center text-(--text-muted) disabled:opacity-30"
+							class="flex h-12 w-12 items-center justify-center text-(--text-muted) disabled:opacity-30"
 							disabled={i === player.queue.length - 1}
 							onclick={(event) => move(entry.entryId, 1, event)}
 							aria-label={m.player_move_down()}
@@ -99,7 +99,7 @@
 						</button>
 						<button
 							type="button"
-							class="flex h-9 w-9 items-center justify-center text-(--text-muted)"
+							class="flex h-12 w-12 items-center justify-center text-(--text-muted)"
 							onclick={() => player.removeFromQueue(entry.entryId)}
 							aria-label={m.player_remove_from_queue()}
 						>

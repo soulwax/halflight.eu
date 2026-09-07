@@ -63,6 +63,9 @@ describe('NowPlayingScreen.svelte', () => {
 		await expect
 			.element(page.getByRole('link', { name: m.now_lyrics_open() }))
 			.toHaveAttribute('href', '/now/lyrics');
+		await expect
+			.element(page.getByRole('link', { name: m.now_close_player() }))
+			.toHaveAttribute('href', '/home');
 	});
 
 	it('disables previous/next when there is nowhere to go', async () => {

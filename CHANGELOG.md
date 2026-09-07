@@ -36,6 +36,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Halflight Now’s player and its queue, lyrics, and credits layers are now full-screen mobile
+  scenes. They no longer retain the app header or tab bar, and all player/queue controls meet the
+  48px touch-target contract.
 - Halflight now uses one portrait mark across its browser icon, installed mobile app, desktop and
   mobile headers, and sign-in surface.
 - The Halflight light system is now the only palette in the app: status colours, dialog backdrops, and artwork scrims come from semantic tokens instead of Tailwind defaults and stray blacks, and the leftover dark-theme surface names that silently dropped their backgrounds are gone.

@@ -413,6 +413,7 @@
 	"now_nav_label": "Halflight Now-Navigation",
 	"now_open_full_player": "Wiedergabe öffnen",
 	"now_playing_heading": "Aktuelle Wiedergabe",
+	"now_close_player": "Aktuelle Wiedergabe schließen",
 	"now_idle_message": "Es wird gerade nichts abgespielt.",
 	"now_idle_cta": "Zur Startseite",
 	"now_home_heading": "Start",

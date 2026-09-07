@@ -81,18 +81,20 @@
 </script>
 
 <div class="mobile-shell flex min-h-dvh flex-col bg-(--surface-canvas) text-(--text-primary)">
-	<header class="mobile-app-header relative flex shrink-0 items-center justify-center">
-		<a class="mobile-brand" href={resolve('/(mobile)/home')} aria-label={m.brand_name()}>
-			<img src="/icons/halflight-64.png" alt="" class="h-8 w-8" />
-		</a>
-		<a
-			href={resolve('/(mobile)/settings')}
-			class="mobile-header-action absolute right-1 flex h-12 w-12 items-center justify-center text-(--text-muted) hover:text-(--text-primary) focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-(--focus-ring)"
-			aria-label={m.mobile_settings_title()}
-		>
-			<Settings size={20} aria-hidden="true" />
-		</a>
-	</header>
+	{#if !isOnNowRoute}
+		<header class="mobile-app-header relative flex shrink-0 items-center justify-center">
+			<a class="mobile-brand" href={resolve('/(mobile)/home')} aria-label={m.brand_name()}>
+				<img src="/icons/halflight-64.png" alt="" class="h-8 w-8" />
+			</a>
+			<a
+				href={resolve('/(mobile)/settings')}
+				class="mobile-header-action absolute right-1 flex h-12 w-12 items-center justify-center text-(--text-muted) hover:text-(--text-primary) focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-(--focus-ring)"
+				aria-label={m.mobile_settings_title()}
+			>
+				<Settings size={20} aria-hidden="true" />
+			</a>
+		</header>
+	{/if}
 	<main
 		bind:this={mainElement}
 		id="main-content"
@@ -102,8 +104,8 @@
 	</main>
 	{#if !isOnNowRoute}
 		<MiniPlayer />
+		<NowTabBar currentPath={page.url.pathname} />
 	{/if}
-	<NowTabBar currentPath={page.url.pathname} />
 </div>
 
 <style>
