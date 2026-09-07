@@ -11,7 +11,7 @@
 	import { player } from '#lib/player/player.svelte.js';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { Disc3, Home, Library, Radio, Search, Sparkles, Waves } from '@lucide/svelte';
+	import { BookOpen, Disc3, Home, Library, Radio, Search, Sparkles, Waves } from '@lucide/svelte';
 	import type { Snippet } from 'svelte';
 	import { onMount } from 'svelte';
 	import type { LayoutData } from './$types';
@@ -25,7 +25,8 @@
 		{ href: localizeHref(resolve('/app/library')), label: m.nav_library(), icon: Library },
 		{ href: localizeHref(resolve('/app/mixes')), label: m.nav_mixes(), icon: Disc3 },
 		{ href: localizeHref(resolve('/app/settings/taste')), label: m.nav_taste(), icon: Waves },
-		{ href: localizeHref(resolve('/app/settings/lastfm')), label: m.nav_lastfm(), icon: Radio }
+		{ href: localizeHref(resolve('/app/settings/lastfm')), label: m.nav_lastfm(), icon: Radio },
+		{ href: localizeHref(resolve('/app/api')), label: m.nav_api(), icon: BookOpen }
 	]);
 
 	$effect(() => {

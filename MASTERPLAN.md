@@ -271,8 +271,9 @@ A good day with Halflight:
    opaque scoring the owner cannot inspect.
 8. **Nothing is written to TIDAL without review.** A generated set is provisional until the owner
    explicitly saves it.
-9. **Keep an escape hatch for development.** The raw API console stays behind a development-only or
-   explicit advanced gate, read-only by default.
+9. **Keep an escape hatch for development.** The owner-only `/app/api` workbench documents the
+   curated Syn API surface and can run only explicit read-only same-origin requests. Mutation
+   endpoints show their contracts but remain product actions, not an arbitrary request builder.
 10. **Build accessible components before visual polish.** Keyboard access, focus, semantics, reduced
     motion, and contrast are acceptance criteria, not cleanup.
 11. **Design from the Apple Music north star.** Calm hierarchy, album and artist primacy, and an
