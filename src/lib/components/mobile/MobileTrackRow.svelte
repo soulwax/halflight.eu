@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { Disc } from '@lucide/svelte';
+	import { m } from '#lib/paraglide/messages.js';
 	import type { TrackSummary } from '#lib/tidal/models';
 
 	let {
@@ -14,7 +15,13 @@
 	} = $props();
 
 	const cover = $derived(track.imageUrl ?? track.album?.imageUrl ?? null);
-	const artistLine = $derived(track.artists.map((artist) => artist.name).join(', '));
+	const title = $derived(track.title === track.id ? m.track_unavailable_title() : track.title);
+	const artistLine = $derived(
+		track.artists
+			.filter((artist) => !artist.id || artist.name !== artist.id)
+			.map((artist) => artist.name)
+			.join(', ')
+	);
 </script>
 
 <div class="mobile-track-row">
@@ -27,7 +34,7 @@
 			{/if}
 		</span>
 		<span class="mobile-track-copy">
-			<span class="mobile-track-title">{track.title}</span>
+			<span class="mobile-track-title">{title}</span>
 			{#if artistLine}
 				<span class="mobile-track-artist">{artistLine}</span>
 			{/if}

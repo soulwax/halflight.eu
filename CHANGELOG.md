@@ -55,6 +55,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Queue rows now use a localised unavailable label instead of exposing an unresolved TIDAL track,
+  artist, or album identifier while live metadata is recovered.
 - Restored and synchronised queues now hydrate legacy identifier-only tracks in bounded batches,
   so queue and history rows resolve to their real TIDAL metadata without delaying playback.
 - PM2 reloads now apply pending database migrations before rebuilding, preventing playback-state

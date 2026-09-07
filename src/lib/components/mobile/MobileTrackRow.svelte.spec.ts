@@ -3,6 +3,7 @@ import { createRawSnippet } from 'svelte';
 import { describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import MobileTrackRow from './MobileTrackRow.svelte';
+import { m } from '#lib/paraglide/messages.js';
 import type { TrackSummary } from '#lib/tidal/models';
 
 const track: TrackSummary = {
@@ -35,5 +36,20 @@ describe('MobileTrackRow.svelte', () => {
 		});
 
 		await expect.element(page.getByRole('button', { name: 'Remove' })).toBeInTheDocument();
+	});
+
+	it('hides unresolved provider identifiers until live metadata arrives', async () => {
+		render(MobileTrackRow, {
+			track: {
+				kind: 'track',
+				id: '9',
+				title: '9',
+				artists: [{ id: 'a1', name: 'a1' }]
+			},
+			onActivate: () => {}
+		});
+
+		await expect.element(page.getByText(m.track_unavailable_title())).toBeInTheDocument();
+		expect(document.body.textContent).not.toContain('a1');
 	});
 });

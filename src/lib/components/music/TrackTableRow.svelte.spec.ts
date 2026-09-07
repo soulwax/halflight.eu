@@ -63,4 +63,22 @@ describe('TrackTableRow.svelte', () => {
 		});
 		await expect.element(page.getByText('—').first()).toBeInTheDocument();
 	});
+
+	it('does not expose unresolved provider identifiers as track metadata', async () => {
+		render(TrackTableRow, {
+			track: {
+				kind: 'track',
+				id: '55',
+				title: '55',
+				artists: [{ id: 'a1', name: 'a1' }],
+				album: { id: 'al1', title: 'al1' }
+			},
+			columns: ['album', 'date'],
+			onActivate: () => {}
+		});
+
+		await expect.element(page.getByText(m.track_unavailable_title())).toBeInTheDocument();
+		expect(document.body.textContent).not.toContain('a1');
+		expect(document.body.textContent).not.toContain('al1');
+	});
 });

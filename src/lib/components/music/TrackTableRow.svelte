@@ -30,7 +30,13 @@
 	});
 	const cover = $derived(track.imageUrl ?? track.album?.imageUrl ?? resolvedCover);
 	const releaseYear = $derived(formatReleaseDate(track.album?.releaseDate));
-	const artistLine = $derived(track.artists ?? []);
+	const title = $derived(track.title === track.id ? m.track_unavailable_title() : track.title);
+	const artistLine = $derived(
+		track.artists.filter((artist) => !artist.id || artist.name !== artist.id)
+	);
+	const albumTitle = $derived(
+		track.album && track.album.title !== track.album.id ? track.album.title : null
+	);
 
 	$effect(() => {
 		if ((cover && !imageError) || coverLookupAttempted) return;
@@ -70,16 +76,16 @@
 	</span>
 
 	<span class="tt-main" role="cell">
-		<a class="tt-title" href={resolve('/app/tracks/[id]', { id: track.id })}>{track.title}</a>
+		<a class="tt-title" href={resolve('/app/tracks/[id]', { id: track.id })}>{title}</a>
 		<span class="tt-artists">
 			{#each artistLine as artist, i (artist.id || i)}
 				{#if artist.id}<a href={resolve('/app/artists/[id]', { id: artist.id })}>{artist.name}</a
 					>{:else}<span>{artist.name}</span>{/if}{#if i < artistLine.length - 1},
 				{/if}
 			{/each}
-			{#if track.album && (cols.album || cols.date)}
+			{#if albumTitle && (cols.album || cols.date)}
 				<span class="tt-sub-album">
-					· <span>{track.album.title}</span>{#if releaseYear}
+					· <span>{albumTitle}</span>{#if releaseYear}
 						({releaseYear}){/if}
 				</span>
 			{/if}
@@ -88,10 +94,10 @@
 
 	{#if cols.album}
 		<span class="tt-album tt-hide-narrow" role="cell">
-			{#if track.album?.id}
-				<a href={resolve('/app/albums/[id]', { id: track.album.id })}>{track.album.title}</a>
-			{:else if track.album}
-				<span>{track.album.title}</span>
+			{#if track.album?.id && albumTitle}
+				<a href={resolve('/app/albums/[id]', { id: track.album.id })}>{albumTitle}</a>
+			{:else if albumTitle}
+				<span>{albumTitle}</span>
 			{:else}
 				<span class="tt-dash">—</span>
 			{/if}
