@@ -10,6 +10,9 @@ describe('AppHeader.svelte', () => {
 		// Logo links to root when unauthenticated
 		const logoLink = page.getByRole('link', { name: 'Halflight' });
 		await expect.element(logoLink).toHaveAttribute('href', '/');
+		await expect
+			.element(page.getByRole('img', { name: 'Halflight' }))
+			.toHaveAttribute('src', '/icons/halflight-64.png');
 
 		// Login button links to /sign-in
 		const loginLink = page.getByRole('link', { name: 'Sign in' });

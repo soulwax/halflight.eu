@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { LogIn, LogOut, Settings, Shield } from '@lucide/svelte';
 	import HeaderSearch from '#lib/components/app/HeaderSearch.svelte';
-	import synLogo from '#lib/assets/syn-logo.svg';
 	import { m } from '#lib/paraglide/messages.js';
 
 	interface Props {
@@ -26,7 +25,7 @@
 			class="brand-mark flex items-center transition-opacity hover:opacity-75 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--focus-ring)]"
 			aria-label={m.brand_name()}
 		>
-			<img src={synLogo} alt={m.brand_name()} class="h-6 w-auto sm:h-7" />
+			<img src="/icons/halflight-64.png" alt={m.brand_name()} class="h-7 w-7 sm:h-8 sm:w-8" />
 		</a>
 	</div>
 

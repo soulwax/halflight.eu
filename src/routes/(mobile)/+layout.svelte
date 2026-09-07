@@ -7,7 +7,6 @@
 	import { SvelteMap } from 'svelte/reactivity';
 	import { player } from '#lib/player/player.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
-	import synLogo from '#lib/assets/syn-logo.svg';
 	import MiniPlayer from '#lib/components/mobile/MiniPlayer.svelte';
 	import NowTabBar from '#lib/components/mobile/NowTabBar.svelte';
 	import {
@@ -81,7 +80,7 @@
 <div class="mobile-shell flex min-h-dvh flex-col bg-(--surface-canvas) text-(--text-primary)">
 	<header class="mobile-app-header relative flex shrink-0 items-center justify-center">
 		<a class="mobile-brand" href={resolve('/(mobile)/home')} aria-label={m.brand_name()}>
-			<img src={synLogo} alt="" class="h-6 w-auto" />
+			<img src="/icons/halflight-64.png" alt="" class="h-8 w-8" />
 		</a>
 		<a
 			href={resolve('/(mobile)/settings')}

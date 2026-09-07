@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { m } from '#lib/paraglide/messages.js';
-	import synLogo from '#lib/assets/syn-logo.svg';
 	import type { ActionData } from './$types';
 
 	let { form }: { form: ActionData } = $props();
@@ -15,7 +14,7 @@
 
 <main class="auth-page">
 	<section class="auth-card" aria-labelledby="sign-in-title">
-		<img class="brand-logo" src={synLogo} alt={m.brand_name()} />
+		<img class="brand-logo" src="/icons/halflight-128.png" alt={m.brand_name()} />
 		<h1 id="sign-in-title">{m.sign_in_title()}</h1>
 		<p class="intro">{m.sign_in_subtitle()}</p>
 
