@@ -9,17 +9,17 @@
 		Trash2
 	} from '@lucide/svelte';
 
-	import SongCard from '#lib/components/music/SongCard.svelte';
+	import MediaCard from '#lib/components/music/MediaCard.svelte';
 	import PlaylistImportModal from '#lib/components/music/PlaylistImportModal.svelte';
-	import { customPlaylists } from '#lib/player/customPlaylists.svelte';
-	import { m } from '#lib/paraglide/messages.js';
+	import SongCard from '#lib/components/music/SongCard.svelte';
+	import StateCard from '#lib/components/music/StateCard.svelte';
 	import Button from '#lib/components/ui/Button.svelte';
 	import SectionHeader from '#lib/components/ui/SectionHeader.svelte';
-	import MediaCard from '#lib/components/music/MediaCard.svelte';
-	import StateCard from '#lib/components/music/StateCard.svelte';
+	import { m } from '#lib/paraglide/messages.js';
+	import { customPlaylists } from '#lib/player/customPlaylists.svelte';
+	import type { TrackSummary } from '#lib/tidal/models';
 	import { resolve } from '$app/paths';
 	import type { PageData } from './$types';
-	import type { TrackSummary } from '#lib/tidal/models';
 
 	let { data }: { data: PageData } = $props();
 
@@ -91,16 +91,16 @@
 				{#each customPlaylists.playlists as playlist (playlist.id)}
 					<article class="custom-card">
 						<div class="card-top">
-							<ListMusic size={22} class="text-[var(--action)]" />
+							<ListMusic size={22} class="text-(--action)" />
 							<div class="min-w-0 flex-1">
 								<a
-									class="block truncate hover:text-[var(--action)] hover:underline"
+									class="block truncate hover:text-(--action) hover:underline"
 									href={resolve('/app/playlists/[id]', { id: playlist.id })}
 								>
 									<strong class="truncate">{playlist.title}</strong>
 								</a>
 								<div class="card-meta-row">
-									<span class="font-mono text-xs text-[var(--text-muted)]"
+									<span class="font-mono text-xs text-(--text-muted)"
 										>{playlist.items.length} tracks</span
 									>
 									{#if playlist.syncStatus === 'synced'}
