@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Halflight Now’s layered screens — lyrics, credits, and queue — now share one sub-screen header: a consistent back control, heading focus target, and current-track context line.
 - Halflight Now search and library now share one editorial screen masthead with the home surface: display heading, hairline rule, and the same responsive page rhythm.
 - Reframed Syn around the mobile-first Halflight light system: deep-blue ink, paper surfaces, sky selection, and restrained blush editorial accents now carry the desktop shell, player, and mobile chrome.
 - Reworked the Listening Room’s desktop hierarchy around a compact, recognisable docked player,

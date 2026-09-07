@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { ChevronLeft, Loader2 } from '@lucide/svelte';
+	import { Loader2 } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { player } from '#lib/player/player.svelte.js';
+	import MobileSubScreenHeader from './MobileSubScreenHeader.svelte';
 	type Credit = { type: string; contributors: Array<{ name: string }> };
 	let credits = $state<Credit[] | null>(null);
 	let status = $state<'loading' | 'ready' | 'unavailable' | 'empty'>('loading');
@@ -34,15 +35,13 @@
 </script>
 
 <section class="mobile-credits" aria-labelledby="mobile-credits-title">
-	<header>
-		<a href={resolve('/(mobile)/now')} aria-label={m.now_credits_back()}
-			><ChevronLeft size={20} /></a
-		>
-		<div>
-			<h1 id="mobile-credits-title">{m.now_credits_title()}</h1>
-			{#if track}<p>{track.title}</p>{/if}
-		</div>
-	</header>
+	<MobileSubScreenHeader
+		backHref={resolve('/(mobile)/now')}
+		backLabel={m.now_credits_back()}
+		heading={m.now_credits_title()}
+		subtitle={track?.title}
+		headingId="mobile-credits-title"
+	/>
 	{#if status === 'loading'}<p class="state" role="status">
 			<Loader2 size={20} class="animate-spin" />{m.now_credits_loading()}
 		</p>
@@ -59,31 +58,10 @@
 <style>
 	.mobile-credits {
 		min-height: 100%;
-		padding: 1rem 1.25rem 2rem;
+		padding: clamp(1rem, 4vw, 1.5rem) clamp(1.25rem, 5vw, 2rem) clamp(2rem, 8vw, 3rem);
 	}
-	header {
-		display: flex;
-		align-items: center;
-		gap: 1rem;
-		margin-bottom: 2rem;
-	}
-	header a {
-		display: grid;
-		width: 3rem;
-		height: 3rem;
-		place-items: center;
-		color: var(--text-primary);
-	}
-	h1,
 	p {
 		margin: 0;
-	}
-	h1 {
-		font-size: 1.25rem;
-	}
-	header p {
-		color: var(--text-muted);
-		font-size: 0.85rem;
 	}
 	dl {
 		margin: 0;

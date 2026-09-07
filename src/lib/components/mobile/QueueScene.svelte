@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { ArrowDown, ArrowUp, ChevronLeft, Trash2 } from '@lucide/svelte';
+	import { ArrowDown, ArrowUp, Trash2 } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { player } from '#lib/player/player.svelte.js';
 	import { customPlaylists } from '#lib/player/customPlaylists.svelte.js';
+	import MobileSubScreenHeader from './MobileSubScreenHeader.svelte';
 	import MobileTrackRow from './MobileTrackRow.svelte';
 
 	function saveQueue() {
@@ -18,16 +19,12 @@
 </script>
 
 <div class="flex h-full flex-col px-4 py-4">
-	<div class="flex items-center gap-2 pb-2">
-		<a
-			href={resolve('/(mobile)/now')}
-			class="flex h-10 w-10 items-center justify-center text-(--text-primary)"
-			aria-label={m.now_queue_back()}
-		>
-			<ChevronLeft size={20} />
-		</a>
-		<h1 class="text-lg font-semibold text-(--text-primary)">{m.player_queue()}</h1>
-	</div>
+	<MobileSubScreenHeader
+		backHref={resolve('/(mobile)/now')}
+		backLabel={m.now_queue_back()}
+		heading={m.player_queue()}
+		subtitle={player.currentTrack?.title}
+	/>
 
 	<div class="flex items-center justify-between border-b border-(--border-subtle) pb-2">
 		<span class="text-xs tracking-wide text-(--text-muted) uppercase">{m.player_next_up()}</span>

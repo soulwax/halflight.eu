@@ -1,23 +1,22 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { ChevronLeft, Loader2 } from '@lucide/svelte';
+	import { Loader2 } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { formatClock } from '#lib/format';
 	import { player } from '#lib/player/player.svelte.js';
+	import MobileSubScreenHeader from './MobileSubScreenHeader.svelte';
 
 	const track = $derived(player.currentTrack);
 </script>
 
 <section class="mobile-lyrics" aria-labelledby="mobile-lyrics-title">
-	<header>
-		<a href={resolve('/(mobile)/now')} aria-label={m.now_lyrics_back()}>
-			<ChevronLeft size={20} aria-hidden="true" />
-		</a>
-		<div>
-			<h1 id="mobile-lyrics-title">{m.player_lyrics()}</h1>
-			{#if track}<p>{track.title}</p>{/if}
-		</div>
-	</header>
+	<MobileSubScreenHeader
+		backHref={resolve('/(mobile)/now')}
+		backLabel={m.now_lyrics_back()}
+		heading={m.player_lyrics()}
+		subtitle={track?.title}
+		headingId="mobile-lyrics-title"
+	/>
 
 	{#if !track}
 		<p class="empty">{m.now_idle_message()}</p>
@@ -49,31 +48,10 @@
 <style>
 	.mobile-lyrics {
 		min-height: 100%;
-		padding: 1rem 1.25rem 2rem;
+		padding: clamp(1rem, 4vw, 1.5rem) clamp(1.25rem, 5vw, 2rem) clamp(2rem, 8vw, 3rem);
 	}
-	header {
-		display: flex;
-		align-items: center;
-		gap: 1rem;
-		margin-bottom: 2rem;
-	}
-	header a {
-		display: grid;
-		width: 3rem;
-		height: 3rem;
-		place-items: center;
-		color: var(--text-primary);
-	}
-	h1,
 	p {
 		margin: 0;
-	}
-	h1 {
-		font-size: 1.25rem;
-	}
-	header p {
-		color: var(--text-muted);
-		font-size: 0.85rem;
 	}
 	.cues {
 		display: grid;
@@ -102,8 +80,7 @@
 		color: var(--action);
 		font-weight: 600;
 	}
-	.cues button:focus-visible,
-	header a:focus-visible {
+	.cues button:focus-visible {
 		outline: 2px solid var(--focus-ring);
 		outline-offset: 3px;
 	}
