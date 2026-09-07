@@ -16,7 +16,7 @@
 		SkipForward
 	} from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
-	import { formatClock } from '#lib/format';
+	import { formatClock, formatReleaseDate } from '#lib/format';
 	import { player } from '#lib/player/player.svelte.js';
 	import { haptics } from '#lib/player/haptics.js';
 
@@ -24,6 +24,10 @@
 	const RepeatIcon = $derived(player.repeatMode === 'one' ? Repeat1 : Repeat);
 	const cover = $derived(track ? (track.imageUrl ?? track.album?.imageUrl ?? null) : null);
 	const artistLine = $derived(track ? track.artists.map((artist) => artist.name).join(', ') : '');
+	const releaseYear = $derived(formatReleaseDate(track?.album?.releaseDate));
+	const albumLine = $derived(
+		track?.album ? `${track.album.title}${releaseYear ? ` · ${releaseYear}` : ''}` : ''
+	);
 	let scrubTime = $state<number | null>(null);
 	const displayedTime = $derived(scrubTime ?? player.currentTime);
 
@@ -125,6 +129,9 @@
 				<p class="truncate text-xl font-semibold text-(--text-primary)">{track.title}</p>
 				{#if artistLine}
 					<p class="truncate text-sm text-(--text-muted)">{artistLine}</p>
+				{/if}
+				{#if albumLine}
+					<p class="truncate text-sm text-(--text-muted)">{albumLine}</p>
 				{/if}
 				{#if track.provenance || player.qualityLabel}
 					<p class="mt-2 text-xs text-(--text-muted)">

@@ -1,7 +1,7 @@
 import { getTextDirection } from '#lib/paraglide/runtime';
 import { paraglideMiddleware } from '#lib/paraglide/server';
-import { getUserStatus, isAdministrator, isFirstAdministrator } from '#lib/paraglide/server/admin.ts';
-import { auth } from '#lib/paraglide/server/auth.ts';
+import { getUserStatus, isAdministrator, isFirstAdministrator } from '#lib/server/admin';
+import { auth } from '#lib/server/auth';
 import { building } from '$app/env';
 import type { Handle } from '@sveltejs/kit/hooks';
 import { sequence } from '@sveltejs/kit/hooks';

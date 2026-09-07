@@ -2,6 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { Disc, Loader2, Pause, Play } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
+	import { formatReleaseDate } from '#lib/format';
 	import { player } from '#lib/player/player.svelte.js';
 	import type { TrackSummary } from '#lib/tidal/models';
 
@@ -9,6 +10,10 @@
 
 	const cover = $derived(track.imageUrl ?? track.album?.imageUrl ?? null);
 	const artistLine = $derived(track.artists.map((a) => a.name).join(', '));
+	const releaseYear = $derived(formatReleaseDate(track.album?.releaseDate));
+	const albumLine = $derived(
+		track.album ? `${track.album.title}${releaseYear ? ` · ${releaseYear}` : ''}` : ''
+	);
 </script>
 
 <div class="identity">
@@ -39,6 +44,7 @@
 		<a class="title" href={resolve('/app/tracks/[id]', { id: track.id })}>{track.title}</a>
 		<span class="sub">
 			{#if artistLine}<span class="artists">{artistLine}</span>{/if}
+			{#if albumLine}<span class="album" title={albumLine}>{albumLine}</span>{/if}
 			{#if player.qualityLabel}
 				<span class="badge badge-tier-{player.qualityTier}">{player.qualityLabel}</span>
 			{/if}

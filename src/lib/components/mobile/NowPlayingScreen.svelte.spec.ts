@@ -12,7 +12,12 @@ const track: TrackSummary = {
 	title: 'Bela Lugosi Is Dead',
 	duration: 542,
 	artists: [{ id: 'a1', name: 'Bauhaus' }],
-	album: { id: 'al1', title: 'Press the Eject', imageUrl: 'https://img.test/cover.jpg' }
+	album: {
+		id: 'al1',
+		title: 'Press the Eject',
+		releaseDate: '1982-01-01',
+		imageUrl: 'https://img.test/cover.jpg'
+	}
 };
 
 afterEach(() => {
@@ -46,6 +51,7 @@ describe('NowPlayingScreen.svelte', () => {
 			.toBeInTheDocument();
 		await expect.element(page.getByText('Bela Lugosi Is Dead')).toBeInTheDocument();
 		await expect.element(page.getByText('Bauhaus')).toBeInTheDocument();
+		await expect.element(page.getByText('Press the Eject · 1982')).toBeInTheDocument();
 		await expect.element(page.getByRole('slider', { name: m.player_seek() })).toBeInTheDocument();
 		await expect
 			.element(page.getByRole('button', { name: m.player_previous() }))

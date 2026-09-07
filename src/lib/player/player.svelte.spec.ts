@@ -397,6 +397,56 @@ describe('PlayerState', () => {
 		await vi.waitFor(() => expect(player.currentTrack?.imageUrl).toBe('https://img.test/c.jpg'));
 	});
 
+	it('hydrates an identifier-only resumed track with live display metadata', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn((url: string) => {
+				if (String(url).endsWith('/metadata')) {
+					return Promise.resolve(
+						new Response(
+							JSON.stringify({
+								track: {
+									kind: 'track',
+									id: 'track-1',
+									title: 'Bela Lugosi Is Dead',
+									artists: [{ id: 'artist-1', name: 'Bauhaus' }],
+									album: {
+										id: 'album-1',
+										title: 'Press the Eject',
+										releaseDate: '1982-01-01'
+									}
+								}
+							}),
+							{ status: 200 }
+						)
+					);
+				}
+				return Promise.reject(new Error('offline'));
+			})
+		);
+
+		const player = new PlayerState();
+		player.restorePlaybackState({
+			currentTrack: {
+				kind: 'track',
+				id: 'track-1',
+				title: 'track-1',
+				artists: [{ id: 'artist-1', name: 'artist-1' }]
+			},
+			queue: [],
+			history: [],
+			currentTime: 0
+		});
+
+		await vi.waitFor(() => expect(player.currentTrack?.title).toBe('Bela Lugosi Is Dead'));
+		expect(player.currentTrack?.artists).toEqual([{ id: 'artist-1', name: 'Bauhaus' }]);
+		expect(player.currentTrack?.album).toEqual({
+			id: 'album-1',
+			title: 'Press the Eject',
+			releaseDate: '1982-01-01'
+		});
+	});
+
 	it('does not fetch a cover when the track already has artwork', async () => {
 		const fetchSpy = vi.fn((_url: string) => Promise.reject(new Error('offline')));
 		vi.stubGlobal('fetch', fetchSpy);

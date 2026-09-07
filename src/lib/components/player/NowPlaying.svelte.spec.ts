@@ -10,17 +10,23 @@ const track: TrackSummary = {
 	id: '9',
 	title: 'Bela Lugosi Is Dead',
 	artists: [{ id: 'a1', name: 'Bauhaus' }],
-	album: { id: 'al1', title: 'Press the Eject', imageUrl: 'https://img.test/cover.jpg' }
+	album: {
+		id: 'al1',
+		title: 'Press the Eject',
+		releaseDate: '1982-01-01',
+		imageUrl: 'https://img.test/cover.jpg'
+	}
 };
 
 describe('NowPlaying.svelte', () => {
-	it('shows a linked title, the artist line and the play/cover control', async () => {
+	it('shows a linked title, artist and album context, and the play/cover control', async () => {
 		render(NowPlaying, { track });
 
 		const title = page.getByRole('link', { name: 'Bela Lugosi Is Dead' });
 		await expect.element(title).toBeInTheDocument();
 		expect(title.element().getAttribute('href')).toBe('/app/tracks/9');
 		await expect.element(page.getByText('Bauhaus')).toBeInTheDocument();
+		await expect.element(page.getByText('Press the Eject · 1982')).toBeInTheDocument();
 		await expect
 			.element(page.getByRole('button', { name: m.player_play_track() }))
 			.toBeInTheDocument();

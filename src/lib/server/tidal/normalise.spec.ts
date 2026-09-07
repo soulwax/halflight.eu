@@ -122,6 +122,27 @@ describe('TIDAL display normalisers', () => {
 		});
 	});
 
+	it('keeps a full included track when TIDAL repeats it as a bare identifier', () => {
+		expect(
+			normaliseSearchResults({
+				data: {
+					id: 'search-1',
+					type: 'searchResults',
+					relationships: { tracks: { data: [{ id: 'track-1', type: 'tracks' }] } }
+				},
+				included: [
+					{ id: 'track-1', type: 'tracks', attributes: { title: 'Complete track' } },
+					{ id: 'track-1', type: 'tracks' }
+				]
+			})
+		).toEqual({
+			tracks: [{ kind: 'track', id: 'track-1', title: 'Complete track', artists: [] }],
+			albums: [],
+			artists: [],
+			playlists: []
+		});
+	});
+
 	it('preserves title and name metadata exactly, with an id fallback for missing attributes', () => {
 		expect(
 			normaliseArtist({ id: 'artist-2', type: 'artists', attributes: { title: 'MiXeD Case' } })
@@ -156,7 +177,22 @@ describe('TIDAL display normalisers', () => {
 	it('rejects malformed or mismatched resources instead of throwing', () => {
 		expect(normaliseTrack({ id: 'album-1', type: 'albums' })).toBeNull();
 		expect(normaliseTrack({ id: 1, type: 'tracks' })).toBeNull();
+		expect(normaliseTrack({ id: 'track-1', type: 'tracks', attributes: {} })).toBeNull();
 		expect(normaliseArtist(null)).toBeNull();
+	});
+
+	it('does not turn unresolved artist and album identifiers into player copy', () => {
+		expect(
+			normaliseTrack({
+				id: 'track-1',
+				type: 'tracks',
+				attributes: { title: 'Known track' },
+				relationships: {
+					artists: { data: [{ id: 'artist-1', type: 'artists' }] },
+					albums: { data: [{ id: 'album-1', type: 'albums' }] }
+				}
+			})
+		).toEqual({ kind: 'track', id: 'track-1', title: 'Known track', artists: [] });
 	});
 
 	it('normalises a track detail compound document without exposing raw API fields', () => {

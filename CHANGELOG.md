@@ -47,6 +47,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Restored player sessions now resolve incomplete track metadata live, so opaque provider IDs no
+  longer remain in the title, artist, album, or release-year display.
 - On narrow Listening Room layouts, the bottom navigation now occupies the shell's reserved footer
   row instead of covering the docked player and attribution footer.
 - TIDAL playlist imports now request nested track artist and album relationships, avoiding the

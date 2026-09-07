@@ -170,14 +170,26 @@ function normaliseArtistReference(resource: ResourceLike): ArtistReference {
 	return { id: resource.id, name: resourceTitle(resource) };
 }
 
-function normaliseAlbumReference(resource: ResourceLike): AlbumReference {
+/**
+ * Track display data must come from an actual provider attribute. Relationship
+ * identifiers are useful for resolving included resources, but they are never
+ * suitable copy for a listener-facing artist or album line.
+ */
+function normaliseTrackArtistReference(resource: ResourceLike): ArtistReference | null {
+	const name = readAttribute(resource, ['name', 'title']);
+	return name ? { id: resource.id, name } : null;
+}
+
+function normaliseTrackAlbumReference(resource: ResourceLike): AlbumReference | null {
+	const title = readAttribute(resource, ['title', 'name']);
+	if (!title) return null;
+	const image = imageUrl(resource);
+	const releaseDate = readAttribute(resource, ['releaseDate', 'release_date']);
 	return {
 		id: resource.id,
-		title: resourceTitle(resource),
-		...(imageUrl(resource) ? { imageUrl: imageUrl(resource) } : {}),
-		...(readAttribute(resource, ['releaseDate', 'release_date'])
-			? { releaseDate: readAttribute(resource, ['releaseDate', 'release_date']) }
-			: {})
+		title,
+		...(image ? { imageUrl: image } : {}),
+		...(releaseDate ? { releaseDate } : {})
 	};
 }
 
@@ -188,10 +200,17 @@ export function normaliseTrack(
 ): TrackSummary | null {
 	const resource = readResource(value);
 	if (!resource || resource.type !== 'tracks') return null;
+	const title = readAttribute(resource, ['title', 'name']);
+	// Never turn an unresolved JSON:API linkage into a visible track named
+	// after its opaque provider ID. The caller may retry with the appropriate
+	// include path or fetch the specific track detail instead.
+	if (!title) return null;
 	const album = relatedResources(resource, 'albums', included)[0];
 
 	// 1. Artists: from relationships or fallback to attributes
-	let artists = relatedResources(resource, 'artists', included).map(normaliseArtistReference);
+	let artists = relatedResources(resource, 'artists', included)
+		.map(normaliseTrackArtistReference)
+		.filter((artist): artist is ArtistReference => artist !== null);
 	if (!artists.length) {
 		const rawArtists = resource.attributes.artists ?? resource.attributes.artist;
 		if (Array.isArray(rawArtists)) {
@@ -214,7 +233,7 @@ export function normaliseTrack(
 	}
 
 	// 2. Album: from relationships or fallback to attributes
-	let albumRef = album ? normaliseAlbumReference(album) : undefined;
+	let albumRef = album ? (normaliseTrackAlbumReference(album) ?? undefined) : undefined;
 	if (!albumRef) {
 		const rawAlbum = resource.attributes.album;
 		if (isRecord(rawAlbum)) {
@@ -224,7 +243,7 @@ export function normaliseTrack(
 				attributes: rawAlbum,
 				relationships: {}
 			};
-			albumRef = normaliseAlbumReference(albumResource);
+			albumRef = normaliseTrackAlbumReference(albumResource) ?? undefined;
 		} else if (typeof resource.attributes.albumTitle === 'string') {
 			albumRef = {
 				id: '',
@@ -240,7 +259,7 @@ export function normaliseTrack(
 	return {
 		kind: 'track',
 		id: resource.id,
-		title: resourceTitle(resource),
+		title,
 		artists,
 		...(albumRef ? { album: albumRef } : {}),
 		...(readNumberAttribute(resource, ['duration', 'durationSeconds'])
@@ -723,7 +742,20 @@ function indexIncluded(value: unknown): Map<string, unknown> {
 
 	for (const item of value) {
 		const resource = readResource(item);
-		if (resource) index.set(includedKey(resource), item);
+		if (!resource) continue;
+
+		const key = includedKey(resource);
+		const existing = readResource(index.get(key));
+		// Compound TIDAL documents can repeat a fully side-loaded resource as a
+		// bare relationship identifier later in `included`. Retain the resource
+		// with actual attributes/relationships; otherwise a title, artist, and
+		// album silently collapse to opaque IDs during normalisation.
+		const score =
+			Object.keys(resource.attributes).length * 2 + Object.keys(resource.relationships).length;
+		const existingScore = existing
+			? Object.keys(existing.attributes).length * 2 + Object.keys(existing.relationships).length
+			: -1;
+		if (score > existingScore) index.set(key, item);
 	}
 
 	return index;

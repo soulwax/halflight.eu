@@ -67,6 +67,38 @@ function shuffled<T>(items: T[]): T[] {
 	return copy;
 }
 
+function isTrackSummary(value: unknown): value is TrackSummary {
+	if (!value || typeof value !== 'object') return false;
+	const track = value as Record<string, unknown>;
+	return (
+		track.kind === 'track' &&
+		typeof track.id === 'string' &&
+		track.id.length > 0 &&
+		typeof track.title === 'string' &&
+		track.title.length > 0 &&
+		Array.isArray(track.artists) &&
+		track.artists.every(
+			(artist) =>
+				artist &&
+				typeof artist === 'object' &&
+				typeof (artist as { id?: unknown }).id === 'string' &&
+				typeof (artist as { name?: unknown }).name === 'string'
+		)
+	);
+}
+
+/** A prior session may predate the display model, or contain bare linkages. */
+function needsTrackMetadata(track: TrackSummary): boolean {
+	return (
+		track.title === track.id ||
+		track.artists.length === 0 ||
+		track.artists.some((artist) => Boolean(artist.id) && artist.name === artist.id) ||
+		!track.album ||
+		track.album.title === track.album.id ||
+		!track.album.releaseDate
+	);
+}
+
 export class PlayerState {
 	currentTrack = $state<TrackSummary | null>(null);
 	/** Each queued occurrence has its own stable identity, including duplicate tracks. */
@@ -139,6 +171,8 @@ export class PlayerState {
 	private listenedSeconds = 0;
 	private reportedNowPlaying = false;
 	private scrobbledCurrentTrack = false;
+	private metadataCache = new SvelteMap<string, TrackSummary>();
+	private metadataRequests = new SvelteMap<string, Promise<void>>();
 
 	constructor() {
 		if (isBrowser) {
@@ -477,6 +511,7 @@ export class PlayerState {
 			void this.loadAndPlayStream(track.id);
 			void this.loadLyrics(track.id);
 			void this.resolveCover(track);
+			void this.resolveTrackMetadata(track);
 		}
 	}
 
@@ -534,6 +569,60 @@ export class PlayerState {
 	}
 
 	private coverCache = new SvelteMap<string, string>();
+
+	/**
+	 * Restore current-track identity from TIDAL when a resumable session only
+	 * contains legacy or unresolved identifiers. This is deliberately one track
+	 * at a time, does not delay audio, and caches only for the page lifetime.
+	 */
+	private async resolveTrackMetadata(track: TrackSummary): Promise<void> {
+		if (!isBrowser || !needsTrackMetadata(track)) return;
+
+		const cached = this.metadataCache.get(track.id);
+		if (cached) {
+			this.applyTrackMetadata(cached);
+			return;
+		}
+
+		const pending = this.metadataRequests.get(track.id);
+		if (pending) return pending;
+
+		const request = (async () => {
+			try {
+				const response = await fetch(`/api/tracks/${encodeURIComponent(track.id)}/metadata`).catch(
+					() => null
+				);
+				if (!response?.ok) return;
+				const body = (await response.json().catch(() => null)) as { track?: unknown } | null;
+				if (!isTrackSummary(body?.track) || body.track.id !== track.id) return;
+				this.metadataCache.set(track.id, body.track);
+				this.applyTrackMetadata(body.track);
+			} finally {
+				this.metadataRequests.delete(track.id);
+			}
+		})();
+
+		this.metadataRequests.set(track.id, request);
+		return request;
+	}
+
+	private applyTrackMetadata(metadata: TrackSummary): void {
+		const enrich = <T extends TrackSummary>(candidate: T): T => {
+			if (candidate.id !== metadata.id) return candidate;
+			return {
+				...candidate,
+				...metadata,
+				...(candidate.provenance ? { provenance: candidate.provenance } : {})
+			} as T;
+		};
+
+		if (this.currentTrack) this.currentTrack = enrich(this.currentTrack);
+		this.queue = this.queue.map((entry) => enrich(entry));
+		this.history = this.history.map(enrich);
+		this.duration = this.currentTrack?.duration ?? this.duration;
+		updateMediaMetadata(this.currentTrack);
+		this.schedulePersistence();
+	}
 
 	/**
 	 * Backfill artwork for a track that came from a list which didn't side-load it
@@ -1015,7 +1104,10 @@ export class PlayerState {
 		this.lastPersistedPosition = this.currentTime;
 		this.duration = state.currentTrack?.duration || 0;
 
-		if (this.currentTrack) void this.resolveCover(this.currentTrack);
+		if (this.currentTrack) {
+			void this.resolveCover(this.currentTrack);
+			void this.resolveTrackMetadata(this.currentTrack);
+		}
 	}
 
 	private recordQueueReplacement(): void {

@@ -244,6 +244,13 @@
 	color: var(--text-muted);
 }
 .syn-player .artists {
+	flex: 0 1 auto;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.syn-player .album {
+	flex: 0 1 auto;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
