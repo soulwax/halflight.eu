@@ -43,6 +43,19 @@ export interface PageOptions {
 	cursor?: string;
 }
 
+/**
+ * Playlist item links are relationship identifiers, not track documents. TIDAL
+ * therefore requires nested include paths to side-load each track's artists
+ * and album (`items.artists`, rather than a top-level `artists`). Flat paths
+ * are rejected with a 400 `GENERIC_REQUEST_ERROR`.
+ */
+function playlistItemIncludes(include: string[] = []): string[] {
+	return [
+		'items',
+		...include.map((path) => (path === 'artists' || path === 'albums' ? `items.${path}` : path))
+	];
+}
+
 const MAX_PAGINATION_PAGES = 50;
 
 async function collectPages(
@@ -207,7 +220,7 @@ export function getPlaylistItems(
 ): Promise<Document<Resource[]>> {
 	return tidalJson(
 		`/playlists/${encodeURIComponent(id)}/relationships/items${qs({
-			include: ['items', ...(opts.include ?? [])],
+			include: playlistItemIncludes(opts.include),
 			'page[cursor]': opts.cursor,
 			countryCode: opts.countryCode
 		})}`,
@@ -236,7 +249,7 @@ export async function getFullPlaylist(
 ): Promise<Document<Resource>> {
 	const document = await getPlaylist(
 		id,
-		{ ...opts, include: ['items', ...(opts.include ?? [])] },
+		{ ...opts, include: playlistItemIncludes(opts.include) },
 		ctx
 	);
 	const data = document.data as Resource | undefined;

@@ -213,6 +213,31 @@ describe('TIDAL playlist API wrappers', () => {
 		expect(res.included).toHaveLength(7); // initial t1 + page1/2 included (t1, t2, t3) + page1/2 items (t1, t2, t3)
 	});
 
+	it('uses nested item includes so TIDAL does not reject playlist imports with 400', async () => {
+		expect.assertions(2);
+		vi.mocked(tidalJson).mockResolvedValue({
+			data: {
+				id: 'p1',
+				type: 'playlists',
+				attributes: { numberOfItems: 1 },
+				relationships: { items: { data: [{ id: 't1', type: 'tracks' }] } }
+			}
+		} as any);
+
+		await getFullPlaylist('p1', { include: ['artists', 'albums'] });
+
+		expect(tidalJson).toHaveBeenCalledWith(
+			'/playlists/p1?include=items%2Citems.artists%2Citems.albums',
+			{},
+			undefined
+		);
+		expect(tidalJson).not.toHaveBeenCalledWith(
+			'/playlists/p1?include=items%2Cartists%2Calbums',
+			expect.anything(),
+			expect.anything()
+		);
+	});
+
 	it('rejects an incomplete playlist rather than importing a partial order', async () => {
 		expect.assertions(1);
 		vi.mocked(tidalJson)
