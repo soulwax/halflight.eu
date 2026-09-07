@@ -8,13 +8,15 @@
 		backLabel: string;
 		/** The layered screen's name, rendered as the focus target `<h1>`. */
 		heading: string;
-		/** Optional context line — typically the current track title. */
+		/** Optional single-line context — typically the current track title, truncated. */
 		subtitle?: string;
+		/** Optional wrapping description line. Ignored when `subtitle` is set. */
+		lead?: string;
 		/** Wires up an external `aria-labelledby`. */
 		headingId?: string;
 	}
 
-	let { backHref, backLabel, heading, subtitle, headingId }: Props = $props();
+	let { backHref, backLabel, heading, subtitle, lead, headingId }: Props = $props();
 </script>
 
 <header class="mobile-subscreen-header">
@@ -24,7 +26,9 @@
 	<div class="copy">
 		<h1 id={headingId}>{heading}</h1>
 		{#if subtitle}
-			<p>{subtitle}</p>
+			<p class="subtitle">{subtitle}</p>
+		{:else if lead}
+			<p class="lead">{lead}</p>
 		{/if}
 	</div>
 </header>
@@ -66,12 +70,19 @@
 		line-height: 1.15;
 	}
 
-	p {
+	.subtitle {
 		margin: 0.15rem 0 0;
 		overflow: hidden;
 		color: var(--text-muted);
 		font-size: var(--fs-sm);
 		text-overflow: ellipsis;
 		white-space: nowrap;
+	}
+
+	.lead {
+		margin: 0.2rem 0 0;
+		color: var(--text-muted);
+		font-size: var(--fs-sm);
+		line-height: 1.45;
 	}
 </style>

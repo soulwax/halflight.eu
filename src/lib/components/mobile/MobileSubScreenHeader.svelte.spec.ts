@@ -37,4 +37,27 @@ describe('MobileSubScreenHeader.svelte', () => {
 		});
 		await expect.element(page.getByText('Bela Lugosi Is Dead')).toBeInTheDocument();
 	});
+
+	it('renders a wrapping lead line, and prefers the subtitle when both are set', async () => {
+		const { container, rerender } = render(MobileSubScreenHeader, {
+			backHref: '/home',
+			backLabel: 'Back',
+			heading: 'Settings',
+			lead: 'Tune quality, volume, and your TIDAL connection.'
+		});
+		await expect
+			.element(page.getByText('Tune quality, volume, and your TIDAL connection.'))
+			.toBeInTheDocument();
+		expect(container.querySelector('.lead')).not.toBeNull();
+
+		await rerender({
+			backHref: '/home',
+			backLabel: 'Back',
+			heading: 'Settings',
+			subtitle: 'Short line',
+			lead: 'This lead is suppressed.'
+		});
+		await expect.element(page.getByText('Short line')).toBeInTheDocument();
+		expect(container.querySelector('.lead')).toBeNull();
+	});
 });

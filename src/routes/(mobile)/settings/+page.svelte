@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { ChevronLeft, CircleCheck, Download, SlidersHorizontal } from '@lucide/svelte';
+	import { CircleCheck, Download, SlidersHorizontal } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
+	import MobileSubScreenHeader from '#lib/components/mobile/MobileSubScreenHeader.svelte';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form?: ActionData } = $props();
@@ -63,15 +64,13 @@
 </svelte:head>
 
 <section class="mobile-settings" aria-labelledby="mobile-settings-title">
-	<header>
-		<a href={resolve('/(mobile)/home')} aria-label={m.mobile_settings_back()}>
-			<ChevronLeft size={20} aria-hidden="true" />
-		</a>
-		<div>
-			<h1 id="mobile-settings-title">{m.mobile_settings_title()}</h1>
-			<p>{m.mobile_settings_description()}</p>
-		</div>
-	</header>
+	<MobileSubScreenHeader
+		backHref={resolve('/(mobile)/home')}
+		backLabel={m.mobile_settings_back()}
+		heading={m.mobile_settings_title()}
+		lead={m.mobile_settings_description()}
+		headingId="mobile-settings-title"
+	/>
 
 	<section class="card" aria-labelledby="mobile-settings-streaming-title">
 		<div class="card-heading">
@@ -192,34 +191,17 @@
 	.mobile-settings {
 		max-width: 44rem;
 		margin-inline: auto;
-		padding: 1rem 1rem 2rem;
+		padding: clamp(1rem, 4vw, 1.5rem) clamp(1.25rem, 5vw, 2rem) clamp(2rem, 8vw, 3rem);
 	}
-	header,
 	.card-heading {
 		display: flex;
 		align-items: flex-start;
 		gap: 1rem;
 	}
-	header {
-		margin-bottom: 1.5rem;
-	}
-	header > a {
-		display: grid;
-		width: 3rem;
-		height: 3rem;
-		flex: 0 0 auto;
-		place-items: center;
-		color: var(--text-primary);
-	}
-	h1,
 	h2,
 	p {
 		margin: 0;
 	}
-	h1 {
-		font-size: 1.5rem;
-	}
-	header p,
 	.card-heading p,
 	.connection p,
 	.attribution {
@@ -229,8 +211,9 @@
 	.card {
 		margin-top: 1rem;
 		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-lg);
 		background: var(--surface-raised);
-		padding: 1rem;
+		padding: 1.15rem;
 	}
 	.card-heading :global(svg) {
 		margin-top: 0.1rem;
