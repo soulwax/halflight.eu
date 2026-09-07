@@ -22,6 +22,8 @@ afterEach(() => {
 	player.currentTime = 0;
 	player.duration = 0;
 	player.isPlaying = false;
+	player.shuffle = false;
+	player.repeatMode = 'off';
 });
 
 describe('NowPlayingScreen.svelte', () => {
@@ -70,6 +72,26 @@ describe('NowPlayingScreen.svelte', () => {
 		expect(
 			page.getByRole('button', { name: m.player_next() }).element().hasAttribute('disabled')
 		).toBe(true);
+	});
+
+	it('toggles shuffle and cycles repeat from the transport', async () => {
+		player.currentTrack = track;
+		player.shuffle = false;
+		player.repeatMode = 'off';
+		await render(NowPlayingScreen);
+
+		const shuffle = page.getByRole('button', { name: m.player_shuffle() });
+		await expect.element(shuffle).toHaveAttribute('aria-pressed', 'false');
+		await shuffle.click();
+		expect(player.shuffle).toBe(true);
+		await expect.element(shuffle).toHaveAttribute('aria-pressed', 'true');
+
+		const repeat = page.getByRole('button', { name: m.player_repeat() });
+		await repeat.click();
+		expect(player.repeatMode).toBe('all');
+		await repeat.click();
+		expect(player.repeatMode).toBe('one');
+		await expect.element(repeat).toHaveAttribute('aria-pressed', 'true');
 	});
 
 	it('previews a scrub before committing one deliberate seek', async () => {

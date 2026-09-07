@@ -8,7 +8,10 @@
 		Loader2,
 		Pause,
 		Play,
+		Repeat,
+		Repeat1,
 		ScrollText,
+		Shuffle,
 		SkipBack,
 		SkipForward
 	} from '@lucide/svelte';
@@ -18,6 +21,7 @@
 	import { haptics } from '#lib/player/haptics.js';
 
 	const track = $derived(player.currentTrack);
+	const RepeatIcon = $derived(player.repeatMode === 'one' ? Repeat1 : Repeat);
 	const cover = $derived(track ? (track.imageUrl ?? track.album?.imageUrl ?? null) : null);
 	const artistLine = $derived(track ? track.artists.map((artist) => artist.name).join(', ') : '');
 	let scrubTime = $state<number | null>(null);
@@ -139,7 +143,20 @@
 				<span class="w-10 text-xs text-(--text-muted)">{formatClock(player.duration)}</span>
 			</div>
 
-			<div class="flex items-center gap-8">
+			<div class="flex items-center justify-center gap-4">
+				<button
+					type="button"
+					class="now-toggle flex h-11 w-11 items-center justify-center"
+					class:on={player.shuffle}
+					aria-pressed={player.shuffle}
+					onclick={() => {
+						haptics.tick();
+						player.toggleShuffle();
+					}}
+					aria-label={m.player_shuffle()}
+				>
+					<Shuffle size={20} />
+				</button>
 				<button
 					type="button"
 					class="flex h-12 w-12 items-center justify-center text-(--text-primary) disabled:opacity-40"
@@ -181,6 +198,19 @@
 				>
 					<SkipForward size={26} />
 				</button>
+				<button
+					type="button"
+					class="now-toggle flex h-11 w-11 items-center justify-center"
+					class:on={player.repeatMode !== 'off'}
+					aria-pressed={player.repeatMode !== 'off'}
+					onclick={() => {
+						haptics.tick();
+						player.cycleRepeat();
+					}}
+					aria-label={m.player_repeat()}
+				>
+					<RepeatIcon size={20} />
+				</button>
 			</div>
 		</div>
 	{:else}
@@ -199,6 +229,16 @@
 		box-shadow: 0 24px 42px -26px rgb(6 48 100 / 44%);
 	}
 
+	.now-toggle {
+		color: var(--text-muted);
+		border-radius: var(--radius-full);
+		transition: color var(--dur-fast) var(--ease-out);
+	}
+
+	.now-toggle.on {
+		color: var(--action);
+	}
+
 	.now-primary-control {
 		box-shadow: 0 10px 22px -12px color-mix(in oklab, var(--action) 62%, transparent);
 		transition:
@@ -212,7 +252,8 @@
 	}
 
 	@media (prefers-reduced-motion: reduce) {
-		.now-primary-control {
+		.now-primary-control,
+		.now-toggle {
 			transition: none;
 		}
 	}

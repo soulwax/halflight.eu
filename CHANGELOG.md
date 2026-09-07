@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Playback-session protocol documentation and a deterministic two-client optimistic-concurrency race test.
 - Playback-state snapshot and queue-command inputs are now structurally validated at the server boundary.
 - Halflight Now Home now carries a compact personal daily-mix rail below the resume card, tapping a cover plays that track in the context of the whole mix.
+- Halflight Now Playing now has shuffle and repeat controls flanking the skip buttons, with an accent-lit active state and haptics.
 - Halflight Now search with live grouped results and direct queue controls for tracks.
 - Halflight Now Library with saved playlists, paginated favorite tracks, queue controls, and a reviewed queue-replacement action.
 - Property-based generator tests that protect candidate eligibility, cooldown, deduplication, and input-immutability invariants.
