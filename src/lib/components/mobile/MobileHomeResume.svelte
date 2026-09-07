@@ -3,6 +3,7 @@
 	import { ArrowUpRight, Disc, Play } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { player } from '#lib/player/player.svelte.js';
+	import MobileScreenHeader from './MobileScreenHeader.svelte';
 
 	const track = $derived(player.currentTrack);
 	const cover = $derived(track ? (track.imageUrl ?? track.album?.imageUrl ?? null) : null);
@@ -10,10 +11,7 @@
 </script>
 
 <section class="mobile-home">
-	<header class="home-masthead">
-		<p class="home-kicker">{m.brand_name()}</p>
-		<h1>{m.now_home_heading()}</h1>
-	</header>
+	<MobileScreenHeader tone="masthead" kicker={m.brand_name()} heading={m.now_home_heading()} />
 
 	{#if track}
 		<section class="resume-section" aria-labelledby="continue-listening-heading">
@@ -63,29 +61,8 @@
 		padding: clamp(1.5rem, 6vw, 2.5rem) clamp(1.25rem, 5vw, 2rem) clamp(2.5rem, 9vw, 4rem);
 	}
 
-	.home-masthead {
-		position: relative;
-		padding: 0 0 clamp(1.75rem, 7vw, 2.75rem);
-	}
-
-	.home-masthead::after {
-		position: absolute;
-		right: 0;
-		bottom: 0;
-		left: 0;
-		height: 1px;
-		content: '';
-		background: linear-gradient(
-			90deg,
-			var(--border-subtle),
-			color-mix(in oklab, var(--editorial-sky, var(--action)) 72%, var(--border-subtle)),
-			transparent
-		);
-	}
-
-	.home-kicker,
 	.section-label {
-		margin: 0;
+		margin: 0 0 0.65rem;
 		color: var(--text-muted);
 		font-size: var(--fs-2xs);
 		font-weight: 700;
@@ -94,22 +71,8 @@
 		text-transform: uppercase;
 	}
 
-	.home-masthead h1 {
-		margin: 0.38rem 0 0;
-		color: var(--text-primary);
-		font-family: var(--font-display);
-		font-size: clamp(2rem, 10vw, 3rem);
-		font-weight: 700;
-		letter-spacing: -0.055em;
-		line-height: 0.92;
-	}
-
 	.resume-section {
 		padding-top: clamp(1.4rem, 5vw, 2rem);
-	}
-
-	.section-label {
-		margin-bottom: 0.65rem;
 	}
 
 	.resume-feature {

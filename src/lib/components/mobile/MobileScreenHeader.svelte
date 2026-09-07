@@ -8,12 +8,17 @@
 		kicker?: string;
 		/** Wires up an external `aria-labelledby`. */
 		headingId?: string;
+		/**
+		 * `screen` is the interior default. `masthead` is the larger front-door
+		 * scale Home uses, and leaves the gap below the rule to the next section.
+		 */
+		tone?: 'screen' | 'masthead';
 	}
 
-	let { heading, lead, kicker, headingId }: Props = $props();
+	let { heading, lead, kicker, headingId, tone = 'screen' }: Props = $props();
 </script>
 
-<header class="mobile-screen-header">
+<header class="mobile-screen-header" data-tone={tone}>
 	{#if kicker}
 		<p class="kicker">{kicker}</p>
 	{/if}
@@ -25,9 +30,25 @@
 
 <style>
 	.mobile-screen-header {
+		--header-pad: clamp(1.1rem, 5vw, 1.6rem);
+		--header-gap: clamp(1.25rem, 5vw, 1.75rem);
+		--header-size: clamp(1.7rem, 8vw, 2.4rem);
+		--header-tracking: -0.045em;
+		--header-leading: 1;
+		--header-kicker-gap: 0.34rem;
+
 		position: relative;
-		padding-bottom: clamp(1.1rem, 5vw, 1.6rem);
-		margin-bottom: clamp(1.25rem, 5vw, 1.75rem);
+		padding-bottom: var(--header-pad);
+		margin-bottom: var(--header-gap);
+	}
+
+	.mobile-screen-header[data-tone='masthead'] {
+		--header-pad: clamp(1.75rem, 7vw, 2.75rem);
+		--header-gap: 0;
+		--header-size: clamp(2rem, 10vw, 3rem);
+		--header-tracking: -0.055em;
+		--header-leading: 0.92;
+		--header-kicker-gap: 0.38rem;
 	}
 
 	.mobile-screen-header::after {
@@ -39,6 +60,15 @@
 			90deg,
 			var(--border-subtle),
 			color-mix(in oklab, var(--editorial-sky, var(--action)) 58%, var(--border-subtle)),
+			transparent
+		);
+	}
+
+	.mobile-screen-header[data-tone='masthead']::after {
+		background: linear-gradient(
+			90deg,
+			var(--border-subtle),
+			color-mix(in oklab, var(--editorial-sky, var(--action)) 72%, var(--border-subtle)),
 			transparent
 		);
 	}
@@ -57,14 +87,14 @@
 		margin: 0.3rem 0 0;
 		color: var(--text-primary);
 		font-family: var(--font-display);
-		font-size: clamp(1.7rem, 8vw, 2.4rem);
+		font-size: var(--header-size);
 		font-weight: 700;
-		letter-spacing: -0.045em;
-		line-height: 1;
+		letter-spacing: var(--header-tracking);
+		line-height: var(--header-leading);
 	}
 
 	.kicker + h1 {
-		margin-top: 0.34rem;
+		margin-top: var(--header-kicker-gap);
 	}
 
 	.lead {

@@ -29,4 +29,27 @@ describe('MobileScreenHeader.svelte', () => {
 		await expect.element(page.getByText('Halflight')).toBeInTheDocument();
 		await expect.element(page.getByText('Return to something you love.')).toBeInTheDocument();
 	});
+
+	it('defaults to the interior screen tone', async () => {
+		const { container } = render(MobileScreenHeader, { heading: 'Search' });
+
+		expect(container.querySelector('.mobile-screen-header')?.getAttribute('data-tone')).toBe(
+			'screen'
+		);
+	});
+
+	it('renders the larger front-door masthead tone on request', async () => {
+		const { container } = render(MobileScreenHeader, {
+			heading: 'Tonight',
+			kicker: 'Halflight',
+			tone: 'masthead'
+		});
+
+		expect(container.querySelector('.mobile-screen-header')?.getAttribute('data-tone')).toBe(
+			'masthead'
+		);
+		await expect
+			.element(page.getByRole('heading', { level: 1, name: 'Tonight' }))
+			.toBeInTheDocument();
+	});
 });
