@@ -273,7 +273,9 @@ A good day with Halflight:
    explicitly saves it.
 9. **Keep an escape hatch for development.** The owner-only `/app/api` workbench documents the
    curated Syn API surface and can run only explicit read-only same-origin requests. Mutation
-   endpoints show their contracts but remain product actions, not an arbitrary request builder.
+   endpoints show their contracts but remain product actions, not an arbitrary request builder. Its
+   authenticated `/api/openapi.json` counterpart is generated from the same catalogue for compatible
+   local tools; it contains no credential, provider, or object-storage information.
 10. **Build accessible components before visual polish.** Keyboard access, focus, semantics, reduced
     motion, and contrast are acceptance criteria, not cleanup.
 11. **Design from the Apple Music north star.** Calm hierarchy, album and artist primacy, and an

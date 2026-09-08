@@ -122,6 +122,7 @@
 	"api_reference_status": "Status",
 	"api_reference_empty_response": "No response body",
 	"api_reference_request_error": "The request could not be completed. Check your connection and try again.",
+	"api_reference_openapi_download": "Download OpenAPI JSON",
 	"api_endpoint_search_title": "Search the catalogue",
 	"api_endpoint_search_description": "Returns normalized music results for a bounded search query.",
 	"api_endpoint_favorites_title": "Read favorites",

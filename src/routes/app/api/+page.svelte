@@ -10,6 +10,7 @@
 	} from '@lucide/svelte';
 	import { apiGroups, endpointsForGroup, type ApiGroup, type ApiMethod } from '#lib/api-reference';
 	import { m } from '#lib/paraglide/messages.js';
+	import { resolve } from '$app/paths';
 
 	const groupCopy: Record<ApiGroup, () => string> = {
 		listening: m.api_reference_group_listening,
@@ -148,6 +149,9 @@
 			<h1 id="api-reference-title">{m.api_reference_title()}</h1>
 			<p>{m.api_reference_subtitle()}</p>
 		</div>
+		<a class="api-spec-link" href={resolve('/api/openapi.json')} download="halflight-openapi.json">
+			{m.api_reference_openapi_download()}
+		</a>
 	</header>
 
 	<aside class="api-auth-note">
@@ -274,6 +278,23 @@
 		align-items: center;
 		gap: 1rem;
 		padding: 1.25rem 0;
+	}
+	.api-spec-link {
+		margin-left: auto;
+		padding: 0.55rem 0.75rem;
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-sm);
+		color: var(--text-secondary);
+		font-size: 0.78rem;
+		font-weight: 700;
+		text-decoration: none;
+	}
+	.api-spec-link:hover,
+	.api-spec-link:focus-visible {
+		border-color: var(--action);
+		color: var(--action);
+		outline: 2px solid var(--focus-ring);
+		outline-offset: 2px;
 	}
 	.api-reference-title-mark {
 		display: grid;
@@ -553,6 +574,15 @@
 		font-size: 0.85rem;
 	}
 	@media (max-width: 48rem) {
+		.api-reference-header {
+			align-items: flex-start;
+			flex-wrap: wrap;
+		}
+		.api-spec-link {
+			width: 100%;
+			margin-left: 0;
+			text-align: center;
+		}
 		.api-workbench {
 			display: block;
 			overflow: visible;

@@ -143,3 +143,68 @@ export const apiGroups: ApiGroup[] = ['listening', 'music', 'library', 'storage'
 export function endpointsForGroup(group: ApiGroup): ApiEndpoint[] {
 	return apiEndpoints.filter((endpoint) => endpoint.group === group);
 }
+
+type OpenApiOperation = {
+	operationId: string;
+	tags: string[];
+	summary: string;
+	responses: Record<string, { description: string }>;
+	requestBody?: { required: boolean; content: Record<string, { example: unknown }> };
+};
+
+function openApiPath(path: string): string {
+	return path.split('?')[0] ?? path;
+}
+
+function openApiRequestBody(endpoint: ApiEndpoint): OpenApiOperation['requestBody'] {
+	if (!endpoint.requestExample) return undefined;
+	if (endpoint.requestExample.startsWith('multipart/form-data')) {
+		return {
+			required: true,
+			content: { 'multipart/form-data': { example: { file: '<audio file>' } } }
+		};
+	}
+	try {
+		return {
+			required: true,
+			content: { 'application/json': { example: JSON.parse(endpoint.requestExample) } }
+		};
+	} catch {
+		return undefined;
+	}
+}
+
+/** A compact OpenAPI 3.1 document for the same curated owner surface as the workbench. */
+export function createOpenApiDocument(): {
+	openapi: '3.1.0';
+	info: { title: string; version: string; description: string };
+	paths: Record<string, Record<string, OpenApiOperation>>;
+} {
+	const paths: Record<string, Record<string, OpenApiOperation>> = {};
+	for (const endpoint of apiEndpoints) {
+		const path = openApiPath(endpoint.path);
+		const method = endpoint.method.toLowerCase();
+		const operation: OpenApiOperation = {
+			operationId: endpoint.id,
+			tags: [endpoint.group],
+			summary: endpoint.id.replaceAll('-', ' '),
+			responses: {
+				'200': { description: endpoint.responseExample }
+			}
+		};
+		const requestBody = openApiRequestBody(endpoint);
+		if (requestBody) operation.requestBody = requestBody;
+		(paths[path] ??= {})[method] = operation;
+	}
+
+	return {
+		openapi: '3.1.0',
+		info: {
+			title: 'Halflight owner API',
+			version: '1.0.0',
+			description:
+				'Owner-only same-origin endpoints. Browser sessions authenticate requests; this document never contains credentials, provider URLs, or storage object keys.'
+		},
+		paths
+	};
+}

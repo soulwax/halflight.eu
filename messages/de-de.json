@@ -122,6 +122,7 @@
 	"api_reference_status": "Status",
 	"api_reference_empty_response": "Kein Antwortinhalt",
 	"api_reference_request_error": "Die Anfrage konnte nicht abgeschlossen werden. Prüfe deine Verbindung und versuche es erneut.",
+	"api_reference_openapi_download": "OpenAPI-JSON herunterladen",
 	"api_endpoint_search_title": "Katalog durchsuchen",
 	"api_endpoint_search_description": "Gibt normalisierte Musikergebnisse für einen begrenzten Suchbegriff zurück.",
 	"api_endpoint_favorites_title": "Favoriten lesen",

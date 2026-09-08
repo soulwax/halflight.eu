@@ -11,6 +11,9 @@ describe('/app/api', () => {
 		await expect
 			.element(page.getByRole('button', { name: /List private music/ }))
 			.toBeInTheDocument();
+		await expect
+			.element(page.getByRole('link', { name: 'Download OpenAPI JSON' }))
+			.toHaveAttribute('href', '/api/openapi.json');
 		await expect.element(page.getByRole('button', { name: 'Send request' })).toBeInTheDocument();
 
 		await page.getByRole('button', { name: /Create a custom playlist/ }).click();

@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   pauses, seeks, or replaces locally loaded audio.
 - An owner-only Swagger-like API workbench now documents Syn’s supported endpoints, shows request
   and response shapes, copies paths, and can execute a curated set of read-only same-origin calls.
+- The API workbench can now download its authenticated OpenAPI 3.1 document for compatible local
+  tools without disclosing account or object-storage credentials.
 - Generated taste results now use a reusable listening-set module with set-level playback, save, and export actions plus an explainable per-track sequence.
 - The wide Listening Room now has a pinned queue context panel; its queue controls and track tables adapt to the width of the shell region that contains them.
 - Owner-uploaded private music can now be listed, downloaded, and deleted through authenticated API routes backed by a separate S3-compatible bucket.
