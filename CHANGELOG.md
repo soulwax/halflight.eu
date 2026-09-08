@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Desktop search, album, and playlist track tables now expose the same Play next, Add to queue, and
+  Start radio actions as the rest of the Listening Room; queue rows retain their specialised edit controls.
 - Listening Room and Halflight Now now reconcile newer server session revisions while visible, with
   bounded retry backoff and immediate refresh on focus or reconnection. Remote state never starts,
   pauses, seeks, or replaces locally loaded audio.

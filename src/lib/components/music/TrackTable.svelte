@@ -7,6 +7,7 @@
 	import { player } from '#lib/player/player.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import type { TrackSummary } from '#lib/tidal/models';
+	import TrackQueueActions from './TrackQueueActions.svelte';
 	import TrackTableRow from './TrackTableRow.svelte';
 
 	let {
@@ -42,6 +43,7 @@
 		duration: columns.includes('duration')
 	});
 	const activeContext = $derived(contextTracks ?? tracks);
+	const hasActions = true;
 	const activate = $derived(
 		onRowActivate ?? ((track: TrackSummary) => player.play(track, activeContext, provenance))
 	);
@@ -53,7 +55,7 @@
 			cols.album ? 'minmax(0, 13rem)' : null,
 			cols.date ? '4rem' : null,
 			cols.duration ? '3.5rem' : null,
-			rowActions ? 'auto' : null
+			hasActions ? 'auto' : null
 		]
 			.filter(Boolean)
 			.join(' ')
@@ -63,7 +65,7 @@
 			'var(--tt-art-size, 2.75rem)',
 			'minmax(0, 1fr)',
 			cols.duration ? '3.5rem' : null,
-			rowActions ? 'auto' : null
+			hasActions ? 'auto' : null
 		]
 			.filter(Boolean)
 			.join(' ')
@@ -85,13 +87,17 @@
 			<span class="tt-hide-narrow tt-num" role="columnheader">{m.track_col_release()}</span>
 		{/if}
 		{#if cols.duration}<span class="tt-num" role="columnheader">{m.album_duration()}</span>{/if}
-		{#if rowActions}<span class="sr-only" role="columnheader">{m.track_col_actions()}</span>{/if}
+		{#if hasActions}<span class="sr-only" role="columnheader">{m.track_col_actions()}</span>{/if}
 	</div>
 
 	{#each tracks as track, index (keyOf(track, index))}
 		<TrackTableRow {track} {columns} onActivate={() => activate(track, index)}>
 			{#snippet actions()}
-				{@render rowActions?.(track, index)}
+				{#if rowActions}
+					{@render rowActions(track, index)}
+				{:else}
+					<TrackQueueActions {track} {provenance} />
+				{/if}
 			{/snippet}
 		</TrackTableRow>
 	{/each}
