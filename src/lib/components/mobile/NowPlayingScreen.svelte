@@ -151,7 +151,9 @@
 			</div>
 
 			{#if player.isPlaybackActiveElsewhere}
-				<div class="flex w-full max-w-sm items-center justify-between gap-3 rounded-(--radius-md) border border-(--border-subtle) bg-(--surface-raised) px-3 py-2 text-left">
+				<div
+					class="flex w-full max-w-sm items-center justify-between gap-3 rounded-(--radius-md) border border-(--border-subtle) bg-(--surface-raised) px-3 py-2 text-left"
+				>
 					<span class="text-xs text-(--text-muted)">{m.now_playing_elsewhere()}</span>
 					<button
 						type="button"
