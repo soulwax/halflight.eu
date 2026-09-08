@@ -1,6 +1,7 @@
 import { error, json, type RequestHandler } from '@sveltejs/kit';
 import {
 	parsePlaybackState,
+	parsePlaybackDeviceId,
 	parsePlaybackStateOrigin,
 	parsePlaybackStateRevision,
 	savePlaybackState,
@@ -9,7 +10,8 @@ import {
 
 export const GET: RequestHandler = async (event) => {
 	if (!event.locals.user || !event.locals.isAdministrator) error(401, 'Unauthorized');
-	return json(await getPlaybackState(event.locals.user.id));
+	const deviceId = parsePlaybackDeviceId(event.request.headers.get('x-halflight-playback-device'));
+	return json(await getPlaybackState(event.locals.user.id, undefined, deviceId));
 };
 
 export const PUT: RequestHandler = async (event) => {
@@ -26,7 +28,16 @@ export const PUT: RequestHandler = async (event) => {
 	const revision = parsePlaybackStateRevision(body.revision);
 	const origin = parsePlaybackStateOrigin(body.origin);
 	if (revision === null || !origin) error(400, 'A valid playback revision and origin are required');
+	const deviceId = body.deviceId == null ? null : parsePlaybackDeviceId(body.deviceId);
+	if (body.deviceId != null && !deviceId) error(400, 'A valid playback device is required');
 
-	const result = await savePlaybackState(event.locals.user.id, state, revision, origin);
+	const result = await savePlaybackState(
+		event.locals.user.id,
+		state,
+		revision,
+		origin,
+		undefined,
+		deviceId
+	);
 	return json(result.state, { status: result.conflict ? 409 : 200 });
 };

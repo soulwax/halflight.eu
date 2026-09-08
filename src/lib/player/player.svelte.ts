@@ -21,6 +21,12 @@ import { streamPreloader, type PreloadedStreamData } from './stream-preloader.js
 /** Which site persisted a queue/position write — see MASTERPLAN.md's session contract. */
 export type PlaybackOrigin = 'listening-room' | 'halflight-now';
 
+export interface PlaybackDeviceStatus {
+	origin: PlaybackOrigin;
+	expiresAt: string;
+	isCurrent: boolean;
+}
+
 export interface SavedPlaybackState {
 	currentTrack: TrackSummary | null;
 	queue: QueueEntry[];
@@ -28,6 +34,7 @@ export interface SavedPlaybackState {
 	currentTime: number;
 	revision?: number;
 	lastOrigin?: PlaybackOrigin | null;
+	activeDevice?: PlaybackDeviceStatus | null;
 }
 
 interface PlaybackStateWrite extends SavedPlaybackState {
@@ -58,6 +65,7 @@ const isBrowser = typeof window !== 'undefined';
 const MAX_QUEUE_LENGTH = 100;
 const MAX_HISTORY_LENGTH = 50;
 const PREFS_KEY = 'syn:player:prefs';
+const PLAYBACK_DEVICE_KEY = 'syn:player:device-id';
 
 function shuffled<T>(items: T[]): T[] {
 	const copy = [...items];
@@ -85,6 +93,17 @@ function isTrackSummary(value: unknown): value is TrackSummary {
 				typeof (artist as { id?: unknown }).id === 'string' &&
 				typeof (artist as { name?: unknown }).name === 'string'
 		)
+	);
+}
+
+function isPlaybackDeviceStatus(value: unknown): value is PlaybackDeviceStatus {
+	if (!value || typeof value !== 'object') return false;
+	const device = value as Record<string, unknown>;
+	return (
+		(device.origin === 'listening-room' || device.origin === 'halflight-now') &&
+		typeof device.expiresAt === 'string' &&
+		Number.isFinite(Date.parse(device.expiresAt)) &&
+		typeof device.isCurrent === 'boolean'
 	);
 }
 
@@ -122,7 +141,10 @@ function isSavedPlaybackState(value: unknown): value is SavedPlaybackState & { r
 		state.currentTime >= 0 &&
 		typeof state.revision === 'number' &&
 		Number.isSafeInteger(state.revision) &&
-		state.revision >= 0
+		state.revision >= 0 &&
+		(state.activeDevice === undefined ||
+			state.activeDevice === null ||
+			isPlaybackDeviceStatus(state.activeDevice))
 	);
 }
 
@@ -145,6 +167,11 @@ export class PlayerState {
 	origin = $state<PlaybackOrigin>('listening-room');
 	/** Whether the current in-memory session has reached the authoritative server state. */
 	persistenceStatus = $state<PlaybackPersistenceStatus>('saved');
+	/** Server-projected active playback lease; it contains no device identifier. */
+	activeDevice = $state<PlaybackDeviceStatus | null>(null);
+	playbackClaimPending = $state(false);
+	isPlaybackActiveHere = $derived(Boolean(this.activeDevice?.isCurrent));
+	isPlaybackActiveElsewhere = $derived(Boolean(this.activeDevice && !this.activeDevice.isCurrent));
 
 	// Audio playback engine states
 	isPlaying = $state(false);
@@ -204,6 +231,7 @@ export class PlayerState {
 	private scrobbledCurrentTrack = false;
 	private metadataCache = new SvelteMap<string, TrackSummary>();
 	private metadataRequests = new SvelteMap<string, Promise<void>>();
+	private deviceId: string | null = null;
 
 	constructor() {
 		if (isBrowser) {
@@ -252,6 +280,79 @@ export class PlayerState {
 	private resumeAudioContext(): void {
 		if (this.audioContext && this.audioContext.state === 'suspended') {
 			void this.audioContext.resume().catch(() => {});
+		}
+	}
+
+	private getDeviceId(): string | null {
+		if (!isBrowser) return null;
+		if (this.deviceId) return this.deviceId;
+		try {
+			const existing = localStorage.getItem(PLAYBACK_DEVICE_KEY);
+			if (/^device_[a-zA-Z0-9_-]{9,}$/.test(existing ?? '')) {
+				this.deviceId = existing;
+				return existing;
+			}
+			const identifier = `device_${crypto.randomUUID().replaceAll('-', '_')}`;
+			localStorage.setItem(PLAYBACK_DEVICE_KEY, identifier);
+			this.deviceId = identifier;
+			return identifier;
+		} catch {
+			// A browser that disallows local storage keeps playback local. It can
+			// still play, but cannot safely assert cross-device ownership.
+			return null;
+		}
+	}
+
+	private applyActiveDevice(state: SavedPlaybackState): void {
+		this.activeDevice = state.activeDevice ?? null;
+	}
+
+	/**
+	 * Claim this browser only after a deliberate playback action. The network
+	 * round trip is intentionally not awaited by transport controls: waiting
+	 * would lose the browser's user-activation gesture and make playback feel
+	 * slower. The authoritative server response still decides the resume owner.
+	 */
+	async takePlaybackControl(): Promise<boolean> {
+		const deviceId = this.getDeviceId();
+		if (!deviceId) return false;
+		if (
+			this.isPlaybackActiveHere &&
+			this.activeDevice &&
+			Date.parse(this.activeDevice.expiresAt) - Date.now() > 15_000
+		) {
+			return true;
+		}
+		if (this.playbackClaimPending) return false;
+		this.playbackClaimPending = true;
+		try {
+			const response = await fetch('/api/playback-state/claim', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ deviceId, origin: this.origin }),
+				keepalive: true
+			});
+			const state = (await response.json().catch(() => null)) as unknown;
+			if (!response.ok || !isSavedPlaybackState(state)) return false;
+			this.playbackStateRevision = Math.max(this.playbackStateRevision, state.revision);
+			this.applyActiveDevice(state);
+			return state.activeDevice?.isCurrent === true;
+		} catch {
+			return false;
+		} finally {
+			this.playbackClaimPending = false;
+		}
+	}
+
+	/** Start the current track locally while deliberately taking shared control. */
+	playHere(): void {
+		void this.takePlaybackControl();
+		this.togglePlayPause();
+	}
+
+	private claimPlaybackControlForIntent(): void {
+		if (!this.isPlaybackActiveHere && !this.playbackClaimPending) {
+			void this.takePlaybackControl();
 		}
 	}
 
@@ -468,6 +569,7 @@ export class PlayerState {
 	});
 
 	play(track: TrackSummary, contextTracks?: TrackSummary[], provenance?: string): void {
+		this.claimPlaybackControlForIntent();
 		const selectedTrack = this.withProvenance(track, provenance);
 		const contextualTracks = contextTracks?.map((candidate) =>
 			this.withProvenance(candidate, provenance)
@@ -915,6 +1017,7 @@ export class PlayerState {
 			this.isExpanded = true;
 			return;
 		}
+		if (!this.isPlaying) this.claimPlaybackControlForIntent();
 
 		if (this.currentTrack && !this.streamUrl) {
 			void this.loadAndPlayStream(this.currentTrack.id);
@@ -1056,6 +1159,7 @@ export class PlayerState {
 	 * @param auto `true` when triggered by a track ending, so repeat-one applies.
 	 */
 	next(auto = false): TrackSummary | null {
+		if (!auto) this.claimPlaybackControlForIntent();
 		if (auto && this.repeatMode === 'one' && this.currentTrack) {
 			this.currentTime = 0;
 			if (isBrowser) void this.loadAndPlayStream(this.currentTrack.id);
@@ -1079,6 +1183,7 @@ export class PlayerState {
 	}
 
 	previous(): TrackSummary | null {
+		this.claimPlaybackControlForIntent();
 		if (this.currentTime > 3) {
 			this.seek(0);
 			return this.currentTrack;
@@ -1099,6 +1204,7 @@ export class PlayerState {
 
 	/** Start a specific queued occurrence by its stable entry identity. */
 	playFromQueue(entryId: string): void {
+		this.claimPlaybackControlForIntent();
 		const index = this.queue.findIndex((entry) => entry.entryId === entryId);
 		if (index === -1) return;
 		if (this.currentTrack) {
@@ -1150,6 +1256,7 @@ export class PlayerState {
 		this.history = state.history.slice(-MAX_HISTORY_LENGTH);
 		this.currentTime = Math.max(0, Math.floor(state.currentTime));
 		this.playbackStateRevision = Math.max(0, state.revision ?? 0);
+		this.applyActiveDevice(state);
 		this.queueCommands = [];
 		this.reconciliationBase = null;
 		this.reconciliationAttempts = 0;
@@ -1174,8 +1281,12 @@ export class PlayerState {
 		this.sessionSyncInFlight = true;
 
 		try {
+			const deviceId = this.getDeviceId();
 			const response = await fetch('/api/playback-state', {
-				headers: { accept: 'application/json' },
+				headers: {
+					accept: 'application/json',
+					...(deviceId ? { 'x-halflight-playback-device': deviceId } : {})
+				},
 				cache: 'no-store'
 			});
 			const state = (await response.json().catch(() => null)) as unknown;
@@ -1185,6 +1296,7 @@ export class PlayerState {
 			}
 
 			this.sessionSyncFailures = 0;
+			this.applyActiveDevice(state);
 			if (state.revision < this.playbackStateRevision) return;
 
 			if (this.queueCommands.length > 0) {
@@ -1322,6 +1434,7 @@ export class PlayerState {
 					expectedRevision: this.playbackStateRevision,
 					operationId,
 					origin: this.origin,
+					...(this.getDeviceId() ? { deviceId: this.getDeviceId() } : {}),
 					intent: this.queueIntentPayload(command)
 				}),
 				keepalive: true
@@ -1338,6 +1451,7 @@ export class PlayerState {
 			}
 
 			if (response.status === 409) {
+				this.applyActiveDevice(state);
 				if (this.reconciliationAttempts >= 1) {
 					this.persistenceStatus = 'conflict';
 					return false;
@@ -1354,6 +1468,7 @@ export class PlayerState {
 			}
 
 			this.playbackStateRevision = state.revision;
+			this.applyActiveDevice(state);
 			if (this.queueCommands[0]?.operationId === operationId) this.queueCommands.shift();
 			this.reconciliationBase = null;
 			this.reconciliationAttempts = 0;
@@ -1371,8 +1486,12 @@ export class PlayerState {
 		this.persistenceStatus = 'saving';
 
 		try {
+			const deviceId = this.getDeviceId();
 			const response = await fetch('/api/playback-state', {
-				headers: { accept: 'application/json' },
+				headers: {
+					accept: 'application/json',
+					...(deviceId ? { 'x-halflight-playback-device': deviceId } : {})
+				},
 				cache: 'no-store'
 			});
 			const state = (await response.json().catch(() => null)) as SavedPlaybackState | null;
@@ -1391,6 +1510,7 @@ export class PlayerState {
 
 			this.reconciliationBase = state;
 			this.playbackStateRevision = state.revision;
+			this.applyActiveDevice(state);
 			this.queue = rebaseQueue(state.queue, this.queueCommands, MAX_QUEUE_LENGTH);
 			this.reconciliationAttempts = 0;
 
@@ -1430,7 +1550,10 @@ export class PlayerState {
 			const response = await fetch('/api/playback-state', {
 				method: 'PUT',
 				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify(snapshot),
+				body: JSON.stringify({
+					...snapshot,
+					...(this.getDeviceId() ? { deviceId: this.getDeviceId() } : {})
+				}),
 				keepalive: true
 			});
 			const state = (await response.json().catch(() => null)) as SavedPlaybackState | null;
@@ -1452,6 +1575,7 @@ export class PlayerState {
 				// next write carries the returned current/history/position unchanged.
 				this.reconciliationBase = state;
 				this.playbackStateRevision = state.revision;
+				this.applyActiveDevice(state);
 				this.queue = rebaseQueue(state.queue, this.queueCommands, MAX_QUEUE_LENGTH);
 				this.reconciliationAttempts += 1;
 				this.persistenceQueued = true;
@@ -1468,6 +1592,7 @@ export class PlayerState {
 			}
 
 			this.playbackStateRevision = state.revision;
+			this.applyActiveDevice(state);
 			this.queueCommands.splice(0, snapshot.queueCommands.length);
 			this.reconciliationBase = null;
 			this.reconciliationAttempts = 0;

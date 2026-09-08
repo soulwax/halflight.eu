@@ -508,6 +508,8 @@
 	"now_credits_loading": "Loading credits",
 	"now_credits_empty": "No contributor credits are available for this track.",
 	"now_credits_unavailable": "Credits are unavailable right now.",
+	"now_playing_elsewhere": "Playing on another device",
+	"now_play_here": "Play here",
 	"mobile_quality_mode_label": "Mobile streaming",
 	"mobile_quality_data_saver": "Data saver",
 	"mobile_quality_data_saver_description": "AAC at 96 kbps. Uses less mobile data.",

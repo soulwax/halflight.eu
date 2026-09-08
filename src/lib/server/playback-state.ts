@@ -17,6 +17,7 @@ export const MAX_PLAYBACK_HISTORY_LENGTH = 50;
 const MAX_POSITION_SECONDS = 60 * 60 * 24;
 const MAX_PLAYBACK_OPERATION_RESULTS = 50;
 const PLAYBACK_OPERATION_RESULT_RETENTION_MS = 24 * 60 * 60 * 1_000;
+export const PLAYBACK_DEVICE_LEASE_MS = 45_000;
 export const PLAYBACK_STATE_ORIGINS = ['listening-room', 'halflight-now'] as const;
 
 export type PlaybackStateOrigin = (typeof PLAYBACK_STATE_ORIGINS)[number];
@@ -52,6 +53,20 @@ const playbackStateSnapshotSchema = v.object({
 
 const playbackStateOriginSchema = v.picklist(PLAYBACK_STATE_ORIGINS);
 const playbackStateRevisionSchema = v.pipe(v.number(), v.safeInteger(), v.minValue(0));
+const playbackDeviceIdSchema = v.pipe(
+	v.string(),
+	v.trim(),
+	v.minLength(16),
+	v.maxLength(128),
+	v.regex(/^device_[a-zA-Z0-9_-]+$/)
+);
+
+export interface PlaybackDeviceStatus {
+	origin: PlaybackStateOrigin;
+	expiresAt: string;
+	/** True only for the browser identity that owns the current lease. */
+	isCurrent: boolean;
+}
 
 export interface PlaybackState {
 	currentTrack: TrackSummary | null;
@@ -60,9 +75,10 @@ export interface PlaybackState {
 	currentTime: number;
 	revision: number;
 	lastOrigin: PlaybackStateOrigin | null;
+	activeDevice: PlaybackDeviceStatus | null;
 }
 
-export type PlaybackStateInput = Omit<PlaybackState, 'revision' | 'lastOrigin'>;
+export type PlaybackStateInput = Omit<PlaybackState, 'revision' | 'lastOrigin' | 'activeDevice'>;
 
 export const EMPTY_PLAYBACK_STATE: PlaybackState = {
 	currentTrack: null,
@@ -70,17 +86,23 @@ export const EMPTY_PLAYBACK_STATE: PlaybackState = {
 	history: [],
 	currentTime: 0,
 	revision: 0,
-	lastOrigin: null
+	lastOrigin: null,
+	activeDevice: null
 };
 
 export interface PlaybackStateStore {
-	read(userId: string): Promise<PlaybackState | null>;
+	read(userId: string, deviceId?: string | null): Promise<PlaybackState | null>;
 	write(
 		userId: string,
 		state: PlaybackStateInput,
 		expectedRevision: number,
-		origin: PlaybackStateOrigin
+		origin: PlaybackStateOrigin,
+		deviceId?: string | null
 	): Promise<PlaybackState | null>;
+}
+
+export interface PlaybackDeviceLeaseStore {
+	claim(userId: string, deviceId: string, origin: PlaybackStateOrigin): Promise<PlaybackState>;
 }
 
 export interface PlaybackStateSaveResult {
@@ -101,6 +123,7 @@ export interface PlaybackIntent {
 	expectedRevision: number;
 	operationId: string;
 	origin: PlaybackStateOrigin;
+	deviceId?: string;
 	intent: QueueIntent;
 }
 
@@ -261,6 +284,12 @@ export function parsePlaybackStateRevision(value: unknown): number | null {
 	return parsed.success ? parsed.output : null;
 }
 
+/** An opaque per-browser ID, never an account or provider identifier. */
+export function parsePlaybackDeviceId(value: unknown): string | null {
+	const parsed = v.safeParse(playbackDeviceIdSchema, value);
+	return parsed.success ? parsed.output : null;
+}
+
 function parseRequiredQueueEntry(value: unknown): QueueEntry | null {
 	const record = asRecord(value);
 	if (!record || !isQueueEntryId(record.entryId)) return null;
@@ -283,8 +312,15 @@ export function parsePlaybackIntent(value: unknown): PlaybackIntent | null {
 	if (!body || body.version !== 2 || !isQueueEntryId(body.operationId)) return null;
 	const expectedRevision = parsePlaybackStateRevision(body.expectedRevision);
 	const origin = parsePlaybackStateOrigin(body.origin);
+	const deviceId = body.deviceId == null ? undefined : parsePlaybackDeviceId(body.deviceId);
 	const rawIntent = asRecord(body.intent);
-	if (expectedRevision === null || !origin || !rawIntent || typeof rawIntent.type !== 'string')
+	if (
+		expectedRevision === null ||
+		!origin ||
+		(body.deviceId != null && !deviceId) ||
+		!rawIntent ||
+		typeof rawIntent.type !== 'string'
+	)
 		return null;
 
 	let intent: QueueIntent | null = null;
@@ -328,7 +364,14 @@ export function parsePlaybackIntent(value: unknown): PlaybackIntent | null {
 	}
 
 	return intent
-		? { version: 2, expectedRevision, operationId: body.operationId, origin, intent }
+		? {
+				version: 2,
+				expectedRevision,
+				operationId: body.operationId,
+				origin,
+				...(deviceId ? { deviceId } : {}),
+				intent
+			}
 		: null;
 }
 
@@ -396,15 +439,28 @@ function parseJson(value: string | null): unknown {
 	}
 }
 
-function fromRow(row: {
-	currentTrackJson: string | null;
-	queueJson: string;
-	queueEntriesJson?: string;
-	historyJson: string;
-	currentTime: number;
-	revision: number;
-	lastOrigin: string | null;
-}): PlaybackState {
+function fromRow(
+	row: {
+		currentTrackJson: string | null;
+		queueJson: string;
+		queueEntriesJson?: string;
+		historyJson: string;
+		currentTime: number;
+		revision: number;
+		lastOrigin: string | null;
+		activeDeviceId?: string | null;
+		activeDeviceOrigin?: string | null;
+		activeDeviceExpiresAt?: Date | null;
+	},
+	deviceId?: string | null
+): PlaybackState {
+	const activeOrigin = parsePlaybackStateOrigin(row.activeDeviceOrigin);
+	const activeExpiresAt = row.activeDeviceExpiresAt;
+	const hasActiveDevice =
+		Boolean(row.activeDeviceId) &&
+		Boolean(activeOrigin) &&
+		activeExpiresAt instanceof Date &&
+		activeExpiresAt.getTime() > Date.now();
 	const entryQueue = parseJson(row.queueEntriesJson ?? null);
 	const input = parsePlaybackState({
 		currentTrack: parseJson(row.currentTrackJson),
@@ -417,29 +473,43 @@ function fromRow(row: {
 		? {
 				...input,
 				revision: Math.max(0, row.revision),
-				lastOrigin: parsePlaybackStateOrigin(row.lastOrigin)
+				lastOrigin: parsePlaybackStateOrigin(row.lastOrigin),
+				activeDevice: hasActiveDevice
+					? {
+							origin: activeOrigin!,
+							expiresAt: activeExpiresAt!.toISOString(),
+							isCurrent: row.activeDeviceId === deviceId
+						}
+					: null
 			}
 		: EMPTY_PLAYBACK_STATE;
 }
 
+const playbackStateSelection = {
+	currentTrackJson: playbackState.currentTrackJson,
+	queueJson: playbackState.queueJson,
+	queueEntriesJson: playbackState.queueEntriesJson,
+	historyJson: playbackState.historyJson,
+	currentTime: playbackState.currentTime,
+	revision: playbackState.revision,
+	lastOrigin: playbackState.lastOrigin,
+	activeDeviceId: playbackState.activeDeviceId,
+	activeDeviceOrigin: playbackState.activeDeviceOrigin,
+	activeDeviceExpiresAt: playbackState.activeDeviceExpiresAt
+};
+
 export const dbPlaybackStateStore: PlaybackStateStore = {
-	async read(userId) {
+	async read(userId, deviceId) {
 		const rows = await db
-			.select({
-				currentTrackJson: playbackState.currentTrackJson,
-				queueJson: playbackState.queueJson,
-				queueEntriesJson: playbackState.queueEntriesJson,
-				historyJson: playbackState.historyJson,
-				currentTime: playbackState.currentTime,
-				revision: playbackState.revision,
-				lastOrigin: playbackState.lastOrigin
-			})
+			.select(playbackStateSelection)
 			.from(playbackState)
 			.where(eq(playbackState.userId, userId))
 			.limit(1);
-		return rows[0] ? fromRow(rows[0]) : null;
+		return rows[0] ? fromRow(rows[0], deviceId) : null;
 	},
-	async write(userId, state, expectedRevision, origin) {
+	async write(userId, state, expectedRevision, origin, deviceId) {
+		const leaseExpiresAt = new Date(Date.now() + PLAYBACK_DEVICE_LEASE_MS);
+		const writingDeviceId = deviceId ?? '';
 		const values = {
 			currentTrackJson: state.currentTrack ? JSON.stringify(state.currentTrack) : null,
 			queueJson: JSON.stringify(state.queue.map(toDisplayTrack)),
@@ -449,24 +519,62 @@ export const dbPlaybackStateStore: PlaybackStateStore = {
 			lastOrigin: origin,
 			updatedAt: new Date()
 		};
+		const preserveActivePlayback = sql`coalesce(
+			${playbackState.activeDeviceId} is not null
+			and ${playbackState.activeDeviceId} <> ${writingDeviceId}
+			and ${playbackState.activeDeviceExpiresAt} > now(),
+			false
+		)`;
 		const rows = await db
 			.insert(playbackState)
 			.values({ userId, ...values, revision: expectedRevision + 1 })
 			.onConflictDoUpdate({
 				target: playbackState.userId,
-				set: { ...values, revision: sql`${playbackState.revision} + 1` },
+				set: {
+					...values,
+					// Queue edits from another device are welcome, but only the owner
+					// of the live lease may move the shared resume point.
+					currentTrackJson: sql`case when ${preserveActivePlayback} then ${playbackState.currentTrackJson} else ${values.currentTrackJson} end`,
+					historyJson: sql`case when ${preserveActivePlayback} then ${playbackState.historyJson} else ${values.historyJson} end`,
+					currentTime: sql`case when ${preserveActivePlayback} then ${playbackState.currentTime} else ${values.currentTime} end`,
+					activeDeviceExpiresAt: sql`case when ${playbackState.activeDeviceId} = ${writingDeviceId} then ${leaseExpiresAt} else ${playbackState.activeDeviceExpiresAt} end`,
+					revision: sql`${playbackState.revision} + 1`
+				},
 				setWhere: sql`${playbackState.revision} = ${expectedRevision}`
 			})
-			.returning({
-				currentTrackJson: playbackState.currentTrackJson,
-				queueJson: playbackState.queueJson,
-				queueEntriesJson: playbackState.queueEntriesJson,
-				historyJson: playbackState.historyJson,
-				currentTime: playbackState.currentTime,
-				revision: playbackState.revision,
-				lastOrigin: playbackState.lastOrigin
-			});
-		return rows[0] ? fromRow(rows[0]) : null;
+			.returning(playbackStateSelection);
+		return rows[0] ? fromRow(rows[0], deviceId) : null;
+	}
+};
+
+/** Deliberately claim the canonical resume point for one browser device. */
+export const dbPlaybackDeviceLeaseStore: PlaybackDeviceLeaseStore = {
+	async claim(userId, deviceId, origin) {
+		const now = new Date();
+		const rows = await db
+			.insert(playbackState)
+			.values({
+				userId,
+				revision: 1,
+				lastOrigin: origin,
+				activeDeviceId: deviceId,
+				activeDeviceOrigin: origin,
+				activeDeviceExpiresAt: new Date(now.getTime() + PLAYBACK_DEVICE_LEASE_MS),
+				updatedAt: now
+			})
+			.onConflictDoUpdate({
+				target: playbackState.userId,
+				set: {
+					activeDeviceId: deviceId,
+					activeDeviceOrigin: origin,
+					activeDeviceExpiresAt: new Date(now.getTime() + PLAYBACK_DEVICE_LEASE_MS),
+					lastOrigin: origin,
+					updatedAt: now,
+					revision: sql`${playbackState.revision} + 1`
+				}
+			})
+			.returning(playbackStateSelection);
+		return fromRow(rows[0]!, deviceId);
 	}
 };
 
@@ -479,7 +587,8 @@ function parseStoredPlaybackState(value: unknown): PlaybackState | null {
 	return {
 		...input,
 		revision,
-		lastOrigin: record.lastOrigin == null ? null : parsePlaybackStateOrigin(record.lastOrigin)
+		lastOrigin: record.lastOrigin == null ? null : parsePlaybackStateOrigin(record.lastOrigin),
+		activeDevice: null
 	};
 }
 
@@ -507,19 +616,11 @@ export const dbPlaybackIntentStore: PlaybackIntentStore = {
 			}
 
 			const stateRows = await tx
-				.select({
-					currentTrackJson: playbackState.currentTrackJson,
-					queueJson: playbackState.queueJson,
-					queueEntriesJson: playbackState.queueEntriesJson,
-					historyJson: playbackState.historyJson,
-					currentTime: playbackState.currentTime,
-					revision: playbackState.revision,
-					lastOrigin: playbackState.lastOrigin
-				})
+				.select(playbackStateSelection)
 				.from(playbackState)
 				.where(eq(playbackState.userId, userId))
 				.limit(1);
-			const current = stateRows[0] ? fromRow(stateRows[0]) : EMPTY_PLAYBACK_STATE;
+			const current = stateRows[0] ? fromRow(stateRows[0], intent.deviceId) : EMPTY_PLAYBACK_STATE;
 
 			if (operation) {
 				return { state: current, conflict: true, duplicate: false, invalid: true };
@@ -549,16 +650,8 @@ export const dbPlaybackIntentStore: PlaybackIntentStore = {
 					set: { ...values, revision: sql`${playbackState.revision} + 1` },
 					setWhere: sql`${playbackState.revision} = ${intent.expectedRevision}`
 				})
-				.returning({
-					currentTrackJson: playbackState.currentTrackJson,
-					queueJson: playbackState.queueJson,
-					queueEntriesJson: playbackState.queueEntriesJson,
-					historyJson: playbackState.historyJson,
-					currentTime: playbackState.currentTime,
-					revision: playbackState.revision,
-					lastOrigin: playbackState.lastOrigin
-				});
-			const saved = savedRows[0] ? fromRow(savedRows[0]) : null;
+				.returning(playbackStateSelection);
+			const saved = savedRows[0] ? fromRow(savedRows[0], intent.deviceId) : null;
 			if (!saved) {
 				const concurrentOperations = await tx
 					.select({
@@ -579,20 +672,12 @@ export const dbPlaybackIntentStore: PlaybackIntentStore = {
 					if (recovered) return { state: recovered, conflict: false, duplicate: true };
 				}
 				const latestRows = await tx
-					.select({
-						currentTrackJson: playbackState.currentTrackJson,
-						queueJson: playbackState.queueJson,
-						queueEntriesJson: playbackState.queueEntriesJson,
-						historyJson: playbackState.historyJson,
-						currentTime: playbackState.currentTime,
-						revision: playbackState.revision,
-						lastOrigin: playbackState.lastOrigin
-					})
+					.select(playbackStateSelection)
 					.from(playbackState)
 					.where(eq(playbackState.userId, userId))
 					.limit(1);
 				return {
-					state: latestRows[0] ? fromRow(latestRows[0]) : EMPTY_PLAYBACK_STATE,
+					state: latestRows[0] ? fromRow(latestRows[0], intent.deviceId) : EMPTY_PLAYBACK_STATE,
 					conflict: true,
 					duplicate: false
 				};
@@ -639,12 +724,13 @@ export const dbPlaybackIntentStore: PlaybackIntentStore = {
 
 export async function getPlaybackState(
 	userId: string,
-	store: PlaybackStateStore = dbPlaybackStateStore
+	store: PlaybackStateStore = dbPlaybackStateStore,
+	deviceId?: string | null
 ): Promise<PlaybackState> {
 	// Loaded on every app-shell render — a storage failure falls back to an
 	// empty state rather than 500-ing the page.
 	try {
-		return (await store.read(userId)) ?? EMPTY_PLAYBACK_STATE;
+		return (await store.read(userId, deviceId)) ?? EMPTY_PLAYBACK_STATE;
 	} catch (err) {
 		log.error('playback-state read failed, using empty state', { cause: err });
 		return EMPTY_PLAYBACK_STATE;
@@ -656,12 +742,27 @@ export function savePlaybackState(
 	state: PlaybackStateInput,
 	expectedRevision: number,
 	origin: PlaybackStateOrigin,
-	store: PlaybackStateStore = dbPlaybackStateStore
+	store: PlaybackStateStore = dbPlaybackStateStore,
+	deviceId?: string | null
 ): Promise<PlaybackStateSaveResult> {
-	return store.write(userId, state, expectedRevision, origin).then(async (saved) => {
+	return store.write(userId, state, expectedRevision, origin, deviceId).then(async (saved) => {
 		if (saved) return { state: saved, conflict: false };
-		return { state: (await store.read(userId)) ?? EMPTY_PLAYBACK_STATE, conflict: true };
+		return { state: (await store.read(userId, deviceId)) ?? EMPTY_PLAYBACK_STATE, conflict: true };
 	});
+}
+
+/**
+ * Take the short-lived active-playback lease after an explicit owner gesture.
+ * It is deliberately separate from route loading: merely opening another site
+ * can observe a session but cannot seize it or start audio.
+ */
+export function claimPlaybackDevice(
+	userId: string,
+	deviceId: string,
+	origin: PlaybackStateOrigin,
+	store: PlaybackDeviceLeaseStore = dbPlaybackDeviceLeaseStore
+): Promise<PlaybackState> {
+	return store.claim(userId, deviceId, origin);
 }
 
 /** Apply an entry-targeted, replay-safe queue operation. */

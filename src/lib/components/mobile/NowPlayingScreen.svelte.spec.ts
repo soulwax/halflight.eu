@@ -29,6 +29,8 @@ afterEach(() => {
 	player.isPlaying = false;
 	player.shuffle = false;
 	player.repeatMode = 'off';
+	player.activeDevice = null;
+	player.playbackClaimPending = false;
 });
 
 describe('NowPlayingScreen.svelte', () => {
@@ -81,6 +83,20 @@ describe('NowPlayingScreen.svelte', () => {
 		expect(
 			page.getByRole('button', { name: m.player_next() }).element().hasAttribute('disabled')
 		).toBe(true);
+	});
+
+	it('offers an explicit takeover without claiming playback on mount', async () => {
+		player.currentTrack = track;
+		player.activeDevice = {
+			origin: 'listening-room',
+			expiresAt: new Date(Date.now() + 45_000).toISOString(),
+			isCurrent: false
+		};
+		await render(NowPlayingScreen);
+
+		await expect.element(page.getByText(m.now_playing_elsewhere())).toBeInTheDocument();
+		await expect.element(page.getByRole('button', { name: m.now_play_here() })).toBeInTheDocument();
+		expect(player.playbackClaimPending).toBe(false);
 	});
 
 	it('toggles shuffle and cycles repeat from the transport', async () => {

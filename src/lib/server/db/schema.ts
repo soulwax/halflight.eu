@@ -111,6 +111,12 @@ export const playbackState = pgTable('playback_state', {
 	currentTime: integer('current_time').notNull().default(0),
 	revision: integer('revision').notNull().default(0),
 	lastOrigin: text('last_origin'),
+	// An opaque, short-lived browser identity. It prevents a second open
+	// Listening Room / Halflight Now session from advancing the saved position
+	// until the owner deliberately takes playback there.
+	activeDeviceId: text('active_device_id'),
+	activeDeviceOrigin: text('active_device_origin'),
+	activeDeviceExpiresAt: timestamp('active_device_expires_at', { withTimezone: true }),
 	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 });
 

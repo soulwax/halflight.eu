@@ -145,7 +145,8 @@ describe('taste profile', () => {
 				],
 				currentTime: 0,
 				revision: 0,
-				lastOrigin: null
+				lastOrigin: null,
+				activeDevice: null
 			},
 			now
 		});

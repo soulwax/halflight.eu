@@ -99,6 +99,19 @@
 			<PlayerTransport />
 			<PlayerActions {track} {floating} {isNarrow} {tidalUrl} />
 		</div>
+		{#if player.isPlaybackActiveElsewhere}
+			<div class="player-sync-status" role="status">
+				<span>{m.now_playing_elsewhere()}</span>
+				<button
+					class="player-sync-action"
+					type="button"
+					disabled={player.playbackClaimPending}
+					onclick={() => player.playHere()}
+				>
+					{m.now_play_here()}
+				</button>
+			</div>
+		{/if}
 		{#if player.persistenceStatus === 'conflict'}
 			<div class="player-sync-status" role="status">
 				<span>{m.player_sync_conflict()}</span>

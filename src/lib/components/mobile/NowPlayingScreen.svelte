@@ -150,6 +150,23 @@
 				{/if}
 			</div>
 
+			{#if player.isPlaybackActiveElsewhere}
+				<div class="flex w-full max-w-sm items-center justify-between gap-3 rounded-(--radius-md) border border-(--border-subtle) bg-(--surface-raised) px-3 py-2 text-left">
+					<span class="text-xs text-(--text-muted)">{m.now_playing_elsewhere()}</span>
+					<button
+						type="button"
+						class="min-h-12 shrink-0 rounded-(--radius-sm) bg-(--action) px-4 text-sm font-semibold text-(--action-contrast) disabled:opacity-60"
+						disabled={player.playbackClaimPending}
+						onclick={() => {
+							haptics.tick();
+							player.playHere();
+						}}
+					>
+						{m.now_play_here()}
+					</button>
+				</div>
+			{/if}
+
 			<div class="flex w-full max-w-sm items-center gap-2">
 				<span class="w-10 text-right text-xs text-(--text-muted)">{formatClock(displayedTime)}</span
 				>

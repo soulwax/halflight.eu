@@ -6,11 +6,14 @@ import {
 	MAX_PLAYBACK_HISTORY_LENGTH,
 	applyQueueIntent,
 	parsePlaybackState,
+	parsePlaybackDeviceId,
 	parsePlaybackIntent,
 	parsePlaybackStateOrigin,
 	parsePlaybackStateRevision,
 	savePlaybackState,
+	claimPlaybackDevice,
 	type PlaybackState,
+	type PlaybackDeviceLeaseStore,
 	type PlaybackStateInput,
 	type PlaybackStateStore
 } from './playback-state';
@@ -37,7 +40,7 @@ describe('playback state', () => {
 				if (persisted.revision !== expectedRevision) return null;
 				const revision = expectedRevision + 1;
 				acceptedRevisions.push(revision);
-				persisted = { ...nextState, revision, lastOrigin: origin };
+				persisted = { ...nextState, revision, lastOrigin: origin, activeDevice: null };
 				return persisted;
 			}
 		};
@@ -141,6 +144,39 @@ describe('playback state', () => {
 		expect(parsePlaybackStateRevision(12)).toBe(12);
 		expect(parsePlaybackStateRevision(-1)).toBeNull();
 		expect(parsePlaybackStateRevision(1.5)).toBeNull();
+	});
+
+	it('accepts only bounded opaque browser device identifiers', () => {
+		expect(parsePlaybackDeviceId('device_123456789')).toBe('device_123456789');
+		expect(parsePlaybackDeviceId('owner@example.com')).toBeNull();
+		expect(parsePlaybackDeviceId('device_short')).toBeNull();
+	});
+
+	it('claims a lease only through the injected authoritative store', async () => {
+		const claimed: PlaybackState = {
+			...EMPTY_PLAYBACK_STATE,
+			revision: 4,
+			lastOrigin: 'halflight-now',
+			activeDevice: {
+				origin: 'halflight-now',
+				expiresAt: '2026-09-08T00:00:45.000Z',
+				isCurrent: true
+			}
+		};
+		const store: PlaybackDeviceLeaseStore = {
+			claim: async (userId, deviceId, origin) => {
+				expect([userId, deviceId, origin]).toEqual([
+					'owner-1',
+					'device_123456789',
+					'halflight-now'
+				]);
+				return claimed;
+			}
+		};
+
+		await expect(
+			claimPlaybackDevice('owner-1', 'device_123456789', 'halflight-now', store)
+		).resolves.toEqual(claimed);
 	});
 
 	it('requires stable entry IDs for queue intents while retaining duplicate track occurrences', () => {

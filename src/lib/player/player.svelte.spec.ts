@@ -274,6 +274,52 @@ describe('PlayerState', () => {
 		expect(player.isPlaying).toBe(false);
 	});
 
+	it('keeps a restored remote session passive until this device explicitly takes playback', async () => {
+		const fetchSpy = vi.fn((url: string) => {
+			if (url !== '/api/playback-state/claim') return Promise.reject(new Error('not needed'));
+			return Promise.resolve(
+				new Response(
+					JSON.stringify({
+						currentTrack: sampleTrack1,
+						queue: [],
+						history: [],
+						currentTime: 7,
+						revision: 2,
+						activeDevice: {
+							origin: 'halflight-now',
+							expiresAt: new Date(Date.now() + 45_000).toISOString(),
+							isCurrent: true
+						}
+					}),
+					{ status: 200 }
+				)
+			);
+		});
+		vi.stubGlobal('fetch', fetchSpy);
+
+		const player = new PlayerState();
+		player.restorePlaybackState({
+			currentTrack: sampleTrack1,
+			queue: [],
+			history: [],
+			currentTime: 7,
+			revision: 1,
+			activeDevice: {
+				origin: 'listening-room',
+				expiresAt: new Date(Date.now() + 45_000).toISOString(),
+				isCurrent: false
+			}
+		});
+
+		expect(fetchSpy.mock.calls.some(([url]) => url === '/api/playback-state/claim')).toBe(false);
+		await expect(player.takePlaybackControl()).resolves.toBe(true);
+		expect(fetchSpy).toHaveBeenCalledWith(
+			'/api/playback-state/claim',
+			expect.objectContaining({ method: 'POST' })
+		);
+		expect(player.isPlaybackActiveHere).toBe(true);
+	});
+
 	it('reconciles a newer remote session without starting playback', async () => {
 		const fetchSpy = vi.fn(() =>
 			Promise.resolve(

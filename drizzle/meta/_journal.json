@@ -169,6 +169,13 @@
       "when": 1788708214967,
       "tag": "0023_brainy_ricochet",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1788825315358,
+      "tag": "0024_awesome_phalanx",
+      "breakpoints": true
     }
   ]
 }

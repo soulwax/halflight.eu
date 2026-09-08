@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
 	getPlaybackState: vi.fn(),
 	savePlaybackState: vi.fn(),
 	parsePlaybackState: vi.fn(),
+	parsePlaybackDeviceId: vi.fn(),
 	parsePlaybackStateOrigin: vi.fn(),
 	parsePlaybackStateRevision: vi.fn()
 }));
@@ -29,10 +30,12 @@ describe('/api/playback-state', () => {
 		mocks.getPlaybackState.mockReset();
 		mocks.savePlaybackState.mockReset();
 		mocks.parsePlaybackState.mockReset();
+		mocks.parsePlaybackDeviceId.mockReset();
 		mocks.parsePlaybackStateOrigin.mockReset();
 		mocks.parsePlaybackStateRevision.mockReset();
 		mocks.getPlaybackState.mockResolvedValue(state);
 		mocks.parsePlaybackState.mockReturnValue(state);
+		mocks.parsePlaybackDeviceId.mockReturnValue(null);
 		mocks.parsePlaybackStateOrigin.mockReturnValue('listening-room');
 		mocks.parsePlaybackStateRevision.mockReturnValue(0);
 		mocks.savePlaybackState.mockResolvedValue({ state, conflict: false });
@@ -40,7 +43,7 @@ describe('/api/playback-state', () => {
 
 	it('returns the signed-in owner’s saved resume state', async () => {
 		expect(await (await GET(event())).json()).toEqual(state);
-		expect(mocks.getPlaybackState).toHaveBeenCalledWith('owner-1');
+		expect(mocks.getPlaybackState).toHaveBeenCalledWith('owner-1', undefined, null);
 	});
 
 	it('does not expose the owner session to a non-administrator account', async () => {
@@ -56,7 +59,14 @@ describe('/api/playback-state', () => {
 		});
 		const response = await PUT(event(request) as Parameters<typeof PUT>[0]);
 		expect(response.status).toBe(200);
-		expect(mocks.savePlaybackState).toHaveBeenCalledWith('owner-1', state, 0, 'listening-room');
+		expect(mocks.savePlaybackState).toHaveBeenCalledWith(
+			'owner-1',
+			state,
+			0,
+			'listening-room',
+			undefined,
+			null
+		);
 	});
 
 	it('returns the latest state when another site has already written a newer revision', async () => {

@@ -508,6 +508,8 @@
 	"now_credits_loading": "Credits werden geladen",
 	"now_credits_empty": "Für diesen Titel sind keine Mitwirkenden-Credits verfügbar.",
 	"now_credits_unavailable": "Credits sind gerade nicht verfügbar.",
+	"now_playing_elsewhere": "Wiedergabe auf einem anderen Gerät",
+	"now_play_here": "Hier abspielen",
 	"mobile_quality_mode_label": "Mobiles Streaming",
 	"mobile_quality_data_saver": "Datensparmodus",
 	"mobile_quality_data_saver_description": "AAC mit 96 kbit/s. Verbraucht weniger mobile Daten.",
