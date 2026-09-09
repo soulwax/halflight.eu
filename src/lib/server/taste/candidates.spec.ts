@@ -46,6 +46,14 @@ describe('candidates filtering', () => {
 		expect(result.map((r) => r.id)).toEqual(['t1', 't3', 't4']);
 	});
 
+	it('carries the release year and decade through for era scoring', () => {
+		const profile = emptyTasteProfile();
+		const result = filterCandidates(dummyTracks, profile);
+
+		expect(result.find((r) => r.id === 't1')).toMatchObject({ year: 2015, decade: 2010 });
+		expect(result.find((r) => r.id === 't3')).toMatchObject({ year: 1985, decade: 1980 });
+	});
+
 	it('drops excluded artists and eras', () => {
 		const profile = emptyTasteProfile();
 		profile.exclusions.artists = ['a3-excluded'];

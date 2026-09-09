@@ -16,8 +16,20 @@
 	let familiarity = $state(50);
 	let targetCount = $state(20);
 	let seedArtistId = $state('');
+	let eraCenter = $state('');
 	let isGenerating = $state(false);
 	let saveSuccess = $state(false);
+
+	// Mid-decade centre years for the era-window request-fit term; '' is unconstrained.
+	const ERA_OPTIONS = [
+		{ value: '', label: 'Any era' },
+		{ value: '1975', label: '1970s' },
+		{ value: '1985', label: '1980s' },
+		{ value: '1995', label: '1990s' },
+		{ value: '2005', label: '2000s' },
+		{ value: '2015', label: '2010s' },
+		{ value: '2025', label: '2020s' }
+	];
 
 	$effect(() => {
 		if (data.profile.knobDefaults.familiarity !== undefined) {
@@ -193,8 +205,8 @@
 				</div>
 			</div>
 
-			<!-- Set Length & Seed Selection Grid -->
-			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+			<!-- Set Length, Era & Seed Selection Grid -->
+			<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
 				<!-- Track Count -->
 				<div class="space-y-1.5">
 					<label
@@ -215,6 +227,26 @@
 						<option value={30}>30 tracks (~2 hours)</option>
 						<option value={40}>40 tracks (~2.7 hours)</option>
 						<option value={50}>50 tracks (~3.5 hours)</option>
+					</select>
+				</div>
+
+				<!-- Era Window -->
+				<div class="space-y-1.5">
+					<label
+						for="era-select"
+						class="text-xs font-bold tracking-wider text-[var(--text-muted)] uppercase"
+					>
+						Era
+					</label>
+					<select
+						id="era-select"
+						name="eraCenter"
+						bind:value={eraCenter}
+						class="w-full border border-[var(--border-subtle)] bg-[var(--surface-canvas)] px-3 py-2 text-sm text-[var(--text-primary)]"
+					>
+						{#each ERA_OPTIONS as option (option.value)}
+							<option value={option.value}>{option.label}</option>
+						{/each}
 					</select>
 				</div>
 

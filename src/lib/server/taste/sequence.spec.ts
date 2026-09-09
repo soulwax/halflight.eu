@@ -11,6 +11,7 @@ describe('set sequencing', () => {
 			primaryArtistName: 'Artist 1',
 			affinity: 0.9,
 			novelty: 0.1,
+			fit: 0.5,
 			score: 0.85,
 			artists: [{ id: 'a1', name: 'Artist 1' }],
 			provenance: { edge: 'anchor', seedArtistId: 'a1' }
@@ -22,6 +23,7 @@ describe('set sequencing', () => {
 			primaryArtistName: 'Artist 1',
 			affinity: 0.88,
 			novelty: 0.1,
+			fit: 0.5,
 			score: 0.83,
 			artists: [{ id: 'a1', name: 'Artist 1' }],
 			provenance: { edge: 'anchor', seedArtistId: 'a1' }
@@ -33,6 +35,7 @@ describe('set sequencing', () => {
 			primaryArtistName: 'Artist 2',
 			affinity: 0.7,
 			novelty: 0.5,
+			fit: 0.5,
 			score: 0.8,
 			artists: [{ id: 'a2', name: 'Artist 2' }],
 			provenance: { edge: 'similar_artist', seedArtistId: 'a1' }
@@ -44,6 +47,7 @@ describe('set sequencing', () => {
 			primaryArtistName: 'Artist 3',
 			affinity: 0.6,
 			novelty: 0.6,
+			fit: 0.5,
 			score: 0.78,
 			artists: [{ id: 'a3', name: 'Artist 3' }],
 			provenance: { edge: 'similar_artist', seedArtistId: 'a1' }

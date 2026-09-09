@@ -4,7 +4,10 @@ import type { TasteProfile } from './profile';
 export interface FilteredCandidate extends GraphCandidateTrack {
 	primaryArtistId: string;
 	primaryArtistName: string;
+	/** Release decade, e.g. 2010 — used for era exclusions and era affinity. */
 	decade?: number;
+	/** Release year, e.g. 2017 — used for the era-window request-fit term. */
+	year?: number;
 }
 
 /**
@@ -34,10 +37,12 @@ export function filterCandidates(
 		const primaryArtist = track.artists[0] ?? { id: '', name: '' };
 
 		let decade: number | undefined;
+		let year: number | undefined;
 		if (track.releaseDate) {
-			const year = parseInt(track.releaseDate.slice(0, 4), 10);
-			if (!isNaN(year) && year >= 1880 && year <= 2100) {
-				decade = Math.floor(year / 10) * 10;
+			const parsedYear = parseInt(track.releaseDate.slice(0, 4), 10);
+			if (!isNaN(parsedYear) && parsedYear >= 1880 && parsedYear <= 2100) {
+				year = parsedYear;
+				decade = Math.floor(parsedYear / 10) * 10;
 				if (excludedEras.has(decade)) continue;
 			}
 		}
@@ -53,7 +58,8 @@ export function filterCandidates(
 			...track,
 			primaryArtistId: primaryArtist.id,
 			primaryArtistName: primaryArtist.name || 'Unknown Artist',
-			decade
+			decade,
+			year
 		});
 	}
 

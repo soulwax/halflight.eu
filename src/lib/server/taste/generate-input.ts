@@ -22,10 +22,21 @@ const familiaritySchema = v.pipe(
 
 const seedArtistIdSchema = v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(128));
 
+const eraCenterSchema = v.pipe(
+	v.string(),
+	v.trim(),
+	v.transform(Number),
+	v.number(),
+	v.safeInteger(),
+	v.minValue(1900),
+	v.maxValue(2100)
+);
+
 const generateTasteSetInputSchema = v.object({
 	targetCount: targetCountSchema,
 	familiarity: familiaritySchema,
-	seedArtistId: v.optional(seedArtistIdSchema)
+	seedArtistId: v.optional(seedArtistIdSchema),
+	eraCenter: v.optional(eraCenterSchema)
 });
 
 export type GenerateTasteSetInput = v.InferOutput<typeof generateTasteSetInputSchema>;
@@ -42,10 +53,12 @@ export function parseGenerateTasteSetInput(
 	formData: Pick<FormData, 'get'>
 ): GenerateTasteSetInputResult {
 	const seedArtistId = formData.get('seedArtistId');
+	const eraCenter = formData.get('eraCenter');
 	const result = v.safeParse(generateTasteSetInputSchema, {
 		targetCount: formData.get('targetCount') ?? '20',
 		familiarity: formData.get('familiarity') ?? '50',
-		seedArtistId: seedArtistId === null || seedArtistId === '' ? undefined : seedArtistId
+		seedArtistId: seedArtistId === null || seedArtistId === '' ? undefined : seedArtistId,
+		eraCenter: eraCenter === null || eraCenter === '' ? undefined : eraCenter
 	});
 
 	return result.success ? { success: true, output: result.output } : { success: false };

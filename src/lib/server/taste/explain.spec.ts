@@ -17,6 +17,7 @@ describe('taste explainability', () => {
 		duration: 250,
 		affinity: 1,
 		novelty: 0,
+		fit: 0.5,
 		score: 1,
 		artists: [{ id: 'anchor1', name: 'Bonobo' }],
 		provenance: { edge: 'anchor', seedArtistId: 'anchor1' }
@@ -31,6 +32,7 @@ describe('taste explainability', () => {
 		duration: 200,
 		affinity: 1,
 		novelty: 0,
+		fit: 0.5,
 		score: 1,
 		artists: [{ id: 'pinned1', name: 'Tycho' }],
 		provenance: { edge: 'anchor', seedArtistId: 'pinned1' }
@@ -45,6 +47,7 @@ describe('taste explainability', () => {
 		duration: 210,
 		affinity: 0.2,
 		novelty: 0.8,
+		fit: 0.5,
 		score: 0.7,
 		artists: [{ id: 'artist3', name: 'Emancipator' }],
 		provenance: { edge: 'similar_artist', seedArtistId: 'anchor1', seedArtistName: 'Bonobo' }

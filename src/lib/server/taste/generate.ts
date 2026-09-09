@@ -10,10 +10,17 @@ import type { ProvisionalSet, ProvisionalTrack } from '#lib/taste/provisional';
 // the shape itself is defined in a browser-safe module.
 export type { ProvisionalSet, ProvisionalTrack };
 
+/** Half-width in years of the era window when a centre year is requested. */
+export const DEFAULT_ERA_SPREAD = 8;
+
 export interface GenerateKnobs {
 	targetCount?: number;
 	familiarity?: number;
 	seedArtistId?: string;
+	/** Centre year for the era-window request-fit term; omit for unconstrained. */
+	eraCenter?: number;
+	/** Half-width in years; defaults to `DEFAULT_ERA_SPREAD` when a centre is set. */
+	eraSpread?: number;
 }
 
 export interface GenerateTasteSetOptions {
@@ -36,6 +43,10 @@ export async function generateTasteSet(
 	const now = options.now ?? new Date();
 	const targetCount = options.knobs?.targetCount ?? 20;
 	const familiarity = options.knobs?.familiarity ?? profile.knobDefaults.familiarity ?? 50;
+	const era =
+		options.knobs?.eraCenter !== undefined
+			? { center: options.knobs.eraCenter, spread: options.knobs.eraSpread ?? DEFAULT_ERA_SPREAD }
+			: undefined;
 
 	// 1. Determine anchor seeds
 	const anchors: Array<{ id: string; name?: string; weight: number }> = options.knobs?.seedArtistId
@@ -66,7 +77,7 @@ export async function generateTasteSet(
 	const filtered = filterCandidates(expansion.candidates, profile, options.cooldownTrackIds);
 
 	// 4. Stage 4b — Transparent Multi-term Scoring
-	const scored = scoreCandidates(filtered, profile, { familiarity });
+	const scored = scoreCandidates(filtered, profile, { familiarity, era });
 
 	// 5. Stage 4c — Energy / Spacing Sequencing
 	const sequenced = sequenceCandidates(scored, { targetCount });

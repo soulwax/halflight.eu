@@ -53,4 +53,32 @@ describe('candidate scoring', () => {
 
 		expect(penalized.score).toBeLessThan(normal.score);
 	});
+
+	it('rewards tracks inside a requested era window and penalizes those outside', () => {
+		const inWindow: FilteredCandidate = { ...discoveryTrack, id: 't-2016', year: 2016 };
+		const outOfWindow: FilteredCandidate = { ...discoveryTrack, id: 't-1990', year: 1990 };
+		const era = { center: 2016, spread: 8 };
+
+		const scoredIn = scoreCandidate(inWindow, profile, { familiarity: 50, era });
+		const scoredOut = scoreCandidate(outOfWindow, profile, { familiarity: 50, era });
+		const scoredNoEra = scoreCandidate(inWindow, profile, { familiarity: 50 });
+
+		expect(scoredIn.fit).toBe(1);
+		expect(scoredOut.fit).toBe(0);
+		expect(scoredIn.score).toBeGreaterThan(scoredNoEra.score);
+		expect(scoredOut.score).toBeLessThan(scoredNoEra.score);
+	});
+
+	it('stays neutral on era fit when the year is unknown or no era is requested', () => {
+		const undated: FilteredCandidate = { ...discoveryTrack, id: 't-undated', year: undefined };
+
+		const withEra = scoreCandidate(undated, profile, {
+			familiarity: 50,
+			era: { center: 2016, spread: 8 }
+		});
+		const withoutEra = scoreCandidate(undated, profile, { familiarity: 50 });
+
+		expect(withEra.fit).toBe(0.5);
+		expect(withEra.score).toBe(withoutEra.score);
+	});
 });
