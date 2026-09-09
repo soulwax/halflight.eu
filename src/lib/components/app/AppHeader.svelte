@@ -25,7 +25,11 @@
 			class="brand-mark flex items-center transition-opacity hover:opacity-75 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--focus-ring)]"
 			aria-label={m.brand_name()}
 		>
-			<img src="/icons/halflight-64.png" alt={m.brand_name()} class="h-7 w-7 sm:h-8 sm:w-8" />
+			<img
+				src="/icons/emily-the-strange-music-with-many-paths-64.png"
+				alt={m.brand_name()}
+				class="h-7 w-7 sm:h-8 sm:w-8"
+			/>
 		</a>
 	</div>
 

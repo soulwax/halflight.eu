@@ -13,5 +13,6 @@
 			"#lib/*": ["./src/lib/*"]
 		}
 	},
-	"include": ["src", "drizzle.config.ts"]
+	"include": ["src", "drizzle.config.ts"],
+	"exclude": ["src/service-worker.ts", "src/service-worker"]
 }

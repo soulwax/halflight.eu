@@ -12,7 +12,7 @@ describe('AppHeader.svelte', () => {
 		await expect.element(logoLink).toHaveAttribute('href', '/');
 		await expect
 			.element(page.getByRole('img', { name: 'Halflight' }))
-			.toHaveAttribute('src', '/icons/halflight-64.png');
+			.toHaveAttribute('src', '/icons/emily-the-strange-music-with-many-paths-64.png');
 
 		// Login button links to /sign-in
 		const loginLink = page.getByRole('link', { name: 'Sign in' });

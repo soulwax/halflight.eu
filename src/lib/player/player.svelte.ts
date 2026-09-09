@@ -378,6 +378,8 @@ export class PlayerState {
 
 		this.audio = new Audio();
 		this.audio.preload = 'auto';
+		this.audio.setAttribute('playsinline', 'true');
+		this.audio.setAttribute('webkit-playsinline', 'true');
 
 		this.audio.addEventListener('timeupdate', () => this.onTimeUpdate());
 
@@ -426,10 +428,15 @@ export class PlayerState {
 			updatePlaybackState(false);
 		});
 
-		// Auto-reconnect audio context on tab wake or connection restore
+		// Auto-reconnect audio context and re-sync media session on tab wake or connection restore
 		document.addEventListener('visibilitychange', () => {
 			if (document.visibilityState === 'visible') {
 				this.resumeAudioContext();
+				if (this.currentTrack) {
+					updateMediaMetadata(this.currentTrack);
+					updatePlaybackState(this.isPlaying);
+					updatePositionState({ duration: this.duration, position: this.currentTime });
+				}
 			}
 		});
 		window.addEventListener('online', () => {
@@ -472,8 +479,8 @@ export class PlayerState {
 		this.updateBuffer();
 		updatePositionState({ duration: this.duration, position: this.currentTime });
 
-		// Preload next track when entering final 20 seconds
-		if (this.duration > 0 && this.duration - this.currentTime <= 20 && this.queue.length > 0) {
+		// Preload next track when entering final 45 seconds
+		if (this.duration > 0 && this.duration - this.currentTime <= 45 && this.queue.length > 0) {
 			streamPreloader.preload(this.queue[0].id);
 		}
 
@@ -861,9 +868,23 @@ export class PlayerState {
 		this.applyVolume();
 	}
 
+	private isMobilePlayback(): boolean {
+		if (!isBrowser) return false;
+		if (this.origin === 'halflight-now') return true;
+		return navigator.maxTouchPoints > 0 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+	}
+
 	private applyVolume(): void {
 		if (!this.audio) return;
-		this.ensureAudioGraph();
+
+		// Mobile devices and standard playback use native <audio> volume directly.
+		// Connecting Web Audio via createMediaElementSource causes iOS WebKit to
+		// classify playback as ambient Web Audio, which iOS suspends when the screen
+		// locks or apps switch. Keep the audio element 100% native on mobile.
+		const allowWebAudio = !this.isMobilePlayback() && this.isHeadroomEnabled && this.volume > 1.0;
+		if (allowWebAudio) {
+			this.ensureAudioGraph();
+		}
 
 		if (this.isMuted) {
 			if (this.gainNode && this.audioContext) {
@@ -898,11 +919,7 @@ export class PlayerState {
 	private async loadAndPlayStream(trackId: string): Promise<void> {
 		this.initAudio();
 		this.resumeAudioContext();
-		// Freeze the intended start position and silence the outgoing track before
-		// the async metadata fetch. `isLoading` gates `onTimeUpdate` so a late
-		// `timeupdate` from the old element can't rewrite `currentTime`.
 		const startAt = this.currentTime;
-		this.audio?.pause();
 		this.isLoading = true;
 
 		// Check lookahead preloaded metadata first for zero-latency start
@@ -910,23 +927,31 @@ export class PlayerState {
 		let data: PreloadedStreamData | null = preloaded;
 
 		if (!data) {
-			// Fetch metadata from /stream endpoint
-			try {
-				const res = await fetch(`/api/tracks/${encodeURIComponent(trackId)}/stream`).catch(
-					() => null
-				);
-				if (res && res.ok) {
-					data = (await res.json().catch(() => null)) as PreloadedStreamData | null;
-				} else if (res) {
-					const errData = (await res.json().catch(() => ({}))) as {
-						requiresFullAuth?: boolean;
-						reason?: string;
-					};
-					this.requiresFullAuth = errData.requiresFullAuth ?? res.status === 403;
-					this.playbackReason = errData.reason ?? `http_${res.status}`;
+			// If not yet preloaded, check if a preload is inflight or fetch directly.
+			// Do not pause the audio before we have the next source, to preserve the
+			// iOS WebKit background continuation token during queue handover.
+			const pendingData = streamPreloader.getOrAwait(trackId);
+			if (pendingData) {
+				data = await pendingData;
+			}
+			if (!data) {
+				try {
+					const res = await fetch(`/api/tracks/${encodeURIComponent(trackId)}/stream`).catch(
+						() => null
+					);
+					if (res && res.ok) {
+						data = (await res.json().catch(() => null)) as PreloadedStreamData | null;
+					} else if (res) {
+						const errData = (await res.json().catch(() => ({}))) as {
+							requiresFullAuth?: boolean;
+							reason?: string;
+						};
+						this.requiresFullAuth = errData.requiresFullAuth ?? res.status === 403;
+						this.playbackReason = errData.reason ?? `http_${res.status}`;
+					}
+				} catch {
+					this.playbackReason = 'network_error';
 				}
-			} catch {
-				this.playbackReason = 'network_error';
 			}
 		}
 

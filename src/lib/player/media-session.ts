@@ -20,6 +20,30 @@ function isMediaSessionSupported(): boolean {
 }
 
 /**
+ * Resolves a potentially relative image path to a fully qualified absolute URL.
+ * Required by iOS WebKit / MPNowPlayingInfoCenter for lockscreen artwork.
+ */
+export function toAbsoluteArtworkUrl(url: string): string {
+	if (!url) return '';
+	if (
+		url.startsWith('http://') ||
+		url.startsWith('https://') ||
+		url.startsWith('blob:') ||
+		url.startsWith('data:')
+	) {
+		return url;
+	}
+	if (typeof window !== 'undefined' && window.location?.origin) {
+		try {
+			return new URL(url, window.location.origin).href;
+		} catch {
+			return url;
+		}
+	}
+	return url;
+}
+
+/**
  * Updates OS media session metadata (title, artist, album, artwork sizes).
  * Renders on lock screens, Mac Now Playing, and Bluetooth audio devices.
  */
@@ -33,16 +57,19 @@ export function updateMediaMetadata(track: TrackSummary | null): void {
 
 	const artistNames = track.artists.map((a) => a.name).join(', ') || 'Unknown Artist';
 	const albumTitle = track.album?.title || '';
-	const artworkUrl = track.imageUrl || track.album?.imageUrl || '';
+	const rawArtworkUrl = track.imageUrl || track.album?.imageUrl || '';
+	const artworkUrl = toAbsoluteArtworkUrl(rawArtworkUrl);
 
 	const artwork: MediaImage[] = [];
 	if (artworkUrl) {
+		const isPng = artworkUrl.toLowerCase().includes('.png');
+		const type = isPng ? 'image/png' : 'image/jpeg';
 		const sizes = ['96x96', '128x128', '192x192', '256x256', '512x512'];
 		for (const size of sizes) {
 			artwork.push({
 				src: artworkUrl,
 				sizes: size,
-				type: 'image/jpeg'
+				type
 			});
 		}
 	}
@@ -81,11 +108,18 @@ export function updatePositionState(params: {
 }): void {
 	if (!isMediaSessionSupported() || !('setPositionState' in navigator.mediaSession)) return;
 
+	if (
+		!Number.isFinite(params.duration) ||
+		params.duration <= 0 ||
+		!Number.isFinite(params.position) ||
+		params.position < 0
+	) {
+		return;
+	}
+
 	const duration = Math.max(0, params.duration);
 	const position = Math.max(0, Math.min(params.position, duration));
 	const playbackRate = params.playbackRate ?? 1;
-
-	if (duration <= 0 || Number.isNaN(duration) || Number.isNaN(position)) return;
 
 	try {
 		navigator.mediaSession.setPositionState({

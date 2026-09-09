@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import AppHeader from '#lib/components/app/AppHeader.svelte';
 	import Footer from '#lib/components/Footer.svelte';
 	import { isMobileRoute } from '#lib/mobile/routes';
@@ -9,6 +10,14 @@
 	import './layout.css';
 
 	let { data, children }: { data: LayoutData; children: Snippet } = $props();
+
+	onMount(() => {
+		if ('serviceWorker' in navigator && !import.meta.env.DEV) {
+			navigator.serviceWorker.register('/service-worker.js').catch(() => {
+				// Best-effort service worker registration
+			});
+		}
+	});
 
 	// Halflight Now (the `(mobile)` route group) owns its own compact header,
 	// tab bar, and mini player — it must not inherit the desktop chrome. Design
@@ -22,15 +31,30 @@
 </script>
 
 <svelte:head>
-	<link rel="icon" type="image/png" sizes="32x32" href="/icons/halflight-32.png" />
-	<link rel="icon" type="image/png" sizes="192x192" href="/icons/halflight-192.png" />
+	<link
+		rel="icon"
+		type="image/png"
+		sizes="32x32"
+		href="/icons/emily-the-strange-music-with-many-paths-32.png"
+	/>
+	<link
+		rel="icon"
+		type="image/png"
+		sizes="192x192"
+		href="/icons/emily-the-strange-music-with-many-paths-192.png"
+	/>
 	{#if isMobile}
 		<link rel="manifest" href="/manifest.webmanifest" />
 		<meta name="theme-color" content="#f5f8fb" />
+		<meta name="mobile-web-app-capable" content="yes" />
 		<meta name="apple-mobile-web-app-capable" content="yes" />
 		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 		<meta name="apple-mobile-web-app-title" content="Halflight" />
-		<link rel="apple-touch-icon" sizes="192x192" href="/icons/halflight-192.png" />
+		<link
+			rel="apple-touch-icon"
+			sizes="192x192"
+			href="/icons/emily-the-strange-music-with-many-paths-192.png"
+		/>
 	{/if}
 </svelte:head>
 {#if isMobile || isListeningRoom}

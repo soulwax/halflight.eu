@@ -23,6 +23,10 @@ describe('media-session.ts', () => {
 			setPositionState: vi.fn()
 		};
 
+		vi.stubGlobal('window', {
+			location: { origin: 'https://m.halflight.eu' }
+		});
+
 		vi.stubGlobal('navigator', {
 			mediaSession: mockMediaSession
 		});
@@ -67,6 +71,21 @@ describe('media-session.ts', () => {
 		expect(mockMediaSession.metadata?.artwork.length).toBeGreaterThan(0);
 	});
 
+	it('resolves relative artwork URLs to absolute URLs using window.location.origin', () => {
+		const track: TrackSummary = {
+			kind: 'track',
+			id: 'track-relative',
+			title: 'Disorder',
+			artists: [{ id: 'a1', name: 'Joy Division' }],
+			imageUrl: '/api/tracks/track-relative/cover'
+		};
+
+		updateMediaMetadata(track);
+
+		expect(mockMediaSession.metadata?.artwork[0].src).toMatch(/^https?:\/\//);
+		expect(mockMediaSession.metadata?.artwork[0].src).toContain('/api/tracks/track-relative/cover');
+	});
+
 	it('clears metadata when null is passed', () => {
 		updateMediaMetadata(null);
 		expect(mockMediaSession.metadata).toBeNull();
@@ -89,12 +108,24 @@ describe('media-session.ts', () => {
 		});
 	});
 
-	it('registers action handlers for play, pause, previous, next, seek', () => {
+	it('ignores invalid, NaN, or non-positive durations in updatePositionState', () => {
+		updatePositionState({ duration: 0, position: 0 });
+		updatePositionState({ duration: -10, position: 5 });
+		updatePositionState({ duration: NaN, position: 0 });
+		updatePositionState({ duration: Infinity, position: 0 });
+		expect(mockMediaSession.setPositionState).not.toHaveBeenCalled();
+	});
+
+	it('registers action handlers for play, pause, previous, next, seek, and stop', () => {
 		const handlers = {
 			onPlay: vi.fn(),
 			onPause: vi.fn(),
 			onPrevious: vi.fn(),
-			onNext: vi.fn()
+			onNext: vi.fn(),
+			onSeekBackward: vi.fn(),
+			onSeekForward: vi.fn(),
+			onSeekTo: vi.fn(),
+			onStop: vi.fn()
 		};
 
 		setupMediaSessionHandlers(handlers);
@@ -109,5 +140,15 @@ describe('media-session.ts', () => {
 			'nexttrack',
 			expect.any(Function)
 		);
+		expect(mockMediaSession.setActionHandler).toHaveBeenCalledWith(
+			'seekbackward',
+			expect.any(Function)
+		);
+		expect(mockMediaSession.setActionHandler).toHaveBeenCalledWith(
+			'seekforward',
+			expect.any(Function)
+		);
+		expect(mockMediaSession.setActionHandler).toHaveBeenCalledWith('seekto', expect.any(Function));
+		expect(mockMediaSession.setActionHandler).toHaveBeenCalledWith('stop', expect.any(Function));
 	});
 });

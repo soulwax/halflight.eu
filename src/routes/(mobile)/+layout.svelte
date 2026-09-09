@@ -84,7 +84,7 @@
 	{#if !isOnNowRoute}
 		<header class="mobile-app-header relative flex shrink-0 items-center justify-center">
 			<a class="mobile-brand" href={resolve('/(mobile)/home')} aria-label={m.brand_name()}>
-				<img src="/icons/halflight-64.png" alt="" class="h-8 w-8" />
+				<img src="/icons/emily-the-strange-music-with-many-paths-64.png" alt="" class="h-8 w-8" />
 			</a>
 			<a
 				href={resolve('/(mobile)/settings')}

@@ -14,7 +14,11 @@
 
 <main class="auth-page">
 	<section class="auth-card" aria-labelledby="sign-in-title">
-		<img class="brand-logo" src="/icons/halflight-128.png" alt={m.brand_name()} />
+		<img
+			class="brand-logo"
+			src="/icons/emily-the-strange-music-with-many-paths-128.png"
+			alt={m.brand_name()}
+		/>
 		<h1 id="sign-in-title">{m.sign_in_title()}</h1>
 		<p class="intro">{m.sign_in_subtitle()}</p>
 

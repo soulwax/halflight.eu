@@ -972,4 +972,29 @@ describe('PlayerState', () => {
 		player.dragTo(600, 900, 40, 30, 1280, 800);
 		expect(player.floatingPos).toEqual({ x: 560, y: 800 - 460 - 8 });
 	});
+
+	it('bypasses Web Audio gain node creation when acting as Halflight Now on mobile', () => {
+		const player = new PlayerState();
+		player.origin = 'halflight-now';
+
+		const internal = player as unknown as {
+			audio: HTMLAudioElement;
+			gainNode: unknown;
+			isMobilePlayback(): boolean;
+			applyVolume(): void;
+		};
+
+		expect(internal.isMobilePlayback()).toBe(true);
+
+		internal.audio = {
+			volume: 0,
+			muted: false,
+			play: vi.fn(),
+			pause: vi.fn()
+		} as unknown as HTMLAudioElement;
+
+		player.setVolume(0.8);
+		expect(internal.gainNode).toBeNull();
+		expect(internal.audio.volume).toBe(0.8);
+	});
 });
