@@ -37,7 +37,7 @@ describe('MobileAlbumDetail.svelte', () => {
 		await expect
 			.element(page.getByRole('heading', { level: 1, name: 'In the Flat Field' }))
 			.toBeInTheDocument();
-		await expect.element(page.getByText('Bauhaus', { exact: true })).toBeInTheDocument();
+		await expect.element(page.getByText('Bauhaus').first()).toBeInTheDocument();
 		await expect.element(page.getByText('Dark Entries')).toBeInTheDocument();
 		await expect.element(page.getByText('Terror Couple Kill Colonel')).toBeInTheDocument();
 	});

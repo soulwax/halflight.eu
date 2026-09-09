@@ -17,39 +17,27 @@ import {
 	type QueueEntry
 } from './queue-entry.js';
 import { streamPreloader, type PreloadedStreamData } from './stream-preloader.js';
+import {
+	PlaybackSessionCoordinator,
+	isSavedPlaybackState,
+	isTrackSummary,
+	type PlaybackDeviceStatus,
+	type PlaybackOrigin,
+	type PlaybackPersistenceSnapshot,
+	type PlaybackPersistenceStatus,
+	type SavedPlaybackState
+} from './session-coordinator.js';
 
-/** Which site persisted a queue/position write — see MASTERPLAN.md's session contract. */
-export type PlaybackOrigin = 'listening-room' | 'halflight-now';
-
-export interface PlaybackDeviceStatus {
-	origin: PlaybackOrigin;
-	expiresAt: string;
-	isCurrent: boolean;
-}
-
-export interface SavedPlaybackState {
-	currentTrack: TrackSummary | null;
-	queue: QueueEntry[];
-	history: TrackSummary[];
-	currentTime: number;
-	revision?: number;
-	lastOrigin?: PlaybackOrigin | null;
-	activeDevice?: PlaybackDeviceStatus | null;
-}
-
-interface PlaybackStateWrite extends SavedPlaybackState {
-	revision: number;
-	origin: PlaybackOrigin;
-}
-
-interface PlaybackPersistenceSnapshot extends PlaybackStateWrite {
-	queueCommands: QueueCommand[];
-}
+export type {
+	PlaybackDeviceStatus,
+	PlaybackOrigin,
+	PlaybackPersistenceStatus,
+	SavedPlaybackState
+};
 
 export type DockMode = 'docked' | 'floating';
 export type RepeatMode = 'off' | 'all' | 'one';
 export type PlayerPanel = 'queue' | 'lyrics' | 'source';
-export type PlaybackPersistenceStatus = 'saved' | 'saving' | 'offline' | 'conflict';
 
 interface PlayerPrefs {
 	dockMode: DockMode;
@@ -76,37 +64,6 @@ function shuffled<T>(items: T[]): T[] {
 	return copy;
 }
 
-function isTrackSummary(value: unknown): value is TrackSummary {
-	if (!value || typeof value !== 'object') return false;
-	const track = value as Record<string, unknown>;
-	return (
-		track.kind === 'track' &&
-		typeof track.id === 'string' &&
-		track.id.length > 0 &&
-		typeof track.title === 'string' &&
-		track.title.length > 0 &&
-		Array.isArray(track.artists) &&
-		track.artists.every(
-			(artist) =>
-				artist &&
-				typeof artist === 'object' &&
-				typeof (artist as { id?: unknown }).id === 'string' &&
-				typeof (artist as { name?: unknown }).name === 'string'
-		)
-	);
-}
-
-function isPlaybackDeviceStatus(value: unknown): value is PlaybackDeviceStatus {
-	if (!value || typeof value !== 'object') return false;
-	const device = value as Record<string, unknown>;
-	return (
-		(device.origin === 'listening-room' || device.origin === 'halflight-now') &&
-		typeof device.expiresAt === 'string' &&
-		Number.isFinite(Date.parse(device.expiresAt)) &&
-		typeof device.isCurrent === 'boolean'
-	);
-}
-
 /** A prior session may predate the display model, or contain bare linkages. */
 function needsTrackMetadata(track: TrackSummary): boolean {
 	return (
@@ -116,35 +73,6 @@ function needsTrackMetadata(track: TrackSummary): boolean {
 		!track.album ||
 		track.album.title === track.album.id ||
 		!track.album.releaseDate
-	);
-}
-
-/** Keep an untrusted session refresh from replacing the live player with a partial response. */
-function isSavedPlaybackState(value: unknown): value is SavedPlaybackState & { revision: number } {
-	if (!value || typeof value !== 'object') return false;
-	const state = value as Record<string, unknown>;
-	return (
-		(state.currentTrack === null || isTrackSummary(state.currentTrack)) &&
-		Array.isArray(state.queue) &&
-		state.queue.every((entry) => {
-			return (
-				isTrackSummary(entry) &&
-				typeof entry === 'object' &&
-				entry !== null &&
-				isQueueEntryId((entry as QueueEntry).entryId)
-			);
-		}) &&
-		Array.isArray(state.history) &&
-		state.history.every(isTrackSummary) &&
-		typeof state.currentTime === 'number' &&
-		Number.isFinite(state.currentTime) &&
-		state.currentTime >= 0 &&
-		typeof state.revision === 'number' &&
-		Number.isSafeInteger(state.revision) &&
-		state.revision >= 0 &&
-		(state.activeDevice === undefined ||
-			state.activeDevice === null ||
-			isPlaybackDeviceStatus(state.activeDevice))
 	);
 }
 
@@ -212,17 +140,47 @@ export class PlayerState {
 	private mediaSourceNode: MediaElementAudioSourceNode | null = null;
 	private gainNode: GainNode | null = null;
 	private hasRestoredPlaybackState = false;
-	private persistenceTimer: ReturnType<typeof setTimeout> | undefined;
-	private persistenceInFlight = false;
-	private persistenceQueued = false;
-	private playbackStateRevision = 0;
-	private queueCommands: QueueCommand[] = [];
-	private reconciliationBase: SavedPlaybackState | null = null;
-	private reconciliationAttempts = 0;
-	private sessionSyncTimer: ReturnType<typeof setTimeout> | undefined;
-	private sessionSyncActive = false;
-	private sessionSyncInFlight = false;
-	private sessionSyncFailures = 0;
+	private coordinator: PlaybackSessionCoordinator;
+
+	get playbackStateRevision(): number {
+		return this.coordinator.revision;
+	}
+	set playbackStateRevision(value: number) {
+		this.coordinator.revision = value;
+	}
+	get queueCommands(): QueueCommand[] {
+		return this.coordinator.queueCommands;
+	}
+	set queueCommands(commands: QueueCommand[]) {
+		this.coordinator.queueCommands = commands;
+	}
+	get reconciliationBase(): SavedPlaybackState | null {
+		return this.coordinator.reconciliationBase;
+	}
+	set reconciliationBase(base: SavedPlaybackState | null) {
+		this.coordinator.reconciliationBase = base;
+	}
+	get reconciliationAttempts(): number {
+		return this.coordinator.reconciliationAttempts;
+	}
+	set reconciliationAttempts(attempts: number) {
+		this.coordinator.reconciliationAttempts = attempts;
+	}
+	get sessionSyncInFlight(): boolean {
+		return this.coordinator.sessionSyncInFlight;
+	}
+	get sessionSyncActive(): boolean {
+		return this.coordinator.sessionSyncActive;
+	}
+	get sessionSyncFailures(): number {
+		return this.coordinator.sessionSyncFailures;
+	}
+	get persistenceInFlight(): boolean {
+		return this.coordinator.persistenceInFlight;
+	}
+	get persistenceQueued(): boolean {
+		return this.coordinator.persistenceQueued;
+	}
 	private lastPersistedPosition = 0;
 	private trackStartedAt = 0;
 	private lastObservedPlaybackTime = 0;
@@ -234,6 +192,46 @@ export class PlayerState {
 	private deviceId: string | null = null;
 
 	constructor() {
+		this.coordinator = new PlaybackSessionCoordinator({
+			origin: () => this.origin,
+			getDeviceId: () => this.getDeviceId(),
+			getCurrentState: () => ({
+				currentTrack: this.currentTrack,
+				queue: this.queue,
+				history: this.history,
+				currentTime: this.currentTime,
+				isPlaying: this.isPlaying,
+				hasLocalMedia: Boolean(this.streamUrl || this.audio?.currentSrc)
+			}),
+			onApplyQueue: (queue) => {
+				this.queue = queue;
+			},
+			onApplySession: (state) => {
+				this.currentTrack = state.currentTrack;
+				this.history = state.history.slice(-MAX_HISTORY_LENGTH);
+				this.currentTime = Math.max(0, Math.floor(state.currentTime));
+				this.duration = state.currentTrack?.duration ?? 0;
+				if (this.currentTrack) void this.resolveCover(this.currentTrack);
+				this.hydrateTrackMetadata([
+					...(this.currentTrack ? [this.currentTrack] : []),
+					...this.history
+				]);
+			},
+			onStatusChange: (status) => {
+				this.persistenceStatus = status;
+			},
+			onActiveDeviceChange: (device) => {
+				this.activeDevice = device;
+			},
+			onHydrateMetadata: (tracks) => {
+				this.hydrateTrackMetadata(tracks);
+			},
+			canPersist: () => !isBrowser || this.hasRestoredPlaybackState,
+			maxQueueLength: MAX_QUEUE_LENGTH,
+			maxHistoryLength: MAX_HISTORY_LENGTH,
+			debounceMs: 500
+		});
+
 		if (isBrowser) {
 			this.loadPrefs();
 			this.initAudio();
@@ -305,6 +303,7 @@ export class PlayerState {
 
 	private applyActiveDevice(state: SavedPlaybackState): void {
 		this.activeDevice = state.activeDevice ?? null;
+		this.coordinator.applyActiveDevice(state);
 	}
 
 	/**
@@ -314,34 +313,9 @@ export class PlayerState {
 	 * slower. The authoritative server response still decides the resume owner.
 	 */
 	async takePlaybackControl(): Promise<boolean> {
-		const deviceId = this.getDeviceId();
-		if (!deviceId) return false;
-		if (
-			this.isPlaybackActiveHere &&
-			this.activeDevice &&
-			Date.parse(this.activeDevice.expiresAt) - Date.now() > 15_000
-		) {
-			return true;
-		}
-		if (this.playbackClaimPending) return false;
-		this.playbackClaimPending = true;
-		try {
-			const response = await fetch('/api/playback-state/claim', {
-				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ deviceId, origin: this.origin }),
-				keepalive: true
-			});
-			const state = (await response.json().catch(() => null)) as unknown;
-			if (!response.ok || !isSavedPlaybackState(state)) return false;
-			this.playbackStateRevision = Math.max(this.playbackStateRevision, state.revision);
-			this.applyActiveDevice(state);
-			return state.activeDevice?.isCurrent === true;
-		} catch {
-			return false;
-		} finally {
-			this.playbackClaimPending = false;
-		}
+		const result = await this.coordinator.takePlaybackControl();
+		this.activeDevice = this.coordinator.activeDevice;
+		return result;
 	}
 
 	/** Start the current track locally while deliberately taking shared control. */
@@ -351,7 +325,7 @@ export class PlayerState {
 	}
 
 	private claimPlaybackControlForIntent(): void {
-		if (!this.isPlaybackActiveHere && !this.playbackClaimPending) {
+		if (!this.isPlaybackActiveHere && !this.coordinator.playbackClaimPending) {
 			void this.takePlaybackControl();
 		}
 	}
@@ -1277,203 +1251,30 @@ export class PlayerState {
 	 * audio that is already playing in this browser.
 	 */
 	async syncPlaybackState(): Promise<void> {
-		if (!isBrowser || this.sessionSyncInFlight || this.persistenceInFlight) return;
-		this.sessionSyncInFlight = true;
-
-		try {
-			const deviceId = this.getDeviceId();
-			const response = await fetch('/api/playback-state', {
-				headers: {
-					accept: 'application/json',
-					...(deviceId ? { 'x-halflight-playback-device': deviceId } : {})
-				},
-				cache: 'no-store'
-			});
-			const state = (await response.json().catch(() => null)) as unknown;
-			if (!response.ok || !isSavedPlaybackState(state)) {
-				this.sessionSyncFailures += 1;
-				return;
-			}
-
-			this.sessionSyncFailures = 0;
-			this.applyActiveDevice(state);
-			if (state.revision < this.playbackStateRevision) return;
-
-			if (this.queueCommands.length > 0) {
-				if (state.revision === this.playbackStateRevision) return;
-				this.reconciliationBase = state;
-				this.playbackStateRevision = state.revision;
-				this.queue = rebaseQueue(state.queue, this.queueCommands, MAX_QUEUE_LENGTH);
-				this.reconciliationAttempts = 0;
-				this.hydrateTrackMetadata(this.queue);
-				this.schedulePersistence();
-				return;
-			}
-
-			if (state.revision === this.playbackStateRevision) {
-				if (!this.persistenceInFlight && this.persistenceStatus === 'offline') {
-					this.persistenceStatus = 'saved';
-				}
-				return;
-			}
-
-			this.playbackStateRevision = state.revision;
-			this.queue = state.queue.slice(0, MAX_QUEUE_LENGTH);
-			this.hydrateTrackMetadata(this.queue);
-			// A paused media element is still this device's local listening context.
-			// Do not make its next Play action start the old source under remote art.
-			const hasLocalMedia = Boolean(this.streamUrl || this.audio?.currentSrc);
-			if (!this.isPlaying && !hasLocalMedia) {
-				this.currentTrack = state.currentTrack;
-				this.history = state.history.slice(-MAX_HISTORY_LENGTH);
-				this.currentTime = Math.max(0, Math.floor(state.currentTime));
-				this.duration = state.currentTrack?.duration ?? 0;
-				if (this.currentTrack) void this.resolveCover(this.currentTrack);
-				this.hydrateTrackMetadata([
-					...(this.currentTrack ? [this.currentTrack] : []),
-					...this.history
-				]);
-			}
-
-			if (!this.persistenceInFlight && this.persistenceStatus === 'offline') {
-				this.persistenceStatus = 'saved';
-			}
-		} catch {
-			// A background read is not an unsaved queue edit. Preserve playback and
-			// let the next bounded poll retry without showing a false warning.
-			this.sessionSyncFailures += 1;
-		} finally {
-			this.sessionSyncInFlight = false;
-		}
+		if (!isBrowser) return;
+		return this.coordinator.syncPlaybackState();
 	}
 
 	/** Start bounded, visibility-aware session refreshes for an app shell. */
 	startSessionSync(): void {
-		if (!isBrowser || this.sessionSyncActive) return;
-		this.sessionSyncActive = true;
-
-		const refreshWhenVisible = () => {
-			if (document.visibilityState !== 'visible') return;
-			void this.syncPlaybackState().finally(() => this.scheduleSessionSync());
-		};
-
-		document.addEventListener('visibilitychange', refreshWhenVisible);
-		window.addEventListener('focus', refreshWhenVisible);
-		window.addEventListener('online', refreshWhenVisible);
-		refreshWhenVisible();
+		if (!isBrowser) return;
+		this.coordinator.startSessionSync();
 	}
 
-	private scheduleSessionSync(): void {
-		if (!this.sessionSyncActive || document.visibilityState !== 'visible') return;
-		if (this.sessionSyncTimer) clearTimeout(this.sessionSyncTimer);
-		const delay = Math.min(30_000, 2_000 * 2 ** this.sessionSyncFailures);
-		this.sessionSyncTimer = setTimeout(() => {
-			void this.syncPlaybackState().finally(() => this.scheduleSessionSync());
-		}, delay);
+	stopSessionSync(): void {
+		this.coordinator.stopSessionSync();
 	}
 
 	private recordQueueReplacement(): void {
-		this.queueCommands = [{ type: 'replace', entries: this.queue.slice(0, MAX_QUEUE_LENGTH) }];
+		this.coordinator.recordQueueReplacement(this.queue);
 	}
 
 	private snapshotPlaybackState(): PlaybackPersistenceSnapshot {
-		const base = this.reconciliationBase;
-		return {
-			currentTrack: base?.currentTrack ?? this.currentTrack,
-			queue: this.queue.slice(0, MAX_QUEUE_LENGTH),
-			history: (base?.history ?? this.history).slice(-MAX_HISTORY_LENGTH),
-			currentTime: Math.max(0, Math.floor(base?.currentTime ?? this.currentTime)),
-			revision: this.playbackStateRevision,
-			origin: this.origin,
-			queueCommands: this.queueCommands.slice()
-		};
+		return this.coordinator.snapshotPlaybackState();
 	}
 
-	private queueOperationId(command: QueueCommand): string {
-		if (!command.operationId) command.operationId = `operation_${crypto.randomUUID()}`;
-		return command.operationId;
-	}
-
-	private queueIntentPayload(command: QueueCommand): Record<string, unknown> {
-		switch (command.type) {
-			case 'append':
-				return { type: 'queue.append', entries: command.entries };
-			case 'prepend':
-				return { type: 'queue.prepend', entry: command.entry };
-			case 'remove':
-				return { type: 'queue.remove', entryId: command.entryId };
-			case 'move':
-				return {
-					type: 'queue.move',
-					entryId: command.entryId,
-					...(command.beforeEntryId ? { beforeEntryId: command.beforeEntryId } : {}),
-					...(command.afterEntryId ? { afterEntryId: command.afterEntryId } : {})
-				};
-			case 'clear':
-				return { type: 'queue.clear' };
-			case 'replace':
-				return { type: 'queue.replace', entries: command.entries };
-		}
-	}
-
-	/**
-	 * Send queue edits as named operations before the resume snapshot. A lost
-	 * response can safely be retried with the same operation ID; a stale write
-	 * returns the authoritative entry-aware queue for the normal rebase path.
-	 */
 	private async persistQueueCommands(): Promise<boolean> {
-		while (this.queueCommands.length > 0) {
-			const command = this.queueCommands[0];
-			if (!command) return true;
-			const operationId = this.queueOperationId(command);
-			const response = await fetch('/api/playback-state/intents', {
-				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({
-					version: 2,
-					expectedRevision: this.playbackStateRevision,
-					operationId,
-					origin: this.origin,
-					...(this.getDeviceId() ? { deviceId: this.getDeviceId() } : {}),
-					intent: this.queueIntentPayload(command)
-				}),
-				keepalive: true
-			});
-			const state = (await response.json().catch(() => null)) as SavedPlaybackState | null;
-			if (
-				!state ||
-				!Array.isArray(state.queue) ||
-				typeof state.revision !== 'number' ||
-				!Number.isSafeInteger(state.revision)
-			) {
-				this.persistenceStatus = 'offline';
-				return false;
-			}
-
-			if (response.status === 409) {
-				this.applyActiveDevice(state);
-				if (this.reconciliationAttempts >= 1) {
-					this.persistenceStatus = 'conflict';
-					return false;
-				}
-				this.reconciliationBase = state;
-				this.playbackStateRevision = state.revision;
-				this.queue = rebaseQueue(state.queue, this.queueCommands, MAX_QUEUE_LENGTH);
-				this.reconciliationAttempts += 1;
-				continue;
-			}
-			if (!response.ok) {
-				this.persistenceStatus = 'offline';
-				return false;
-			}
-
-			this.playbackStateRevision = state.revision;
-			this.applyActiveDevice(state);
-			if (this.queueCommands[0]?.operationId === operationId) this.queueCommands.shift();
-			this.reconciliationBase = null;
-			this.reconciliationAttempts = 0;
-		}
-		return true;
+		return this.coordinator.persistQueueCommands();
 	}
 
 	/**
@@ -1482,131 +1283,16 @@ export class PlayerState {
 	 * are replayed over the latest server queue before one new conditional write.
 	 */
 	async refreshQueueFromServer(): Promise<void> {
-		if (!isBrowser || this.persistenceStatus !== 'conflict') return;
-		this.persistenceStatus = 'saving';
-
-		try {
-			const deviceId = this.getDeviceId();
-			const response = await fetch('/api/playback-state', {
-				headers: {
-					accept: 'application/json',
-					...(deviceId ? { 'x-halflight-playback-device': deviceId } : {})
-				},
-				cache: 'no-store'
-			});
-			const state = (await response.json().catch(() => null)) as SavedPlaybackState | null;
-			if (
-				!response.ok ||
-				!state ||
-				!Array.isArray(state.queue) ||
-				!Array.isArray(state.history) ||
-				typeof state.currentTime !== 'number' ||
-				typeof state.revision !== 'number' ||
-				!Number.isSafeInteger(state.revision)
-			) {
-				this.persistenceStatus = 'offline';
-				return;
-			}
-
-			this.reconciliationBase = state;
-			this.playbackStateRevision = state.revision;
-			this.applyActiveDevice(state);
-			this.queue = rebaseQueue(state.queue, this.queueCommands, MAX_QUEUE_LENGTH);
-			this.reconciliationAttempts = 0;
-
-			if (this.queueCommands.length === 0) {
-				this.reconciliationBase = null;
-				this.persistenceStatus = 'saved';
-				return;
-			}
-
-			await this.persistPlaybackState();
-		} catch {
-			this.persistenceStatus = 'offline';
-		}
+		if (!isBrowser) return;
+		return this.coordinator.refreshQueueFromServer();
 	}
 
-	private schedulePersistence(): void {
-		if (!isBrowser || !this.hasRestoredPlaybackState) return;
-		if (this.persistenceStatus === 'conflict') return;
-		this.persistenceStatus = 'saving';
-		if (this.persistenceTimer) clearTimeout(this.persistenceTimer);
-		this.persistenceTimer = setTimeout(() => {
-			this.persistenceTimer = undefined;
-			void this.persistPlaybackState();
-		}, 500);
+	schedulePersistence(): void {
+		this.coordinator.schedulePersistence();
 	}
 
 	private async persistPlaybackState(): Promise<void> {
-		if (this.persistenceInFlight) {
-			this.persistenceQueued = true;
-			return;
-		}
-
-		this.persistenceInFlight = true;
-		try {
-			if (this.queueCommands.length > 0 && !(await this.persistQueueCommands())) return;
-			const snapshot = this.snapshotPlaybackState();
-			const response = await fetch('/api/playback-state', {
-				method: 'PUT',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({
-					...snapshot,
-					...(this.getDeviceId() ? { deviceId: this.getDeviceId() } : {})
-				}),
-				keepalive: true
-			});
-			const state = (await response.json().catch(() => null)) as SavedPlaybackState | null;
-			if (response.status === 409) {
-				if (
-					!state ||
-					!Array.isArray(state.queue) ||
-					typeof state.revision !== 'number' ||
-					!Number.isSafeInteger(state.revision) ||
-					this.reconciliationAttempts >= 1
-				) {
-					this.persistenceQueued = false;
-					this.persistenceStatus = 'conflict';
-					return;
-				}
-
-				// Preserve the currently audible track in this tab. Only its deliberate
-				// queue commands are rebased onto the authoritative server queue; the
-				// next write carries the returned current/history/position unchanged.
-				this.reconciliationBase = state;
-				this.playbackStateRevision = state.revision;
-				this.applyActiveDevice(state);
-				this.queue = rebaseQueue(state.queue, this.queueCommands, MAX_QUEUE_LENGTH);
-				this.reconciliationAttempts += 1;
-				this.persistenceQueued = true;
-				this.persistenceStatus = 'saving';
-				return;
-			}
-			if (
-				!response.ok ||
-				typeof state?.revision !== 'number' ||
-				!Number.isSafeInteger(state.revision)
-			) {
-				this.persistenceStatus = 'offline';
-				return;
-			}
-
-			this.playbackStateRevision = state.revision;
-			this.applyActiveDevice(state);
-			this.queueCommands.splice(0, snapshot.queueCommands.length);
-			this.reconciliationBase = null;
-			this.reconciliationAttempts = 0;
-			this.persistenceStatus = 'saved';
-		} catch {
-			// Resume state is a convenience; playback must remain usable offline.
-			this.persistenceStatus = 'offline';
-		} finally {
-			this.persistenceInFlight = false;
-			if (this.persistenceQueued && this.persistenceStatus !== 'conflict') {
-				this.persistenceQueued = false;
-				void this.persistPlaybackState();
-			}
-		}
+		return this.coordinator.persistPlaybackState();
 	}
 }
 

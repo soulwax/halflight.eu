@@ -1,0 +1,586 @@
+import type { TrackSummary } from '#lib/tidal/models.js';
+import { isQueueEntryId, type QueueEntry } from './queue-entry.js';
+import { rebaseQueue, type QueueCommand } from './playback-reconciliation.js';
+
+export type PlaybackOrigin = 'listening-room' | 'halflight-now';
+
+export interface PlaybackDeviceStatus {
+	origin: PlaybackOrigin;
+	expiresAt: string;
+	isCurrent: boolean;
+}
+
+export interface SavedPlaybackState {
+	currentTrack: TrackSummary | null;
+	queue: QueueEntry[];
+	history: TrackSummary[];
+	currentTime: number;
+	revision?: number;
+	lastOrigin?: PlaybackOrigin | null;
+	activeDevice?: PlaybackDeviceStatus | null;
+}
+
+export interface PlaybackStateWrite extends SavedPlaybackState {
+	revision: number;
+	origin: PlaybackOrigin;
+}
+
+export interface PlaybackPersistenceSnapshot extends PlaybackStateWrite {
+	queueCommands: QueueCommand[];
+}
+
+export type PlaybackPersistenceStatus = 'saved' | 'saving' | 'offline' | 'conflict';
+
+export function isTrackSummary(value: unknown): value is TrackSummary {
+	if (!value || typeof value !== 'object') return false;
+	const track = value as Record<string, unknown>;
+	return (
+		track.kind === 'track' &&
+		typeof track.id === 'string' &&
+		track.id.length > 0 &&
+		typeof track.title === 'string' &&
+		track.title.length > 0 &&
+		Array.isArray(track.artists) &&
+		track.artists.every(
+			(artist) =>
+				artist &&
+				typeof artist === 'object' &&
+				typeof (artist as { id?: unknown }).id === 'string' &&
+				typeof (artist as { name?: unknown }).name === 'string'
+		)
+	);
+}
+
+export function isPlaybackDeviceStatus(value: unknown): value is PlaybackDeviceStatus {
+	if (!value || typeof value !== 'object') return false;
+	const device = value as Record<string, unknown>;
+	return (
+		(device.origin === 'listening-room' || device.origin === 'halflight-now') &&
+		typeof device.expiresAt === 'string' &&
+		Number.isFinite(Date.parse(device.expiresAt)) &&
+		typeof device.isCurrent === 'boolean'
+	);
+}
+
+export function isSavedPlaybackState(
+	value: unknown
+): value is SavedPlaybackState & { revision: number } {
+	if (!value || typeof value !== 'object') return false;
+	const state = value as Record<string, unknown>;
+	return (
+		(state.currentTrack === null || isTrackSummary(state.currentTrack)) &&
+		Array.isArray(state.queue) &&
+		state.queue.every((entry) => {
+			return (
+				isTrackSummary(entry) &&
+				typeof entry === 'object' &&
+				entry !== null &&
+				isQueueEntryId((entry as QueueEntry).entryId)
+			);
+		}) &&
+		Array.isArray(state.history) &&
+		state.history.every(isTrackSummary) &&
+		typeof state.currentTime === 'number' &&
+		Number.isFinite(state.currentTime) &&
+		state.currentTime >= 0 &&
+		typeof state.revision === 'number' &&
+		Number.isSafeInteger(state.revision) &&
+		state.revision >= 0 &&
+		(state.activeDevice === undefined ||
+			state.activeDevice === null ||
+			isPlaybackDeviceStatus(state.activeDevice))
+	);
+}
+
+export interface SessionCoordinatorOptions {
+	origin: PlaybackOrigin | (() => PlaybackOrigin);
+	fetch?: typeof fetch;
+	getDeviceId?: () => string | null;
+	getCurrentState: () => {
+		currentTrack: TrackSummary | null;
+		queue: QueueEntry[];
+		history: TrackSummary[];
+		currentTime: number;
+		isPlaying: boolean;
+		hasLocalMedia: boolean;
+	};
+	onApplyQueue: (queue: QueueEntry[]) => void;
+	onApplySession?: (state: SavedPlaybackState) => void;
+	onStatusChange?: (status: PlaybackPersistenceStatus) => void;
+	onActiveDeviceChange?: (device: PlaybackDeviceStatus | null) => void;
+	onHydrateMetadata?: (tracks: TrackSummary[]) => void;
+	canPersist?: () => boolean;
+	maxQueueLength?: number;
+	maxHistoryLength?: number;
+	debounceMs?: number;
+}
+
+/**
+ * Pure client-safe coordinator for playback state persistence, remote polling,
+ * and 409 conflict reconciliation.
+ *
+ * It decouples session synchronization and write serialization from browser
+ * audio playback and reactive UI components.
+ */
+export class PlaybackSessionCoordinator {
+	private readonly originFn: () => PlaybackOrigin;
+	get origin(): PlaybackOrigin {
+		return this.originFn();
+	}
+	private readonly fetchFn: typeof fetch;
+	private readonly getDeviceIdFn: () => string | null;
+	private readonly getCurrentStateFn: SessionCoordinatorOptions['getCurrentState'];
+	private readonly onApplyQueueFn: SessionCoordinatorOptions['onApplyQueue'];
+	private readonly onApplySessionFn?: SessionCoordinatorOptions['onApplySession'];
+	private readonly onStatusChangeFn?: SessionCoordinatorOptions['onStatusChange'];
+	private readonly onActiveDeviceChangeFn?: SessionCoordinatorOptions['onActiveDeviceChange'];
+	private readonly onHydrateMetadataFn?: SessionCoordinatorOptions['onHydrateMetadata'];
+	private readonly canPersistFn?: () => boolean;
+	private readonly maxQueueLength: number;
+	private readonly maxHistoryLength: number;
+	private readonly debounceMs: number;
+
+	revision = 0;
+	status: PlaybackPersistenceStatus = 'saved';
+	activeDevice: PlaybackDeviceStatus | null = null;
+	queueCommands: QueueCommand[] = [];
+	reconciliationBase: SavedPlaybackState | null = null;
+	reconciliationAttempts = 0;
+
+	persistenceInFlight = false;
+	persistenceQueued = false;
+	private persistenceTimer: ReturnType<typeof setTimeout> | undefined;
+
+	sessionSyncInFlight = false;
+	sessionSyncActive = false;
+	sessionSyncFailures = 0;
+	private sessionSyncTimer: ReturnType<typeof setTimeout> | undefined;
+
+	playbackClaimPending = false;
+
+	constructor(options: SessionCoordinatorOptions) {
+		const rawOrigin = options.origin;
+		this.originFn = typeof rawOrigin === 'function' ? rawOrigin : () => rawOrigin;
+		this.fetchFn =
+			options.fetch ??
+			(typeof fetch !== 'undefined' ? fetch.bind(globalThis) : (fetch as typeof fetch));
+		this.getDeviceIdFn = options.getDeviceId ?? (() => null);
+		this.getCurrentStateFn = options.getCurrentState;
+		this.onApplyQueueFn = options.onApplyQueue;
+		this.onApplySessionFn = options.onApplySession;
+		this.onStatusChangeFn = options.onStatusChange;
+		this.onActiveDeviceChangeFn = options.onActiveDeviceChange;
+		this.onHydrateMetadataFn = options.onHydrateMetadata;
+		this.canPersistFn = options.canPersist;
+		this.maxQueueLength = options.maxQueueLength ?? 100;
+		this.maxHistoryLength = options.maxHistoryLength ?? 50;
+		this.debounceMs = options.debounceMs ?? 500;
+	}
+
+	setStatus(newStatus: PlaybackPersistenceStatus): void {
+		if (this.status === newStatus) return;
+		this.status = newStatus;
+		this.onStatusChangeFn?.(newStatus);
+	}
+
+	setActiveDevice(device: PlaybackDeviceStatus | null): void {
+		this.activeDevice = device;
+		this.onActiveDeviceChangeFn?.(device);
+	}
+
+	applyActiveDevice(state: SavedPlaybackState): void {
+		this.setActiveDevice(state.activeDevice ?? null);
+	}
+
+	recordCommand(command: QueueCommand): void {
+		this.queueCommands.push(command);
+		this.claimPlaybackControlForIntent();
+		this.schedulePersistence();
+	}
+
+	recordQueueReplacement(queue: QueueEntry[]): void {
+		this.queueCommands = [{ type: 'replace', entries: queue.slice(0, this.maxQueueLength) }];
+		this.claimPlaybackControlForIntent();
+		this.schedulePersistence();
+	}
+
+	schedulePersistence(): void {
+		if (this.status === 'conflict' || (this.canPersistFn && !this.canPersistFn())) return;
+		this.setStatus('saving');
+		if (this.persistenceTimer) clearTimeout(this.persistenceTimer);
+		this.persistenceTimer = setTimeout(() => {
+			this.persistenceTimer = undefined;
+			void this.persistPlaybackState();
+		}, this.debounceMs);
+	}
+
+	cancelPendingPersistence(): void {
+		if (this.persistenceTimer) {
+			clearTimeout(this.persistenceTimer);
+			this.persistenceTimer = undefined;
+		}
+	}
+
+	snapshotPlaybackState(): PlaybackPersistenceSnapshot {
+		const current = this.getCurrentStateFn();
+		const base = this.reconciliationBase;
+		return {
+			currentTrack: base?.currentTrack ?? current.currentTrack,
+			queue: current.queue.slice(0, this.maxQueueLength),
+			history: (base?.history ?? current.history).slice(-this.maxHistoryLength),
+			currentTime: Math.max(0, Math.floor(base?.currentTime ?? current.currentTime)),
+			revision: this.revision,
+			origin: this.origin,
+			queueCommands: this.queueCommands.slice()
+		};
+	}
+
+	private queueOperationId(command: QueueCommand): string {
+		if (!command.operationId) {
+			const uuid =
+				typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+					? crypto.randomUUID()
+					: Math.random().toString(36).slice(2);
+			command.operationId = `operation_${uuid}`;
+		}
+		return command.operationId;
+	}
+
+	private queueIntentPayload(command: QueueCommand): Record<string, unknown> {
+		switch (command.type) {
+			case 'append':
+				return { type: 'queue.append', entries: command.entries };
+			case 'prepend':
+				return { type: 'queue.prepend', entry: command.entry };
+			case 'remove':
+				return { type: 'queue.remove', entryId: command.entryId };
+			case 'move':
+				return {
+					type: 'queue.move',
+					entryId: command.entryId,
+					...(command.beforeEntryId ? { beforeEntryId: command.beforeEntryId } : {}),
+					...(command.afterEntryId ? { afterEntryId: command.afterEntryId } : {})
+				};
+			case 'clear':
+				return { type: 'queue.clear' };
+			case 'replace':
+				return { type: 'queue.replace', entries: command.entries };
+		}
+	}
+
+	/**
+	 * Send queue edits as named operations before the resume snapshot. A lost
+	 * response can safely be retried with the same operation ID; a stale write
+	 * returns the authoritative entry-aware queue for the normal rebase path.
+	 */
+	async persistQueueCommands(): Promise<boolean> {
+		const deviceId = this.getDeviceIdFn();
+		while (this.queueCommands.length > 0) {
+			const command = this.queueCommands[0];
+			if (!command) return true;
+			const operationId = this.queueOperationId(command);
+			const response = await this.fetchFn('/api/playback-state/intents', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({
+					version: 2,
+					expectedRevision: this.revision,
+					operationId,
+					origin: this.origin,
+					...(deviceId ? { deviceId } : {}),
+					intent: this.queueIntentPayload(command)
+				}),
+				keepalive: true
+			});
+			const state = (await response.json().catch(() => null)) as SavedPlaybackState | null;
+			if (
+				!state ||
+				!Array.isArray(state.queue) ||
+				typeof state.revision !== 'number' ||
+				!Number.isSafeInteger(state.revision)
+			) {
+				this.setStatus('offline');
+				return false;
+			}
+
+			if (response.status === 409) {
+				this.applyActiveDevice(state);
+				if (this.reconciliationAttempts >= 1) {
+					this.setStatus('conflict');
+					return false;
+				}
+				this.reconciliationBase = state;
+				this.revision = state.revision;
+				const rebased = rebaseQueue(state.queue, this.queueCommands, this.maxQueueLength);
+				this.onApplyQueueFn(rebased);
+				this.reconciliationAttempts += 1;
+				continue;
+			}
+			if (!response.ok) {
+				this.setStatus('offline');
+				return false;
+			}
+
+			this.revision = state.revision;
+			this.applyActiveDevice(state);
+			if (this.queueCommands[0]?.operationId === operationId) this.queueCommands.shift();
+			this.reconciliationBase = null;
+			this.reconciliationAttempts = 0;
+		}
+		return true;
+	}
+
+	async persistPlaybackState(): Promise<void> {
+		if (this.canPersistFn && !this.canPersistFn()) return;
+		if (this.persistenceInFlight) {
+			this.persistenceQueued = true;
+			return;
+		}
+
+		this.persistenceInFlight = true;
+		try {
+			if (this.queueCommands.length > 0 && !(await this.persistQueueCommands())) return;
+			const snapshot = this.snapshotPlaybackState();
+			const deviceId = this.getDeviceIdFn();
+			const response = await this.fetchFn('/api/playback-state', {
+				method: 'PUT',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({
+					...snapshot,
+					...(deviceId ? { deviceId } : {})
+				}),
+				keepalive: true
+			});
+			const state = (await response.json().catch(() => null)) as SavedPlaybackState | null;
+			if (response.status === 409) {
+				if (
+					!state ||
+					!Array.isArray(state.queue) ||
+					typeof state.revision !== 'number' ||
+					!Number.isSafeInteger(state.revision) ||
+					this.reconciliationAttempts >= 1
+				) {
+					this.persistenceQueued = false;
+					this.setStatus('conflict');
+					return;
+				}
+
+				// Preserve the currently audible track in this tab. Only its deliberate
+				// queue commands are rebased onto the authoritative server queue.
+				this.reconciliationBase = state;
+				this.revision = state.revision;
+				this.applyActiveDevice(state);
+				const rebased = rebaseQueue(state.queue, this.queueCommands, this.maxQueueLength);
+				this.onApplyQueueFn(rebased);
+				this.reconciliationAttempts += 1;
+				this.persistenceQueued = true;
+				this.setStatus('saving');
+				return;
+			}
+			if (
+				!response.ok ||
+				typeof state?.revision !== 'number' ||
+				!Number.isSafeInteger(state.revision)
+			) {
+				this.setStatus('offline');
+				return;
+			}
+
+			this.revision = state.revision;
+			this.applyActiveDevice(state);
+			this.queueCommands.splice(0, snapshot.queueCommands.length);
+			this.reconciliationBase = null;
+			this.reconciliationAttempts = 0;
+			this.setStatus('saved');
+		} catch {
+			this.setStatus('offline');
+		} finally {
+			this.persistenceInFlight = false;
+			if (this.persistenceQueued && this.status !== 'conflict') {
+				this.persistenceQueued = false;
+				void this.persistPlaybackState();
+			}
+		}
+	}
+
+	async refreshQueueFromServer(): Promise<void> {
+		if (this.status !== 'conflict') return;
+		this.setStatus('saving');
+
+		try {
+			const deviceId = this.getDeviceIdFn();
+			const response = await this.fetchFn('/api/playback-state', {
+				headers: {
+					accept: 'application/json',
+					...(deviceId ? { 'x-halflight-playback-device': deviceId } : {})
+				},
+				cache: 'no-store'
+			});
+			const state = (await response.json().catch(() => null)) as SavedPlaybackState | null;
+			if (
+				!response.ok ||
+				!state ||
+				!Array.isArray(state.queue) ||
+				!Array.isArray(state.history) ||
+				typeof state.currentTime !== 'number' ||
+				typeof state.revision !== 'number' ||
+				!Number.isSafeInteger(state.revision)
+			) {
+				this.setStatus('offline');
+				return;
+			}
+
+			this.reconciliationBase = state;
+			this.revision = state.revision;
+			this.applyActiveDevice(state);
+			const rebased = rebaseQueue(state.queue, this.queueCommands, this.maxQueueLength);
+			this.onApplyQueueFn(rebased);
+			this.reconciliationAttempts = 0;
+
+			if (this.queueCommands.length === 0) {
+				this.reconciliationBase = null;
+				this.setStatus('saved');
+				return;
+			}
+
+			await this.persistPlaybackState();
+		} catch {
+			this.setStatus('offline');
+		}
+	}
+
+	async syncPlaybackState(): Promise<void> {
+		if (this.sessionSyncInFlight || this.persistenceInFlight) return;
+		this.sessionSyncInFlight = true;
+
+		try {
+			const deviceId = this.getDeviceIdFn();
+			const response = await this.fetchFn('/api/playback-state', {
+				headers: {
+					accept: 'application/json',
+					...(deviceId ? { 'x-halflight-playback-device': deviceId } : {})
+				},
+				cache: 'no-store'
+			});
+			const state = (await response.json().catch(() => null)) as unknown;
+			if (!response.ok || !isSavedPlaybackState(state)) {
+				this.sessionSyncFailures += 1;
+				return;
+			}
+
+			this.sessionSyncFailures = 0;
+			this.applyActiveDevice(state);
+			if (state.revision < this.revision) return;
+
+			if (this.queueCommands.length > 0) {
+				if (state.revision === this.revision) return;
+				this.reconciliationBase = state;
+				this.revision = state.revision;
+				const rebased = rebaseQueue(state.queue, this.queueCommands, this.maxQueueLength);
+				this.onApplyQueueFn(rebased);
+				this.reconciliationAttempts = 0;
+				this.onHydrateMetadataFn?.(rebased);
+				this.schedulePersistence();
+				return;
+			}
+
+			if (state.revision === this.revision) {
+				if (!this.persistenceInFlight && this.status === 'offline') {
+					this.setStatus('saved');
+				}
+				return;
+			}
+
+			this.revision = state.revision;
+			const remoteQueue = state.queue.slice(0, this.maxQueueLength);
+			this.onApplyQueueFn(remoteQueue);
+			this.onHydrateMetadataFn?.(remoteQueue);
+
+			const current = this.getCurrentStateFn();
+			if (!current.isPlaying && !current.hasLocalMedia) {
+				this.onApplySessionFn?.(state);
+			}
+
+			if (!this.persistenceInFlight && this.status === 'offline') {
+				this.setStatus('saved');
+			}
+		} catch {
+			this.sessionSyncFailures += 1;
+		} finally {
+			this.sessionSyncInFlight = false;
+		}
+	}
+
+	startSessionSync(): void {
+		if (typeof window === 'undefined' || this.sessionSyncActive) return;
+		this.sessionSyncActive = true;
+
+		const refreshWhenVisible = () => {
+			if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+			void this.syncPlaybackState().finally(() => this.scheduleSessionSync());
+		};
+
+		if (typeof document !== 'undefined') {
+			document.addEventListener('visibilitychange', refreshWhenVisible);
+		}
+		if (typeof window !== 'undefined') {
+			window.addEventListener('focus', refreshWhenVisible);
+			window.addEventListener('online', refreshWhenVisible);
+		}
+		refreshWhenVisible();
+	}
+
+	stopSessionSync(): void {
+		this.sessionSyncActive = false;
+		if (this.sessionSyncTimer) {
+			clearTimeout(this.sessionSyncTimer);
+			this.sessionSyncTimer = undefined;
+		}
+	}
+
+	private scheduleSessionSync(): void {
+		if (!this.sessionSyncActive) return;
+		if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+		if (this.sessionSyncTimer) clearTimeout(this.sessionSyncTimer);
+		const delay = Math.min(30_000, 2_000 * 2 ** this.sessionSyncFailures);
+		this.sessionSyncTimer = setTimeout(() => {
+			void this.syncPlaybackState().finally(() => this.scheduleSessionSync());
+		}, delay);
+	}
+
+	async takePlaybackControl(): Promise<boolean> {
+		const deviceId = this.getDeviceIdFn();
+		if (!deviceId) return false;
+		if (
+			this.activeDevice?.isCurrent &&
+			Date.parse(this.activeDevice.expiresAt) - Date.now() > 15_000
+		) {
+			return true;
+		}
+		if (this.playbackClaimPending) return false;
+		this.playbackClaimPending = true;
+		try {
+			const response = await this.fetchFn('/api/playback-state/claim', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ deviceId, origin: this.origin }),
+				keepalive: true
+			});
+			const state = (await response.json().catch(() => null)) as unknown;
+			if (!response.ok || !isSavedPlaybackState(state)) return false;
+			this.revision = Math.max(this.revision, state.revision);
+			this.applyActiveDevice(state);
+			return state.activeDevice?.isCurrent === true;
+		} catch {
+			return false;
+		} finally {
+			this.playbackClaimPending = false;
+		}
+	}
+
+	private claimPlaybackControlForIntent(): void {
+		if (!this.activeDevice?.isCurrent && !this.playbackClaimPending) {
+			void this.takePlaybackControl();
+		}
+	}
+}

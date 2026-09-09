@@ -24,7 +24,7 @@ const failure = (state: TidalPageState, _configured: boolean, id?: string): Mobi
  * redirects a non-owner, but detail loads are reached directly often enough to
  * repeat the guard here (and it keeps this load unit-testable in isolation).
  */
-export const load: PageServerLoad = (event): Promise<MobileAlbumData> => {
+export const load: PageServerLoad = async (event): Promise<MobileAlbumData> => {
 	if (!event.locals.isAdministrator) error(403, 'Forbidden');
 
 	return loadTidalPage(event, {

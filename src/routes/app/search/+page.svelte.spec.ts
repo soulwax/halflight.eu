@@ -17,7 +17,7 @@ function results(title: string): SearchResultGroups {
 		tracks: [
 			{
 				kind: 'track',
-				id: title,
+				id: `id-${title}`,
 				title,
 				artists: [{ id: 'artist', name: 'Artist' }],
 				album: { id: 'album', title: 'Album' }
