@@ -8,18 +8,16 @@ import {
 	updatePlaybackState,
 	updatePositionState
 } from './media-session.js';
-import { rebaseQueue, type QueueCommand } from './playback-reconciliation.js';
+import { type QueueCommand } from './playback-reconciliation.js';
 import {
 	createQueueEntries,
 	createQueueEntry,
-	isQueueEntryId,
 	toDisplayTrack,
 	type QueueEntry
 } from './queue-entry.js';
 import { streamPreloader, type PreloadedStreamData } from './stream-preloader.js';
 import {
 	PlaybackSessionCoordinator,
-	isSavedPlaybackState,
 	isTrackSummary,
 	type PlaybackDeviceStatus,
 	type PlaybackOrigin,

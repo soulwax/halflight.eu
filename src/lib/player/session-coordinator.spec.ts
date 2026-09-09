@@ -142,7 +142,7 @@ describe('PlaybackSessionCoordinator', () => {
 
 	it('rebases on a single 409 conflict and retries successfully', async () => {
 		let intentCalls = 0;
-		const fetchMock = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+		const fetchMock = vi.fn(async (url: string | URL | Request, _init?: RequestInit) => {
 			const urlStr = String(url);
 			if (urlStr === '/api/playback-state/intents') {
 				intentCalls += 1;
@@ -264,6 +264,7 @@ describe('PlaybackSessionCoordinator', () => {
 
 		await coordinator.refreshQueueFromServer();
 
+		expect(intentCalls).toBe(1);
 		expect(coordinator.status).toBe('saved');
 		expect(coordinator.revision).toBe(22);
 		expect(appliedQueue.map((e) => e.id)).toEqual(['track-2', 'track-1']);
@@ -326,6 +327,7 @@ describe('PlaybackSessionCoordinator', () => {
 
 		expect(appliedSession?.currentTrack?.id).toBe('track-2');
 		expect(appliedQueue.map((e) => e.id)).toEqual(['track-3']);
+		expect(hydratedTracks.map((e) => e.id)).toEqual(['track-3']);
 		expect(coordinator.revision).toBe(8);
 
 		// Case B: playing - audible track is preserved, only queue updates
@@ -351,5 +353,48 @@ describe('PlaybackSessionCoordinator', () => {
 		expect(appliedSession).toBeNull(); // Did not overwrite now-playing
 		expect(appliedQueue.map((e) => e.id)).toEqual(['track-1']);
 		expect(coordinator.revision).toBe(9);
+	});
+
+	it('claims playback control and updates active device status', async () => {
+		const fetchMock = vi.fn(async (url: string | URL | Request) => {
+			if (String(url) === '/api/playback-state/claim') {
+				return new Response(
+					JSON.stringify({
+						currentTrack: null,
+						queue: [],
+						history: [],
+						currentTime: 0,
+						revision: 3,
+						activeDevice: {
+							origin: 'listening-room',
+							expiresAt: new Date(Date.now() + 60_000).toISOString(),
+							isCurrent: true
+						}
+					}),
+					{ status: 200 }
+				);
+			}
+			return new Response(null, { status: 404 });
+		}) as typeof fetch;
+
+		const coordinator = new PlaybackSessionCoordinator({
+			origin: 'listening-room',
+			fetch: fetchMock,
+			getDeviceId: () => 'dev-123',
+			getCurrentState: () => currentState,
+			onApplyQueue: (q) => {
+				appliedQueue = q;
+			},
+			onActiveDeviceChange: (d) => {
+				activeDevice = d;
+			}
+		});
+
+		const claimed = await coordinator.takePlaybackControl();
+		expect(claimed).toBe(true);
+		expect(activeDevice).toMatchObject({
+			origin: 'listening-room',
+			isCurrent: true
+		});
 	});
 });

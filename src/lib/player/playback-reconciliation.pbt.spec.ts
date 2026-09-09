@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
-import { rebaseQueue, type QueueCommand } from './playback-reconciliation.js';
+import { rebaseQueue } from './playback-reconciliation.js';
 import type { QueueEntry } from './queue-entry.js';
 import type { TrackSummary } from '#lib/tidal/models.js';
 
