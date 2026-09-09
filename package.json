@@ -26,7 +26,7 @@
 		"test:e2e": "playwright install && playwright test",
 		"storybook": "storybook dev -p 6006",
 		"build-storybook": "storybook build",
-		"go": "pnpm db:generate && pnpm db:migrate && pnpm db:push && pnpm i && pnpm build && pnpm pm2:reload",
+		"go": "pnpm i && pnpm pm2:reload",
 		"db:push": "drizzle-kit push",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "drizzle-kit migrate",
