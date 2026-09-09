@@ -208,7 +208,9 @@
 	function resultHref(item: AlbumSummary | ArtistSummary | PlaylistSummary): string {
 		switch (item.kind) {
 			case 'album':
-				return resolve('/app/albums/[id]', { id: item.id });
+				return resolve('/(mobile)/albums/[id]', { id: item.id });
+			// Artist and playlist detail compositions are still desktop-only; hand off
+			// until their Halflight Now routes ship.
 			case 'artist':
 				return resolve('/app/artists/[id]', { id: item.id });
 			case 'playlist':
