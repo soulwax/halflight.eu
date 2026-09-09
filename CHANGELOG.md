@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Extracted pure `PlaybackSessionCoordinator` decoupling playback session persistence, retry backoff, and 409 rebase logic from DOM player reactivity.
+- Property-based test suite using `fast-check` mathematically verifying queue bounded-length invariants, independent lifecycles for duplicate TIDAL track entries, clear dominance, and non-destructive relative ordering.
+- Deterministic multi-client race tests validating queue edit survival and idempotent intent retries during concurrent Listening Room and Halflight Now playback.
 - Desktop search, album, and playlist track tables now expose the same Play next, Add to queue, and
   Start radio actions as the rest of the Listening Room; queue rows retain their specialised edit controls.
 - Listening Room and Halflight Now now reconcile newer server session revisions while visible, with
