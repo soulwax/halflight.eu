@@ -14,6 +14,7 @@ describe('isMobileRoute', () => {
 	it('matches a nested path under a mobile root', () => {
 		expect(isMobileRoute('/now/queue')).toBe(true);
 		expect(isMobileRoute('/albums/12345')).toBe(true);
+		expect(isMobileRoute('/playlists/abc-def')).toBe(true);
 	});
 
 	it('matches localized mobile paths', () => {

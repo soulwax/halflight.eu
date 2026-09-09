@@ -80,13 +80,13 @@
 			<ul class="library-list">
 				{#each data.playlists as playlist (playlist.id)}
 					<li>
-						<div class="identity">
+						<a class="identity" href={resolve('/(mobile)/playlists/[id]', { id: playlist.id })}>
 							{@render artwork(playlist.items[0])}
 							<div class="copy">
 								<h2>{playlist.title}</h2>
 								<p>{m.now_library_count({ count: playlist.items.length })}</p>
 							</div>
-						</div>
+						</a>
 						<div class="actions">
 							<button
 								type="button"
@@ -257,6 +257,12 @@
 		align-items: center;
 		gap: 1rem;
 		min-width: 0;
+		color: inherit;
+		text-decoration: none;
+		border-radius: var(--radius-md);
+	}
+	.identity:hover .copy h2 {
+		color: var(--action);
 	}
 	.artwork {
 		display: grid;

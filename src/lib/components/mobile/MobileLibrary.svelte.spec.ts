@@ -45,7 +45,9 @@ describe('MobileLibrary.svelte', () => {
 		await expect
 			.element(page.getByRole('link', { name: m.now_library_favorites() }))
 			.toBeInTheDocument();
-		await expect.element(page.getByText('After midnight')).toBeInTheDocument();
+		await expect
+			.element(page.getByRole('link', { name: /After midnight/ }))
+			.toHaveAttribute('href', '/playlists/p1');
 		await page.getByRole('button', { name: m.player_add_to_queue() }).click();
 		expect(player.queue).toEqual([
 			expect.objectContaining({ id: track.id, provenance: 'After midnight' })

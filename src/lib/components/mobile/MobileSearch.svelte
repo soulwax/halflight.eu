@@ -209,12 +209,12 @@
 		switch (item.kind) {
 			case 'album':
 				return resolve('/(mobile)/albums/[id]', { id: item.id });
-			// Artist and playlist detail compositions are still desktop-only; hand off
-			// until their Halflight Now routes ship.
+			case 'playlist':
+				return resolve('/(mobile)/playlists/[id]', { id: item.id });
+			// Artist detail composition is still desktop-only; hand off until its
+			// Halflight Now route ships.
 			case 'artist':
 				return resolve('/app/artists/[id]', { id: item.id });
-			case 'playlist':
-				return resolve('/app/playlists/[id]', { id: item.id });
 		}
 	}
 </script>
