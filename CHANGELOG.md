@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- PWA persistent background playback on iOS (WebKit lockscreen/remote command center) and Android (MediaSessionCompat/notification shade).
+- Web Audio graph mobile bypass preserving standard HTML5 audio background privileges across screen lock and tab suspension.
+- Service Worker precaching app shell assets and neutral `/offline` fallback within strict < 2 MiB budget while bypassing audio streams, Range 206 requests, and authentication endpoints.
+- MediaSession integration with origin-qualified absolute artwork URLs and scrub bar position synchronization.
+- Emily the Strange ("Music With Many Paths") brand mark rasterized and integrated across desktop and mobile headers, sign-in, Apple Touch Icons, and web app manifest.
 - Accessible headless UI primitives (`Dialog` and `DropdownMenu`) built on `bits-ui` and Halflight design tokens with full keyboard navigation and focus management.
 - Accessible `PlaylistDialog` replacing legacy modal with accessible title, description, live focus trapping, and inline new playlist creation.
 - Unified `TrackActionMenu` on desktop track tables and mobile track rows (Play now, Play next, Add to queue, Start track radio, Add to playlist).

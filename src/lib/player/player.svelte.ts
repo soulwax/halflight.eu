@@ -930,10 +930,7 @@ export class PlayerState {
 			// If not yet preloaded, check if a preload is inflight or fetch directly.
 			// Do not pause the audio before we have the next source, to preserve the
 			// iOS WebKit background continuation token during queue handover.
-			const pendingData = streamPreloader.getOrAwait(trackId);
-			if (pendingData) {
-				data = await pendingData;
-			}
+			data = await streamPreloader.getOrAwait(trackId);
 			if (!data) {
 				try {
 					const res = await fetch(`/api/tracks/${encodeURIComponent(trackId)}/stream`).catch(

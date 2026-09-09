@@ -3,7 +3,8 @@
 /// <reference lib="esnext" />
 /// <reference lib="webworker" />
 
-import { build, files, version } from '$service-worker';
+import { assets, immutable } from '$app/manifest';
+import { version } from '$app/env';
 import {
 	isNavigationRequest,
 	isPrecacheCandidate,
@@ -18,8 +19,8 @@ const CACHE = `syn-cache-v${version}`;
 // Filter public client assets and the neutral offline page within the precache budget
 const ASSETS = Array.from(
 	new Set([
-		...build.filter((file) => isPrecacheCandidate(file)),
-		...files.filter((file) => isPrecacheCandidate(file)),
+		...immutable.filter((file) => isPrecacheCandidate(file)),
+		...assets.filter((file) => isPrecacheCandidate(file)),
 		OFFLINE_FALLBACK_URL
 	])
 );

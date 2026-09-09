@@ -8,9 +8,16 @@ import ts from 'typescript-eslint';
 // covered by the `ignores` block below and don't need type-aware analysis.
 export default [
 	...base,
-	// Build tooling / ambient declarations are not in tsconfig's `include`, so the
-	// project service can't type-check them — and they don't need type-aware rules.
-	{ ignores: ['*.config.{js,ts,cjs,mjs}', 'vitest.shims.d.ts', 'svelte.config.js'] },
+	// Build tooling, ambient declarations, and service worker (separate worker context)
+	// are not in tsconfig's main DOM program, so projectService ignores them.
+	{
+		ignores: [
+			'*.config.{js,ts,cjs,mjs}',
+			'vitest.shims.d.ts',
+			'svelte.config.js',
+			'src/service-worker.ts'
+		]
+	},
 	{
 		languageOptions: {
 			parserOptions: {
