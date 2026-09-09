@@ -55,8 +55,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Halflight Now’s player and its queue, lyrics, and credits layers are now full-screen mobile
   scenes. They no longer retain the app header or tab bar, and all player/queue controls meet the
   48px touch-target contract.
-- Halflight now uses one portrait mark across its browser icon, installed mobile app, desktop and
-  mobile headers, and sign-in surface.
+- Halflight's canonical logo is now the aurora-gradient portrait mark on a white rounded plate with
+  a soft glow, rebuilt reproducibly from one source SVG (`scripts/generate-logo.sh`) across the
+  browser icon, installed PWA, desktop and mobile headers, and sign-in surface. The PWA splash now
+  matches the light system instead of the retired dark background.
 - The Halflight light system is now the only palette in the app: status colours, dialog backdrops, and artwork scrims come from semantic tokens instead of Tailwind defaults and stray blacks, and the leftover dark-theme surface names that silently dropped their backgrounds are gone.
 - Queue reordering is now usable without sight: moving an entry announces its new position through a polite live region in English and German, and focus stays on the control you pressed — or moves to the opposite direction when the entry reaches an end and its own button becomes disabled.
 - Halflight Now’s home masthead now comes from the shared screen header at a `masthead` tone, so the front-door and interior screens differ by one prop instead of duplicated type and rule styling.
