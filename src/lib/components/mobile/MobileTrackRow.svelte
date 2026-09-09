@@ -3,6 +3,7 @@
 	import { Disc } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import type { TrackSummary } from '#lib/tidal/models';
+	import TrackActionMenu from '#lib/components/music/TrackActionMenu.svelte';
 
 	let {
 		track,
@@ -43,6 +44,10 @@
 	{#if actions}
 		<div class="mobile-track-actions">
 			{@render actions()}
+		</div>
+	{:else}
+		<div class="mobile-track-actions">
+			<TrackActionMenu {track} triggerClass="mobile-action-btn" />
 		</div>
 	{/if}
 </div>
@@ -135,5 +140,10 @@
 	.mobile-track-primary:focus-visible {
 		outline: 2px solid var(--focus-ring);
 		outline-offset: 2px;
+	}
+
+	:global(.mobile-action-btn) {
+		min-width: 2.75rem;
+		min-height: 2.75rem;
 	}
 </style>

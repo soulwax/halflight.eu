@@ -4,6 +4,7 @@
 	import { player } from '#lib/player/player.svelte.js';
 	import type { TrackSummary } from '#lib/tidal/models';
 	import TrackRadioButton from './TrackRadioButton.svelte';
+	import TrackActionMenu from './TrackActionMenu.svelte';
 
 	let {
 		track,
@@ -32,6 +33,7 @@
 		<ListPlus size={15} />
 	</button>
 	<TrackRadioButton {track} class="queue-action" />
+	<TrackActionMenu {track} {provenance} />
 </div>
 
 <style>

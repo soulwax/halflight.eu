@@ -3,7 +3,7 @@
 	import AppHeader from '#lib/components/app/AppHeader.svelte';
 	import AppShell from '#lib/components/app/AppShell.svelte';
 	import Footer from '#lib/components/Footer.svelte';
-	import AddToPlaylistModal from '#lib/components/music/AddToPlaylistModal.svelte';
+	import PlaylistDialog from '#lib/components/music/PlaylistDialog.svelte';
 	import QueuePanel from '#lib/components/player/panels/QueuePanel.svelte';
 	import Player from '#lib/components/player/Player.svelte';
 	import { m } from '#lib/paraglide/messages.js';
@@ -71,4 +71,4 @@
 	{@render children()}
 </AppShell>
 
-<AddToPlaylistModal />
+<PlaylistDialog />

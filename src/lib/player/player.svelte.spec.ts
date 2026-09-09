@@ -449,6 +449,20 @@ describe('PlayerState', () => {
 		expectQueuedTracks(player, [sampleTrack3, sampleTrack2]);
 	});
 
+	it('reorders queued tracks with reorderQueue and queues replacement command', () => {
+		const player = new PlayerState();
+		player.play(sampleTrack1);
+		player.addMultipleToQueue([sampleTrack2, sampleTrack3]);
+
+		const [first, second] = player.queue;
+		player.reorderQueue([second!, first!]);
+		expectQueuedTracks(player, [sampleTrack3, sampleTrack2]);
+		expect(player.queueCommands).toContainEqual({
+			type: 'replace',
+			entries: [second, first]
+		});
+	});
+
 	it('repeat-one replays the current track on an automatic advance', () => {
 		const player = new PlayerState();
 		player.play(sampleTrack1);

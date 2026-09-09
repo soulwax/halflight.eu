@@ -1121,6 +1121,15 @@ export class PlayerState {
 	}
 
 	/**
+	 * Reorder the upcoming queue, updating local state and scheduling
+	 * atomic single-write persistence via the session coordinator.
+	 */
+	reorderQueue(newQueue: QueueEntry[]): void {
+		this.queue = [...newQueue];
+		this.coordinator.recordQueueReplacement(this.queue);
+	}
+
+	/**
 	 * Advance playback. Honours repeat (`one` replays, `all` refills the queue
 	 * from history once it empties) and shuffle (picks a random queued track).
 	 * @param auto `true` when triggered by a track ending, so repeat-one applies.

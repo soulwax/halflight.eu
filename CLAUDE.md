@@ -154,7 +154,7 @@ Everything under `src/lib/` that is _not_ in `server/` is browser-reachable:
 
 - `components/ui/` — primitives (`Button`, `Badge`, `SectionHeader`).
 - `components/music/` — domain widgets (`MediaCard`, `SongCard`, `PageHeader`/`PageActions`,
-  `StateCard`, `AddToPlaylistModal`, `PlaylistGeneratorModal`). Track listings render as a
+  `StateCard`, `PlaylistDialog`). Track listings render as a
   `<table>` via `TrackTable` (configurable `album` / `date` / `duration` columns, a
   `rowActions` snippet, `onRowActivate`) + `TrackTableRow`.
 - `components/app/` — the shell (`AppShell`, `SideNav`, `MobileNav`, `navigation.ts`);

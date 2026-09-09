@@ -1,55 +1,88 @@
 <script lang="ts">
-	import { Check, FolderPlus, ListPlus, Music, Plus, X } from '@lucide/svelte';
+	import { onDestroy } from 'svelte';
+	import { Check, FolderPlus, ListPlus, Music, Plus } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
-	import { customPlaylists } from '#lib/player/customPlaylists.svelte';
+	import { customPlaylists } from '#lib/player/customPlaylists.svelte.js';
+	import Dialog from '#lib/components/ui/Dialog.svelte';
+
+	interface Props {
+		closeDelayMs?: number;
+	}
+
+	let { closeDelayMs = 800 }: Props = $props();
 
 	const track = $derived(customPlaylists.selectedTrackForPlaylist);
 	let newPlaylistTitle = $state('');
 	let addedPlaylistId = $state<string | null>(null);
+	let closeTimer = $state<ReturnType<typeof setTimeout> | null>(null);
+
+	const isOpen = $derived(track !== null);
+
+	function clearCloseTimer() {
+		if (closeTimer) {
+			clearTimeout(closeTimer);
+			closeTimer = null;
+		}
+	}
+
+	function handleOpenChange(open: boolean) {
+		if (!open) {
+			clearCloseTimer();
+			customPlaylists.closeAddToPlaylist();
+			addedPlaylistId = null;
+			newPlaylistTitle = '';
+		}
+	}
+
+	function scheduleClose() {
+		clearCloseTimer();
+		closeTimer = setTimeout(() => {
+			customPlaylists.closeAddToPlaylist();
+			addedPlaylistId = null;
+			closeTimer = null;
+		}, closeDelayMs);
+	}
 
 	function handleCreateAndAdd() {
 		if (!track || !newPlaylistTitle.trim()) return;
 		const created = customPlaylists.createPlaylist(newPlaylistTitle.trim(), undefined, [track]);
 		addedPlaylistId = created.id;
 		newPlaylistTitle = '';
-		setTimeout(() => {
-			customPlaylists.closeAddToPlaylist();
-			addedPlaylistId = null;
-		}, 800);
+		scheduleClose();
 	}
 
 	function handleAddToExisting(playlistId: string) {
 		if (!track) return;
 		customPlaylists.addTrack(playlistId, track);
 		addedPlaylistId = playlistId;
-		setTimeout(() => {
-			customPlaylists.closeAddToPlaylist();
-			addedPlaylistId = null;
-		}, 800);
+		scheduleClose();
 	}
+
+	$effect(() => {
+		if (!isOpen) {
+			clearCloseTimer();
+		}
+	});
+
+	onDestroy(() => {
+		clearCloseTimer();
+	});
 </script>
 
-{#if track}
-	<!-- svelte-ignore a11y_click_events_have_key_events -->
-	<!-- svelte-ignore a11y_no_static_element_interactions -->
-	<div class="modal-backdrop" onclick={() => customPlaylists.closeAddToPlaylist()}></div>
+<Dialog
+	open={isOpen}
+	onOpenChange={handleOpenChange}
+	title={m.playlist_dialog_title()}
+	description={m.playlist_dialog_description()}
+>
+	{#snippet titleSnippet()}
+		<div class="dialog-title-wrap">
+			<ListPlus size={20} class="text-(--action)" />
+			<h2 class="dialog-title">{m.playlist_dialog_title()}</h2>
+		</div>
+	{/snippet}
 
-	<div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-		<header class="modal-header">
-			<div class="title-wrap">
-				<ListPlus size={20} class="text-[var(--action)]" />
-				<h2 id="modal-title">ADD TO PLAYLIST</h2>
-			</div>
-			<button
-				type="button"
-				class="close-btn"
-				onclick={() => customPlaylists.closeAddToPlaylist()}
-				aria-label={m.action_close()}
-			>
-				<X size={18} />
-			</button>
-		</header>
-
+	{#if track}
 		<div class="track-preview">
 			{#if track.imageUrl}
 				<img class="preview-thumb" src={track.imageUrl} alt="" aria-hidden="true" />
@@ -62,10 +95,10 @@
 			</div>
 		</div>
 
-		<div class="modal-body">
+		<div class="playlist-dialog-body">
 			{#if customPlaylists.playlists.length > 0}
 				<div class="playlists-list-section">
-					<p class="section-label">EXISTING PLAYLISTS</p>
+					<p class="section-label">{m.playlist_dialog_existing()}</p>
 					<div class="playlists-list">
 						{#each customPlaylists.playlists as playlist (playlist.id)}
 							{@const isAdded = addedPlaylistId === playlist.id}
@@ -73,9 +106,10 @@
 							<div class="playlist-row">
 								<div class="playlist-meta">
 									<strong class="truncate">{playlist.title}</strong>
-									<span class="font-mono text-xs text-[var(--text-muted)]"
-										>{playlist.items.length} tracks</span
-									>
+									<span class="font-mono text-xs text-(--text-muted)">
+										{playlist.items.length}
+										{playlist.items.length === 1 ? 'track' : 'tracks'}
+									</span>
 								</div>
 								<button
 									type="button"
@@ -85,11 +119,11 @@
 									onclick={() => handleAddToExisting(playlist.id)}
 								>
 									{#if isAdded}
-										<Check size={14} /> ADDED
+										<Check size={14} /> {m.playlist_dialog_added()}
 									{:else if alreadyIn}
-										IN PLAYLIST
+										{m.playlist_dialog_in_playlist()}
 									{:else}
-										<Plus size={14} /> ADD
+										<Plus size={14} /> {m.playlist_dialog_add()}
 									{/if}
 								</button>
 							</div>
@@ -99,7 +133,7 @@
 			{/if}
 
 			<div class="create-new-section">
-				<p class="section-label">CREATE NEW PLAYLIST</p>
+				<p class="section-label">{m.playlist_dialog_new()}</p>
 				<form
 					onsubmit={(e) => {
 						e.preventDefault();
@@ -110,95 +144,40 @@
 					<input
 						type="text"
 						bind:value={newPlaylistTitle}
-						placeholder={m.playlist_title_placeholder()}
+						placeholder={m.playlist_dialog_create_placeholder()}
 						maxlength="60"
 						class="playlist-name-input"
 					/>
 					<button type="submit" class="create-submit-btn" disabled={!newPlaylistTitle.trim()}>
 						<FolderPlus size={14} />
-						CREATE & ADD
+						{m.playlist_dialog_create_action()}
 					</button>
 				</form>
 			</div>
 		</div>
-	</div>
-{/if}
+	{/if}
+</Dialog>
 
 <style>
-	.modal-backdrop {
-		position: fixed;
-		inset: 0;
-		background: var(--overlay);
-		z-index: 150;
-		animation: fadeIn 0.15s ease;
-	}
-
-	.modal-dialog {
-		position: fixed;
-		top: 50%;
-		left: 50%;
-		transform: translate(-50%, -50%);
-		width: calc(100% - 2.5rem);
-		max-width: 32rem;
-		background: var(--surface-raised);
-		border: 2px solid var(--border-strong);
-		border-radius: var(--radius-xl, 18px);
-		box-shadow:
-			0 24px 56px -8px rgb(6 48 100 / 45%),
-			4px 4px 0px var(--border-strong);
-		z-index: 160;
-		display: flex;
-		flex-direction: column;
-		overflow: hidden;
-		animation: scaleUp 0.15s ease;
-	}
-
-	.modal-header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: 1.25rem 1.5rem;
-		border-bottom: 2px solid var(--border-subtle);
-		background: var(--surface-canvas);
-	}
-
-	.title-wrap {
+	.dialog-title-wrap {
 		display: flex;
 		align-items: center;
 		gap: 0.65rem;
 	}
 
-	.title-wrap h2 {
+	.dialog-title {
 		margin: 0;
 		font-size: 1.05rem;
 		font-weight: 800;
-		letter-spacing: 0.05em;
-	}
-
-	.close-btn {
-		display: grid;
-		place-items: center;
-		width: 2.15rem;
-		height: 2.15rem;
-		border: 1px solid var(--border-subtle);
-		border-radius: var(--radius-sm, 6px);
-		background: transparent;
-		color: var(--text-muted);
-		cursor: pointer;
-		transition: all 0.12s ease;
-	}
-
-	.close-btn:hover {
-		border-color: var(--border-strong);
+		letter-spacing: 0.04em;
 		color: var(--text-primary);
-		background: var(--surface-selected);
 	}
 
 	.track-preview {
 		display: flex;
 		align-items: center;
 		gap: 0.85rem;
-		padding: 1rem 1.5rem;
+		padding: 1rem 1.4rem;
 		background: var(--surface-canvas);
 		border-bottom: 1px solid var(--border-subtle);
 	}
@@ -207,7 +186,7 @@
 		width: 3rem;
 		height: 3rem;
 		border: 1px solid var(--border-strong);
-		border-radius: var(--radius-xs, 6px);
+		border-radius: var(--radius-xs, 4px);
 		object-fit: cover;
 		background: var(--surface-selected);
 	}
@@ -230,6 +209,7 @@
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
+		color: var(--text-primary);
 	}
 
 	.preview-info span {
@@ -240,29 +220,29 @@
 		text-overflow: ellipsis;
 	}
 
-	.modal-body {
-		padding: 1.5rem;
+	.playlist-dialog-body {
+		padding: 1.4rem;
 		display: flex;
 		flex-direction: column;
-		gap: 1.5rem;
-		max-height: 60vh;
+		gap: 1.4rem;
 		overflow-y: auto;
 	}
 
 	.section-label {
-		margin: 0 0 0.65rem;
+		margin: 0 0 0.55rem;
 		font-family: ui-monospace, monospace;
-		font-size: 0.75rem;
+		font-size: 0.725rem;
 		font-weight: 800;
 		letter-spacing: 0.08em;
+		text-transform: uppercase;
 		color: var(--text-muted);
 	}
 
 	.playlists-list {
 		display: flex;
 		flex-direction: column;
-		gap: 0.6rem;
-		max-height: 13rem;
+		gap: 0.55rem;
+		max-height: 12rem;
 		overflow-y: auto;
 	}
 
@@ -270,11 +250,12 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		padding: 0.75rem 1rem;
+		gap: 0.75rem;
+		padding: 0.7rem 0.9rem;
 		border: 1px solid var(--border-subtle);
-		border-radius: var(--radius-md, 8px);
+		border-radius: var(--radius-md, 10px);
 		background: var(--surface-canvas);
-		transition: all 0.12s ease;
+		transition: all var(--dur-fast) ease;
 	}
 
 	.playlist-row:hover {
@@ -292,16 +273,17 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 0.35rem;
-		padding: 0.45rem 0.85rem;
+		padding: 0.4rem 0.75rem;
 		border: 1px solid var(--action);
 		border-radius: var(--radius-sm, 6px);
 		background: var(--action);
 		color: var(--action-contrast);
 		font-family: ui-monospace, monospace;
-		font-size: 0.75rem;
+		font-size: 0.725rem;
 		font-weight: 800;
 		cursor: pointer;
-		transition: all 0.12s ease;
+		flex-shrink: 0;
+		transition: all var(--dur-fast) ease;
 	}
 
 	.add-btn:hover:not(.btn-added) {
@@ -331,7 +313,7 @@
 		color: var(--text-primary);
 		font: inherit;
 		font-size: 0.85rem;
-		transition: border-color 0.12s ease;
+		transition: border-color var(--dur-fast) ease;
 	}
 
 	.playlist-name-input:focus {
@@ -353,7 +335,7 @@
 		font-size: 0.85rem;
 		letter-spacing: 0.04em;
 		cursor: pointer;
-		transition: all 0.12s ease;
+		transition: all var(--dur-fast) ease;
 	}
 
 	.create-submit-btn:hover:not(:disabled) {
@@ -364,25 +346,5 @@
 	.create-submit-btn:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
-	}
-
-	@keyframes fadeIn {
-		from {
-			opacity: 0;
-		}
-		to {
-			opacity: 1;
-		}
-	}
-
-	@keyframes scaleUp {
-		from {
-			opacity: 0;
-			transform: translate(-50%, -48%) scale(0.96);
-		}
-		to {
-			opacity: 1;
-			transform: translate(-50%, -50%) scale(1);
-		}
 	}
 </style>

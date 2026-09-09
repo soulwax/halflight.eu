@@ -5,9 +5,34 @@
 	import { player } from '#lib/player/player.svelte.js';
 	import { customPlaylists } from '#lib/player/customPlaylists.svelte.js';
 	import { describeQueueMove } from '#lib/player/queue-announce.js';
+	import type { DndEvent } from '#lib/player/queue-dnd.js';
+	import type { QueueEntry } from '#lib/player/queue-entry.js';
 	import TrackTable from '#lib/components/music/TrackTable.svelte';
 
 	let announcement = $state('');
+	let items = $state<QueueEntry[]>([...player.queue]);
+	let isDragging = $state(false);
+
+	$effect(() => {
+		if (!isDragging) {
+			items = [...player.queue];
+		}
+	});
+
+	function handleConsider(e: CustomEvent<DndEvent<QueueEntry>>) {
+		isDragging = true;
+		items = e.detail.items;
+	}
+
+	function handleFinalize(e: CustomEvent<DndEvent<QueueEntry>>) {
+		isDragging = false;
+		items = e.detail.items;
+		player.reorderQueue(items);
+		if (e.detail.info.id) {
+			const moved = describeQueueMove(player.queue, e.detail.info.id);
+			announcement = moved ? m.player_queue_moved(moved) : '';
+		}
+	}
 
 	/**
 	 * Reorder, say where the entry landed, and keep the keyboard where it was.
@@ -55,20 +80,23 @@
 	</div>
 </div>
 
-{#if player.queue.length === 0}
+{#if items.length === 0}
 	<p class="queue-empty">{m.player_queue_empty()}</p>
 {:else}
 	<TrackTable
-		tracks={player.queue}
+		tracks={items}
 		columns={['album', 'date', 'duration']}
-		rowKey={(_, index) => player.queue[index]?.entryId ?? `row-${index}`}
+		rowKey={(_, index) => items[index]?.entryId ?? `row-${index}`}
+		reorderable={true}
+		onconsider={handleConsider}
+		onfinalize={handleFinalize}
 		onRowActivate={(_, index) => {
-			const entry = player.queue[index];
+			const entry = items[index];
 			if (entry) player.playFromQueue(entry.entryId);
 		}}
 	>
 		{#snippet rowActions(_track, i)}
-			{@const entryId = player.queue[i]?.entryId}
+			{@const entryId = items[i]?.entryId}
 			<button
 				type="button"
 				class="q-row-btn"
@@ -81,7 +109,7 @@
 			<button
 				type="button"
 				class="q-row-btn"
-				disabled={i === player.queue.length - 1 || !entryId}
+				disabled={i === items.length - 1 || !entryId}
 				onclick={(event) => entryId && move(entryId, 1, event)}
 				aria-label={m.player_move_down()}
 			>

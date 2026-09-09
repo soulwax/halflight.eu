@@ -36,8 +36,8 @@ describe('QueueScene.svelte', () => {
 		player.queue = [entry('1', 'One'), entry('2', 'Two')];
 		await render(QueueScene);
 
-		await expect.element(page.getByText('One')).toBeInTheDocument();
-		await expect.element(page.getByText('Two')).toBeInTheDocument();
+		await expect.element(page.getByText('One', { exact: true })).toBeInTheDocument();
+		await expect.element(page.getByText('Two', { exact: true })).toBeInTheDocument();
 
 		await page.getByRole('button', { name: /^Two/ }).click();
 		expect(player.currentTrack?.id).toBe('2');

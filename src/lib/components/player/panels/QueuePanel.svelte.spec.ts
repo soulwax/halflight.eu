@@ -49,4 +49,13 @@ describe('QueuePanel.svelte', () => {
 		await page.getByRole('button', { name: m.player_clear_queue() }).click();
 		expect(player.queue).toEqual([]);
 	});
+
+	it('reorders queued tracks on move up/down', async () => {
+		player.queue = [entry('1', 'One'), entry('2', 'Two')];
+		render(QueuePanel);
+
+		const moveDown = page.getByRole('button', { name: m.player_move_down() });
+		await moveDown.first().click();
+		expect(player.queue.map((t) => t.id)).toEqual(['2', '1']);
+	});
 });

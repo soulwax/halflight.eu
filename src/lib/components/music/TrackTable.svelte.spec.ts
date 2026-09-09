@@ -39,6 +39,7 @@ describe('TrackTable.svelte', () => {
 		expect(page.getByRole('button', { name: m.player_play_next() }).all()).toHaveLength(2);
 		expect(page.getByRole('button', { name: m.player_add_to_queue() }).all()).toHaveLength(2);
 		expect(page.getByRole('button', { name: m.player_start_radio() }).all()).toHaveLength(2);
+		expect(page.getByRole('button', { name: m.track_action_menu() }).all()).toHaveLength(2);
 	});
 
 	it('passes the row-actions snippet through to every row', async () => {

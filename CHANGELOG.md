@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Accessible headless UI primitives (`Dialog` and `DropdownMenu`) built on `bits-ui` and Halflight design tokens with full keyboard navigation and focus management.
+- Accessible `PlaylistDialog` replacing legacy modal with accessible title, description, live focus trapping, and inline new playlist creation.
+- Unified `TrackActionMenu` on desktop track tables and mobile track rows (Play now, Play next, Add to queue, Start track radio, Add to playlist).
+- Drag-and-drop queue reordering via `svelte-dnd-action` keyed by unique `entryId` for desktop and mobile touch, supporting duplicate tracks and single-commit persistence with zero audio interruption.
+- Automated accessibility suite using `@axe-core/playwright` validating WCAG compliance on authenticated surfaces.
 - Extracted pure `PlaybackSessionCoordinator` decoupling playback session persistence, retry backoff, and 409 rebase logic from DOM player reactivity.
 - Property-based test suite using `fast-check` mathematically verifying queue bounded-length invariants, independent lifecycles for duplicate TIDAL track entries, clear dominance, and non-destructive relative ordering.
 - Deterministic multi-client race tests validating queue edit survival and idempotent intent retries during concurrent Listening Room and Halflight Now playback.

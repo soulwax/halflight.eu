@@ -533,5 +533,20 @@
 	"mobile_install_help_description": "Öffne Teilen oder das Browsermenü und wähle Zum Home-Bildschirm oder App installieren.",
 	"offline_title": "Du bist offline",
 	"offline_description": "Halflight Now benötigt eine Verbindung, um deine Hörsitzung zu laden und Musik zu starten. Stelle die Verbindung wieder her und versuche es erneut.",
-	"offline_retry": "Erneut versuchen"
+	"offline_retry": "Erneut versuchen",
+	"playlist_dialog_title": "Zu Playlist hinzufügen",
+	"playlist_dialog_description": "Füge diesen Titel zu einer bestehenden Playlist hinzu oder erstelle eine neue.",
+	"playlist_dialog_existing": "Bestehende Playlists",
+	"playlist_dialog_new": "Neue Playlist",
+	"playlist_dialog_create_placeholder": "Playlist-Titel...",
+	"playlist_dialog_create_action": "Erstellen & hinzufügen",
+	"playlist_dialog_added": "Hinzugefügt",
+	"playlist_dialog_in_playlist": "In Playlist",
+	"playlist_dialog_add": "Hinzufügen",
+	"track_action_menu": "Weitere Aktionen",
+	"track_action_play_now": "Jetzt abspielen",
+	"track_action_play_next": "Als Nächstes spielen",
+	"track_action_add_to_queue": "In die Warteschlange",
+	"track_action_start_radio": "Titel-Radio starten",
+	"track_action_add_to_playlist": "Zu Playlist hinzufügen"
 }

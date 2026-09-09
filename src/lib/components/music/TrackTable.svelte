@@ -2,11 +2,12 @@
 	export type TrackColumn = 'album' | 'date' | 'duration';
 </script>
 
-<script lang="ts">
+<script lang="ts" generics="T extends TrackSummary = TrackSummary">
 	import type { Snippet } from 'svelte';
 	import { player } from '#lib/player/player.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import type { TrackSummary } from '#lib/tidal/models';
+	import { queueDndZone, type DndEvent } from '#lib/player/queue-dnd.js';
 	import TrackQueueActions from './TrackQueueActions.svelte';
 	import TrackTableRow from './TrackTableRow.svelte';
 
@@ -17,9 +18,12 @@
 		columns = ['album', 'date', 'duration'],
 		rowActions,
 		onRowActivate,
-		rowKey
+		rowKey,
+		reorderable = false,
+		onconsider,
+		onfinalize
 	}: {
-		tracks: TrackSummary[];
+		tracks: T[];
 		contextTracks?: TrackSummary[];
 		provenance?: string;
 		columns?: TrackColumn[];
@@ -32,6 +36,9 @@
 		 * it so Svelte moves the row and keeps focus with it.
 		 */
 		rowKey?: (track: TrackSummary, index: number) => string;
+		reorderable?: boolean;
+		onconsider?: (e: CustomEvent<DndEvent<T>>) => void;
+		onfinalize?: (e: CustomEvent<DndEvent<T>>) => void;
 	} = $props();
 
 	const keyOf = (track: TrackSummary, index: number) =>
@@ -90,17 +97,41 @@
 		{#if hasActions}<span class="sr-only" role="columnheader">{m.track_col_actions()}</span>{/if}
 	</div>
 
-	{#each tracks as track, index (keyOf(track, index))}
-		<TrackTableRow {track} {columns} onActivate={() => activate(track, index)}>
-			{#snippet actions()}
-				{#if rowActions}
-					{@render rowActions(track, index)}
-				{:else}
-					<TrackQueueActions {track} {provenance} />
-				{/if}
-			{/snippet}
-		</TrackTableRow>
-	{/each}
+	{#if reorderable}
+		<div
+			class="tt-body"
+			role="rowgroup"
+			use:queueDndZone={{ items: tracks, flipDurationMs: 150, dropTargetStyle: {} }}
+			{onconsider}
+			{onfinalize}
+		>
+			{#each tracks as track, index (keyOf(track, index))}
+				<TrackTableRow {track} {columns} onActivate={() => activate(track, index)}>
+					{#snippet actions()}
+						{#if rowActions}
+							{@render rowActions(track, index)}
+						{:else}
+							<TrackQueueActions {track} {provenance} />
+						{/if}
+					{/snippet}
+				</TrackTableRow>
+			{/each}
+		</div>
+	{:else}
+		<div class="tt-body" role="rowgroup">
+			{#each tracks as track, index (keyOf(track, index))}
+				<TrackTableRow {track} {columns} onActivate={() => activate(track, index)}>
+					{#snippet actions()}
+						{#if rowActions}
+							{@render rowActions(track, index)}
+						{:else}
+							<TrackQueueActions {track} {provenance} />
+						{/if}
+					{/snippet}
+				</TrackTableRow>
+			{/each}
+		</div>
+	{/if}
 </div>
 
 <style>
@@ -111,6 +142,11 @@
 		border-radius: var(--radius-md);
 		background: var(--surface-raised);
 		overflow: hidden;
+	}
+
+	.tt-body {
+		display: flex;
+		flex-direction: column;
 	}
 
 	.tt-head {

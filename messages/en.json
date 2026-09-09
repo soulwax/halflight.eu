@@ -533,5 +533,20 @@
 	"mobile_install_help_description": "Use your browser’s Share or menu button, then choose Add to Home Screen or Install app.",
 	"offline_title": "You’re offline",
 	"offline_description": "Halflight Now needs a connection to load your listening session and start music. Reconnect, then try again.",
-	"offline_retry": "Try again"
+	"offline_retry": "Try again",
+	"playlist_dialog_title": "Add to playlist",
+	"playlist_dialog_description": "Add this track to an existing custom playlist or create a new one.",
+	"playlist_dialog_existing": "Existing playlists",
+	"playlist_dialog_new": "New playlist",
+	"playlist_dialog_create_placeholder": "Playlist title...",
+	"playlist_dialog_create_action": "Create & add",
+	"playlist_dialog_added": "Added",
+	"playlist_dialog_in_playlist": "In playlist",
+	"playlist_dialog_add": "Add",
+	"track_action_menu": "More actions",
+	"track_action_play_now": "Play now",
+	"track_action_play_next": "Play next",
+	"track_action_add_to_queue": "Add to queue",
+	"track_action_start_radio": "Start track radio",
+	"track_action_add_to_playlist": "Add to playlist"
 }

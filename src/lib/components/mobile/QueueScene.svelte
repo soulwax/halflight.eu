@@ -6,10 +6,35 @@
 	import { player } from '#lib/player/player.svelte.js';
 	import { customPlaylists } from '#lib/player/customPlaylists.svelte.js';
 	import { describeQueueMove } from '#lib/player/queue-announce.js';
+	import { queueDndZone, type DndEvent } from '#lib/player/queue-dnd.js';
+	import type { QueueEntry } from '#lib/player/queue-entry.js';
 	import MobileSubScreenHeader from './MobileSubScreenHeader.svelte';
 	import MobileTrackRow from './MobileTrackRow.svelte';
 
 	let announcement = $state('');
+	let items = $state<QueueEntry[]>([...player.queue]);
+	let isDragging = $state(false);
+
+	$effect(() => {
+		if (!isDragging) {
+			items = [...player.queue];
+		}
+	});
+
+	function handleConsider(e: CustomEvent<DndEvent<QueueEntry>>) {
+		isDragging = true;
+		items = e.detail.items;
+	}
+
+	function handleFinalize(e: CustomEvent<DndEvent<QueueEntry>>) {
+		isDragging = false;
+		items = e.detail.items;
+		player.reorderQueue(items);
+		if (e.detail.info.id) {
+			const moved = describeQueueMove(player.queue, e.detail.info.id);
+			announcement = moved ? m.player_queue_moved(moved) : '';
+		}
+	}
 
 	/**
 	 * Reorder, say where the entry landed, and keep the keyboard where it was.
@@ -72,11 +97,16 @@
 		</div>
 	</div>
 
-	{#if player.queue.length === 0}
+	{#if items.length === 0}
 		<p class="pt-6 text-center text-(--text-muted)">{m.player_queue_empty()}</p>
 	{:else}
-		<div class="flex-1 divide-y divide-(--border-subtle) overflow-y-auto">
-			{#each player.queue as entry, i (entry.entryId)}
+		<div
+			class="flex-1 divide-y divide-(--border-subtle) overflow-y-auto"
+			use:queueDndZone={{ items, flipDurationMs: 150, dropTargetStyle: {} }}
+			onconsider={handleConsider}
+			onfinalize={handleFinalize}
+		>
+			{#each items as entry, i (entry.entryId)}
 				<MobileTrackRow track={entry} onActivate={() => player.playFromQueue(entry.entryId)}>
 					{#snippet actions()}
 						<button
@@ -91,7 +121,7 @@
 						<button
 							type="button"
 							class="flex h-12 w-12 items-center justify-center text-(--text-muted) disabled:opacity-30"
-							disabled={i === player.queue.length - 1}
+							disabled={i === items.length - 1}
 							onclick={(event) => move(entry.entryId, 1, event)}
 							aria-label={m.player_move_down()}
 						>
