@@ -15,6 +15,7 @@ describe('isMobileRoute', () => {
 		expect(isMobileRoute('/now/queue')).toBe(true);
 		expect(isMobileRoute('/albums/12345')).toBe(true);
 		expect(isMobileRoute('/playlists/abc-def')).toBe(true);
+		expect(isMobileRoute('/artists/42')).toBe(true);
 	});
 
 	it('matches localized mobile paths', () => {

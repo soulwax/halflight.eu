@@ -211,10 +211,8 @@
 				return resolve('/(mobile)/albums/[id]', { id: item.id });
 			case 'playlist':
 				return resolve('/(mobile)/playlists/[id]', { id: item.id });
-			// Artist detail composition is still desktop-only; hand off until its
-			// Halflight Now route ships.
 			case 'artist':
-				return resolve('/app/artists/[id]', { id: item.id });
+				return resolve('/(mobile)/artists/[id]', { id: item.id });
 		}
 	}
 </script>

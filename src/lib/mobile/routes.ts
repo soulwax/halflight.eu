@@ -6,8 +6,8 @@ import { deLocalizeUrl } from '#lib/paraglide/runtime';
  * `(mobile)` route group under these root-level paths, sharing a server and
  * database with the desktop Listening Room but none of its shell components.
  *
- * Grows as more mobile routes ship (detail compositions for artists and
- * tracks); nothing outside this module should hard-code a mobile path prefix.
+ * Grows as more mobile routes ship (a track detail composition remains);
+ * nothing outside this module should hard-code a mobile path prefix.
  */
 export const MOBILE_ROOT_PATHS = [
 	'/now',
@@ -17,7 +17,8 @@ export const MOBILE_ROOT_PATHS = [
 	'/settings',
 	'/offline',
 	'/albums',
-	'/playlists'
+	'/playlists',
+	'/artists'
 ] as const;
 
 /**
