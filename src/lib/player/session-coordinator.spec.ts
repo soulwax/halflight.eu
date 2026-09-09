@@ -64,7 +64,10 @@ describe('PlaybackSessionCoordinator', () => {
 		};
 	});
 
-	function createCoordinator(fetchMock: typeof fetch, options: { canPersist?: () => boolean } = {}) {
+	function createCoordinator(
+		fetchMock: typeof fetch,
+		options: { canPersist?: () => boolean } = {}
+	) {
 		return new PlaybackSessionCoordinator({
 			origin: 'listening-room',
 			fetch: fetchMock,
@@ -158,7 +161,10 @@ describe('PlaybackSessionCoordinator', () => {
 				return new Response(
 					JSON.stringify({
 						currentTrack: null,
-						queue: [makeEntry(sampleTrack2, 'entry-remote'), makeEntry(sampleTrack1, 'entry-local')],
+						queue: [
+							makeEntry(sampleTrack2, 'entry-remote'),
+							makeEntry(sampleTrack1, 'entry-local')
+						],
 						history: [],
 						currentTime: 0,
 						revision: 6
@@ -233,7 +239,10 @@ describe('PlaybackSessionCoordinator', () => {
 				return new Response(
 					JSON.stringify({
 						currentTrack: sampleTrack3,
-						queue: [makeEntry(sampleTrack2, 'entry-remote-2'), makeEntry(sampleTrack1, 'entry-local')],
+						queue: [
+							makeEntry(sampleTrack2, 'entry-remote-2'),
+							makeEntry(sampleTrack1, 'entry-local')
+						],
 						history: [],
 						currentTime: 15,
 						revision: 21

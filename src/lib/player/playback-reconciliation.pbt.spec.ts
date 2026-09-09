@@ -31,12 +31,12 @@ function createUniqueQueueEntries(count: number, prefix = 'entry'): QueueEntry[]
 
 // Arbitrary for generating queue entry with custom entryId
 const queueEntryArb = (prefix = 'q'): fc.Arbitrary<QueueEntry> =>
-	fc.tuple(trackSummaryArb, fc.stringMatching(/^[a-zA-Z0-9][a-zA-Z0-9_-]{1,15}$/)).map(
-		([track, suffix]) => ({
+	fc
+		.tuple(trackSummaryArb, fc.stringMatching(/^[a-zA-Z0-9][a-zA-Z0-9_-]{1,15}$/))
+		.map(([track, suffix]) => ({
 			...track,
 			entryId: `${prefix}_${suffix}`
-		})
-	);
+		}));
 
 describe('Queue Reconciliation Invariants (Property-Based Testing)', () => {
 	it('Invariant 1: Bounded Length - resulting queue never exceeds maximumLength', () => {
@@ -75,34 +75,30 @@ describe('Queue Reconciliation Invariants (Property-Based Testing)', () => {
 
 	it('Invariant 2: Duplicate Track Independence - tracks sharing TIDAL id have distinct lifecycle', () => {
 		fc.assert(
-			fc.property(
-				trackSummaryArb,
-				fc.integer({ min: 2, max: 6 }),
-				(sharedTrack, count) => {
-					// Create multiple occurrences of the EXACT same TIDAL track, each with unique entryId
-					const entries: QueueEntry[] = Array.from({ length: count }, (_, idx) => ({
-						...sharedTrack,
-						entryId: `dup_entry_${idx}`
-					}));
+			fc.property(trackSummaryArb, fc.integer({ min: 2, max: 6 }), (sharedTrack, count) => {
+				// Create multiple occurrences of the EXACT same TIDAL track, each with unique entryId
+				const entries: QueueEntry[] = Array.from({ length: count }, (_, idx) => ({
+					...sharedTrack,
+					entryId: `dup_entry_${idx}`
+				}));
 
-					// Pick one specific entry to remove
-					const targetIndex = Math.floor(count / 2);
-					const targetEntryId = entries[targetIndex]!.entryId;
+				// Pick one specific entry to remove
+				const targetIndex = Math.floor(count / 2);
+				const targetEntryId = entries[targetIndex]!.entryId;
 
-					const rebased = rebaseQueue(entries, [{ type: 'remove', entryId: targetEntryId }], 100);
+				const rebased = rebaseQueue(entries, [{ type: 'remove', entryId: targetEntryId }], 100);
 
-					// Invariant: Exactly one occurrence was removed
-					expect(rebased.length).toBe(count - 1);
-					expect(rebased.some((e) => e.entryId === targetEntryId)).toBe(false);
+				// Invariant: Exactly one occurrence was removed
+				expect(rebased.length).toBe(count - 1);
+				expect(rebased.some((e) => e.entryId === targetEntryId)).toBe(false);
 
-					// Invariant: Other identical tracks remain in their original relative order
-					const remainingEntryIds = rebased.map((e) => e.entryId);
-					const expectedEntryIds = entries
-						.filter((_, idx) => idx !== targetIndex)
-						.map((e) => e.entryId);
-					expect(remainingEntryIds).toEqual(expectedEntryIds);
-				}
-			),
+				// Invariant: Other identical tracks remain in their original relative order
+				const remainingEntryIds = rebased.map((e) => e.entryId);
+				const expectedEntryIds = entries
+					.filter((_, idx) => idx !== targetIndex)
+					.map((e) => e.entryId);
+				expect(remainingEntryIds).toEqual(expectedEntryIds);
+			}),
 			{ numRuns: 100 }
 		);
 	});
@@ -159,19 +155,16 @@ describe('Queue Reconciliation Invariants (Property-Based Testing)', () => {
 
 	it('Invariant 5: Relative Order Preservation - removing one entry preserves order of unaffected entries', () => {
 		fc.assert(
-			fc.property(
-				fc.integer({ min: 3, max: 15 }),
-				(queueSize) => {
-					const queue = createUniqueQueueEntries(queueSize, 'seq');
-					const removeIdx = Math.floor(queueSize / 2);
-					const removeId = queue[removeIdx]!.entryId;
+			fc.property(fc.integer({ min: 3, max: 15 }), (queueSize) => {
+				const queue = createUniqueQueueEntries(queueSize, 'seq');
+				const removeIdx = Math.floor(queueSize / 2);
+				const removeId = queue[removeIdx]!.entryId;
 
-					const rebased = rebaseQueue(queue, [{ type: 'remove', entryId: removeId }], 100);
+				const rebased = rebaseQueue(queue, [{ type: 'remove', entryId: removeId }], 100);
 
-					const expectedIds = queue.filter((_, i) => i !== removeIdx).map((e) => e.entryId);
-					expect(rebased.map((e) => e.entryId)).toEqual(expectedIds);
-				}
-			),
+				const expectedIds = queue.filter((_, i) => i !== removeIdx).map((e) => e.entryId);
+				expect(rebased.map((e) => e.entryId)).toEqual(expectedIds);
+			}),
 			{ numRuns: 50 }
 		);
 	});

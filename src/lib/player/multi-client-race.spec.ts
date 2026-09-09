@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-	PlaybackSessionCoordinator,
-	type SavedPlaybackState
-} from './session-coordinator.js';
+import { PlaybackSessionCoordinator, type SavedPlaybackState } from './session-coordinator.js';
 import type { TrackSummary } from '#lib/tidal/models.js';
 import type { QueueEntry } from './queue-entry.js';
 import { rebaseQueue } from './playback-reconciliation.js';

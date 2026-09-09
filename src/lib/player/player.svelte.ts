@@ -28,12 +28,7 @@ import {
 	type SavedPlaybackState
 } from './session-coordinator.js';
 
-export type {
-	PlaybackDeviceStatus,
-	PlaybackOrigin,
-	PlaybackPersistenceStatus,
-	SavedPlaybackState
-};
+export type { PlaybackDeviceStatus, PlaybackOrigin, PlaybackPersistenceStatus, SavedPlaybackState };
 
 export type DockMode = 'docked' | 'floating';
 export type RepeatMode = 'off' | 'all' | 'one';
