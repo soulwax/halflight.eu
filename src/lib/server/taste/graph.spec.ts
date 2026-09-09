@@ -53,6 +53,71 @@ describe('taste graph expansion', () => {
 		expect(res.candidates.length).toBe(2);
 	});
 
+	it('stops at the wall-clock deadline and returns a partial, degraded result', async () => {
+		let elapsed = 0;
+		const slowClient: GraphExpansionClient = {
+			async getSimilarArtists() {
+				return [];
+			},
+			async getArtistTracks(artistId) {
+				elapsed += 4000; // each upstream call "takes" 4 seconds
+				return [
+					{ id: `track-${artistId}`, title: `T ${artistId}`, artists: [{ id: artistId, name: '' }] }
+				];
+			}
+		};
+
+		const anchors = [
+			{ id: 'a1', name: 'Artist 1', weight: 1 },
+			{ id: 'a2', name: 'Artist 2', weight: 0.9 },
+			{ id: 'a3', name: 'Artist 3', weight: 0.8 }
+		];
+
+		const res = await expandTasteGraph(
+			anchors,
+			slowClient,
+			{ maxRequests: 20, fanoutLimit: 5, deadlineMs: 7000 },
+			() => elapsed
+		);
+
+		// First two anchor-track calls land under the ceiling (elapsed 4s, then
+		// 8s); the third crosses it, so expansion stops with what it has.
+		expect(res.requestsSpent).toBe(2);
+		expect(res.candidates.length).toBe(2);
+		expect(res.degraded).toBe(true);
+	});
+
+	it('skips the time check when no deadline is set', async () => {
+		let elapsed = 0;
+		const slowClient: GraphExpansionClient = {
+			async getSimilarArtists() {
+				return [];
+			},
+			async getArtistTracks(artistId) {
+				elapsed += 60_000;
+				return [
+					{ id: `track-${artistId}`, title: `T ${artistId}`, artists: [{ id: artistId, name: '' }] }
+				];
+			}
+		};
+
+		const anchors = [
+			{ id: 'a1', name: 'Artist 1', weight: 1 },
+			{ id: 'a2', name: 'Artist 2', weight: 0.9 }
+		];
+
+		const res = await expandTasteGraph(
+			anchors,
+			slowClient,
+			{ maxRequests: 20, fanoutLimit: 5 },
+			() => elapsed
+		);
+
+		// 2 anchor-track calls + 2 similar-artist lookups; no time check applied.
+		expect(res.requestsSpent).toBe(4);
+		expect(res.degraded).toBe(false);
+	});
+
 	it('handles client errors gracefully without throwing', async () => {
 		const failingClient: GraphExpansionClient = {
 			async getSimilarArtists() {

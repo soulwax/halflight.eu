@@ -32,11 +32,18 @@ export interface GraphExpansionClient {
 export interface GraphExpansionBudget {
 	maxRequests: number;
 	fanoutLimit: number;
+	/**
+	 * Wall-clock ceiling for the whole expansion. Once exceeded, expansion stops
+	 * where it is and returns a partial, `degraded` result rather than letting a
+	 * slow upstream stall generation. Omit to disable the time check.
+	 */
+	deadlineMs?: number;
 }
 
 export const DEFAULT_GRAPH_BUDGET: GraphExpansionBudget = {
 	maxRequests: 15,
-	fanoutLimit: 5
+	fanoutLimit: 5,
+	deadlineMs: 9000
 };
 
 /**
@@ -108,18 +115,26 @@ export interface ExpansionResult {
 export async function expandTasteGraph(
 	anchorArtists: Array<{ id: string; name?: string; weight: number }>,
 	client: GraphExpansionClient,
-	budget: GraphExpansionBudget = DEFAULT_GRAPH_BUDGET
+	budget: GraphExpansionBudget = DEFAULT_GRAPH_BUDGET,
+	clock: () => number = () => Date.now()
 ): Promise<ExpansionResult> {
 	const candidates: GraphCandidateTrack[] = [];
 	let requestsSpent = 0;
 	let degraded = false;
+
+	const startedAt = clock();
+	const budgetSpent = (): boolean => {
+		if (requestsSpent >= budget.maxRequests) return true;
+		if (budget.deadlineMs !== undefined && clock() - startedAt >= budget.deadlineMs) return true;
+		return false;
+	};
 
 	const sortedAnchors = [...anchorArtists].sort((a, b) => b.weight - a.weight);
 	const targetAnchors = sortedAnchors.slice(0, budget.fanoutLimit);
 
 	// 1. Fetch tracks for top anchor artists
 	for (const anchor of targetAnchors) {
-		if (requestsSpent >= budget.maxRequests) {
+		if (budgetSpent()) {
 			degraded = true;
 			break;
 		}
@@ -144,7 +159,7 @@ export async function expandTasteGraph(
 
 	// 2. Discover similar artists for the top anchors
 	for (const anchor of targetAnchors) {
-		if (requestsSpent >= budget.maxRequests) {
+		if (budgetSpent()) {
 			degraded = true;
 			break;
 		}
@@ -155,7 +170,7 @@ export async function expandTasteGraph(
 			const topSimilar = similarList.slice(0, 3);
 
 			for (const similar of topSimilar) {
-				if (requestsSpent >= budget.maxRequests) {
+				if (budgetSpent()) {
 					degraded = true;
 					break;
 				}

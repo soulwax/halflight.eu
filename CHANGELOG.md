@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Taste-graph expansion now has a wall-clock ceiling (9s default) alongside its request budget, so a slow TIDAL can no longer stall generation — expansion stops where it is and returns a partial, `degraded` result.
 - PWA persistent background playback on iOS (WebKit lockscreen/remote command center) and Android (MediaSessionCompat/notification shade).
 - Web Audio graph mobile bypass preserving standard HTML5 audio background privileges across screen lock and tab suspension.
 - Service Worker precaching app shell assets and neutral `/offline` fallback within strict < 2 MiB budget while bypassing audio streams, Range 206 requests, and authentication endpoints.
