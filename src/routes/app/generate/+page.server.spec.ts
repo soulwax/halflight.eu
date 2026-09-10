@@ -82,7 +82,7 @@ describe('/app/generate action', () => {
 
 		expect(result).toEqual({ success: true, set });
 		expect(mocks.generateTasteSet).toHaveBeenCalledWith(profile, {
-			knobs: { targetCount: 25, familiarity: 70, seedArtistId: 'artist-1' },
+			knobs: { targetCount: 25, familiarity: 70, seedArtistId: 'artist-1', excludeExplicit: false },
 			cooldownTrackIds: new Set(),
 			client
 		});

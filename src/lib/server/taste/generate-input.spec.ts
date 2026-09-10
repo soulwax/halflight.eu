@@ -10,14 +10,15 @@ function formData(entries: Record<string, FormDataEntryValue>): Pick<FormData, '
 }
 
 describe('generation input', () => {
-	it('parses bounded integer knobs, an artist seed, an era centre, and a minimum length', () => {
+	it('parses every knob — counts, seed, era, minimum length, and the explicit toggle', () => {
 		const result = parseGenerateTasteSetInput(
 			formData({
 				targetCount: ' 25 ',
 				familiarity: '70',
 				seedArtistId: ' artist-1 ',
 				eraCenter: '1995',
-				minDurationSeconds: '90'
+				minDurationSeconds: '90',
+				excludeExplicit: 'on'
 			})
 		);
 
@@ -28,7 +29,8 @@ describe('generation input', () => {
 				familiarity: 70,
 				seedArtistId: 'artist-1',
 				eraCenter: 1995,
-				minDurationSeconds: 90
+				minDurationSeconds: 90,
+				excludeExplicit: true
 			}
 		});
 	});
@@ -43,7 +45,8 @@ describe('generation input', () => {
 				familiarity: 50,
 				seedArtistId: undefined,
 				eraCenter: undefined,
-				minDurationSeconds: undefined
+				minDurationSeconds: undefined,
+				excludeExplicit: false
 			}
 		});
 	});

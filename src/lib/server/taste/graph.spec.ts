@@ -19,6 +19,7 @@ describe('taste graph expansion', () => {
 					title: `Track 1 by ${artistId}`,
 					isrc: `ISRC-${artistId}-1`,
 					duration: 240,
+					explicit: true,
 					artists: [{ id: artistId, name: `Artist ${artistId}` }]
 				}
 			];
@@ -35,6 +36,7 @@ describe('taste graph expansion', () => {
 
 		const anchorTrack = res.candidates.find((c) => c.id === 'track-a1-1');
 		expect(anchorTrack?.provenance.edge).toBe('anchor');
+		expect(anchorTrack?.explicit).toBe(true);
 
 		const simTrack = res.candidates.find((c) => c.id === 'track-sim-1-1');
 		expect(simTrack?.provenance.edge).toBe('similar_artist');

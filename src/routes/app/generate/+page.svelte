@@ -18,6 +18,7 @@
 	let seedArtistId = $state('');
 	let eraCenter = $state('');
 	let minDurationSeconds = $state('');
+	let excludeExplicit = $state(false);
 	let isGenerating = $state(false);
 	let saveSuccess = $state(false);
 
@@ -300,6 +301,16 @@
 					</select>
 				</div>
 			</div>
+
+			<label class="flex cursor-pointer items-center gap-2 text-sm text-[var(--text-primary)]">
+				<input
+					type="checkbox"
+					name="excludeExplicit"
+					bind:checked={excludeExplicit}
+					class="accent-[var(--action)]"
+				/>
+				Exclude explicit tracks
+			</label>
 
 			<div class="flex items-center gap-3 pt-2">
 				<Button

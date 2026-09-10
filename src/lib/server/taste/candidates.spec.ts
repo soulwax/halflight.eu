@@ -137,4 +137,42 @@ describe('candidates filtering', () => {
 			'undated'
 		]);
 	});
+
+	it('drops explicit tracks only when asked, and never on a missing flag', () => {
+		const profile = emptyTasteProfile();
+		const tracks: GraphCandidateTrack[] = [
+			{
+				id: 'clean',
+				title: 'Clean',
+				isrc: 'ISRC-CLEAN',
+				explicit: false,
+				artists: [{ id: 'a', name: 'A' }],
+				provenance: { edge: 'anchor', seedArtistId: 'a' }
+			},
+			{
+				id: 'explicit',
+				title: 'Explicit',
+				isrc: 'ISRC-EXPLICIT',
+				explicit: true,
+				artists: [{ id: 'a', name: 'A' }],
+				provenance: { edge: 'anchor', seedArtistId: 'a' }
+			},
+			{
+				id: 'unknown',
+				title: 'Unknown',
+				isrc: 'ISRC-UNKNOWN',
+				artists: [{ id: 'a', name: 'A' }],
+				provenance: { edge: 'anchor', seedArtistId: 'a' }
+			}
+		];
+
+		expect(filterCandidates(tracks, profile).map((r) => r.id)).toEqual([
+			'clean',
+			'explicit',
+			'unknown'
+		]);
+		expect(
+			filterCandidates(tracks, profile, new Set(), { excludeExplicit: true }).map((r) => r.id)
+		).toEqual(['clean', 'unknown']);
+	});
 });

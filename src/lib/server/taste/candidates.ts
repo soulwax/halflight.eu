@@ -17,6 +17,11 @@ export interface CandidateFilterOptions {
 	 * missing-field rules.
 	 */
 	minDurationSeconds?: number;
+	/**
+	 * Drop tracks flagged explicit. A track with an unknown flag is kept — the
+	 * engine never drops on a missing field.
+	 */
+	excludeExplicit?: boolean;
 }
 
 /**
@@ -50,6 +55,7 @@ export function filterCandidates(
 		if (track.artists.some((artist) => excludedArtists.has(artist.id))) continue;
 		if (minDuration !== undefined && track.duration !== undefined && track.duration < minDuration)
 			continue;
+		if (options.excludeExplicit && track.explicit === true) continue;
 
 		const primaryArtist = track.artists[0] ?? { id: '', name: '' };
 

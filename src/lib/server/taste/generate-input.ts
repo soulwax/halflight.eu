@@ -47,7 +47,8 @@ const generateTasteSetInputSchema = v.object({
 	familiarity: familiaritySchema,
 	seedArtistId: v.optional(seedArtistIdSchema),
 	eraCenter: v.optional(eraCenterSchema),
-	minDurationSeconds: v.optional(minDurationSchema)
+	minDurationSeconds: v.optional(minDurationSchema),
+	excludeExplicit: v.boolean()
 });
 
 export type GenerateTasteSetInput = v.InferOutput<typeof generateTasteSetInputSchema>;
@@ -72,7 +73,9 @@ export function parseGenerateTasteSetInput(
 		seedArtistId: seedArtistId === null || seedArtistId === '' ? undefined : seedArtistId,
 		eraCenter: eraCenter === null || eraCenter === '' ? undefined : eraCenter,
 		minDurationSeconds:
-			minDurationSeconds === null || minDurationSeconds === '' ? undefined : minDurationSeconds
+			minDurationSeconds === null || minDurationSeconds === '' ? undefined : minDurationSeconds,
+		// A checkbox is present only when ticked.
+		excludeExplicit: formData.get('excludeExplicit') !== null
 	});
 
 	return result.success ? { success: true, output: result.output } : { success: false };

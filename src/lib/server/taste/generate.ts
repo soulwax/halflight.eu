@@ -24,6 +24,8 @@ export interface GenerateKnobs {
 	eraSpread?: number;
 	/** Drop candidates shorter than this many seconds; omit to keep every length. */
 	minDurationSeconds?: number;
+	/** Drop candidates flagged explicit. */
+	excludeExplicit?: boolean;
 }
 
 export interface GenerateTasteSetOptions {
@@ -87,7 +89,8 @@ export async function generateTasteSet(
 
 	// 3. Stage 4a — Candidates assembly & ISRC deduplication
 	const filtered = filterCandidates(expansion.candidates, profile, options.cooldownTrackIds, {
-		minDurationSeconds: options.knobs?.minDurationSeconds
+		minDurationSeconds: options.knobs?.minDurationSeconds,
+		excludeExplicit: options.knobs?.excludeExplicit
 	});
 
 	// 4. Stage 4b — Transparent Multi-term Scoring

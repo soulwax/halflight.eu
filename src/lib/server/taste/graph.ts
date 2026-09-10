@@ -7,6 +7,7 @@ export interface GraphCandidateTrack {
 	isrc?: string;
 	releaseDate?: string;
 	duration?: number;
+	explicit?: boolean;
 	artists: Array<{ id: string; name: string }>;
 	provenance: {
 		edge: 'anchor' | 'similar_artist';
@@ -24,6 +25,7 @@ export interface GraphExpansionClient {
 			isrc?: string;
 			releaseDate?: string;
 			duration?: number;
+			explicit?: boolean;
 			artists: Array<{ id: string; name: string }>;
 		}>
 	>;
@@ -102,6 +104,7 @@ export function createLiveGraphClient(ctx?: TidalRequestContext): GraphExpansion
 					isrc: typeof attrs.isrc === 'string' ? attrs.isrc : undefined,
 					releaseDate: typeof attrs.releaseDate === 'string' ? attrs.releaseDate : undefined,
 					duration: typeof attrs.duration === 'number' ? attrs.duration : undefined,
+					explicit: typeof attrs.explicit === 'boolean' ? attrs.explicit : undefined,
 					artists: artistsList
 				};
 			});
