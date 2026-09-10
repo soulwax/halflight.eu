@@ -133,7 +133,8 @@ describe('streamSegmentedAudio', () => {
 			if (idx !== 2) return Promise.resolve(new Response(new Uint8Array(4).fill(idx)));
 			return new Promise<Response>((resolve, reject) => {
 				init?.signal?.addEventListener('abort', () => reject(init.signal?.reason), { once: true });
-				held.then(() => resolve(new Response(new Uint8Array(4).fill(idx))));
+				// `held` is only ever resolved, by `releaseLast`; rejection is the abort path above.
+				void held.then(() => resolve(new Response(new Uint8Array(4).fill(idx))));
 			});
 		}) as ReturnType<typeof vi.fn> & typeof fetch;
 		const opts = {
