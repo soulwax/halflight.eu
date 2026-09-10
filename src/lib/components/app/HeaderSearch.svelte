@@ -318,7 +318,8 @@
 <style>
 	.header-search {
 		position: relative;
-		width: min(100%, 26.25rem);
+		width: 100%;
+		max-width: 34rem;
 	}
 	.search-field {
 		display: flex;
@@ -328,7 +329,7 @@
 		height: 2.5rem;
 		padding: 0 0.85rem;
 		border: 1px solid var(--border-subtle);
-		border-radius: 0.75rem;
+		border-radius: var(--radius-lg);
 		background: var(--surface-raised);
 		color: var(--editorial-faint);
 		transition:
@@ -466,10 +467,10 @@
 	}
 	@media (max-width: 42rem) {
 		.header-search {
-			width: 100%;
+			max-width: none;
 		}
 		.search-field {
-			height: 2.3rem;
+			height: 2.25rem;
 		}
 		input {
 			font-size: 0.8rem;
