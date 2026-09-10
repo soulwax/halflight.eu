@@ -21,10 +21,17 @@
 		return `${minutes}:${(seconds % 60).toString().padStart(2, '0')}`;
 	}
 
-	function localizeConfidence(label: string): string {
-		if (label.toLowerCase().startsWith('high')) return m.generate_confidence_high();
-		if (label.toLowerCase().startsWith('initial')) return m.generate_confidence_initial();
-		return m.generate_confidence_good();
+	function localizeConfidence(label: ProvisionalSet['confidenceLabel']): string {
+		switch (label) {
+			case 'high':
+				return m.generate_confidence_high();
+			case 'initial':
+				return m.generate_confidence_initial();
+			case 'none':
+				return m.generate_confidence_none();
+			default:
+				return m.generate_confidence_good();
+		}
 	}
 </script>
 

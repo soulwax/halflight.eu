@@ -82,4 +82,16 @@ describe('taste explainability', () => {
 		expect(setExpl.summary).toContain('2 tracks');
 		expect(setExpl.summary).toContain('50% new to you');
 	});
+
+	it('emits a stable confidence token, not a display string', () => {
+		const thin = explainSet([anchorTrack], profile, false);
+		expect(thin.confidenceLabel).toBe('initial'); // empty profile → low confidence
+
+		const confident = emptyTasteProfile();
+		confident.confidence.artists = 0.8;
+		confident.confidence.eras = 0.8;
+		expect(explainSet([anchorTrack], confident, false).confidenceLabel).toBe('high');
+
+		expect(explainSet([anchorTrack], confident, true).confidenceLabel).toBe('initial'); // degraded
+	});
 });

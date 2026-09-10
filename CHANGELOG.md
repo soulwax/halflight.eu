@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The taste engine now has an era knob: pick a decade on `/app/generate` and picks are scored by how close their release year sits to that centre (±8 years), a transparent request-fit term that stays neutral for undated tracks so it only ever nudges.
 - Generated per-track provenance chips ("From {artist}, one of your anchors", "Similar to {seed}", …) are now rendered through Paraglide in the request locale instead of hardcoded English.
+- The generated set summary, cold-start message, and saved-playlist title/description are now localised too, and the set's confidence is a stable token (`none`/`initial`/`good`/`high`) resolved to a label in the request locale rather than an English string matched by prefix.
 - Taste-graph expansion now paces its upstream calls (120ms gap by default, no delay before the first) so a full run no longer risks TIDAL's sustained-probing rate limit.
 - Taste-graph expansion now has a wall-clock ceiling (9s default) alongside its request budget, so a slow TIDAL can no longer stall generation — expansion stops where it is and returns a partial, `degraded` result.
 - PWA persistent background playback on iOS (WebKit lockscreen/remote command center) and Android (MediaSessionCompat/notification shade).

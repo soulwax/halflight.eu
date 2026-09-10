@@ -83,8 +83,8 @@
 		if (!currentSet || currentSet.tracks.length === 0) return;
 		const summaries = currentSet.tracks.map(toTrackSummary);
 		const now = new Date();
-		const title = `Generated Set (${now.toLocaleDateString()})`;
-		const desc = `${currentSet.summary} · Generated via Halflight Taste Engine`;
+		const title = m.taste_saved_title({ date: now.toLocaleDateString() });
+		const desc = m.taste_saved_description({ summary: currentSet.summary });
 
 		customPlaylists.createPlaylist(title, desc, summaries);
 		saveSuccess = true;

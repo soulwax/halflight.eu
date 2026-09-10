@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { generateTasteSet } from './generate';
 import { emptyTasteProfile } from './profile';
+import { m } from '#lib/paraglide/messages.js';
 import type { GraphExpansionClient } from './graph';
 
 describe('taste generation orchestrator', () => {
@@ -37,7 +38,8 @@ describe('taste generation orchestrator', () => {
 
 		expect(result.trackCount).toBe(0);
 		expect(result.degraded).toBe(true);
-		expect(result.summary).toContain('No anchor signals');
+		expect(result.confidenceLabel).toBe('none');
+		expect(result.summary).toBe(m.taste_set_cold_start());
 	});
 
 	it('generates an honest sequenced set with provenance chips', async () => {

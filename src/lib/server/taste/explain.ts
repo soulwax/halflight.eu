@@ -1,4 +1,5 @@
 import { m } from '#lib/paraglide/messages.js';
+import type { ConfidenceLabel } from '#lib/taste/provisional';
 import type { ScoredCandidate } from './score';
 import type { TasteProfile } from './profile';
 
@@ -8,8 +9,22 @@ export interface SetExplanation {
 	totalDurationFormatted: string;
 	totalDurationSeconds: number;
 	discoveryPercentage: number;
-	confidenceLabel: string;
+	confidenceLabel: ConfidenceLabel;
 	degraded: boolean;
+}
+
+/** The localised display label for a confidence token. */
+export function confidenceText(label: ConfidenceLabel): string {
+	switch (label) {
+		case 'high':
+			return m.generate_confidence_high();
+		case 'good':
+			return m.generate_confidence_good();
+		case 'initial':
+			return m.generate_confidence_initial();
+		case 'none':
+			return m.generate_confidence_none();
+	}
 }
 
 /**
@@ -69,14 +84,19 @@ export function explainSet(
 
 	// Assess overall confidence
 	const avgConfidence = (profile.confidence.artists + profile.confidence.eras) / 2;
-	let confidenceLabel = 'Good';
+	let confidenceLabel: ConfidenceLabel = 'good';
 	if (degraded || avgConfidence < 0.3) {
-		confidenceLabel = 'Initial / Partial';
+		confidenceLabel = 'initial';
 	} else if (avgConfidence >= 0.7) {
-		confidenceLabel = 'High';
+		confidenceLabel = 'high';
 	}
 
-	const summary = `SET · ${trackCount} tracks · ${totalDurationFormatted} · ${discoveryPercentage}% new to you · confidence: ${confidenceLabel.toLowerCase()}`;
+	const summary = m.taste_set_summary({
+		count: trackCount,
+		duration: totalDurationFormatted,
+		discovery: discoveryPercentage,
+		confidence: confidenceText(confidenceLabel)
+	});
 
 	return {
 		summary,

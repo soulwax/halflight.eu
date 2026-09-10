@@ -11,7 +11,7 @@ const set: ProvisionalSet = {
 	totalDurationFormatted: '7m',
 	totalDurationSeconds: 420,
 	discoveryPercentage: 50,
-	confidenceLabel: 'High',
+	confidenceLabel: 'high',
 	degraded: false,
 	generatedAt: '2026-09-06T12:00:00.000Z',
 	tracks: [

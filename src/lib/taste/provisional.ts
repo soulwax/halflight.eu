@@ -16,13 +16,16 @@ export interface ProvisionalTrack {
 	provenance: string;
 }
 
+/** Stable confidence token; the display label is resolved in the request locale. */
+export type ConfidenceLabel = 'none' | 'initial' | 'good' | 'high';
+
 export interface ProvisionalSetSummary {
 	summary: string;
 	trackCount: number;
 	totalDurationFormatted: string;
 	totalDurationSeconds: number;
 	discoveryPercentage: number;
-	confidenceLabel: string;
+	confidenceLabel: ConfidenceLabel;
 	degraded: boolean;
 }
 

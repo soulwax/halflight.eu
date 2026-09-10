@@ -1,3 +1,4 @@
+import { m } from '#lib/paraglide/messages.js';
 import type { TasteProfile } from './profile';
 import { expandTasteGraph, type GraphExpansionBudget, type GraphExpansionClient } from './graph';
 import { filterCandidates } from './candidates';
@@ -62,12 +63,12 @@ export async function generateTasteSet(
 	if (anchors.length === 0) {
 		return {
 			tracks: [],
-			summary: 'No anchor signals available in profile. Please rebuild your profile from TIDAL.',
+			summary: m.taste_set_cold_start(),
 			trackCount: 0,
 			totalDurationFormatted: '0m',
 			totalDurationSeconds: 0,
 			discoveryPercentage: 0,
-			confidenceLabel: 'None',
+			confidenceLabel: 'none',
 			degraded: true,
 			generatedAt: now.toISOString()
 		};
