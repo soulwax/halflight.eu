@@ -62,7 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - The Listening Room header's inner elements now share one control metric — the brand mark, search field, and every icon button are the same height, radius, border, and hover treatment — and the search field grows to a 34rem cap instead of a fixed narrow width.
-- The rail collapse toggle now matches the nav links beside it (same radius, muted-to-hover treatment, a real panel icon instead of a `‹`/`›` glyph), and the collapsed-rail monogram fallback drops its stray gold border for the standard hairline.
+- The rail collapse toggle now matches the nav links beside it (same radius, muted-to-hover treatment, a real panel icon instead of a `‹`/`›` glyph), the collapsed-rail monogram fallback drops its stray gold border for the standard hairline, and the rail's sign-out button now settles into the same danger tint (border, text, and subtle fill) as the header's.
 - Halflight Now now presents Data saver, Balanced, and Best available as clear mobile streaming
   choices, while Now Playing continues to show the format actually delivered.
 - Halflight Now’s player and its queue, lyrics, and credits layers are now full-screen mobile

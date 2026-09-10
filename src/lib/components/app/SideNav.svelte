@@ -96,7 +96,7 @@
 		{#if signOutAction && signOutLabel}
 			<form method="POST" action={signOutAction} class="mt-2">
 				<button
-					class="app-account-link w-full cursor-pointer text-left hover:border-[var(--danger)] hover:text-[var(--danger)]"
+					class="app-account-link app-account-link-signout w-full cursor-pointer text-left"
 					type="submit"
 				>
 					<span class="side-nav-label text-xs font-bold tracking-wider uppercase"
@@ -180,5 +180,11 @@
 	.side-nav-account :global(.app-account-link) {
 		min-height: 2.5rem;
 		padding: 0.55rem 0.7rem;
+	}
+	/* Sign-out gets the same danger settle as the header's sign-out button. */
+	.side-nav-account :global(.app-account-link-signout:hover) {
+		border-color: color-mix(in oklab, var(--danger) 55%, var(--border-subtle));
+		background: var(--danger-subtle);
+		color: var(--danger);
 	}
 </style>
