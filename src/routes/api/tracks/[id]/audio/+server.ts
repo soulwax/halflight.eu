@@ -2,6 +2,7 @@ import { error, type RequestHandler } from '@sveltejs/kit';
 import {
 	getRequestedStreamQuality,
 	getTidalConfig,
+	headSegmentedAudio,
 	isTrackUnavailableForPlayback,
 	resolveTrackStreamCached,
 	streamSegmentedAudio,
@@ -41,7 +42,10 @@ function cacheHeaders(tag: string): Headers {
  * Streams media through Syn so the browser never needs access to a TIDAL CDN URL.
  * Range forwarding preserves seeking in the native HTML audio player.
  */
-export const GET: RequestHandler = async (event) => {
+async function serveAudio(
+	event: Parameters<RequestHandler>[0],
+	headOnly: boolean
+): Promise<Response> {
 	if (!event.locals.user || !event.locals.isAdministrator) error(401, 'Unauthorized');
 	const trackId = event.params.id;
 	if (!trackId) error(400, 'Track ID required');
@@ -93,18 +97,17 @@ export const GET: RequestHandler = async (event) => {
 	// fragment and serve the whole stream with Range support from an in-memory cache.
 	if (stream.segmented) {
 		try {
-			return await streamSegmentedAudio({
+			const options = {
 				key: `${stream.trackId}:${stream.audioQuality}`,
 				urls: stream.urls,
 				mimeType: stream.mimeType,
 				// Global fetch, not `event.fetch` — see the note on the single-file path below.
 				fetchImpl: fetch,
-				rangeHeader: rangeIsUsable(event.request, tag)
-					? event.request.headers.get('range')
-					: null,
+				rangeHeader: rangeIsUsable(event.request, tag) ? event.request.headers.get('range') : null,
 				upstreamHeaders: CDN_HEADERS,
 				responseHeaders: cacheHeaders(tag)
-			});
+			};
+			return headOnly ? await headSegmentedAudio(options) : await streamSegmentedAudio(options);
 		} catch (cause) {
 			log.error('audio proxy: segmented fetch failed', { trackId, cause });
 			error(502, 'CDN unreachable');
@@ -130,7 +133,7 @@ export const GET: RequestHandler = async (event) => {
 		// TIDAL media CDN 403s a signed-URL request that carries those. Only the
 		// query-string token authorises the request — send nothing else.
 		upstream = await withTransientRetry(() =>
-			fetch(stream.streamUrl, { headers, redirect: 'follow' })
+			fetch(stream.streamUrl, { method: headOnly ? 'HEAD' : 'GET', headers, redirect: 'follow' })
 		);
 	} catch (cause) {
 		log.error('audio proxy: CDN fetch threw', { trackId, cdnHost, cause });
@@ -156,17 +159,18 @@ export const GET: RequestHandler = async (event) => {
 		const value = upstream.headers.get(name);
 		if (value) responseHeaders.set(name, value);
 	}
-	return new Response(upstream.body, { status: upstream.status, headers: responseHeaders });
-};
+	return new Response(headOnly ? null : upstream.body, {
+		status: upstream.status,
+		headers: responseHeaders
+	});
+}
+
+export const GET: RequestHandler = (event) => serveAudio(event, false);
 
 /**
  * Some clients probe a media URL with `HEAD` before committing to a fetch. Only
- * `GET` was exported, so those probes used to 404. Reuses `GET` and discards the
- * body, which keeps the two in lockstep — the cost is the resolve, which is
- * memoised, not a media transfer.
+ * `GET` was exported, so those probes used to 404. This shares resolution and
+ * response headers with GET but asks the CDN (or segmented manifest) for
+ * metadata only; a HEAD must never begin a media-body transfer.
  */
-export const HEAD: RequestHandler = async (event) => {
-	const response = await GET(event);
-	await response.body?.cancel().catch(() => undefined);
-	return new Response(null, { status: response.status, headers: response.headers });
-};
+export const HEAD: RequestHandler = (event) => serveAudio(event, true);

@@ -127,6 +127,10 @@ describe('GET /api/tracks/[id]/audio', () => {
 		expect(response.status).toBe(206);
 		expect(response.headers.get('Accept-Ranges')).toBe('bytes');
 		expect(response.body).toBeNull();
+		expect(fetchMock).toHaveBeenCalledWith(
+			'https://cdn.example.test/audio',
+			expect.objectContaining({ method: 'HEAD' })
+		);
 	});
 
 	it('does not resolve media for a signed-in non-owner', async () => {
@@ -160,12 +164,24 @@ describe('GET /api/tracks/[id]/audio', () => {
 				streamUrl: SEGMENTS[0],
 				mimeType: 'audio/mp4'
 			});
-			// Each fragment is 4 bytes; full stream is 12 bytes.
-			fetchMock.mockImplementation((url: string) => {
+			// Each fragment is 4 bytes; full stream is 12 bytes. `HEAD` answers the
+			// size, which is how the streaming path learns the total up front.
+			fetchMock.mockImplementation((url: string, init?: RequestInit) => {
 				const idx = SEGMENTS.indexOf(url);
+				if (init?.method === 'HEAD') {
+					return Promise.resolve(
+						new Response(null, { status: 200, headers: { 'content-length': '4' } })
+					);
+				}
 				return Promise.resolve(new Response(new Uint8Array([idx, idx, idx, idx])));
 			});
 		});
+
+		/** Body-fetch calls only — the `HEAD` probe is not a download. */
+		const bodyFetches = () =>
+			fetchMock.mock.calls.filter(
+				([, init]) => (init as RequestInit | undefined)?.method !== 'HEAD'
+			);
 
 		it('concatenates every fragment for a full (rangeless) request', async () => {
 			const response = await GET(event());
@@ -175,11 +191,20 @@ describe('GET /api/tracks/[id]/audio', () => {
 			expect(new Uint8Array(await response.arrayBuffer())).toEqual(
 				new Uint8Array([0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2])
 			);
-			expect(fetchMock).toHaveBeenCalledTimes(3);
+			expect(bodyFetches()).toHaveLength(3);
+		});
+
+		it('answers a HiRes HEAD probe without fetching any fragment bodies', async () => {
+			const response = await HEAD(event());
+			expect(response.status).toBe(200);
+			expect(response.headers.get('Content-Length')).toBe('12');
+			expect(response.body).toBeNull();
+			expect(bodyFetches()).toHaveLength(0);
 		});
 
 		it('serves a byte range from cache without re-fetching segments', async () => {
-			await GET(event()); // prime the cache (3 fetches)
+			// Drain the streamed first response so the assembly reaches the cache.
+			await (await GET(event())).arrayBuffer();
 			fetchMock.mockClear();
 
 			const response = await GET(event('bytes=5-9'));

@@ -87,6 +87,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- HiRes (segmented DASH) playback now starts streaming instead of buffering the whole track
+  first. A parallel `HEAD` sweep establishes the total size, fragments are written into one
+  pre-allocated buffer and emitted as they arrive, and the response still carries a correct
+  `Content-Length` so seeking keeps working. A CDN that refuses `HEAD` falls back to the previous
+  buffer-first behaviour. Assembly is single-flighted, so concurrent first-plays of one track
+  download it once, and range slices are served as views rather than copies.
+- `/api/tracks/[id]/audio` now sets `Cache-Control: private, max-age=600` with an `ETag` covering
+  track _and_ delivered quality, honours `If-None-Match` and `If-Range`, and answers `HEAD`. It
+  previously sent `no-store`, so every backward seek and replay re-fetched from origin; a
+  conditional request is now answered without reaching the CDN at all.
 - Manifest resolution for playback is now memoised. `/api/tracks/[id]/audio` re-ran the full
   resolve on every request — so once per seek — and `/api/tracks/[id]/stream` ran it again
   independently, meaning pressing play resolved the same manifest twice. A two-tier cache

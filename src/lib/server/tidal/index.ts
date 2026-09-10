@@ -86,7 +86,7 @@ export {
 	__resetStreamCache,
 	type ResolveTrackStreamCachedOptions
 } from './stream-cache';
-export { streamSegmentedAudio, __resetSegmentCache } from './segmented';
+export { headSegmentedAudio, streamSegmentedAudio, __resetSegmentCache } from './segmented';
 export { getTrackCoverId, tidalArtworkUrl, resetArtworkCache } from './artwork';
 export { getRequestedStreamQuality, type StreamingSettingsReader } from './playback';
 export {
