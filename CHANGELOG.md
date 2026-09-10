@@ -121,6 +121,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A TIDAL BTS manifest that declares any encryption other than `NONE` is now refused with a clear
+  error naming the track. Syn proxies CDN bytes verbatim and has no content-key handling, so such
+  a stream would previously have been served as plausible-sized, unplayable audio — surfacing as
+  an opaque `MediaError` decode failure with nothing recorded about the real cause. Every manifest
+  observed so far reports `NONE`; an absent field is still treated as unencrypted.
 - Dragging the desktop seek bar now moves the audio element once, on release, instead of on every
   step of the drag. Each `currentTime` write can provoke a fresh Range request, and because the
   audio proxy re-resolves the TIDAL manifest per request, a single scrub gesture could fan out

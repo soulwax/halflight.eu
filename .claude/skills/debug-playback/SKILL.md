@@ -135,7 +135,7 @@ Watch for the case where **no `/stream` request appears at all**: that is
 shows both legs; the `/audio` request's status, `Content-Type`, `Content-Range` and
 transferred size answer most byte-leg questions on their own. Requires an owner session.
 
-**PM2 (`syn.bluesix.dev`)** — `pnpm pm2:logs`, or `pm2 logs syn --lines 200`. Production
+**PM2 (`halflight.eu`)** — `pnpm pm2:logs`, or `pm2 logs syn --lines 200`. Production
 emits one JSON line per event, dev a readable line. **Source edits do not hot-reload
 here**: `pnpm build && pnpm pm2:reload`. Reach for this only for failures that don't
 reproduce locally — a stale token row, a real CDN 502, entitlement changes.

@@ -157,6 +157,54 @@ describe('stream manifest parsing (translated from tiddl / OrpheusDL-TIDAL)', ()
 		expect(parsed.codecs).toBe('mp4a.40.2');
 	});
 
+	it.each(['OLD_AES', 'AES', 'aes-128'])(
+		'refuses a BTS manifest encrypted with %s rather than serving undecodable bytes',
+		(encryptionType) => {
+			// Syn proxies CDN bytes verbatim and has no content-key handling, so an
+			// encrypted stream would arrive plausible-sized and unplayable — an
+			// opaque MediaError code 3. Fail where the cause is still legible.
+			const stream: TrackStreamResponse = {
+				trackId: 424242,
+				assetPresentation: 'FULL',
+				audioMode: 'STEREO',
+				audioQuality: 'LOSSLESS',
+				manifestMimeType: 'application/vnd.tidal.bts',
+				manifestHash: 'hash-enc',
+				manifest: Buffer.from(
+					JSON.stringify({
+						mimeType: 'audio/flac',
+						codecs: 'flac',
+						encryptionType,
+						urls: ['https://sp-pr-cf.audio.tidal.com/stream-flac.flac']
+					})
+				).toString('base64')
+			};
+
+			expect(() => parseTrackStream(stream)).toThrow(TidalError);
+			expect(() => parseTrackStream(stream)).toThrow(/424242/);
+		}
+	);
+
+	it('treats an absent encryptionType as unencrypted', () => {
+		const stream: TrackStreamResponse = {
+			trackId: 5150,
+			assetPresentation: 'FULL',
+			audioMode: 'STEREO',
+			audioQuality: 'HIGH',
+			manifestMimeType: 'application/vnd.tidal.bts',
+			manifestHash: 'hash-noenc',
+			manifest: Buffer.from(
+				JSON.stringify({
+					mimeType: 'audio/mp4',
+					codecs: 'mp4a.40.2',
+					urls: ['https://sp-pr-cf.audio.tidal.com/stream-aac.m4a']
+				})
+			).toString('base64')
+		};
+
+		expect(parseTrackStream(stream).codecs).toBe('mp4a.40.2');
+	});
+
 	it('parses application/vnd.tidal.bts manifest for LOSSLESS FLAC', () => {
 		const manifestData = {
 			mimeType: 'audio/flac',

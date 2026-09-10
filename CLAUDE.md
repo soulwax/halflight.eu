@@ -65,8 +65,10 @@ The build target is chosen in `vite.config.ts` by the `ADAPTER` env var:
 - `ADAPTER=node` → `@sveltejs/adapter-node`, a standalone server in `build/` run under
   PM2 (`ecosystem.config.cjs`, `pnpm pm2:start` / `pm2:reload`). It reads `PORT` and
   `ORIGIN` from `.env` (loaded via Node `--env-file`); the self-hosted origin is
-  `syn.bluesix.dev`. There is a separate `syn-worker` service (see the `SYN_WORKER_*`
-  env vars) for media downloads.
+  `halflight.eu`. A `syn-worker` service is named in `MASTERPLAN.md`, but **no such
+  service and no `SYN_WORKER_*` variable exist** in this repo — do not plan around it.
+  Completed HiRes assemblies can instead be staged in an opt-in isolated bucket
+  (`HALFLIGHT_TIDAL_CACHE_*`, off unless `HALFLIGHT_TIDAL_CACHE_ENABLED=true`).
 
 ### Access model — one hard-wired administrator
 

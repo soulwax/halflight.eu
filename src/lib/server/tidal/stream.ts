@@ -225,6 +225,19 @@ export function parseManifestXml(xmlContent: string): ParsedDashManifest {
 }
 
 /**
+ * TIDAL reports how a BTS stream is protected. Syn proxies bytes as-is and has
+ * no content-key handling, so anything other than "not encrypted" is not
+ * playable through this pipeline and must not be presented as if it were.
+ */
+export function assertPlaintextManifest(encryptionType: string, trackId: string | number): void {
+	const declared = (encryptionType ?? '').trim();
+	if (declared === '' || declared.toUpperCase() === 'NONE') return;
+	throw new TidalError(
+		`Track ${trackId} is delivered with encryption Syn cannot decode (${declared}).`
+	);
+}
+
+/**
  * Parses URLs, codecs, and file extension from a TIDAL track stream manifest.
  * Translates tiddl/core/utils/parse.py:parse_track_stream, extended to keep the
  * DASH init segment and precise MPD telemetry.
@@ -242,6 +255,11 @@ export function parseTrackStream(stream: TrackStreamResponse): ParsedTrackStream
 	switch (stream.manifestMimeType) {
 		case 'application/vnd.tidal.bts': {
 			const parsed = JSON.parse(decodedManifest) as BTSManifest;
+			// Syn has no decryptor: it proxies CDN bytes verbatim. Every manifest
+			// seen so far reports `NONE`, but if TIDAL ever returns an encrypted
+			// one, serving it would produce plausible-sized, unplayable audio and
+			// surface as an opaque decode error. Fail loudly instead.
+			assertPlaintextManifest(parsed.encryptionType, stream.trackId);
 			urls = parsed.urls;
 			codecs = parsed.codecs;
 			mimeType = parsed.mimeType || (codecs === 'flac' ? 'audio/flac' : 'audio/mp4');
