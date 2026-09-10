@@ -42,7 +42,7 @@
 		<PageHeader
 			title={data.artist.name}
 			imageUrl={data.artist.imageUrl}
-			eyebrow="HALFLIGHT // ARTIST PROFILE"
+			eyebrow={m.artist_label()}
 			type="artist"
 		>
 			<div class="meta-line">

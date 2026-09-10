@@ -54,7 +54,7 @@
 		<PageHeader
 			title={data.album.title}
 			imageUrl={data.album.imageUrl}
-			eyebrow="HALFLIGHT // ALBUM RELEASE"
+			eyebrow={m.album_label()}
 			type="album"
 		>
 			{#if data.album.artists.length}

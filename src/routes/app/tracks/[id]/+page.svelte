@@ -43,7 +43,7 @@
 		<PageHeader
 			title={data.track.title}
 			imageUrl={data.track.imageUrl ?? data.track.album?.imageUrl}
-			eyebrow="HALFLIGHT // TRACK SPECIFICATION"
+			eyebrow={m.track_label()}
 			type="track"
 		>
 			{#if data.track.artists.length}

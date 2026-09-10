@@ -188,7 +188,7 @@
 			<PageHeader
 				title={data.playlist.title}
 				imageUrl={data.playlist.imageUrl}
-				eyebrow="HALFLIGHT // CURATED PLAYLIST"
+				eyebrow={m.playlist_label()}
 				type="playlist"
 			>
 				{#if data.playlist.description}
