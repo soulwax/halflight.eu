@@ -76,6 +76,33 @@ function readCache(key: string): ArrayBuffer | null {
 	return entry.bytes;
 }
 
+/**
+ * How often a write may also trigger a sweep of expired cache objects.
+ *
+ * The cache bucket supports neither `ListObjects` nor lifecycle rules, so the
+ * only thing that reclaims an expired object is Syn deleting it. Piggybacking on
+ * writes means the cache is swept exactly when it is being used, needs no
+ * scheduler, and behaves the same under `adapter-node` and serverless. The
+ * trade-off is that objects written just before the owner stops listening wait
+ * for the next session — bounded and idempotent, rather than never.
+ */
+const SWEEP_INTERVAL_MS = 5 * 60_000;
+let lastSweepAt = 0;
+
+function sweepExpiredSoon(cacheStore: TidalSegmentCache): void {
+	const now = Date.now();
+	if (now - lastSweepAt < SWEEP_INTERVAL_MS) return;
+	lastSweepAt = now;
+	void Promise.resolve()
+		.then(() => cacheStore.sweep())
+		.catch(() => undefined);
+}
+
+/** Test seam: allow the next write to sweep again. */
+export function __resetSweepThrottle(): void {
+	lastSweepAt = 0;
+}
+
 function persistCompletedAssembly(
 	cacheStore: TidalSegmentCache,
 	cacheKey: string,
@@ -87,7 +114,8 @@ function persistCompletedAssembly(
 	// Do not await it and never let an object-store error affect the caller.
 	void Promise.resolve()
 		.then(() => cacheStore.put({ cacheKey, bytes: new Uint8Array(bytes), contentType }))
-		.catch(() => undefined);
+		.catch(() => undefined)
+		.finally(() => sweepExpiredSoon(cacheStore));
 }
 
 function cacheCompletedAssembly(options: StreamSegmentedOptions, bytes: ArrayBuffer): void {

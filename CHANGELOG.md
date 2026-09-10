@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Expired HiRes cache objects are now reclaimed by a sweeper. The cache bucket supports neither
+  `ListObjects` nor lifecycle rules — verified against the live provider, which answers
+  `NoSuchKey` to both — so nothing could enumerate it to find expired objects, and the cache's own
+  deletion is lazy: it only fires when a _read_ finds an object already past its expiry. An object
+  written and never read again was therefore unreclaimable. Syn now records each key it writes in
+  `tidal_cache_object` and deletes expired ones from that index, in bounded batches, piggybacked
+  on cache writes so no scheduler is needed. Rows hold an opaque digest, a size, and a timestamp —
+  no track identity, no URL, no audio. A failed delete keeps its row for a later run, and a
+  failing sweep can never affect playback.
+
 - The taste engine now has an era knob: pick a decade on `/app/generate` and picks are scored by how close their release year sits to that centre (±8 years), a transparent request-fit term that stays neutral for undated tracks so it only ever nudges.
 - The taste engine now has a minimum-length knob that filters out interludes and skits below the chosen floor (1 / 1.5 / 2 minutes); tracks with an unknown duration are kept.
 - The taste engine can now exclude explicit tracks from a generated set (an `/app/generate` checkbox); the explicit flag now travels through the candidate pipeline, and a track with no flag is kept.

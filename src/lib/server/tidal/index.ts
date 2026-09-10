@@ -86,7 +86,18 @@ export {
 	__resetStreamCache,
 	type ResolveTrackStreamCachedOptions
 } from './stream-cache';
-export { headSegmentedAudio, streamSegmentedAudio, __resetSegmentCache } from './segmented';
+export {
+	dbSegmentCacheIndex,
+	SWEEP_BATCH_SIZE,
+	type SegmentCacheIndex,
+	type CachedObjectRecord
+} from './segment-cache-index';
+export {
+	headSegmentedAudio,
+	streamSegmentedAudio,
+	__resetSegmentCache,
+	__resetSweepThrottle
+} from './segmented';
 export {
 	createTidalSegmentCache,
 	tidalSegmentCache,

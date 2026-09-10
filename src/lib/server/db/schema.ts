@@ -207,6 +207,27 @@ export const privateMusicFile = pgTable(
 );
 
 /** A user's encrypted Last.fm session key and scrobbling preferences. */
+/**
+ * The keys Syn has written to the short-lived TIDAL HiRes cache bucket, with
+ * the moment each becomes reclaimable.
+ *
+ * This exists because the cache bucket supports neither `ListObjects` nor
+ * lifecycle rules — verified against the live provider, which answers `NoSuchKey`
+ * to both. Nothing can therefore enumerate the bucket to find expired objects,
+ * so Syn has to remember what it wrote in order to delete it later. Rows hold an
+ * opaque object key and a timestamp; no track identity, no URL, no audio.
+ */
+export const tidalCacheObject = pgTable(
+	'tidal_cache_object',
+	{
+		objectKey: text('object_key').primaryKey(),
+		expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+		sizeBytes: integer('size_bytes').notNull().default(0),
+		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+	},
+	(table) => [index('tidal_cache_object_expires_at_idx').on(table.expiresAt)]
+);
+
 export const lastfmConnection = pgTable('lastfm_connection', {
 	userId: text('user_id')
 		.primaryKey()

@@ -1,5 +1,10 @@
 import { createHash } from 'node:crypto';
 import {
+	dbSegmentCacheIndex,
+	SWEEP_BATCH_SIZE,
+	type SegmentCacheIndex
+} from './segment-cache-index';
+import {
 	DeleteObjectCommand,
 	GetObjectCommand,
 	HeadObjectCommand,
@@ -77,6 +82,12 @@ export interface TidalSegmentCache {
 	head(cacheKey: string): Promise<TidalSegmentCacheHead | null>;
 	get(cacheKey: string, range?: string | null): Promise<TidalSegmentCacheObject | null>;
 	put(input: { cacheKey: string; bytes: Uint8Array; contentType: string }): Promise<void>;
+	/**
+	 * Delete objects whose retention has elapsed, using Syn's own index of what
+	 * it wrote. Returns how many were reclaimed. Safe to call often: it is
+	 * bounded, idempotent, and a no-op when nothing has expired.
+	 */
+	sweep(now?: Date): Promise<number>;
 }
 
 function configured(config: TidalSegmentCacheConfig): config is Required<TidalSegmentCacheConfig> {
@@ -172,12 +183,16 @@ const unavailable: TidalSegmentCache = {
 	},
 	put() {
 		return Promise.resolve();
+	},
+	sweep() {
+		return Promise.resolve(0);
 	}
 };
 
 export function createTidalSegmentCache(
 	config: TidalSegmentCacheConfig,
-	client?: BucketClient
+	client?: BucketClient,
+	index: SegmentCacheIndex = dbSegmentCacheIndex
 ): TidalSegmentCache {
 	if (!config.enabled || !configured(config)) return unavailable;
 	const bucketClient =
@@ -281,6 +296,36 @@ export function createTidalSegmentCache(
 					}
 				})
 			);
+			// Record only after the write lands. An index entry for an object that
+			// does not exist would make the sweeper delete nothing; the reverse — an
+			// object with no entry — is the leak this index exists to prevent.
+			await index.record({
+				objectKey: key,
+				expiresAt: new Date(expiry),
+				sizeBytes: bytes.byteLength
+			});
+		},
+
+		async sweep(now = new Date()) {
+			const keys = await index.claimExpired(now, SWEEP_BATCH_SIZE);
+			if (keys.length === 0) return 0;
+
+			// `DeleteObject` is idempotent, so an object already gone (lazily deleted
+			// on a read, or removed out of band) still settles as a success and its
+			// row is forgotten. Only a genuine failure keeps the row for a later run.
+			const settled = await Promise.all(
+				keys.map(async (key) => {
+					try {
+						await bucketClient.send(new DeleteObjectCommand({ Bucket: config.bucket, Key: key }));
+						return key;
+					} catch {
+						return null;
+					}
+				})
+			);
+			const reclaimed = settled.filter((key): key is string => key !== null);
+			await index.forget(reclaimed);
+			return reclaimed.length;
 		}
 	};
 }

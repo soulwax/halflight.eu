@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
 	__resetSegmentCache,
+	__resetSweepThrottle,
 	headSegmentedAudio,
 	parseByteRange,
 	streamSegmentedAudio
@@ -217,7 +218,8 @@ describe('streamSegmentedAudio', () => {
 				contentLength: 3,
 				contentType: 'audio/mp4'
 			}),
-			put: vi.fn()
+			put: vi.fn(),
+			sweep: vi.fn().mockResolvedValue(0)
 		};
 		const response = await streamSegmentedAudio({
 			key: 'track-durable:HI_RES_LOSSLESS',
@@ -247,7 +249,8 @@ describe('streamSegmentedAudio', () => {
 				contentRange: 'bytes 4-5/12',
 				contentType: 'audio/mp4'
 			}),
-			put: vi.fn()
+			put: vi.fn(),
+			sweep: vi.fn().mockResolvedValue(0)
 		};
 		const response = await streamSegmentedAudio({
 			key: 'track-durable-range:HI_RES_LOSSLESS',
@@ -283,7 +286,8 @@ describe('streamSegmentedAudio', () => {
 				contentLength: 12,
 				contentType: 'audio/mp4'
 			}),
-			put: vi.fn().mockResolvedValue(undefined)
+			put: vi.fn().mockResolvedValue(undefined),
+			sweep: vi.fn().mockResolvedValue(0)
 		};
 		const response = await streamSegmentedAudio({
 			key: 'track-durable-bad-range:HI_RES_LOSSLESS',
@@ -299,13 +303,68 @@ describe('streamSegmentedAudio', () => {
 		expect(await body(response)).toEqual(new Uint8Array([0, 0, 0, 0]));
 	});
 
+	it('sweeps expired objects after a write, then throttles further sweeps', async () => {
+		// The bucket supports neither listing nor lifecycle rules, so a write is
+		// the only moment Syn reliably gets to reclaim what has expired.
+		__resetSweepThrottle();
+		const sweep = vi.fn().mockResolvedValue(0);
+		const persistentCache = {
+			enabled: true,
+			head: vi.fn().mockResolvedValue(null),
+			get: vi.fn().mockResolvedValue(null),
+			put: vi.fn().mockResolvedValue(undefined),
+			sweep
+		};
+		const play = async (key: string) =>
+			body(
+				await streamSegmentedAudio({
+					key,
+					urls: urls(2),
+					mimeType: 'audio/mp4',
+					fetchImpl: fragmentFetch(),
+					persistentCache
+				})
+			);
+
+		await play('track-sweep-a:HI_RES_LOSSLESS');
+		await vi.waitFor(() => expect(sweep).toHaveBeenCalledTimes(1));
+
+		// A second write moments later must not sweep again.
+		await play('track-sweep-b:HI_RES_LOSSLESS');
+		await vi.waitFor(() => expect(persistentCache.put).toHaveBeenCalledTimes(2));
+		expect(sweep).toHaveBeenCalledTimes(1);
+	});
+
+	it('never lets a failing sweep affect playback', async () => {
+		__resetSweepThrottle();
+		const persistentCache = {
+			enabled: true,
+			head: vi.fn().mockResolvedValue(null),
+			get: vi.fn().mockResolvedValue(null),
+			put: vi.fn().mockResolvedValue(undefined),
+			sweep: vi.fn().mockRejectedValue(new Error('store down'))
+		};
+
+		const response = await streamSegmentedAudio({
+			key: 'track-sweep-fail:HI_RES_LOSSLESS',
+			urls: urls(3),
+			mimeType: 'audio/mp4',
+			fetchImpl: fragmentFetch(),
+			persistentCache
+		});
+
+		expect(await body(response)).toEqual(new Uint8Array([0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2]));
+		await vi.waitFor(() => expect(persistentCache.sweep).toHaveBeenCalled());
+	});
+
 	it('writes only a completed assembly to the enabled durable cache', async () => {
 		const f = fragmentFetch();
 		const persistentCache = {
 			enabled: true,
 			head: vi.fn().mockResolvedValue(null),
 			get: vi.fn().mockResolvedValue(null),
-			put: vi.fn().mockResolvedValue(undefined)
+			put: vi.fn().mockResolvedValue(undefined),
+			sweep: vi.fn().mockResolvedValue(0)
 		};
 		const response = await streamSegmentedAudio({
 			key: 'track-durable-write:HI_RES_LOSSLESS',
@@ -332,7 +391,8 @@ describe('streamSegmentedAudio', () => {
 			enabled: true,
 			head: vi.fn().mockResolvedValue({ contentLength: 12, contentType: 'audio/mp4' }),
 			get: vi.fn(),
-			put: vi.fn()
+			put: vi.fn(),
+			sweep: vi.fn().mockResolvedValue(0)
 		};
 		const response = await headSegmentedAudio({
 			key: 'track-durable-head:HI_RES_LOSSLESS',

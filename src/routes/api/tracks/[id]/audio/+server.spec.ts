@@ -8,7 +8,8 @@ const mocks = vi.hoisted(() => ({
 		enabled: false,
 		head: vi.fn(),
 		get: vi.fn(),
-		put: vi.fn()
+		put: vi.fn(),
+		sweep: vi.fn().mockResolvedValue(0)
 	}
 }));
 

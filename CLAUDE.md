@@ -68,7 +68,10 @@ The build target is chosen in `vite.config.ts` by the `ADAPTER` env var:
   `halflight.eu`. A `syn-worker` service is named in `MASTERPLAN.md`, but **no such
   service and no `SYN_WORKER_*` variable exist** in this repo — do not plan around it.
   Completed HiRes assemblies can instead be staged in an opt-in isolated bucket
-  (`HALFLIGHT_TIDAL_CACHE_*`, off unless `HALFLIGHT_TIDAL_CACHE_ENABLED=true`).
+  (`HALFLIGHT_TIDAL_CACHE_*`, off unless `HALFLIGHT_TIDAL_CACHE_ENABLED=true`). That bucket
+  supports neither `ListObjects` nor lifecycle rules, so `tidal_cache_object` indexes every key
+  written and `TidalSegmentCache.sweep()` reclaims expired ones — do not assume the bucket can be
+  enumerated.
 
 ### Access model — one hard-wired administrator
 
