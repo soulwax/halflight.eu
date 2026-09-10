@@ -18,4 +18,28 @@ describe('PlayerSeekBar.svelte', () => {
 		player.currentTime = 0;
 		player.duration = 0;
 	});
+
+	it('previews a drag without moving playback, then commits one seek on release', async () => {
+		player.currentTime = 12;
+		player.duration = 200;
+		render(PlayerSeekBar);
+
+		const slider = page.getByRole('slider', { name: m.player_seek() });
+		const element = slider.element() as HTMLInputElement;
+
+		// Every step of a drag fires `input`. None may reach the audio element:
+		// each `currentTime` write can provoke a fresh Range request upstream.
+		for (const value of ['60', '90', '120']) {
+			element.value = value;
+			element.dispatchEvent(new Event('input', { bubbles: true }));
+		}
+		expect(player.currentTime).toBe(12);
+		await expect.element(page.getByText('2:00')).toBeInTheDocument();
+
+		element.dispatchEvent(new Event('change', { bubbles: true }));
+		expect(player.currentTime).toBe(120);
+
+		player.currentTime = 0;
+		player.duration = 0;
+	});
 });

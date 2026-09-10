@@ -98,6 +98,16 @@ export class PlayerState {
 	isPlaying = $state(false);
 	isLoading = $state(false);
 	currentTime = $state(0);
+	/**
+	 * Where the scrub thumb sits mid-drag, or `null` when not scrubbing. Held
+	 * separately from {@link currentTime} so a drag moves the thumb without
+	 * touching the `<audio>` element: every `currentTime` write can provoke a
+	 * fresh Range request, and a continuous drag would otherwise emit one per
+	 * step. The element is moved once, on release, by {@link commitScrub}.
+	 */
+	scrubPosition = $state<number | null>(null);
+	/** The position the UI should render — the drag thumb wins while scrubbing. */
+	displayTime = $derived(this.scrubPosition ?? this.currentTime);
 	duration = $state(0);
 	volume = $state(1);
 	isMuted = $state(false);
@@ -587,6 +597,10 @@ export class PlayerState {
 		this.recordQueueReplacement();
 		this.currentTrack = track;
 		this.currentTime = 0;
+		// A scrub preview belongs to the track being dragged. If playback advances
+		// before the pointer is released, drop it rather than committing the old
+		// position against the incoming track.
+		this.scrubPosition = null;
 		this.trackStartedAt = Date.now();
 		this.lastObservedPlaybackTime = 0;
 		this.listenedSeconds = 0;
@@ -1024,8 +1038,35 @@ export class PlayerState {
 		}
 	}
 
+	private clampToTrack(seconds: number): number {
+		return Math.max(0, Math.min(seconds, this.duration || 9999));
+	}
+
+	/**
+	 * Move the scrub thumb without moving the audio. Safe to call continuously
+	 * from a drag: it touches no element and schedules no persistence. Pair it
+	 * with {@link commitScrub} on release.
+	 */
+	scrubTo(seconds: number): void {
+		const target = this.clampToTrack(seconds);
+		if (!isNaN(target)) this.scrubPosition = target;
+	}
+
+	/** Abandon a drag without moving playback (e.g. `pointercancel`). */
+	cancelScrub(): void {
+		this.scrubPosition = null;
+	}
+
+	/** Apply the pending scrub to the element. No-op when no drag is in flight. */
+	commitScrub(): void {
+		const target = this.scrubPosition;
+		this.scrubPosition = null;
+		if (target === null) return;
+		this.seek(target);
+	}
+
 	seek(seconds: number): void {
-		const target = Math.max(0, Math.min(seconds, this.duration || 9999));
+		const target = this.clampToTrack(seconds);
 		this.currentTime = target;
 		if (this.audio && !isNaN(target)) {
 			this.audio.currentTime = target;

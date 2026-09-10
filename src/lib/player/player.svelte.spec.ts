@@ -246,6 +246,56 @@ describe('PlayerState', () => {
 		expect(player.currentTime).toBe(200);
 	});
 
+	it('previews a scrub without moving playback, and commits it once on release', () => {
+		const player = new PlayerState();
+		player.duration = 200;
+		player.currentTime = 50;
+
+		// A drag emits one event per step. None of them may touch playback: every
+		// `currentTime` write can provoke a fresh Range request upstream.
+		player.scrubTo(60);
+		player.scrubTo(120);
+		player.scrubTo(180);
+		expect(player.currentTime).toBe(50);
+		expect(player.displayTime).toBe(180);
+
+		player.commitScrub();
+		expect(player.currentTime).toBe(180);
+		expect(player.scrubPosition).toBeNull();
+		expect(player.displayTime).toBe(180);
+	});
+
+	it('clamps a scrub to the track and discards an abandoned drag', () => {
+		const player = new PlayerState();
+		player.duration = 200;
+		player.currentTime = 50;
+
+		player.scrubTo(500);
+		expect(player.displayTime).toBe(200);
+		player.scrubTo(-20);
+		expect(player.displayTime).toBe(0);
+
+		player.cancelScrub();
+		expect(player.scrubPosition).toBeNull();
+		expect(player.displayTime).toBe(50);
+
+		// Committing with no drag in flight must not move playback.
+		player.commitScrub();
+		expect(player.currentTime).toBe(50);
+	});
+
+	it('drops a scrub preview when the track changes mid-drag', () => {
+		const player = new PlayerState();
+		player.duration = 200;
+		player.currentTime = 50;
+		player.scrubTo(180);
+
+		player.play(sampleTrack2);
+
+		expect(player.scrubPosition).toBeNull();
+		expect(player.currentTime).toBe(0);
+	});
+
 	it('adjusts volume by relative delta with bounds clamping', () => {
 		const player = new PlayerState();
 		player.setVolume(0.5);

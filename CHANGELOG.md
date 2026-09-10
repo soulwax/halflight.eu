@@ -87,6 +87,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Dragging the desktop seek bar now moves the audio element once, on release, instead of on every
+  step of the drag. Each `currentTime` write can provoke a fresh Range request, and because the
+  audio proxy re-resolves the TIDAL manifest per request, a single scrub gesture could fan out
+  into hundreds of upstream API round-trips. The thumb still tracks the pointer, an interrupted
+  drag is discarded, and a track change mid-drag no longer commits the old position against the
+  incoming track. Matches the behaviour the mobile now-playing screen already had.
 - Queue rows now use a localised unavailable label instead of exposing an unresolved TIDAL track,
   artist, or album identifier while live metadata is recovered.
 - Restored and synchronised queues now hydrate legacy identifier-only tracks in bounded batches,
