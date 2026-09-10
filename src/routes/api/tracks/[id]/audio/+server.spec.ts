@@ -3,7 +3,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
 	resolveTrackStreamCached: vi.fn(),
 	getStreamingSettings: vi.fn(),
-	getRequestedStreamQuality: vi.fn()
+	getRequestedStreamQuality: vi.fn(),
+	tidalSegmentCache: {
+		enabled: false,
+		head: vi.fn(),
+		get: vi.fn(),
+		put: vi.fn()
+	}
 }));
 
 vi.mock('#lib/server/streaming-settings', () => ({
@@ -14,7 +20,8 @@ vi.mock('#lib/server/streaming-settings', () => ({
 vi.mock('#lib/server/tidal', async (importOriginal) => ({
 	...((await importOriginal()) as object),
 	resolveTrackStreamCached: mocks.resolveTrackStreamCached,
-	getRequestedStreamQuality: mocks.getRequestedStreamQuality
+	getRequestedStreamQuality: mocks.getRequestedStreamQuality,
+	tidalSegmentCache: mocks.tidalSegmentCache
 }));
 
 import type { Cookies } from '@sveltejs/kit';

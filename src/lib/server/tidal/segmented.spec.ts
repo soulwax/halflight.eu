@@ -267,6 +267,37 @@ describe('streamSegmentedAudio', () => {
 		expect(f).not.toHaveBeenCalled();
 	});
 
+	it('closes an incompatible durable range body before falling back to TIDAL', async () => {
+		const f = fragmentFetch();
+		let cancelled = false;
+		const persistentCache = {
+			enabled: true,
+			head: vi.fn().mockResolvedValue(null),
+			get: vi.fn().mockResolvedValue({
+				body: new ReadableStream<Uint8Array>({
+					cancel() {
+						cancelled = true;
+					}
+				}),
+				contentLength: 12,
+				contentType: 'audio/mp4'
+			}),
+			put: vi.fn().mockResolvedValue(undefined)
+		};
+		const response = await streamSegmentedAudio({
+			key: 'track-durable-bad-range:HI_RES_LOSSLESS',
+			urls: urls(3),
+			mimeType: 'audio/mp4',
+			fetchImpl: f,
+			rangeHeader: 'bytes=0-3',
+			persistentCache
+		});
+
+		expect(response.status).toBe(206);
+		expect(cancelled).toBe(true);
+		expect(await body(response)).toEqual(new Uint8Array([0, 0, 0, 0]));
+	});
+
 	it('writes only a completed assembly to the enabled durable cache', async () => {
 		const f = fragmentFetch();
 		const persistentCache = {

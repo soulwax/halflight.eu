@@ -19,6 +19,7 @@ const PREFIX = 'syn-tidal-cache/v1/';
 const RETENTION_MS = 15 * 60_000;
 const MAX_OBJECT_BYTES = 128 * 1024 * 1024;
 const CACHE_KEY = /^[a-z0-9:_-]{1,160}$/i;
+const SIZE_METADATA_KEY = 'size-bytes';
 
 interface BucketClient {
 	send(command: unknown): Promise<unknown>;
@@ -87,6 +88,11 @@ function expiresAt(metadata: Record<string, string> | undefined): number | null 
 	return Number.isSafeInteger(value) && value > 0 ? value : null;
 }
 
+function storedSize(metadata: Record<string, string> | undefined): number | null {
+	const value = Number(metadata?.[SIZE_METADATA_KEY]);
+	return Number.isSafeInteger(value) && value > 0 && value <= MAX_OBJECT_BYTES ? value : null;
+}
+
 function bodyFrom(response: { Body?: ObjectBody }): ReadableStream<Uint8Array> | null {
 	return response.Body?.transformToWebStream?.() ?? null;
 }
@@ -102,9 +108,41 @@ async function expired(
 	metadata: Record<string, string> | undefined
 ): Promise<boolean> {
 	const expiry = expiresAt(metadata);
-	if (expiry && expiry > Date.now()) return false;
+	if (expiry && expiry > Date.now() && storedSize(metadata) !== null) return false;
 	await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key })).catch(() => undefined);
 	return true;
+}
+
+function validFullObjectLength(length: unknown, expected: number): length is number {
+	return usableLength(length) && length === expected;
+}
+
+function validRangeObjectLength(
+	contentRange: unknown,
+	length: unknown,
+	expectedTotal: number
+): boolean {
+	if (typeof contentRange !== 'string' || !usableLength(length)) return false;
+	const match = /^bytes (\d+)-(\d+)\/(\d+)$/.exec(contentRange);
+	if (!match) return false;
+	const start = Number(match[1]);
+	const end = Number(match[2]);
+	const total = Number(match[3]);
+	return (
+		Number.isSafeInteger(start) &&
+		Number.isSafeInteger(end) &&
+		Number.isSafeInteger(total) &&
+		start <= end &&
+		end < total &&
+		total === expectedTotal &&
+		end - start + 1 === length
+	);
+}
+
+async function cancelBody(response: { Body?: ObjectBody }): Promise<void> {
+	await response.Body?.transformToWebStream?.()
+		.cancel()
+		.catch(() => undefined);
 }
 
 const unavailable: TidalSegmentCache = {
@@ -148,7 +186,9 @@ export function createTidalSegmentCache(
 					Metadata?: Record<string, string>;
 				};
 				if (await expired(bucketClient, config.bucket, key, response.Metadata)) return null;
-				if (!usableLength(response.ContentLength)) return null;
+				const expected = storedSize(response.Metadata);
+				if (expected === null || !validFullObjectLength(response.ContentLength, expected))
+					return null;
 				return {
 					contentLength: response.ContentLength,
 					contentType: response.ContentType ?? 'audio/mp4'
@@ -174,7 +214,18 @@ export function createTidalSegmentCache(
 					ContentType?: string;
 					Metadata?: Record<string, string>;
 				};
-				if (await expired(bucketClient, config.bucket, key, response.Metadata)) return null;
+				if (await expired(bucketClient, config.bucket, key, response.Metadata)) {
+					await cancelBody(response);
+					return null;
+				}
+				const expected = storedSize(response.Metadata);
+				const shapeIsValid = validRange(range)
+					? validRangeObjectLength(response.ContentRange, response.ContentLength, expected ?? -1)
+					: expected !== null && validFullObjectLength(response.ContentLength, expected);
+				if (!shapeIsValid) {
+					await cancelBody(response);
+					return null;
+				}
 				const body = bodyFrom(response);
 				if (!body) return null;
 				return {
@@ -199,7 +250,10 @@ export function createTidalSegmentCache(
 					Body: bytes,
 					ContentType: contentType,
 					Expires: new Date(expiry),
-					Metadata: { 'expires-at': String(expiry) }
+					Metadata: {
+						'expires-at': String(expiry),
+						[SIZE_METADATA_KEY]: String(bytes.byteLength)
+					}
 				})
 			);
 		}

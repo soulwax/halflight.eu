@@ -1,6 +1,6 @@
 import { TidalError } from './errors';
 import { withTransientRetry } from './retry';
-import { tidalSegmentCache, type TidalSegmentCache } from './segment-cache-bucket';
+import type { TidalSegmentCache } from './segment-cache-bucket';
 
 /**
  * Segmented (MPEG-DASH) audio delivery.
@@ -85,20 +85,17 @@ function persistCompletedAssembly(
 	if (!cacheStore.enabled) return;
 	// Persistence is an optimisation, never part of the playback critical path.
 	// Do not await it and never let an object-store error affect the caller.
-	void cacheStore
-		.put({ cacheKey, bytes: new Uint8Array(bytes), contentType })
+	void Promise.resolve()
+		.then(() => cacheStore.put({ cacheKey, bytes: new Uint8Array(bytes), contentType }))
 		.catch(() => undefined);
 }
 
 function cacheCompletedAssembly(options: StreamSegmentedOptions, bytes: ArrayBuffer): void {
 	evict(bytes.byteLength);
 	cache.set(options.key, { bytes, storedAt: Date.now() });
-	persistCompletedAssembly(
-		options.persistentCache ?? tidalSegmentCache,
-		options.key,
-		bytes,
-		options.mimeType
-	);
+	if (options.persistentCache) {
+		persistCompletedAssembly(options.persistentCache, options.key, bytes, options.mimeType);
+	}
 }
 
 class SegmentFetchError extends TidalError {
@@ -340,10 +337,6 @@ export interface StreamSegmentedOptions {
 	persistentCache?: TidalSegmentCache;
 }
 
-function persistentCacheFor(options: StreamSegmentedOptions): TidalSegmentCache {
-	return options.persistentCache ?? tidalSegmentCache;
-}
-
 function responseHeadersFor(options: StreamSegmentedOptions): Headers {
 	const headers = new Headers(options.responseHeaders);
 	headers.set('Content-Type', options.mimeType);
@@ -363,7 +356,10 @@ function responseHeadersFor(options: StreamSegmentedOptions): Headers {
 export async function headSegmentedAudio(options: StreamSegmentedOptions): Promise<Response> {
 	const bytes = readCache(options.key);
 	const headers = responseHeadersFor(options);
-	const persistent = bytes ? null : await persistentCacheFor(options).head(options.key);
+	const persistent =
+		bytes || !options.persistentCache?.enabled
+			? null
+			: await options.persistentCache.head(options.key);
 	const size =
 		bytes?.byteLength ??
 		persistent?.contentLength ??
@@ -397,9 +393,13 @@ export async function headSegmentedAudio(options: StreamSegmentedOptions): Promi
 async function responseFromPersistentCache(
 	options: StreamSegmentedOptions
 ): Promise<Response | null> {
-	const cached = await persistentCacheFor(options).get(options.key, options.rangeHeader);
+	if (!options.persistentCache?.enabled) return null;
+	const cached = await options.persistentCache.get(options.key, options.rangeHeader);
 	if (!cached) return null;
-	if (options.rangeHeader && !cached.contentRange) return null;
+	if (options.rangeHeader && !cached.contentRange) {
+		await cached.body.cancel().catch(() => undefined);
+		return null;
+	}
 
 	const headers = responseHeadersFor(options);
 	headers.set('Content-Type', cached.contentType);

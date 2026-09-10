@@ -43,7 +43,10 @@ describe('tidal segment cache bucket', () => {
 				input: expect.objectContaining({
 					Bucket: 'tidal-cache',
 					Key: expect.stringMatching(/^syn-tidal-cache\/v1\/[a-f0-9]{64}\.mp4$/),
-					Metadata: expect.objectContaining({ 'expires-at': expect.any(String) }),
+					Metadata: expect.objectContaining({
+						'expires-at': expect.any(String),
+						'size-bytes': '3'
+					}),
 					Expires: expect.any(Date)
 				})
 			})
@@ -56,7 +59,7 @@ describe('tidal segment cache bucket', () => {
 			ContentLength: 6,
 			ContentRange: 'bytes 4-9/12',
 			ContentType: 'audio/mp4',
-			Metadata: { 'expires-at': String(Date.now() + 60_000) }
+			Metadata: { 'expires-at': String(Date.now() + 60_000), 'size-bytes': '12' }
 		});
 		const cache = configuredCache({ send });
 		const cached = await cache.get(cacheKey, 'bytes=4-9');
@@ -73,7 +76,7 @@ describe('tidal segment cache bucket', () => {
 		const send = vi.fn().mockResolvedValue({
 			ContentLength: 12,
 			ContentType: 'audio/mp4',
-			Metadata: { 'expires-at': String(Date.now() + 60_000) }
+			Metadata: { 'expires-at': String(Date.now() + 60_000), 'size-bytes': '12' }
 		});
 		const cache = configuredCache({ send });
 
@@ -94,5 +97,25 @@ describe('tidal segment cache bucket', () => {
 
 		expect(await cache.get(cacheKey)).toBeNull();
 		expect(send).toHaveBeenCalledTimes(2);
+	});
+
+	it('drops malformed cached-object metadata and closes its response body', async () => {
+		let cancelled = false;
+		const send = vi.fn().mockResolvedValue({
+			Body: {
+				transformToWebStream: () =>
+					new ReadableStream<Uint8Array>({
+						cancel() {
+							cancelled = true;
+						}
+					})
+			},
+			ContentLength: 13,
+			Metadata: { 'expires-at': String(Date.now() + 60_000), 'size-bytes': '12' }
+		});
+		const cache = configuredCache({ send });
+
+		expect(await cache.get(cacheKey)).toBeNull();
+		expect(cancelled).toBe(true);
 	});
 });

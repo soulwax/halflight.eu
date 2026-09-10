@@ -3,6 +3,7 @@ import {
 	getRequestedStreamQuality,
 	getTidalConfig,
 	headSegmentedAudio,
+	tidalSegmentCache,
 	isTrackUnavailableForPlayback,
 	resolveTrackStreamCached,
 	streamSegmentedAudio,
@@ -106,7 +107,10 @@ async function serveAudio(
 				rangeHeader: rangeIsUsable(event.request, tag) ? event.request.headers.get('range') : null,
 				upstreamHeaders: CDN_HEADERS,
 				responseHeaders: cacheHeaders(tag),
-				signal: event.request.signal
+				signal: event.request.signal,
+				// The durable cache is an infrastructure concern of the real route;
+				// segmented logic stays injectable so unit tests never reach it.
+				persistentCache: tidalSegmentCache
 			};
 			return headOnly ? await headSegmentedAudio(options) : await streamSegmentedAudio(options);
 		} catch (cause) {

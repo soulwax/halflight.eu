@@ -166,6 +166,22 @@ that is isolated from exports, private music, and worker media, and configure an
 rule that removes `syn-tidal-cache/v1/` objects no later than their expiry. The in-request expiry
 check is a backstop, not a substitute for lifecycle deletion.
 
+### Phase 4 activation gate
+
+The implementation is intentionally **fail-closed at startup**: all dedicated bucket fields and
+`HALFLIGHT_TIDAL_CACHE_ENABLED=true` must be present before it can read or write an object. Before
+reloading a process with that switch enabled, confirm all of the following outside the application:
+
+1. The bucket is isolated from exports, private music, and any worker/media store.
+2. The provider-permission decision explicitly allows this short-lived assembly cache.
+3. A bucket lifecycle rule deletes `syn-tidal-cache/v1/` objects at or before 15 minutes. The
+   `Expires` header and object metadata are request-time backstops, not deletion machinery.
+4. An owner smoke test confirms cache hits preserve `206`, `Content-Range`, and seek behaviour;
+   then disable the bucket and confirm direct TIDAL playback still works.
+
+Do not point this at an existing worker bucket as a shortcut, and do not activate it merely because
+credentials happen to be available in an environment file.
+
 ---
 
 ## Files
