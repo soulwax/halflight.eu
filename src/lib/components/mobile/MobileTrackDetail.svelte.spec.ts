@@ -39,7 +39,8 @@ describe('MobileTrackDetail.svelte', () => {
 		const play = vi.spyOn(player, 'play').mockImplementation(() => {});
 		render(MobileTrackDetail, { track, state: null });
 
-		await page.getByRole('button', { name: m.player_play_track() }).click();
+		// `exact` — the accessible name "Play" is also a prefix of "Play next".
+		await page.getByRole('button', { name: m.player_play_track(), exact: true }).click();
 
 		expect(play).toHaveBeenCalledWith(track);
 	});
