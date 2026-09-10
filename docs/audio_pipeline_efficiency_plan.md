@@ -147,6 +147,25 @@ and add a size/retention policy. Do this only if Phase 3 proves insufficient.
 Note `syn-worker` is **not implemented** — `SYN_WORKER_*` appears in `CLAUDE.md` and
 `MASTERPLAN.md` but in no code and not in `src/env.ts`. Don't plan around it.
 
+### Implementation status
+
+Phases 1–3 are complete: resolved manifests and settings are memoised, safe playback reads retry,
+the browser can validate and reuse audio responses, and an opening HiRes request streams fragments
+into one bounded assembly without copying Range slices. Cancellation now aborts pending fragment
+fetches and never promotes an abandoned response into either cache.
+
+Phase 4 has begun with a server-only `segment-cache-bucket.ts` adapter. It uses a separate
+`HALFLIGHT_TIDAL_CACHE_BUCKET`, hashes the internal cache key into an opaque object key, limits an
+object to 128 MiB, stamps every object with a 15-minute expiry, and fails open to the direct TIDAL
+path. A completed assembly writes in the background; a durable cache hit streams through Syn with
+Range support and never exposes a bucket URL. The feature is disabled until all five environment
+variables are deliberately configured and `HALFLIGHT_TIDAL_CACHE_ENABLED=true` is set.
+
+Before enabling it in any environment, record the provider-permission decision, provision a bucket
+that is isolated from exports, private music, and worker media, and configure an object-lifecycle
+rule that removes `syn-tidal-cache/v1/` objects no later than their expiry. The in-request expiry
+check is a backstop, not a substitute for lifecycle deletion.
+
 ---
 
 ## Files

@@ -87,6 +87,12 @@ export {
 	type ResolveTrackStreamCachedOptions
 } from './stream-cache';
 export { headSegmentedAudio, streamSegmentedAudio, __resetSegmentCache } from './segmented';
+export {
+	createTidalSegmentCache,
+	tidalSegmentCache,
+	type TidalSegmentCache,
+	type TidalSegmentCacheConfig
+} from './segment-cache-bucket';
 export { getTrackCoverId, tidalArtworkUrl, resetArtworkCache } from './artwork';
 export { getRequestedStreamQuality, type StreamingSettingsReader } from './playback';
 export {

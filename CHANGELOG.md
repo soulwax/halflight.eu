@@ -92,7 +92,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   pre-allocated buffer and emitted as they arrive, and the response still carries a correct
   `Content-Length` so seeking keeps working. A CDN that refuses `HEAD` falls back to the previous
   buffer-first behaviour. Assembly is single-flighted, so concurrent first-plays of one track
-  download it once, and range slices are served as views rather than copies.
+  download it once, cancelled openings abort their pending fragment requests, and range slices are
+  served as views rather than copies.
+- HiRes assemblies can now use an explicitly enabled, isolated S3-compatible cache across reloads.
+  It never exposes a bucket URL, streams valid cache hits through Syn with Range support, uses only
+  opaque hashed keys, limits objects to 128 MiB, and marks them for deletion after 15 minutes.
+  The cache remains disabled unless its dedicated configuration and explicit permission gate are set;
+  any bucket error falls back directly to TIDAL.
 - `/api/tracks/[id]/audio` now sets `Cache-Control: private, max-age=600` with an `ETag` covering
   track _and_ delivered quality, honours `If-None-Match` and `If-Range`, and answers `HEAD`. It
   previously sent `no-store`, so every backward seek and replay re-fetched from origin; a

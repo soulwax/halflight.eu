@@ -16,8 +16,27 @@ export const MAX_TRANSIENT_READ_RETRIES = 2;
 
 const INITIAL_RETRY_DELAY_MS = 100;
 
-function wait(ms: number): Promise<void> {
-	return new Promise((resolve) => setTimeout(resolve, ms));
+function abortReason(signal: AbortSignal): unknown {
+	return signal.reason ?? new DOMException('The request was aborted.', 'AbortError');
+}
+
+function wait(ms: number, signal?: AbortSignal | null): Promise<void> {
+	if (signal?.aborted) return Promise.reject(abortReason(signal));
+	return new Promise((resolve, reject) => {
+		const timer = setTimeout(done, ms);
+		function done(): void {
+			signal?.removeEventListener('abort', onAbort);
+			resolve();
+		}
+		function onAbort(): void {
+			clearTimeout(timer);
+			signal?.removeEventListener('abort', onAbort);
+			reject(
+				signal ? abortReason(signal) : new DOMException('The request was aborted.', 'AbortError')
+			);
+		}
+		signal?.addEventListener('abort', onAbort, { once: true });
+	});
 }
 
 export interface TransientRetryOptions {
@@ -39,6 +58,7 @@ export async function withTransientRetry(
 	const retries = options.retries ?? MAX_TRANSIENT_READ_RETRIES;
 
 	for (let attempt = 0; ; attempt += 1) {
+		if (options.signal?.aborted) throw abortReason(options.signal);
 		try {
 			const response = await send();
 			if (!TRANSIENT_READ_STATUSES.has(response.status) || attempt === retries) {
@@ -56,6 +76,6 @@ export async function withTransientRetry(
 			}
 		}
 
-		await wait(INITIAL_RETRY_DELAY_MS * 2 ** attempt);
+		await wait(INITIAL_RETRY_DELAY_MS * 2 ** attempt, options.signal);
 	}
 }

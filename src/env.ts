@@ -87,6 +87,32 @@ export const variables = defineEnvVars({
 		schema: optional,
 		description: 'Server-only secret key for the private music bucket.'
 	},
+	HALFLIGHT_TIDAL_CACHE_BUCKET: {
+		schema: optional,
+		description:
+			'Optional isolated S3-compatible bucket for short-lived completed TIDAL HiRes assemblies.'
+	},
+	HALFLIGHT_TIDAL_CACHE_ENABLED: {
+		schema: optional,
+		description:
+			'Explicit opt-in for the short-lived TIDAL HiRes cache. Set only after provider permission and bucket lifecycle deletion are verified.'
+	},
+	HALFLIGHT_TIDAL_CACHE_BUCKET_ENDPOINT: {
+		schema: optional,
+		description: 'Optional S3-compatible endpoint for the short-lived TIDAL cache bucket.'
+	},
+	HALFLIGHT_TIDAL_CACHE_BUCKET_REGION: {
+		schema: optional,
+		description: 'Optional S3 region for the short-lived TIDAL cache bucket. Defaults to auto.'
+	},
+	HALFLIGHT_TIDAL_CACHE_BUCKET_ACCESS_KEY_ID: {
+		schema: optional,
+		description: 'Server-only access key for the short-lived TIDAL cache bucket.'
+	},
+	HALFLIGHT_TIDAL_CACHE_BUCKET_SECRET_ACCESS_KEY: {
+		schema: optional,
+		description: 'Server-only secret key for the short-lived TIDAL cache bucket.'
+	},
 	LASTFM_API_KEY: { schema: optional, description: 'Last.fm API key.' },
 	LASTFM_APPLICATION_NAME: {
 		schema: optional,

@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { __resetSegmentCache, parseByteRange, streamSegmentedAudio } from './segmented';
+import {
+	__resetSegmentCache,
+	headSegmentedAudio,
+	parseByteRange,
+	streamSegmentedAudio
+} from './segmented';
 
 afterEach(() => __resetSegmentCache());
 
@@ -113,6 +118,49 @@ describe('streamSegmentedAudio', () => {
 		await reader.cancel();
 	});
 
+	it('aborts pending fragments and does not cache a cancelled opening stream', async () => {
+		let releaseLast: () => void = () => {};
+		const held = new Promise<void>((resolve) => {
+			releaseLast = resolve;
+		});
+		const f = vi.fn((url: string, init?: RequestInit) => {
+			const idx = Number(new URL(url).searchParams.get('i'));
+			if (init?.method === 'HEAD') {
+				return Promise.resolve(
+					new Response(null, { status: 200, headers: { 'content-length': '4' } })
+				);
+			}
+			if (idx !== 2) return Promise.resolve(new Response(new Uint8Array(4).fill(idx)));
+			return new Promise<Response>((resolve, reject) => {
+				init?.signal?.addEventListener('abort', () => reject(init.signal?.reason), { once: true });
+				held.then(() => resolve(new Response(new Uint8Array(4).fill(idx))));
+			});
+		}) as ReturnType<typeof vi.fn> & typeof fetch;
+		const opts = {
+			key: 'track-cancel:HI_RES_LOSSLESS',
+			urls: urls(3),
+			mimeType: 'audio/mp4',
+			fetchImpl: f
+		};
+
+		const opening = await streamSegmentedAudio(opts);
+		const reader = opening.body!.getReader();
+		await reader.read();
+		await reader.cancel('user skipped');
+		releaseLast();
+		await vi.waitFor(() =>
+			expect(
+				f.mock.calls.filter(([, init]) => (init as RequestInit | undefined)?.method !== 'HEAD')
+			).toHaveLength(3)
+		);
+
+		const replay = await streamSegmentedAudio({ ...opts, rangeHeader: 'bytes=0-3' });
+		expect(await body(replay)).toEqual(new Uint8Array([0, 0, 0, 0]));
+		expect(
+			f.mock.calls.filter(([, init]) => (init as RequestInit | undefined)?.method !== 'HEAD')
+		).toHaveLength(6);
+	});
+
 	it('falls back to buffering when the CDN will not answer HEAD', async () => {
 		const f = fragmentFetch(4, { headSupported: false });
 		const res = await streamSegmentedAudio({
@@ -126,6 +174,144 @@ describe('streamSegmentedAudio', () => {
 		expect(res.headers.get('Content-Length')).toBe('12');
 		expect(await body(res)).toEqual(new Uint8Array([0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2]));
 		expect(bodyFetches(f)).toHaveLength(3);
+	});
+
+	it('retries a transient HEAD probe before streaming fragments', async () => {
+		let firstProbe = true;
+		const f = vi.fn(async (url: string, init?: RequestInit) => {
+			const idx = Number(new URL(url).searchParams.get('i'));
+			if (init?.method === 'HEAD') {
+				if (firstProbe) {
+					firstProbe = false;
+					return new Response(null, { status: 503 });
+				}
+				return new Response(null, { status: 200, headers: { 'content-length': '4' } });
+			}
+			return new Response(new Uint8Array(4).fill(idx));
+		}) as ReturnType<typeof vi.fn> & typeof fetch;
+
+		const response = await streamSegmentedAudio({
+			key: 'track-probe-retry:HI_RES_LOSSLESS',
+			urls: urls(3),
+			mimeType: 'audio/mp4',
+			fetchImpl: f
+		});
+
+		expect(await body(response)).toHaveLength(12);
+		expect(f.mock.calls.filter(([, init]) => init?.method === 'HEAD')).toHaveLength(4);
+	});
+
+	it('serves an eligible durable cache hit without touching the TIDAL CDN', async () => {
+		const f = fragmentFetch();
+		const persistentCache = {
+			enabled: true,
+			head: vi.fn().mockResolvedValue(null),
+			get: vi.fn().mockResolvedValue({
+				body: new ReadableStream<Uint8Array>({
+					start(controller) {
+						controller.enqueue(new Uint8Array([4, 5, 6]));
+						controller.close();
+					}
+				}),
+				contentLength: 3,
+				contentType: 'audio/mp4'
+			}),
+			put: vi.fn()
+		};
+		const response = await streamSegmentedAudio({
+			key: 'track-durable:HI_RES_LOSSLESS',
+			urls: urls(3),
+			mimeType: 'audio/mp4',
+			fetchImpl: f,
+			persistentCache
+		});
+
+		expect(await body(response)).toEqual(new Uint8Array([4, 5, 6]));
+		expect(f).not.toHaveBeenCalled();
+	});
+
+	it('forwards a durable-cache range through Syn without touching TIDAL', async () => {
+		const f = fragmentFetch();
+		const persistentCache = {
+			enabled: true,
+			head: vi.fn().mockResolvedValue(null),
+			get: vi.fn().mockResolvedValue({
+				body: new ReadableStream<Uint8Array>({
+					start(controller) {
+						controller.enqueue(new Uint8Array([4, 5]));
+						controller.close();
+					}
+				}),
+				contentLength: 2,
+				contentRange: 'bytes 4-5/12',
+				contentType: 'audio/mp4'
+			}),
+			put: vi.fn()
+		};
+		const response = await streamSegmentedAudio({
+			key: 'track-durable-range:HI_RES_LOSSLESS',
+			urls: urls(3),
+			mimeType: 'audio/mp4',
+			fetchImpl: f,
+			rangeHeader: 'bytes=4-5',
+			persistentCache
+		});
+
+		expect(response.status).toBe(206);
+		expect(response.headers.get('Content-Range')).toBe('bytes 4-5/12');
+		expect(await body(response)).toEqual(new Uint8Array([4, 5]));
+		expect(persistentCache.get).toHaveBeenCalledWith(
+			'track-durable-range:HI_RES_LOSSLESS',
+			'bytes=4-5'
+		);
+		expect(f).not.toHaveBeenCalled();
+	});
+
+	it('writes only a completed assembly to the enabled durable cache', async () => {
+		const f = fragmentFetch();
+		const persistentCache = {
+			enabled: true,
+			head: vi.fn().mockResolvedValue(null),
+			get: vi.fn().mockResolvedValue(null),
+			put: vi.fn().mockResolvedValue(undefined)
+		};
+		const response = await streamSegmentedAudio({
+			key: 'track-durable-write:HI_RES_LOSSLESS',
+			urls: urls(3),
+			mimeType: 'audio/mp4',
+			fetchImpl: f,
+			persistentCache
+		});
+		await body(response);
+
+		await vi.waitFor(() => expect(persistentCache.put).toHaveBeenCalledTimes(1));
+		expect(persistentCache.put).toHaveBeenCalledWith(
+			expect.objectContaining({
+				cacheKey: 'track-durable-write:HI_RES_LOSSLESS',
+				contentType: 'audio/mp4',
+				bytes: expect.any(Uint8Array)
+			})
+		);
+	});
+
+	it('uses durable-cache metadata for HEAD without touching TIDAL fragments', async () => {
+		const f = fragmentFetch();
+		const persistentCache = {
+			enabled: true,
+			head: vi.fn().mockResolvedValue({ contentLength: 12, contentType: 'audio/mp4' }),
+			get: vi.fn(),
+			put: vi.fn()
+		};
+		const response = await headSegmentedAudio({
+			key: 'track-durable-head:HI_RES_LOSSLESS',
+			urls: urls(3),
+			mimeType: 'audio/mp4',
+			fetchImpl: f,
+			persistentCache
+		});
+
+		expect(response.headers.get('Content-Length')).toBe('12');
+		expect(f).not.toHaveBeenCalled();
 	});
 
 	it('downloads a track once when two requests race for it', async () => {

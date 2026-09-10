@@ -1,5 +1,6 @@
 import { TidalError } from './errors';
 import { withTransientRetry } from './retry';
+import { tidalSegmentCache, type TidalSegmentCache } from './segment-cache-bucket';
 
 /**
  * Segmented (MPEG-DASH) audio delivery.
@@ -75,6 +76,31 @@ function readCache(key: string): ArrayBuffer | null {
 	return entry.bytes;
 }
 
+function persistCompletedAssembly(
+	cacheStore: TidalSegmentCache,
+	cacheKey: string,
+	bytes: ArrayBuffer,
+	contentType: string
+): void {
+	if (!cacheStore.enabled) return;
+	// Persistence is an optimisation, never part of the playback critical path.
+	// Do not await it and never let an object-store error affect the caller.
+	void cacheStore
+		.put({ cacheKey, bytes: new Uint8Array(bytes), contentType })
+		.catch(() => undefined);
+}
+
+function cacheCompletedAssembly(options: StreamSegmentedOptions, bytes: ArrayBuffer): void {
+	evict(bytes.byteLength);
+	cache.set(options.key, { bytes, storedAt: Date.now() });
+	persistCompletedAssembly(
+		options.persistentCache ?? tidalSegmentCache,
+		options.key,
+		bytes,
+		options.mimeType
+	);
+}
+
 class SegmentFetchError extends TidalError {
 	constructor(
 		readonly status: number,
@@ -88,12 +114,14 @@ async function fetchSegment(
 	index: number,
 	urls: string[],
 	fetchImpl: typeof fetch,
-	upstreamHeaders: HeadersInit | undefined
+	upstreamHeaders: HeadersInit | undefined,
+	signal?: AbortSignal
 ): Promise<Uint8Array> {
 	// Retry per fragment: one transient 5xx would otherwise discard the whole
 	// already-mostly-downloaded track.
-	const res = await withTransientRetry(() =>
-		fetchImpl(urls[index], { headers: upstreamHeaders, redirect: 'follow' })
+	const res = await withTransientRetry(
+		() => fetchImpl(urls[index], { headers: upstreamHeaders, redirect: 'follow', signal }),
+		{ signal }
 	);
 	if (!res.ok && res.status !== 206) throw new SegmentFetchError(res.status, index);
 	return new Uint8Array(await res.arrayBuffer());
@@ -102,14 +130,15 @@ async function fetchSegment(
 async function downloadAndConcat(
 	urls: string[],
 	fetchImpl: typeof fetch,
-	upstreamHeaders: HeadersInit | undefined
+	upstreamHeaders: HeadersInit | undefined,
+	signal?: AbortSignal
 ): Promise<ArrayBuffer> {
 	const parts = new Array<Uint8Array | undefined>(urls.length);
 	let cursor = 0;
 
 	async function worker(): Promise<void> {
 		for (let i = cursor++; i < urls.length; i = cursor++) {
-			parts[i] = await fetchSegment(i, urls, fetchImpl, upstreamHeaders);
+			parts[i] = await fetchSegment(i, urls, fetchImpl, upstreamHeaders, signal);
 		}
 	}
 
@@ -142,7 +171,8 @@ async function downloadAndConcat(
 async function probeTotalSize(
 	urls: string[],
 	fetchImpl: typeof fetch,
-	upstreamHeaders: HeadersInit | undefined
+	upstreamHeaders: HeadersInit | undefined,
+	signal?: AbortSignal
 ): Promise<number | null> {
 	const sizes = new Array<number>(urls.length);
 	let cursor = 0;
@@ -150,11 +180,16 @@ async function probeTotalSize(
 
 	async function worker(): Promise<void> {
 		for (let i = cursor++; i < urls.length && usable; i = cursor++) {
-			const res = await fetchImpl(urls[i], {
-				method: 'HEAD',
-				headers: upstreamHeaders,
-				redirect: 'follow'
-			});
+			const res = await withTransientRetry(
+				() =>
+					fetchImpl(urls[i], {
+						method: 'HEAD',
+						headers: upstreamHeaders,
+						redirect: 'follow',
+						signal
+					}),
+				{ signal }
+			);
 			const length = Number(res.headers.get('content-length'));
 			if (!res.ok || !Number.isSafeInteger(length) || length < 0) {
 				usable = false;
@@ -168,7 +203,8 @@ async function probeTotalSize(
 		await Promise.all(
 			Array.from({ length: Math.min(FETCH_CONCURRENCY, urls.length) }, () => worker())
 		);
-	} catch {
+	} catch (cause) {
+		if (signal?.aborted) throw cause;
 		return null;
 	}
 	if (!usable) return null;
@@ -192,12 +228,15 @@ function streamAndCache(
 	done: PendingAssembly
 ): ReadableStream<Uint8Array> {
 	const { urls, fetchImpl, upstreamHeaders } = options;
+	const abort = new AbortController();
+	const abortForRequest = () => abort.abort(options.signal?.reason);
+	options.signal?.addEventListener('abort', abortForRequest, { once: true });
 	const merged = new Uint8Array(new ArrayBuffer(total));
 	const pending = new Array<Promise<Uint8Array> | undefined>(urls.length);
 
 	function start(index: number): void {
 		if (index >= urls.length) return;
-		const promise = fetchSegment(index, urls, fetchImpl, upstreamHeaders);
+		const promise = fetchSegment(index, urls, fetchImpl, upstreamHeaders, abort.signal);
 		// Same reasoning: the in-order loop below surfaces the real failure.
 		promise.catch(() => undefined);
 		pending[index] = promise;
@@ -226,16 +265,24 @@ function streamAndCache(
 				}
 				// Only a complete assembly is worth caching — a client that aborts
 				// mid-stream must not leave a truncated track behind.
-				evict(merged.byteLength);
-				cache.set(options.key, { bytes: merged.buffer, storedAt: Date.now() });
+				cacheCompletedAssembly(options, merged.buffer);
 				controller.close();
 				done.resolve(merged.buffer);
 			} catch (cause) {
 				controller.error(cause);
 				done.reject(cause);
 			} finally {
+				options.signal?.removeEventListener('abort', abortForRequest);
 				if (assembling.get(options.key) === done.promise) assembling.delete(options.key);
 			}
+		},
+		cancel(reason) {
+			// Do not keep downloading or cache a track after the browser has
+			// abandoned its opening request. A later play starts cleanly.
+			abort.abort(reason);
+			options.signal?.removeEventListener('abort', abortForRequest);
+			done.reject(reason ?? new DOMException('The stream was cancelled.', 'AbortError'));
+			if (assembling.get(options.key) === done.promise) assembling.delete(options.key);
 		}
 	});
 }
@@ -287,6 +334,14 @@ export interface StreamSegmentedOptions {
 	upstreamHeaders?: HeadersInit;
 	/** Caching/validator headers to merge into the response (`Cache-Control`, `ETag`). */
 	responseHeaders?: HeadersInit;
+	/** Abort source for a disconnected browser request. */
+	signal?: AbortSignal;
+	/** Optional server-only durable cache. Disabled by default and injectable for tests. */
+	persistentCache?: TidalSegmentCache;
+}
+
+function persistentCacheFor(options: StreamSegmentedOptions): TidalSegmentCache {
+	return options.persistentCache ?? tidalSegmentCache;
 }
 
 function responseHeadersFor(options: StreamSegmentedOptions): Headers {
@@ -308,9 +363,17 @@ function responseHeadersFor(options: StreamSegmentedOptions): Headers {
 export async function headSegmentedAudio(options: StreamSegmentedOptions): Promise<Response> {
 	const bytes = readCache(options.key);
 	const headers = responseHeadersFor(options);
+	const persistent = bytes ? null : await persistentCacheFor(options).head(options.key);
 	const size =
 		bytes?.byteLength ??
-		(await probeTotalSize(options.urls, options.fetchImpl, options.upstreamHeaders));
+		persistent?.contentLength ??
+		(await probeTotalSize(
+			options.urls,
+			options.fetchImpl,
+			options.upstreamHeaders,
+			options.signal
+		));
+	if (persistent) headers.set('Content-Type', persistent.contentType);
 
 	if (size !== null) {
 		if (options.rangeHeader) {
@@ -329,6 +392,25 @@ export async function headSegmentedAudio(options: StreamSegmentedOptions): Promi
 	}
 
 	return new Response(null, { status: 200, headers });
+}
+
+async function responseFromPersistentCache(
+	options: StreamSegmentedOptions
+): Promise<Response | null> {
+	const cached = await persistentCacheFor(options).get(options.key, options.rangeHeader);
+	if (!cached) return null;
+	if (options.rangeHeader && !cached.contentRange) return null;
+
+	const headers = responseHeadersFor(options);
+	headers.set('Content-Type', cached.contentType);
+	if (cached.contentLength !== undefined) {
+		headers.set('Content-Length', String(cached.contentLength));
+	}
+	if (cached.contentRange) headers.set('Content-Range', cached.contentRange);
+	return new Response(cached.body, {
+		status: cached.contentRange ? 206 : 200,
+		headers
+	});
 }
 
 /**
@@ -374,10 +456,14 @@ function assembleOnce(options: StreamSegmentedOptions): Promise<ArrayBuffer> {
 	const existing = assembling.get(options.key);
 	if (existing) return existing;
 
-	const pending = downloadAndConcat(options.urls, options.fetchImpl, options.upstreamHeaders)
+	const pending = downloadAndConcat(
+		options.urls,
+		options.fetchImpl,
+		options.upstreamHeaders,
+		options.signal
+	)
 		.then((bytes) => {
-			evict(bytes.byteLength);
-			cache.set(options.key, { bytes, storedAt: Date.now() });
+			cacheCompletedAssembly(options, bytes);
 			return bytes;
 		})
 		.finally(() => {
@@ -394,6 +480,10 @@ function assembleOnce(options: StreamSegmentedOptions): Promise<ArrayBuffer> {
  */
 export async function streamSegmentedAudio(options: StreamSegmentedOptions): Promise<Response> {
 	let bytes = readCache(options.key);
+	if (!bytes) {
+		const persisted = await responseFromPersistentCache(options);
+		if (persisted) return persisted;
+	}
 	const inFlight = !bytes ? assembling.get(options.key) : undefined;
 
 	// A second cold request never starts another assembly. It waits for the
@@ -408,7 +498,12 @@ export async function streamSegmentedAudio(options: StreamSegmentedOptions): Pro
 		// total, without which the response could not carry a `Content-Length` and
 		// seeking would break.
 		try {
-			const total = await probeTotalSize(options.urls, options.fetchImpl, options.upstreamHeaders);
+			const total = await probeTotalSize(
+				options.urls,
+				options.fetchImpl,
+				options.upstreamHeaders,
+				options.signal
+			);
 			if (total !== null && total > 0) {
 				const headers = responseHeadersFor(options);
 				headers.set('Content-Length', String(total));
@@ -421,10 +516,10 @@ export async function streamSegmentedAudio(options: StreamSegmentedOptions): Pro
 			const assembled = await downloadAndConcat(
 				options.urls,
 				options.fetchImpl,
-				options.upstreamHeaders
+				options.upstreamHeaders,
+				options.signal
 			);
-			evict(assembled.byteLength);
-			cache.set(options.key, { bytes: assembled, storedAt: Date.now() });
+			cacheCompletedAssembly(options, assembled);
 			reservation.resolve(assembled);
 			if (assembling.get(options.key) === reservation.promise) assembling.delete(options.key);
 			bytes = assembled;

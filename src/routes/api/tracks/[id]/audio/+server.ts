@@ -105,7 +105,8 @@ async function serveAudio(
 				fetchImpl: fetch,
 				rangeHeader: rangeIsUsable(event.request, tag) ? event.request.headers.get('range') : null,
 				upstreamHeaders: CDN_HEADERS,
-				responseHeaders: cacheHeaders(tag)
+				responseHeaders: cacheHeaders(tag),
+				signal: event.request.signal
 			};
 			return headOnly ? await headSegmentedAudio(options) : await streamSegmentedAudio(options);
 		} catch (cause) {
@@ -132,8 +133,15 @@ async function serveAudio(
 		// incoming request's context (cookies / referer) to the target, and the
 		// TIDAL media CDN 403s a signed-URL request that carries those. Only the
 		// query-string token authorises the request — send nothing else.
-		upstream = await withTransientRetry(() =>
-			fetch(stream.streamUrl, { method: headOnly ? 'HEAD' : 'GET', headers, redirect: 'follow' })
+		upstream = await withTransientRetry(
+			() =>
+				fetch(stream.streamUrl, {
+					method: headOnly ? 'HEAD' : 'GET',
+					headers,
+					redirect: 'follow',
+					signal: event.request.signal
+				}),
+			{ signal: event.request.signal }
 		);
 	} catch (cause) {
 		log.error('audio proxy: CDN fetch threw', { trackId, cdnHost, cause });
