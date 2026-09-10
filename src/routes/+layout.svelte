@@ -31,18 +31,8 @@
 </script>
 
 <svelte:head>
-	<link
-		rel="icon"
-		type="image/png"
-		sizes="32x32"
-		href="/icons/halflight-32.png"
-	/>
-	<link
-		rel="icon"
-		type="image/png"
-		sizes="192x192"
-		href="/icons/halflight-192.png"
-	/>
+	<link rel="icon" type="image/png" sizes="32x32" href="/icons/halflight-32.png" />
+	<link rel="icon" type="image/png" sizes="192x192" href="/icons/halflight-192.png" />
 	{#if isMobile}
 		<link rel="manifest" href="/manifest.webmanifest" />
 		<meta name="theme-color" content="#f5f8fb" />
@@ -50,11 +40,7 @@
 		<meta name="apple-mobile-web-app-capable" content="yes" />
 		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 		<meta name="apple-mobile-web-app-title" content="Halflight" />
-		<link
-			rel="apple-touch-icon"
-			sizes="192x192"
-			href="/icons/halflight-192.png"
-		/>
+		<link rel="apple-touch-icon" sizes="192x192" href="/icons/halflight-192.png" />
 	{/if}
 </svelte:head>
 {#if isMobile || isListeningRoom}
