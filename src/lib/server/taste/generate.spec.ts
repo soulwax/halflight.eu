@@ -48,7 +48,8 @@ describe('taste generation orchestrator', () => {
 
 		const result = await generateTasteSet(profile, {
 			client: mockClient,
-			knobs: { targetCount: 3, familiarity: 70 }
+			knobs: { targetCount: 3, familiarity: 70 },
+			sleep: () => Promise.resolve()
 		});
 
 		expect(result.trackCount).toBe(3);

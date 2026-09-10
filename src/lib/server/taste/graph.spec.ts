@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { expandTasteGraph, type GraphExpansionClient } from './graph';
 
 describe('taste graph expansion', () => {
@@ -116,6 +116,37 @@ describe('taste graph expansion', () => {
 		// 2 anchor-track calls + 2 similar-artist lookups; no time check applied.
 		expect(res.requestsSpent).toBe(4);
 		expect(res.degraded).toBe(false);
+	});
+
+	it('paces upstream calls, skipping the delay before the first one', async () => {
+		const sleep = vi.fn().mockResolvedValue(undefined);
+		const anchors = [{ id: 'a1', name: 'Artist 1', weight: 1 }];
+
+		const res = await expandTasteGraph(
+			anchors,
+			mockClient,
+			{ maxRequests: 10, fanoutLimit: 5, pacingMs: 100 },
+			() => 0,
+			sleep
+		);
+
+		// 4 upstream calls (a1 tracks, a1 similar, sim-1 tracks, sim-2 tracks);
+		// the first is not paced, so sleep fires exactly 3 times at 100ms.
+		expect(res.requestsSpent).toBe(4);
+		expect(sleep).toHaveBeenCalledTimes(3);
+		expect(sleep).toHaveBeenCalledWith(100);
+	});
+
+	it('does not pace when pacingMs is unset', async () => {
+		const sleep = vi.fn().mockResolvedValue(undefined);
+		await expandTasteGraph(
+			[{ id: 'a1', name: 'Artist 1', weight: 1 }],
+			mockClient,
+			{ maxRequests: 10, fanoutLimit: 5 },
+			() => 0,
+			sleep
+		);
+		expect(sleep).not.toHaveBeenCalled();
 	});
 
 	it('handles client errors gracefully without throwing', async () => {

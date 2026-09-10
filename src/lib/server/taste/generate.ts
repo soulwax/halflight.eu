@@ -29,6 +29,9 @@ export interface GenerateTasteSetOptions {
 	budget?: GraphExpansionBudget;
 	cooldownTrackIds?: Set<string>;
 	now?: Date;
+	/** Injectable clock + sleep for the graph expansion; real time by default. */
+	clock?: () => number;
+	sleep?: (ms: number) => Promise<void>;
 }
 
 /**
@@ -71,7 +74,13 @@ export async function generateTasteSet(
 	}
 
 	// 2. Stage 3 — Budgeted Graph Expansion
-	const expansion = await expandTasteGraph(anchors, options.client, options.budget);
+	const expansion = await expandTasteGraph(
+		anchors,
+		options.client,
+		options.budget,
+		options.clock,
+		options.sleep
+	);
 
 	// 3. Stage 4a — Candidates assembly & ISRC deduplication
 	const filtered = filterCandidates(expansion.candidates, profile, options.cooldownTrackIds);

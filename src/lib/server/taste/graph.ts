@@ -38,12 +38,19 @@ export interface GraphExpansionBudget {
 	 * slow upstream stall generation. Omit to disable the time check.
 	 */
 	deadlineMs?: number;
+	/**
+	 * Minimum gap between upstream requests. TIDAL rate-limits sustained probing
+	 * within a couple of dozen calls, so expansion paces itself rather than
+	 * firing the whole budget back-to-back. Counts toward `deadlineMs`.
+	 */
+	pacingMs?: number;
 }
 
 export const DEFAULT_GRAPH_BUDGET: GraphExpansionBudget = {
 	maxRequests: 15,
 	fanoutLimit: 5,
-	deadlineMs: 9000
+	deadlineMs: 9000,
+	pacingMs: 120
 };
 
 /**
@@ -116,7 +123,8 @@ export async function expandTasteGraph(
 	anchorArtists: Array<{ id: string; name?: string; weight: number }>,
 	client: GraphExpansionClient,
 	budget: GraphExpansionBudget = DEFAULT_GRAPH_BUDGET,
-	clock: () => number = () => Date.now()
+	clock: () => number = () => Date.now(),
+	sleep: (ms: number) => Promise<void> = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 ): Promise<ExpansionResult> {
 	const candidates: GraphCandidateTrack[] = [];
 	let requestsSpent = 0;
@@ -127,6 +135,11 @@ export async function expandTasteGraph(
 		if (requestsSpent >= budget.maxRequests) return true;
 		if (budget.deadlineMs !== undefined && clock() - startedAt >= budget.deadlineMs) return true;
 		return false;
+	};
+
+	// Space out upstream calls (but never before the first one).
+	const pace = async (): Promise<void> => {
+		if (requestsSpent > 0 && budget.pacingMs) await sleep(budget.pacingMs);
 	};
 
 	const sortedAnchors = [...anchorArtists].sort((a, b) => b.weight - a.weight);
@@ -140,6 +153,7 @@ export async function expandTasteGraph(
 		}
 
 		try {
+			await pace();
 			requestsSpent++;
 			const tracks = await client.getArtistTracks(anchor.id);
 			for (const track of tracks) {
@@ -165,6 +179,7 @@ export async function expandTasteGraph(
 		}
 
 		try {
+			await pace();
 			requestsSpent++;
 			const similarList = await client.getSimilarArtists(anchor.id);
 			const topSimilar = similarList.slice(0, 3);
@@ -176,6 +191,7 @@ export async function expandTasteGraph(
 				}
 
 				try {
+					await pace();
 					requestsSpent++;
 					const similarTracks = await client.getArtistTracks(similar.id);
 					for (const track of similarTracks) {
