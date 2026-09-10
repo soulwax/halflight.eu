@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { PanelLeftClose, PanelLeftOpen } from '@lucide/svelte';
 	import type { AppNavigationItem } from './navigation.js';
 	import { isCurrentNavigationItem } from './navigation.js';
 
@@ -46,7 +47,11 @@
 				aria-label={collapsed ? expandRailLabel : collapseRailLabel}
 				title={collapsed ? expandRailLabel : collapseRailLabel}
 			>
-				<span aria-hidden="true">{collapsed ? '›' : '‹'}</span>
+				{#if collapsed}
+					<PanelLeftOpen size={17} aria-hidden="true" />
+				{:else}
+					<PanelLeftClose size={17} aria-hidden="true" />
+				{/if}
 			</button>
 		</div>
 	{/if}
@@ -110,24 +115,28 @@
 		display: none;
 	}
 
+	/* Matches the rail's nav links: same radius, muted → hover, no chrome. */
 	.rail-toggle {
 		display: grid;
-		width: 2rem;
-		height: 2rem;
+		width: 2.25rem;
+		height: 2.25rem;
 		place-items: center;
 		border: 0;
-		border-radius: var(--radius-sm);
+		border-radius: var(--radius-md);
 		background: transparent;
 		color: var(--text-muted);
-		font-size: 1.1rem;
-		line-height: 1;
 		cursor: pointer;
+		transition:
+			color 140ms ease,
+			background-color 140ms ease;
 	}
-	.rail-toggle:hover,
+	.rail-toggle:hover {
+		background: var(--paper);
+		color: var(--text-primary);
+	}
 	.rail-toggle:focus-visible {
-		background: var(--surface-selected);
-		color: var(--action);
-		outline: none;
+		outline: 2px solid var(--focus-ring);
+		outline-offset: 2px;
 	}
 	.side-nav-collapsed .rail-toggle {
 		margin: 0 auto;
@@ -146,7 +155,8 @@
 		width: 1.8rem;
 		height: 1.8rem;
 		place-items: center;
-		border: 1px solid color-mix(in oklab, var(--accent-gold) 32%, transparent);
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-sm);
 		font-family: var(--font-mono);
 		font-size: 0.72rem;
 		letter-spacing: 0;
