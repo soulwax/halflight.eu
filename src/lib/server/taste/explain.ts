@@ -1,3 +1,4 @@
+import { m } from '#lib/paraglide/messages.js';
 import type { ScoredCandidate } from './score';
 import type { TasteProfile } from './profile';
 
@@ -23,26 +24,28 @@ function formatDuration(totalSeconds: number): string {
 }
 
 /**
- * Generates an explainable provenance chip for an individual track.
+ * Generates an explainable provenance chip for an individual track. Rendered in
+ * the request locale — `explainSet`/`explainTrack` run inside the `?/generate`
+ * action, which `paraglideMiddleware` has already scoped.
  */
 export function explainTrack(track: ScoredCandidate, profile: TasteProfile): string {
-	const seedName = track.provenance.seedArtistName || 'your library';
+	const seed = track.provenance.seedArtistName || track.primaryArtistName;
 	const year = track.releaseDate ? track.releaseDate.slice(0, 4) : undefined;
-	const yearPart = year ? ` · ${year}` : '';
 
+	let base: string;
 	if (track.provenance.edge === 'anchor') {
 		const override = profile.overrides.artists[track.primaryArtistId];
-		if (override === 'pinned') {
-			return `From your pinned artist ${track.primaryArtistName}${yearPart}`;
-		}
-		return `From your anchor artist ${track.primaryArtistName}${yearPart}`;
+		base =
+			override === 'pinned'
+				? m.taste_provenance_pinned({ artist: track.primaryArtistName })
+				: m.taste_provenance_anchor({ artist: track.primaryArtistName });
+	} else if (track.provenance.edge === 'similar_artist') {
+		base = m.taste_provenance_similar({ seed });
+	} else {
+		base = m.taste_provenance_profile();
 	}
 
-	if (track.provenance.edge === 'similar_artist') {
-		return `Similar to ${seedName}${yearPart}`;
-	}
-
-	return `Matched to your taste profile${yearPart}`;
+	return year ? `${base} · ${year}` : base;
 }
 
 /**

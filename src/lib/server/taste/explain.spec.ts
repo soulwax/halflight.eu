@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { explainTrack, explainSet } from './explain';
 import { emptyTasteProfile } from './profile';
+import { m } from '#lib/paraglide/messages.js';
 import type { ScoredCandidate } from './score';
 
 describe('taste explainability', () => {
@@ -55,17 +56,22 @@ describe('taste explainability', () => {
 
 	it('explains anchor tracks accurately with release date', () => {
 		const explanation = explainTrack(anchorTrack, profile);
-		expect(explanation).toBe('From your anchor artist Bonobo · 2017');
+		expect(explanation).toBe(`${m.taste_provenance_anchor({ artist: 'Bonobo' })} · 2017`);
 	});
 
 	it('explains pinned tracks accurately', () => {
 		const explanation = explainTrack(pinnedTrack, profile);
-		expect(explanation).toBe('From your pinned artist Tycho · 2016');
+		expect(explanation).toBe(`${m.taste_provenance_pinned({ artist: 'Tycho' })} · 2016`);
 	});
 
 	it('explains similar artist discovery tracks with seed artist attribution', () => {
 		const explanation = explainTrack(discoveryTrack, profile);
-		expect(explanation).toBe('Similar to Bonobo · 2020');
+		expect(explanation).toBe(`${m.taste_provenance_similar({ seed: 'Bonobo' })} · 2020`);
+	});
+
+	it('drops the year suffix when the track has no release date', () => {
+		const undated: ScoredCandidate = { ...anchorTrack, releaseDate: undefined };
+		expect(explainTrack(undated, profile)).toBe(m.taste_provenance_anchor({ artist: 'Bonobo' }));
 	});
 
 	it('synthesizes a transparent set explanation with duration and discovery share', () => {
