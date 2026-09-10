@@ -13,19 +13,19 @@
   "orientation": "any",
   "icons": [
     {
-      "src": "/icons/emily-the-strange-music-with-many-paths-192.png",
+      "src": "/icons/halflight-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/emily-the-strange-music-with-many-paths-512.png",
+      "src": "//icons/halflight-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/emily-the-strange-music-with-many-paths-512.png",
+      "src": "//icons/halflight-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

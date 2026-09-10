@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import AppHeader from '#lib/components/app/AppHeader.svelte';
 	import Footer from '#lib/components/Footer.svelte';
 	import { isMobileRoute } from '#lib/mobile/routes';
 	import { deLocalizeHref, locales, localizeHref } from '#lib/paraglide/runtime';
 	import { page } from '$app/state';
 	import type { Snippet } from 'svelte';
+	import { onMount } from 'svelte';
 	import type { LayoutData } from './$types';
 	import './layout.css';
 
@@ -35,13 +35,13 @@
 		rel="icon"
 		type="image/png"
 		sizes="32x32"
-		href="/icons/emily-the-strange-music-with-many-paths-32.png"
+		href="/icons/halflight-32.png"
 	/>
 	<link
 		rel="icon"
 		type="image/png"
 		sizes="192x192"
-		href="/icons/emily-the-strange-music-with-many-paths-192.png"
+		href="/icons/halflight-192.png"
 	/>
 	{#if isMobile}
 		<link rel="manifest" href="/manifest.webmanifest" />
@@ -53,7 +53,7 @@
 		<link
 			rel="apple-touch-icon"
 			sizes="192x192"
-			href="/icons/emily-the-strange-music-with-many-paths-192.png"
+			href="/icons/halflight-192.png"
 		/>
 	{/if}
 </svelte:head>

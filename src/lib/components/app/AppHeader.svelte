@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { LogIn, LogOut, Settings, Shield } from '@lucide/svelte';
 	import HeaderSearch from '#lib/components/app/HeaderSearch.svelte';
 	import { m } from '#lib/paraglide/messages.js';
+	import { LogIn, LogOut, Settings, Shield } from '@lucide/svelte';
 
 	interface Props {
 		user?: {
@@ -26,7 +26,7 @@
 			aria-label={m.brand_name()}
 		>
 			<img
-				src="/icons/emily-the-strange-music-with-many-paths-64.png"
+				src="/icons/halflight-64.png"
 				alt={m.brand_name()}
 				class="h-7 w-7 sm:h-8 sm:w-8"
 			/>

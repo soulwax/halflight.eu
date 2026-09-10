@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
 	import { m } from '#lib/paraglide/messages.js';
+	import { enhance } from '$app/forms';
 	import type { ActionData } from './$types';
 
 	let { form }: { form: ActionData } = $props();
@@ -16,7 +16,7 @@
 	<section class="auth-card" aria-labelledby="sign-in-title">
 		<img
 			class="brand-logo"
-			src="/icons/emily-the-strange-music-with-many-paths-128.png"
+			src="/icons/halflight-128.png"
 			alt={m.brand_name()}
 		/>
 		<h1 id="sign-in-title">{m.sign_in_title()}</h1>

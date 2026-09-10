@@ -21,7 +21,7 @@ module.exports = {
 			},
 			autorestart: true,
 			watch: false,
-			max_memory_restart: '512M',
+			max_memory_restart: '2048M',
 			kill_timeout: 10000,
 			time: true
 		}
