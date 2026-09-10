@@ -98,4 +98,43 @@ describe('candidates filtering', () => {
 		const result = filterCandidates(dummyTracks, profile, cooldown);
 		expect(result.map((r) => r.id)).toEqual(['t2', 't3', 't4']);
 	});
+
+	it('drops tracks under the minimum length but keeps unknown-duration ones', () => {
+		const profile = emptyTasteProfile();
+		const lengths: GraphCandidateTrack[] = [
+			{
+				id: 'skit',
+				title: 'Skit',
+				isrc: 'ISRC-SKIT',
+				duration: 40,
+				artists: [{ id: 'a', name: 'A' }],
+				provenance: { edge: 'anchor', seedArtistId: 'a' }
+			},
+			{
+				id: 'song',
+				title: 'Song',
+				isrc: 'ISRC-SONG',
+				duration: 200,
+				artists: [{ id: 'a', name: 'A' }],
+				provenance: { edge: 'anchor', seedArtistId: 'a' }
+			},
+			{
+				id: 'undated',
+				title: 'Undated',
+				isrc: 'ISRC-UNDATED',
+				artists: [{ id: 'a', name: 'A' }],
+				provenance: { edge: 'anchor', seedArtistId: 'a' }
+			}
+		];
+
+		const result = filterCandidates(lengths, profile, new Set(), { minDurationSeconds: 90 });
+		expect(result.map((r) => r.id)).toEqual(['song', 'undated']);
+
+		// No floor requested → every length passes.
+		expect(filterCandidates(lengths, profile).map((r) => r.id)).toEqual([
+			'skit',
+			'song',
+			'undated'
+		]);
+	});
 });

@@ -10,13 +10,24 @@ export interface FilteredCandidate extends GraphCandidateTrack {
 	year?: number;
 }
 
+export interface CandidateFilterOptions {
+	/**
+	 * Drop tracks shorter than this (seconds) — "no interludes/skits". A track
+	 * with an unknown duration is kept, matching the engine's other
+	 * missing-field rules.
+	 */
+	minDurationSeconds?: number;
+}
+
 /**
- * Deduplicate by ISRC & Track ID, and filter out exclusions and cooldowns.
+ * Deduplicate by ISRC & Track ID, and filter out exclusions, cooldowns, and
+ * anything that fails a supported request filter.
  */
 export function filterCandidates(
 	raw: GraphCandidateTrack[],
 	profile: TasteProfile,
-	cooldownTrackIds: Set<string> = new Set()
+	cooldownTrackIds: Set<string> = new Set(),
+	options: CandidateFilterOptions = {}
 ): FilteredCandidate[] {
 	const seenIsrcs = new Set<string>();
 	const seenTrackIds = new Set<string>();
@@ -24,6 +35,10 @@ export function filterCandidates(
 
 	const excludedArtists = new Set(profile.exclusions.artists);
 	const excludedEras = new Set(profile.exclusions.eras);
+	const minDuration =
+		options.minDurationSeconds && options.minDurationSeconds > 0
+			? options.minDurationSeconds
+			: undefined;
 
 	for (const track of raw) {
 		// 1. Basic validity
@@ -33,6 +48,8 @@ export function filterCandidates(
 		// ineligible variant must not suppress an eligible remaster or release.
 		if (cooldownTrackIds.has(track.id)) continue;
 		if (track.artists.some((artist) => excludedArtists.has(artist.id))) continue;
+		if (minDuration !== undefined && track.duration !== undefined && track.duration < minDuration)
+			continue;
 
 		const primaryArtist = track.artists[0] ?? { id: '', name: '' };
 

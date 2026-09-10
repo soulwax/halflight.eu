@@ -22,6 +22,8 @@ export interface GenerateKnobs {
 	eraCenter?: number;
 	/** Half-width in years; defaults to `DEFAULT_ERA_SPREAD` when a centre is set. */
 	eraSpread?: number;
+	/** Drop candidates shorter than this many seconds; omit to keep every length. */
+	minDurationSeconds?: number;
 }
 
 export interface GenerateTasteSetOptions {
@@ -84,7 +86,9 @@ export async function generateTasteSet(
 	);
 
 	// 3. Stage 4a — Candidates assembly & ISRC deduplication
-	const filtered = filterCandidates(expansion.candidates, profile, options.cooldownTrackIds);
+	const filtered = filterCandidates(expansion.candidates, profile, options.cooldownTrackIds, {
+		minDurationSeconds: options.knobs?.minDurationSeconds
+	});
 
 	// 4. Stage 4b — Transparent Multi-term Scoring
 	const scored = scoreCandidates(filtered, profile, { familiarity, era });

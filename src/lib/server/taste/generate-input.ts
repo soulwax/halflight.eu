@@ -32,11 +32,22 @@ const eraCenterSchema = v.pipe(
 	v.maxValue(2100)
 );
 
+const minDurationSchema = v.pipe(
+	v.string(),
+	v.trim(),
+	v.transform(Number),
+	v.number(),
+	v.safeInteger(),
+	v.minValue(1),
+	v.maxValue(600)
+);
+
 const generateTasteSetInputSchema = v.object({
 	targetCount: targetCountSchema,
 	familiarity: familiaritySchema,
 	seedArtistId: v.optional(seedArtistIdSchema),
-	eraCenter: v.optional(eraCenterSchema)
+	eraCenter: v.optional(eraCenterSchema),
+	minDurationSeconds: v.optional(minDurationSchema)
 });
 
 export type GenerateTasteSetInput = v.InferOutput<typeof generateTasteSetInputSchema>;
@@ -54,11 +65,14 @@ export function parseGenerateTasteSetInput(
 ): GenerateTasteSetInputResult {
 	const seedArtistId = formData.get('seedArtistId');
 	const eraCenter = formData.get('eraCenter');
+	const minDurationSeconds = formData.get('minDurationSeconds');
 	const result = v.safeParse(generateTasteSetInputSchema, {
 		targetCount: formData.get('targetCount') ?? '20',
 		familiarity: formData.get('familiarity') ?? '50',
 		seedArtistId: seedArtistId === null || seedArtistId === '' ? undefined : seedArtistId,
-		eraCenter: eraCenter === null || eraCenter === '' ? undefined : eraCenter
+		eraCenter: eraCenter === null || eraCenter === '' ? undefined : eraCenter,
+		minDurationSeconds:
+			minDurationSeconds === null || minDurationSeconds === '' ? undefined : minDurationSeconds
 	});
 
 	return result.success ? { success: true, output: result.output } : { success: false };

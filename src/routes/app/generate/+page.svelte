@@ -17,6 +17,7 @@
 	let targetCount = $state(20);
 	let seedArtistId = $state('');
 	let eraCenter = $state('');
+	let minDurationSeconds = $state('');
 	let isGenerating = $state(false);
 	let saveSuccess = $state(false);
 
@@ -29,6 +30,14 @@
 		{ value: '2005', label: '2000s' },
 		{ value: '2015', label: '2010s' },
 		{ value: '2025', label: '2020s' }
+	];
+
+	// Drop interludes and skits shorter than the chosen floor; '' keeps every length.
+	const MIN_LENGTH_OPTIONS = [
+		{ value: '', label: 'Any length' },
+		{ value: '60', label: '1 min or more' },
+		{ value: '90', label: '90 sec or more' },
+		{ value: '120', label: '2 min or more' }
 	];
 
 	$effect(() => {
@@ -205,8 +214,8 @@
 				</div>
 			</div>
 
-			<!-- Set Length, Era & Seed Selection Grid -->
-			<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+			<!-- Set Length, Era, Minimum Length & Seed Selection Grid -->
+			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
 				<!-- Track Count -->
 				<div class="space-y-1.5">
 					<label
@@ -245,6 +254,26 @@
 						class="w-full border border-[var(--border-subtle)] bg-[var(--surface-canvas)] px-3 py-2 text-sm text-[var(--text-primary)]"
 					>
 						{#each ERA_OPTIONS as option (option.value)}
+							<option value={option.value}>{option.label}</option>
+						{/each}
+					</select>
+				</div>
+
+				<!-- Minimum Track Length -->
+				<div class="space-y-1.5">
+					<label
+						for="min-length-select"
+						class="text-xs font-bold tracking-wider text-[var(--text-muted)] uppercase"
+					>
+						Minimum length
+					</label>
+					<select
+						id="min-length-select"
+						name="minDurationSeconds"
+						bind:value={minDurationSeconds}
+						class="w-full border border-[var(--border-subtle)] bg-[var(--surface-canvas)] px-3 py-2 text-sm text-[var(--text-primary)]"
+					>
+						{#each MIN_LENGTH_OPTIONS as option (option.value)}
 							<option value={option.value}>{option.label}</option>
 						{/each}
 					</select>

@@ -10,19 +10,26 @@ function formData(entries: Record<string, FormDataEntryValue>): Pick<FormData, '
 }
 
 describe('generation input', () => {
-	it('parses bounded integer knobs, an artist seed, and an era centre year', () => {
+	it('parses bounded integer knobs, an artist seed, an era centre, and a minimum length', () => {
 		const result = parseGenerateTasteSetInput(
 			formData({
 				targetCount: ' 25 ',
 				familiarity: '70',
 				seedArtistId: ' artist-1 ',
-				eraCenter: '1995'
+				eraCenter: '1995',
+				minDurationSeconds: '90'
 			})
 		);
 
 		expect(result).toEqual({
 			success: true,
-			output: { targetCount: 25, familiarity: 70, seedArtistId: 'artist-1', eraCenter: 1995 }
+			output: {
+				targetCount: 25,
+				familiarity: 70,
+				seedArtistId: 'artist-1',
+				eraCenter: 1995,
+				minDurationSeconds: 90
+			}
 		});
 	});
 
@@ -31,8 +38,22 @@ describe('generation input', () => {
 
 		expect(result).toEqual({
 			success: true,
-			output: { targetCount: 20, familiarity: 50, seedArtistId: undefined, eraCenter: undefined }
+			output: {
+				targetCount: 20,
+				familiarity: 50,
+				seedArtistId: undefined,
+				eraCenter: undefined,
+				minDurationSeconds: undefined
+			}
 		});
+	});
+
+	it('rejects a minimum length past the allowed ceiling', () => {
+		const result = parseGenerateTasteSetInput(
+			formData({ targetCount: '20', familiarity: '50', minDurationSeconds: '900' })
+		);
+
+		expect(result).toEqual({ success: false });
 	});
 
 	it('treats an empty era selection as unconstrained', () => {
