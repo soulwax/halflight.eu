@@ -1,19 +1,41 @@
 import { error, type RequestHandler } from '@sveltejs/kit';
 import {
-	getConnectionStatus,
 	getRequestedStreamQuality,
+	getTidalConfig,
 	isTrackUnavailableForPlayback,
-	resolveTrackStream,
+	resolveTrackStreamCached,
 	streamSegmentedAudio,
 	TidalApiError,
 	TidalAuthError,
+	TidalConfigError,
 	TidalPlaybackNotLinkedError,
-	TidalQualityDeniedError
+	TidalQualityDeniedError,
+	withTransientRetry
 } from '#lib/server/tidal';
+import { entityTag, matchesEntityTag, rangeIsUsable } from '#lib/server/http-range';
 import { log } from '#lib/server/log';
 
 /** CDN-facing headers borrowed from the TIDAL Android client. */
 const CDN_HEADERS = { Accept: '*/*', 'User-Agent': 'TIDAL_ANDROID/1039 okhttp/3.13.1' };
+
+/**
+ * How long the browser may reuse audio it has already fetched. These bytes are
+ * the owner's own, on an authenticated same-origin route, so `private` caching
+ * is safe — and it is what makes a backward seek free instead of a fresh CDN
+ * round-trip. Kept short because the entity tag cannot see a remaster upstream.
+ */
+const MAX_AGE_SECONDS = 600;
+
+/** Caching and content-sniffing headers shared by every response this route sends. */
+function cacheHeaders(tag: string): Headers {
+	return new Headers({
+		'Cache-Control': `private, max-age=${MAX_AGE_SECONDS}`,
+		ETag: tag,
+		'Accept-Ranges': 'bytes',
+		'X-Content-Type-Options': 'nosniff',
+		Vary: 'Range'
+	});
+}
 
 /**
  * Streams media through Syn so the browser never needs access to a TIDAL CDN URL.
@@ -24,14 +46,22 @@ export const GET: RequestHandler = async (event) => {
 	const trackId = event.params.id;
 	if (!trackId) error(400, 'Track ID required');
 
-	const status = await getConnectionStatus();
-	if (!status.configured) error(503, 'TIDAL not connected');
-	if (!status.hasPlayback)
-		error(403, 'Full playback is not linked. Authorize playback via TIDAL Link in settings.');
+	// Deliberately not `getConnectionStatus()`: it costs two Postgres reads and two
+	// AES-GCM decrypts to answer two questions this route can answer for free.
+	// `getTidalConfig()` is memoised and reads only env, and "no device token" is
+	// already `TidalPlaybackNotLinkedError` out of `getPlaybackToken` below. This
+	// runs on every Range request, so the duplicated reads are worth removing.
+	// `/stream` still calls it — it reports a richer status body.
+	try {
+		getTidalConfig();
+	} catch (cause) {
+		if (cause instanceof TidalConfigError) error(503, 'TIDAL not connected');
+		throw cause;
+	}
 
 	let stream;
 	try {
-		stream = await resolveTrackStream(trackId, {
+		stream = await resolveTrackStreamCached(trackId, {
 			quality: await getRequestedStreamQuality(event.url, event.locals.user.id),
 			ctx: { fetch: event.fetch, cookies: event.cookies }
 		});
@@ -50,6 +80,15 @@ export const GET: RequestHandler = async (event) => {
 		error(404, 'Stream unavailable');
 	}
 
+	// Identity of these bytes. Quality matters as much as the track: the URL does
+	// not encode it, so without it a preference change would be served the old
+	// tier out of the browser's cache. Knowable before any CDN fetch, so a
+	// conditional request is answered without touching the network at all.
+	const tag = entityTag(stream.trackId ?? trackId, stream.audioQuality ?? 'auto');
+	if (matchesEntityTag(event.request.headers.get('if-none-match'), tag)) {
+		return new Response(null, { status: 304, headers: cacheHeaders(tag) });
+	}
+
 	// Segmented DASH (HiRes): no single URL to range against — concatenate every
 	// fragment and serve the whole stream with Range support from an in-memory cache.
 	if (stream.segmented) {
@@ -60,8 +99,11 @@ export const GET: RequestHandler = async (event) => {
 				mimeType: stream.mimeType,
 				// Global fetch, not `event.fetch` — see the note on the single-file path below.
 				fetchImpl: fetch,
-				rangeHeader: event.request.headers.get('range'),
-				upstreamHeaders: CDN_HEADERS
+				rangeHeader: rangeIsUsable(event.request, tag)
+					? event.request.headers.get('range')
+					: null,
+				upstreamHeaders: CDN_HEADERS,
+				responseHeaders: cacheHeaders(tag)
 			});
 		} catch (cause) {
 			log.error('audio proxy: segmented fetch failed', { trackId, cause });
@@ -70,7 +112,8 @@ export const GET: RequestHandler = async (event) => {
 	}
 
 	const headers = new Headers(CDN_HEADERS);
-	const range = event.request.headers.get('range');
+	// Only forward the range when the client is not holding a stale partial.
+	const range = rangeIsUsable(event.request, tag) ? event.request.headers.get('range') : null;
 	if (range) headers.set('Range', range);
 
 	let cdnHost = 'unknown';
@@ -86,7 +129,9 @@ export const GET: RequestHandler = async (event) => {
 		// incoming request's context (cookies / referer) to the target, and the
 		// TIDAL media CDN 403s a signed-URL request that carries those. Only the
 		// query-string token authorises the request — send nothing else.
-		upstream = await fetch(stream.streamUrl, { headers, redirect: 'follow' });
+		upstream = await withTransientRetry(() =>
+			fetch(stream.streamUrl, { headers, redirect: 'follow' })
+		);
 	} catch (cause) {
 		log.error('audio proxy: CDN fetch threw', { trackId, cdnHost, cause });
 		error(502, 'CDN unreachable');
@@ -102,18 +147,26 @@ export const GET: RequestHandler = async (event) => {
 	}
 
 	const upstreamMimeType = upstream.headers.get('content-type');
-	const responseHeaders = new Headers({
-		'Content-Type': upstreamMimeType?.toLowerCase().startsWith('audio/')
-			? upstreamMimeType
-			: stream.mimeType,
-		'Accept-Ranges': 'bytes',
-		'Cache-Control': 'no-store',
-		'X-Content-Type-Options': 'nosniff',
-		Vary: 'Range'
-	});
+	const responseHeaders = cacheHeaders(tag);
+	responseHeaders.set(
+		'Content-Type',
+		upstreamMimeType?.toLowerCase().startsWith('audio/') ? upstreamMimeType : stream.mimeType
+	);
 	for (const name of ['content-length', 'content-range']) {
 		const value = upstream.headers.get(name);
 		if (value) responseHeaders.set(name, value);
 	}
 	return new Response(upstream.body, { status: upstream.status, headers: responseHeaders });
+};
+
+/**
+ * Some clients probe a media URL with `HEAD` before committing to a fetch. Only
+ * `GET` was exported, so those probes used to 404. Reuses `GET` and discards the
+ * body, which keeps the two in lockstep — the cost is the resolve, which is
+ * memoised, not a media transfer.
+ */
+export const HEAD: RequestHandler = async (event) => {
+	const response = await GET(event);
+	await response.body?.cancel().catch(() => undefined);
+	return new Response(null, { status: response.status, headers: response.headers });
 };

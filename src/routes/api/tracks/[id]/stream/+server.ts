@@ -4,7 +4,7 @@ import {
 	getConnectionStatus,
 	getRequestedStreamQuality,
 	isTrackUnavailableForPlayback,
-	resolveTrackStream,
+	resolveTrackStreamCached,
 	TidalApiError,
 	TidalAuthError,
 	TidalPlaybackNotLinkedError,
@@ -41,7 +41,9 @@ export const GET: RequestHandler = async (event) => {
 
 	try {
 		const requestedQuality = await getRequestedStreamQuality(event.url, event.locals.user.id);
-		const stream = await resolveTrackStream(trackId, {
+		// Shares its memoised entry with the `/audio` route, so the concurrent pair
+		// this page issues on track start costs one upstream resolution, not two.
+		const stream = await resolveTrackStreamCached(trackId, {
 			quality: requestedQuality,
 			ctx: { fetch: event.fetch, cookies: event.cookies }
 		});

@@ -1,5 +1,6 @@
 import { TidalApiError, TidalError } from './errors';
 import { getPlaybackToken, type TidalRequestContext } from './client';
+import { withTransientRetry } from './retry';
 
 export type TrackAudioQuality = 'LOW' | 'HIGH' | 'LOSSLESS' | 'HI_RES_LOSSLESS';
 
@@ -292,12 +293,16 @@ export async function fetchTrackStream(
 	// Query TIDAL API v1 playbackinfopostpaywall for FULL audio stream
 	const url = `https://api.tidal.com/v1/tracks/${encodeURIComponent(String(trackId))}/playbackinfopostpaywall?audioquality=${targetQuality}&playbackmode=STREAM&assetpresentation=FULL`;
 
-	const response = await f(url, {
-		headers: {
-			authorization: `Bearer ${token}`,
-			accept: 'application/json'
-		}
-	});
+	// A safe read, and it sits directly in the playback hot path: without a retry
+	// one transient 5xx from TIDAL fails the play outright.
+	const response = await withTransientRetry(() =>
+		f(url, {
+			headers: {
+				authorization: `Bearer ${token}`,
+				accept: 'application/json'
+			}
+		})
+	);
 
 	if (!response.ok) {
 		let body: unknown;

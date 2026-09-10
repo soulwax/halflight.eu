@@ -92,24 +92,47 @@ export function parseStreamingSettingsInput(input: {
 	};
 }
 
+/**
+ * Short-lived memo of the settings row. This is read on every app-shell render
+ * *and* on every `/api/tracks/[id]/audio` request via `getRequestedStreamQuality`
+ * — so once per seek — to answer a question that changes only when the owner
+ * edits their preferences. The TTL is short enough that a change still lands
+ * promptly, and {@link saveStreamingSettings} drops the entry immediately.
+ */
+const MEMO_TTL_MS = 30_000;
+const memo = new Map<string, { settings: StreamingSettings; expiresAt: number }>();
+
+/** Test seam: drop the memoised settings. */
+export function __resetStreamingSettingsMemo(): void {
+	memo.clear();
+}
+
 export async function getStreamingSettings(
 	userId: string,
 	store: StreamingSettingsStore = dbStreamingSettingsStore
 ): Promise<StreamingSettings> {
-	// Loaded on every app-shell render — a storage failure falls back to
-	// defaults rather than 500-ing the page.
+	const cached = memo.get(userId);
+	if (cached && Date.now() < cached.expiresAt) return cached.settings;
+
+	// A storage failure falls back to defaults rather than 500-ing the page.
 	try {
-		return (await store.read(userId)) ?? DEFAULT_STREAMING_SETTINGS;
+		const settings = (await store.read(userId)) ?? DEFAULT_STREAMING_SETTINGS;
+		memo.set(userId, { settings, expiresAt: Date.now() + MEMO_TTL_MS });
+		return settings;
 	} catch (err) {
 		log.error('streaming-settings read failed, using defaults', { cause: err });
+		// Deliberately not memoised: a transient outage must not pin defaults.
 		return DEFAULT_STREAMING_SETTINGS;
 	}
 }
 
-export function saveStreamingSettings(
+export async function saveStreamingSettings(
 	userId: string,
 	settings: StreamingSettings,
 	store: StreamingSettingsStore = dbStreamingSettingsStore
 ): Promise<StreamingSettings> {
-	return store.write(userId, settings);
+	memo.delete(userId);
+	const written = await store.write(userId, settings);
+	memo.set(userId, { settings: written, expiresAt: Date.now() + MEMO_TTL_MS });
+	return written;
 }

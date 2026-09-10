@@ -7,6 +7,7 @@ import {
 } from './errors';
 import { refreshTokens } from './oauth';
 import { refreshDeviceToken } from './device-auth';
+import { MAX_TRANSIENT_READ_RETRIES, withTransientRetry } from './retry';
 import {
 	readPlaybackRecord,
 	readRecord,
@@ -19,9 +20,6 @@ import type { Cookies } from '@sveltejs/kit';
 
 /** Refresh this many ms before the real expiry to absorb clock skew / latency. */
 const EXPIRY_SKEW_MS = 60_000;
-const TRANSIENT_READ_STATUSES = new Set([408, 500, 502, 503, 504]);
-const MAX_TRANSIENT_READ_RETRIES = 2;
-const INITIAL_RETRY_DELAY_MS = 100;
 
 export interface TidalRequestContext {
 	/** Injected fetch (e.g. SvelteKit's `event.fetch`); defaults to global `fetch`. */
@@ -135,10 +133,6 @@ function isSafeRead(init: RequestInit): boolean {
 	return method === 'GET' || method === 'HEAD';
 }
 
-function wait(ms: number): Promise<void> {
-	return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 /**
  * Perform an authenticated TIDAL API request. Injects the bearer token, sends
  * the JSON:API `Accept` header, retries transient failures for safe reads, and
@@ -162,28 +156,11 @@ export async function tidalFetch(
 			}
 		});
 
-	const sendWithTransientRetry = async (token: string): Promise<Response> => {
-		const retries = isSafeRead(init) ? MAX_TRANSIENT_READ_RETRIES : 0;
-
-		for (let attempt = 0; ; attempt += 1) {
-			try {
-				const response = await send(token);
-				if (!TRANSIENT_READ_STATUSES.has(response.status) || attempt === retries) {
-					return response;
-				}
-			} catch (reason) {
-				if (
-					attempt === retries ||
-					init.signal?.aborted ||
-					(reason instanceof DOMException && reason.name === 'AbortError')
-				) {
-					throw reason;
-				}
-			}
-
-			await wait(INITIAL_RETRY_DELAY_MS * 2 ** attempt);
-		}
-	};
+	const sendWithTransientRetry = (token: string): Promise<Response> =>
+		withTransientRetry(() => send(token), {
+			retries: isSafeRead(init) ? MAX_TRANSIENT_READ_RETRIES : 0,
+			signal: init.signal
+		});
 
 	let response = await sendWithTransientRetry(await getAccessToken(ctx));
 	if (response.status === 401) {

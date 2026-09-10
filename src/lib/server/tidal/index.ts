@@ -74,6 +74,18 @@ export {
 	type ResolvedStreamInfo,
 	type PlaybackDelivery
 } from './stream';
+export {
+	withTransientRetry,
+	TRANSIENT_READ_STATUSES,
+	MAX_TRANSIENT_READ_RETRIES,
+	type TransientRetryOptions
+} from './retry';
+export {
+	resolveTrackStreamCached,
+	invalidateStreamCache,
+	__resetStreamCache,
+	type ResolveTrackStreamCachedOptions
+} from './stream-cache';
 export { streamSegmentedAudio, __resetSegmentCache } from './segmented';
 export { getTrackCoverId, tidalArtworkUrl, resetArtworkCache } from './artwork';
 export { getRequestedStreamQuality, type StreamingSettingsReader } from './playback';

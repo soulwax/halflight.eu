@@ -85,6 +85,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reworked the Listening Room’s desktop hierarchy around a compact, recognisable docked player,
   quieter rail and header controls, and denser music-first home and track-card compositions.
 
+### Changed
+
+- Manifest resolution for playback is now memoised. `/api/tracks/[id]/audio` re-ran the full
+  resolve on every request — so once per seek — and `/api/tracks/[id]/stream` ran it again
+  independently, meaning pressing play resolved the same manifest twice. A two-tier cache
+  (process-local in front of the shared Redis cache) with a single-flight guard collapses the
+  concurrent pair into one upstream call and serves a seek burst without touching TIDAL. Entries
+  live 120 seconds, are dropped on disconnect, and are sealed with the same AES-256-GCM key used
+  for the token rows, because a manifest holds signed CDN URLs. Both tiers fail open.
+- `/api/tracks/[id]/audio` no longer calls `getConnectionStatus()`. It cost two Postgres reads and
+  two AES-GCM decrypts per request to derive errors the route already produces from the resolve.
+- The owner's streaming settings are memoised for 30 seconds instead of being read from Postgres
+  on every app-shell render and every audio request; saving preferences refreshes it immediately.
+- `playbackinfopostpaywall`, the CDN media proxy, and each DASH fragment fetch now retry transient
+  5xx/408 responses with exponential backoff, matching what the JSON:API surface already did. One
+  transient failure previously killed a play outright — and for HiRes discarded an
+  already-mostly-downloaded concatenation.
+
 ### Fixed
 
 - Dragging the desktop seek bar now moves the audio element once, on release, instead of on every

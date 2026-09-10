@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
 	getConnectionStatus: vi.fn(),
-	resolveTrackStream: vi.fn(),
+	resolveTrackStreamCached: vi.fn(),
 	getStreamingSettings: vi.fn(),
 	getRequestedStreamQuality: vi.fn(),
 	describePlaybackDelivery: vi.fn()
@@ -15,7 +15,7 @@ vi.mock('#lib/server/streaming-settings', () => ({
 vi.mock('#lib/server/tidal', async (importOriginal) => ({
 	...((await importOriginal()) as object),
 	getConnectionStatus: mocks.getConnectionStatus,
-	resolveTrackStream: mocks.resolveTrackStream,
+	resolveTrackStreamCached: mocks.resolveTrackStreamCached,
 	getRequestedStreamQuality: mocks.getRequestedStreamQuality,
 	describePlaybackDelivery: mocks.describePlaybackDelivery
 }));
@@ -41,7 +41,7 @@ function event(
 describe('GET /api/tracks/[id]/stream', () => {
 	beforeEach(() => {
 		mocks.getConnectionStatus.mockReset();
-		mocks.resolveTrackStream.mockReset();
+		mocks.resolveTrackStreamCached.mockReset();
 		mocks.getStreamingSettings.mockReset();
 		mocks.getRequestedStreamQuality.mockReset();
 		mocks.describePlaybackDelivery.mockReset();
@@ -54,7 +54,7 @@ describe('GET /api/tracks/[id]/stream', () => {
 			lossless: true,
 			nominalBitrateKbps: null
 		});
-		mocks.resolveTrackStream.mockResolvedValue({
+		mocks.resolveTrackStreamCached.mockResolvedValue({
 			trackId: 123,
 			streamUrl: 'https://cdn.example.test/opaque',
 			urls: ['https://cdn.example.test/opaque'],
@@ -88,14 +88,14 @@ describe('GET /api/tracks/[id]/stream', () => {
 		});
 		expect(body).not.toHaveProperty('streamUrl');
 		expect(body).not.toHaveProperty('urls');
-		expect(mocks.resolveTrackStream).toHaveBeenCalledWith(
+		expect(mocks.resolveTrackStreamCached).toHaveBeenCalledWith(
 			'123',
 			expect.objectContaining({ quality: 'LOSSLESS' })
 		);
 	});
 
 	it('reports a removed catalogue asset as unavailable rather than a Link failure', async () => {
-		mocks.resolveTrackStream.mockRejectedValueOnce(
+		mocks.resolveTrackStreamCached.mockRejectedValueOnce(
 			new TidalApiError(401, 'Asset is not ready for playback', null, '/v1/tracks/123/playbackinfo')
 		);
 

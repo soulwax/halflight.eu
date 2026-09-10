@@ -1,4 +1,5 @@
 import { TidalError } from './errors';
+import { withTransientRetry } from './retry';
 
 /**
  * Segmented (MPEG-DASH) audio delivery.
@@ -84,7 +85,11 @@ async function downloadAndConcat(
 
 	async function worker(): Promise<void> {
 		for (let i = cursor++; i < urls.length; i = cursor++) {
-			const res = await fetchImpl(urls[i], { headers: upstreamHeaders, redirect: 'follow' });
+			// Retry per fragment: one transient 5xx would otherwise discard the whole
+			// already-mostly-downloaded track.
+			const res = await withTransientRetry(() =>
+				fetchImpl(urls[i], { headers: upstreamHeaders, redirect: 'follow' })
+			);
 			if (!res.ok && res.status !== 206) throw new SegmentFetchError(res.status, i);
 			parts[i] = new Uint8Array(await res.arrayBuffer());
 		}
@@ -149,6 +154,8 @@ export interface StreamSegmentedOptions {
 	rangeHeader?: string | null;
 	/** Headers to send to the CDN for each segment (User-Agent etc.). */
 	upstreamHeaders?: HeadersInit;
+	/** Caching/validator headers to merge into the response (`Cache-Control`, `ETag`). */
+	responseHeaders?: HeadersInit;
 }
 
 /**
@@ -164,13 +171,11 @@ export async function streamSegmentedAudio(options: StreamSegmentedOptions): Pro
 	}
 
 	const size = bytes.byteLength;
-	const headers = new Headers({
-		'Content-Type': options.mimeType,
-		'Accept-Ranges': 'bytes',
-		'Cache-Control': 'no-store',
-		'X-Content-Type-Options': 'nosniff',
-		Vary: 'Range'
-	});
+	const headers = new Headers(options.responseHeaders);
+	headers.set('Content-Type', options.mimeType);
+	headers.set('Accept-Ranges', 'bytes');
+	headers.set('X-Content-Type-Options', 'nosniff');
+	headers.set('Vary', 'Range');
 
 	if (options.rangeHeader) {
 		const range = parseByteRange(options.rangeHeader, size);
@@ -178,10 +183,12 @@ export async function streamSegmentedAudio(options: StreamSegmentedOptions): Pro
 			headers.set('Content-Range', `bytes */${size}`);
 			return new Response(null, { status: 416, headers });
 		}
-		const slice = bytes.slice(range.start, range.end + 1);
+		const length = range.end - range.start + 1;
 		headers.set('Content-Range', `bytes ${range.start}-${range.end}/${size}`);
-		headers.set('Content-Length', String(slice.byteLength));
-		return new Response(slice, { status: 206, headers });
+		headers.set('Content-Length', String(length));
+		// A view, not `.slice()` — the latter copies the whole range on every
+		// request, and the browser issues many of them across a track.
+		return new Response(new Uint8Array(bytes, range.start, length), { status: 206, headers });
 	}
 
 	headers.set('Content-Length', String(size));

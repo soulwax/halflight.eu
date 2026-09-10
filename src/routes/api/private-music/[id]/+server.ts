@@ -3,6 +3,7 @@ import { log } from '#lib/server/log';
 import { dbPrivateMusicStore } from '#lib/server/private-music';
 import { privateMusicBucket } from '#lib/server/private-music-bucket';
 import { parseByteRange } from '#lib/server/tidal/segmented';
+import { entityTag, matchesEntityTag, rangeIsUsable } from '#lib/server/http-range';
 
 function requireOwner(event: Parameters<RequestHandler>[0]): string {
 	if (!event.locals.user || !event.locals.isAdministrator) error(401, 'Unauthorized');
@@ -17,17 +18,8 @@ interface DownloadFile {
 	createdAt: string;
 }
 
-function entityTag(file: DownloadFile): string {
-	return `"${file.id}-${file.sizeBytes}-${Date.parse(file.createdAt)}"`;
-}
-
-function matchesEntityTag(header: string | null, tag: string): boolean {
-	return Boolean(
-		header
-			?.split(',')
-			.map((value) => value.trim())
-			.some((value) => value === '*' || value === tag)
-	);
+function fileTag(file: DownloadFile): string {
+	return entityTag(file.id, file.sizeBytes, Date.parse(file.createdAt));
 }
 
 function responseHeaders(file: DownloadFile, range?: { start: number; end: number }): Headers {
@@ -38,7 +30,7 @@ function responseHeaders(file: DownloadFile, range?: { start: number; end: numbe
 		'Accept-Ranges': 'bytes',
 		'X-Content-Type-Options': 'nosniff',
 		Vary: 'Range',
-		ETag: entityTag(file),
+		ETag: fileTag(file),
 		'Last-Modified': new Date(file.createdAt).toUTCString()
 	});
 
@@ -56,15 +48,12 @@ export const GET: RequestHandler = async (event) => {
 	const userId = requireOwner(event);
 	const file = await dbPrivateMusicStore.get(userId, event.params.id ?? '');
 	if (!file) error(404, 'Private music file not found');
-	const tag = entityTag(file);
+	const tag = fileTag(file);
 	if (matchesEntityTag(event.request.headers.get('if-none-match'), tag)) {
 		return new Response(null, { status: 304, headers: responseHeaders(file) });
 	}
 	const rangeHeader = event.request.headers.get('range');
-	const canUseRange = Boolean(
-		rangeHeader &&
-		(!event.request.headers.has('if-range') || event.request.headers.get('if-range') === tag)
-	);
+	const canUseRange = rangeIsUsable(event.request, tag);
 	const range = canUseRange ? parseByteRange(rangeHeader, file.sizeBytes) : null;
 	if (canUseRange && !range) {
 		return new Response(null, {
@@ -97,7 +86,7 @@ export const HEAD: RequestHandler = async (event) => {
 	const userId = requireOwner(event);
 	const file = await dbPrivateMusicStore.get(userId, event.params.id ?? '');
 	if (!file) error(404, 'Private music file not found');
-	if (matchesEntityTag(event.request.headers.get('if-none-match'), entityTag(file))) {
+	if (matchesEntityTag(event.request.headers.get('if-none-match'), fileTag(file))) {
 		return new Response(null, { status: 304, headers: responseHeaders(file) });
 	}
 	return new Response(null, { headers: responseHeaders(file) });
