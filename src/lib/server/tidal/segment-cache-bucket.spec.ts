@@ -84,8 +84,27 @@ describe('tidal segment cache bucket', () => {
 		expect(send).toHaveBeenCalledWith(
 			expect.objectContaining({
 				input: expect.objectContaining({ Bucket: 'tidal-cache', Key: expect.any(String) })
-			})
+			}),
+			// The probe is awaited on the playback path, so it carries its own
+			// deadline rather than inheriting the SDK's unbounded default.
+			expect.objectContaining({ abortSignal: expect.any(AbortSignal) })
 		);
+	});
+
+	it('does not put a deadline on the streaming body read', async () => {
+		// `get` streams a whole track; an operation-wide signal would abort it
+		// mid-download, so only `head` carries one.
+		const send = vi.fn().mockResolvedValue({
+			Body: { transformToWebStream: () => new ReadableStream<Uint8Array>() },
+			ContentLength: 12,
+			ContentType: 'audio/mp4',
+			Metadata: { 'expires-at': String(Date.now() + 60_000), 'size-bytes': '12' }
+		});
+		const cache = configuredCache({ send });
+
+		expect(await cache.get(cacheKey)).not.toBeNull();
+		expect(send).toHaveBeenCalledTimes(1);
+		expect(send.mock.calls[0][1]).toBeUndefined();
 	});
 
 	it('treats expired or unavailable objects as cache misses', async () => {

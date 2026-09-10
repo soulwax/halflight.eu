@@ -121,6 +121,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The durable HiRes cache's object-store client now bounds every call: a 2s connect timeout, a
+  15s socket-inactivity timeout, one retry instead of the SDK's three, and a 2s deadline on the
+  metadata probe. `head` and `get` are awaited on the audio path, so with the SDK defaults an
+  unreachable store could stall playback indefinitely rather than degrading to a cache miss —
+  the same discipline `#lib/server/cache` already applied to Redis. The streaming `get` body
+  deliberately carries no operation-wide deadline, which would abort a track mid-download.
+
 - A TIDAL BTS manifest that declares any encryption other than `NONE` is now refused with a clear
   error naming the track. Syn proxies CDN bytes verbatim and has no content-key handling, so such
   a stream would previously have been served as plausible-sized, unplayable audio — surfacing as

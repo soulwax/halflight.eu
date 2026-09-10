@@ -21,8 +21,25 @@ const MAX_OBJECT_BYTES = 128 * 1024 * 1024;
 const CACHE_KEY = /^[a-z0-9:_-]{1,160}$/i;
 const SIZE_METADATA_KEY = 'size-bytes';
 
+/**
+ * Bounds on every call to the object store.
+ *
+ * `head` and `get` are awaited on the `/api/tracks/[id]/audio` path, so an
+ * unreachable or slow store must degrade to a cache miss rather than stall
+ * playback. The SDK defaults are three attempts with no connect or socket
+ * bound, which can hang a request indefinitely. `#lib/server/cache` (Redis)
+ * already applies the same discipline for the same reason.
+ */
+const CONNECT_TIMEOUT_MS = 2_000;
+/** Socket inactivity, not total duration — `get` streams a whole track body. */
+const SOCKET_TIMEOUT_MS = 15_000;
+/** One retry rather than the SDK's three: a cache miss is always a safe answer. */
+const MAX_ATTEMPTS = 2;
+/** `head` is a small metadata probe on the hot path, so bound it harder still. */
+const HEAD_TIMEOUT_MS = 2_000;
+
 interface BucketClient {
-	send(command: unknown): Promise<unknown>;
+	send(command: unknown, options?: { abortSignal?: AbortSignal }): Promise<unknown>;
 }
 
 interface ObjectBody {
@@ -169,6 +186,11 @@ export function createTidalSegmentCache(
 			region: config.region || 'auto',
 			endpoint: config.endpoint,
 			forcePathStyle: true,
+			maxAttempts: MAX_ATTEMPTS,
+			requestHandler: {
+				connectionTimeout: CONNECT_TIMEOUT_MS,
+				requestTimeout: SOCKET_TIMEOUT_MS
+			},
 			credentials: { accessKeyId: config.accessKeyId, secretAccessKey: config.secretAccessKey }
 		}) as unknown as BucketClient);
 
@@ -179,7 +201,10 @@ export function createTidalSegmentCache(
 			if (!key) return null;
 			try {
 				const response = (await bucketClient.send(
-					new HeadObjectCommand({ Bucket: config.bucket, Key: key })
+					new HeadObjectCommand({ Bucket: config.bucket, Key: key }),
+					// Deliberately not applied to `get`: that response streams a whole
+					// track, and this signal would abort the body mid-download.
+					{ abortSignal: AbortSignal.timeout(HEAD_TIMEOUT_MS) }
 				)) as {
 					ContentLength?: number;
 					ContentType?: string;
