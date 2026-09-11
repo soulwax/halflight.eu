@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Halflight Now can now make a concise, reviewable generated set from Home: choose a short length,
+  familiarity, and (when available) one top artist anchor, then play, save, or export the provisional
+  result without entering the desktop Listening Room.
+
 - Expired HiRes cache objects are now reclaimed by a sweeper. The cache bucket supports neither
   `ListObjects` nor lifecycle rules — verified against the live provider, which answers
   `NoSuchKey` to both — so nothing could enumerate it to find expired objects, and the cache's own

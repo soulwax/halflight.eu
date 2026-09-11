@@ -13,6 +13,7 @@ export const MOBILE_ROOT_PATHS = [
 	'/home',
 	'/search',
 	'/library',
+	'/generate',
 	'/settings',
 	'/offline',
 	'/albums',

@@ -7,6 +7,7 @@ describe('isMobileRoute', () => {
 		expect(isMobileRoute('/home')).toBe(true);
 		expect(isMobileRoute('/search')).toBe(true);
 		expect(isMobileRoute('/library')).toBe(true);
+		expect(isMobileRoute('/generate')).toBe(true);
 		expect(isMobileRoute('/settings')).toBe(true);
 		expect(isMobileRoute('/offline')).toBe(true);
 	});
