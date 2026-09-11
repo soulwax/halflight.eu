@@ -97,7 +97,7 @@
 					id="about-title"
 					class="mb-3 text-xs font-bold tracking-wider text-[var(--accent-gold)] uppercase"
 				>
-					Track Metadata
+					{m.track_metadata_title()}
 				</h2>
 				<dl class="metadata">
 					{#if data.track.artists.length}
@@ -127,13 +127,13 @@
 
 					{#if data.track.copyright}
 						<div>
-							<dt>Copyright</dt>
+							<dt>{m.album_copyright()}</dt>
 							<dd>{data.track.copyright}</dd>
 						</div>
 					{/if}
 					{#if data.track.isrc}
 						<div>
-							<dt>ISRC</dt>
+							<dt>{m.track_isrc()}</dt>
 							<dd class="font-mono">{data.track.isrc}</dd>
 						</div>
 					{/if}
@@ -143,38 +143,40 @@
 			<section class="facts" aria-label={m.track_details_label()}>
 				{#if data.track.duration}
 					<div>
-						<span>Duration</span>
+						<span>{m.album_duration()}</span>
 						<strong class="font-mono">{formatDuration(data.track.duration)}</strong>
 					</div>
 				{/if}
 				{#if data.track.trackNumber}
 					<div>
-						<span>Track</span>
+						<span>{m.track_number_label()}</span>
 						<strong class="font-mono">{data.track.trackNumber}</strong>
 					</div>
 				{/if}
 				{#if data.track.volumeNumber}
 					<div>
-						<span>Disc</span>
+						<span>{m.track_disc_label()}</span>
 						<strong class="font-mono">{data.track.volumeNumber}</strong>
 					</div>
 				{/if}
 				{#if data.track.audioQuality}
 					<div>
-						<span>Quality</span>
+						<span>{m.track_quality_label()}</span>
 						<Badge variant="quality" text={data.track.audioQuality} />
 					</div>
 				{/if}
 				{#if data.track.popularity !== undefined}
 					<div>
-						<span>Popularity</span>
+						<span>{m.track_popularity_label()}</span>
 						<strong class="font-mono">{data.track.popularity}%</strong>
 					</div>
 				{/if}
 				{#if data.track.explicit !== undefined}
 					<div>
-						<span>Content</span>
-						<strong>{data.track.explicit ? 'Explicit [E]' : 'Clean'}</strong>
+						<span>{m.track_content_label()}</span>
+						<strong
+							>{data.track.explicit ? m.track_badge_explicit() : m.track_content_clean()}</strong
+						>
 					</div>
 				{/if}
 			</section>

@@ -164,11 +164,11 @@
 		{#if isEditing}
 			<div class="edit-panel">
 				<div class="edit-field">
-					<label for="edit-title">Title</label>
+					<label for="edit-title">{m.track_col_title()}</label>
 					<input id="edit-title" class="edit-input" type="text" bind:value={editTitle} />
 				</div>
 				<div class="edit-field">
-					<label for="edit-desc">Description</label>
+					<label for="edit-desc">{m.playlist_field_description()}</label>
 					<textarea id="edit-desc" class="edit-textarea" rows="2" bind:value={editDescription}
 					></textarea>
 				</div>

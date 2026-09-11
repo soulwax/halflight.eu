@@ -1,4 +1,7 @@
 <script lang="ts">
+	import Badge from '#lib/components/ui/Badge.svelte';
+	import Button from '#lib/components/ui/Button.svelte';
+	import { m } from '#lib/paraglide/messages';
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
 	import {
@@ -13,8 +16,6 @@
 		Trash2,
 		XCircle
 	} from '@lucide/svelte';
-	import Button from '#lib/components/ui/Button.svelte';
-	import Badge from '#lib/components/ui/Badge.svelte';
 
 	import type { ActionData, PageData } from './$types';
 
@@ -24,23 +25,22 @@
 </script>
 
 <svelte:head>
-	<title>Taste Profile — Halflight</title>
+	<title>{m.taste_profile_title()} — {m.brand_name()}</title>
 </svelte:head>
 
 <section class="max-w-4xl space-y-8" aria-labelledby="taste-profile-title">
 	<header class="border-b-2 border-[var(--border-subtle)] pb-6">
 		<p class="font-mono text-xs font-bold tracking-[0.14em] text-[var(--text-muted)] uppercase">
-			HALFLIGHT // TASTE ENGINE
+			{m.taste_profile_eyebrow()}
 		</p>
 		<h1
 			id="taste-profile-title"
 			class="mt-1 text-3xl font-extrabold tracking-tight uppercase sm:text-4xl"
 		>
-			Taste Profile
+			{m.taste_profile_title()}
 		</h1>
 		<p class="mt-2 text-sm text-[var(--text-muted)]">
-			Derived weights and identifiers that anchor your listening room. Completely deterministic,
-			zero external AI, never shared.
+			{m.taste_profile_description()}
 		</p>
 	</header>
 
@@ -74,12 +74,14 @@
 			<div class="flex items-center gap-2">
 				<Sparkles size={20} class="text-[var(--accent-gold)]" />
 				<h2 id="plain-language-heading" class="text-lg font-bold tracking-tight">
-					How the Engine Reads You
+					{m.taste_profile_summary_title()}
 				</h2>
 			</div>
 			<Badge variant={data.sentences.confidenceLevel === 'high' ? 'accent' : 'tag'}>
-				{data.sentences.confidenceLevel.toUpperCase()} CONFIDENCE ({data.sentences
-					.confidenceScore}%)
+				{m.taste_profile_confidence({
+					level: data.sentences.confidenceLevel.toUpperCase(),
+					score: data.sentences.confidenceScore
+				})}
 			</Badge>
 		</div>
 
@@ -116,7 +118,7 @@
 					disabled={isRebuilding || !data.connection.connected}
 				>
 					<RefreshCw size={14} class={`mr-1.5 ${isRebuilding ? 'animate-spin' : ''}`} />
-					{isRebuilding ? 'Refreshing from TIDAL…' : 'Rebuild Profile from TIDAL'}
+					{isRebuilding ? m.taste_profile_rebuilding() : m.taste_profile_rebuild()}
 				</Button>
 			</form>
 
@@ -126,7 +128,7 @@
 				class="inline-flex items-center gap-1.5 border border-[var(--border-subtle)] bg-[var(--surface-canvas)] px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)] hover:border-[var(--border-strong)]"
 			>
 				<Download size={13} />
-				Export JSON
+				{m.taste_profile_export()}
 			</a>
 		</div>
 	</section>
@@ -135,10 +137,11 @@
 	<section class="space-y-4" aria-labelledby="anchor-artists-heading">
 		<div class="flex items-center justify-between">
 			<div>
-				<h2 id="anchor-artists-heading" class="text-xl font-bold tracking-tight">Anchor Artists</h2>
+				<h2 id="anchor-artists-heading" class="text-xl font-bold tracking-tight">
+					{m.taste_profile_anchors_title()}
+				</h2>
 				<p class="text-xs text-[var(--text-muted)]">
-					Explicitly followed artists and recurrent playlist anchors. You can pin, dampen, or
-					exclude any artist.
+					{m.taste_profile_anchors_description()}
 				</p>
 			</div>
 		</div>
@@ -147,7 +150,7 @@
 			<div
 				class="border border-dashed border-[var(--border-subtle)] p-6 text-center text-sm text-[var(--text-muted)]"
 			>
-				No anchor artists found in your profile. Rebuild your profile while connected to TIDAL.
+				{m.taste_profile_anchors_empty()}
 			</div>
 		{:else}
 			<div
@@ -162,13 +165,13 @@
 									<span
 										class="rounded bg-[var(--accent-gold)] px-1.5 py-0.5 text-[0.65rem] font-bold text-black uppercase"
 									>
-										Pinned
+										{m.taste_profile_pinned()}
 									</span>
 								{:else if artist.status === 'dampened'}
 									<span
 										class="rounded border border-[var(--border-subtle)] bg-[var(--surface-canvas)] px-1.5 py-0.5 text-[0.65rem] font-semibold text-[var(--text-muted)] uppercase"
 									>
-										Dampened
+										{m.taste_profile_dampened()}
 									</span>
 								{/if}
 							</div>
@@ -180,7 +183,7 @@
 									></div>
 								</div>
 								<span class="font-mono text-[0.7rem] text-[var(--text-muted)]">
-									{Math.round(artist.weight * 100)}% affinity
+									{m.taste_profile_affinity({ percentage: Math.round(artist.weight * 100) })}
 								</span>
 							</div>
 						</div>
@@ -194,10 +197,10 @@
 										type="submit"
 										variant="secondary"
 										size="sm"
-										title="Pin artist at maximum weight"
+										title={m.taste_profile_pin_title()}
 									>
 										<Pin size={12} class="mr-1" />
-										Pin
+										{m.taste_profile_pin()}
 									</Button>
 								</form>
 							{:else}
@@ -208,9 +211,9 @@
 										type="submit"
 										variant="secondary"
 										size="sm"
-										title="Reset to natural weight"
+										title={m.taste_profile_unpin_title()}
 									>
-										Unpin
+										{m.taste_profile_unpin()}
 									</Button>
 								</form>
 							{/if}
@@ -223,9 +226,9 @@
 										type="submit"
 										variant="secondary"
 										size="sm"
-										title="Dampen artist influence (25%)"
+										title={m.taste_profile_dampen_title()}
 									>
-										Dampen
+										{m.taste_profile_dampen()}
 									</Button>
 								</form>
 							{:else}
@@ -236,9 +239,9 @@
 										type="submit"
 										variant="secondary"
 										size="sm"
-										title="Restore natural weight"
+										title={m.taste_profile_undampen_title()}
 									>
-										Undampen
+										{m.taste_profile_undampen()}
 									</Button>
 								</form>
 							{/if}
@@ -248,10 +251,10 @@
 								<button
 									type="submit"
 									class="inline-flex items-center gap-1 border border-[var(--border-subtle)] px-2.5 py-1 text-xs font-semibold text-[var(--danger)] hover:border-[var(--danger)]"
-									title="Completely exclude this artist from future generations"
+									title={m.taste_profile_exclude_title()}
 								>
 									<XCircle size={12} />
-									Exclude
+									{m.taste_profile_exclude()}
 								</button>
 							</form>
 						</div>
@@ -265,7 +268,7 @@
 	{#if data.excludedArtists.length > 0}
 		<section class="space-y-3" aria-labelledby="exclusions-heading">
 			<h2 id="exclusions-heading" class="text-base font-bold tracking-tight text-[var(--danger)]">
-				Excluded Artists ({data.excludedArtists.length})
+				{m.taste_profile_excluded_title({ count: data.excludedArtists.length })}
 			</h2>
 			<div class="flex flex-wrap gap-2">
 				{#each data.excludedArtists as artist (artist.id)}
@@ -274,7 +277,7 @@
 						<button
 							type="submit"
 							class="group inline-flex items-center gap-1.5 rounded border border-[var(--border-subtle)] bg-[var(--surface-canvas)] px-2.5 py-1 text-xs text-[var(--text-primary)] hover:border-[var(--accent-gold)]"
-							title="Click to restore this artist"
+							title={m.taste_profile_restore_title()}
 						>
 							<span>{artist.name}</span>
 							<RotateCcw
@@ -291,9 +294,11 @@
 	<!-- Era Preferences Section -->
 	<section class="space-y-4" aria-labelledby="eras-heading">
 		<div>
-			<h2 id="eras-heading" class="text-xl font-bold tracking-tight">Decade Distribution</h2>
+			<h2 id="eras-heading" class="text-xl font-bold tracking-tight">
+				{m.taste_profile_eras_title()}
+			</h2>
 			<p class="text-xs text-[var(--text-muted)]">
-				Derived from release years across your collection and playlist history.
+				{m.taste_profile_eras_description()}
 			</p>
 		</div>
 
@@ -301,7 +306,7 @@
 			<div
 				class="border border-dashed border-[var(--border-subtle)] p-6 text-center text-sm text-[var(--text-muted)]"
 			>
-				No era history detected yet.
+				{m.taste_profile_eras_empty()}
 			</div>
 		{:else}
 			<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
@@ -327,11 +332,12 @@
 	>
 		<div class="flex items-center gap-2">
 			<Info size={18} class="text-[var(--text-muted)]" />
-			<h2 id="disposability-heading" class="text-base font-bold">Data Disposability & Privacy</h2>
+			<h2 id="disposability-heading" class="text-base font-bold">
+				{m.taste_profile_privacy_title()}
+			</h2>
 		</div>
 		<p class="text-xs leading-relaxed text-[var(--text-muted)]">
-			Halflight never mirrors your TIDAL catalogue. Your taste profile stores only numerical weights
-			and TIDAL identifiers. It can be wiped or reset at any time with immediate effect.
+			{m.taste_profile_privacy_description()}
 		</p>
 
 		<div class="flex flex-wrap items-center gap-3 pt-2">
@@ -340,14 +346,14 @@
 				action="?/reset"
 				use:enhance
 				onsubmit={(e) => {
-					if (!confirm('Reset all learned weights and overrides to blank defaults?')) {
+					if (!confirm(m.taste_profile_reset_confirmation())) {
 						e.preventDefault();
 					}
 				}}
 			>
 				<Button type="submit" variant="secondary" size="sm">
 					<RotateCcw size={13} class="mr-1.5" />
-					Reset to Blank Defaults
+					{m.taste_profile_reset()}
 				</Button>
 			</form>
 
@@ -356,7 +362,7 @@
 				action="?/delete"
 				use:enhance
 				onsubmit={(e) => {
-					if (!confirm('Permanently delete your taste profile record from Halflight database?')) {
+					if (!confirm(m.taste_profile_delete_confirmation())) {
 						e.preventDefault();
 					}
 				}}
@@ -366,7 +372,7 @@
 					class="inline-flex items-center gap-1.5 border border-[var(--danger)] px-3 py-1.5 text-xs font-semibold text-[var(--danger)] hover:bg-[var(--danger-subtle)]"
 				>
 					<Trash2 size={13} />
-					Delete Profile Row
+					{m.taste_profile_delete()}
 				</button>
 			</form>
 		</div>

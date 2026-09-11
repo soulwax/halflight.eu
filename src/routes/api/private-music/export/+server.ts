@@ -1,7 +1,7 @@
-import { error, json, type RequestHandler } from '@sveltejs/kit';
 import { exportBucket, type ExportFormat } from '#lib/server/export-bucket';
 import { log } from '#lib/server/log';
 import { dbPrivateMusicStore, type PrivateMusicFile } from '#lib/server/private-music';
+import { error, json, type RequestHandler } from '@sveltejs/kit';
 
 interface PrivateMusicExport {
 	content: string;
@@ -16,7 +16,7 @@ function requireOwner(event: Parameters<RequestHandler>[0]): string {
 }
 
 function buildM3u(files: PrivateMusicFile[], origin: string): string {
-	const lines = ['#EXTM3U', '#PLAYLIST:Syn private music'];
+	const lines = ['#EXTM3U', '#PLAYLIST:Halflight private music'];
 	for (const file of files) {
 		lines.push(`#EXTINF:-1,${file.fileName}`);
 		lines.push(`${origin}/api/private-music/${encodeURIComponent(file.id)}`);

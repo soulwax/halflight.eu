@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '#lib/paraglide/messages';
 	import { resolve } from '$app/paths';
 	import { Disc, ListMusic, Sparkles, User } from '@lucide/svelte';
 	import type { AlbumSummary, ArtistSummary, PlaylistSummary } from '#lib/tidal/models';
@@ -88,9 +89,9 @@
 		{#if artistsString}
 			<span class="media-card-subtitle">{artistsString}</span>
 		{:else if itemKind === 'playlist'}
-			<span class="media-card-subtitle">Playlist</span>
+			<span class="media-card-subtitle">{m.playlist_label()}</span>
 		{:else if itemKind === 'artist'}
-			<span class="media-card-subtitle">Artist</span>
+			<span class="media-card-subtitle">{m.artist_label()}</span>
 		{/if}
 	</div>
 </a>

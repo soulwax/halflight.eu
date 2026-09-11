@@ -171,7 +171,7 @@
 			{#if isLoading}
 				<div class="loading-wrap">
 					<Loader2 size={24} class="animate-spin text-[var(--action)]" />
-					<span>Loading TIDAL playlists…</span>
+					<span>{m.playlist_import_loading()}</span>
 				</div>
 			{:else if playlists.length === 0}
 				<div class="empty-wrap">

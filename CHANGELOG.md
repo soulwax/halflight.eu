@@ -7,7 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-11
+
 ### Added
+
+- A branded, localised error page (`src/routes/+error.svelte`). Every 404 and 500 previously
+  rendered SvelteKit's unbranded default.
+- `src/lib/i18n-coverage.spec.ts` fails the build when a user-facing string is added to a product
+  surface without going through the catalogue, and when the two catalogues fall out of key parity.
+  The developer-only diagnostics area is allowlisted per the product boundary that lists it
+  separately from English/German UI parity.
 
 - Halflight generation now reports truthful finding, matching, and sequencing stages on both the
   Listening Room and Halflight Now. The enhanced forms stream only safe counts, can be cancelled,
@@ -83,6 +92,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Halflight Now now exposes provenance and actual playback quality, with focused lyrics and contributor-credit views.
 
 ### Changed
+
+- Every user-facing string on the product surfaces now goes through the message catalogue in both
+  English and German. The catalogues were already at full key parity — the gap was copy written
+  straight into markup, which produced no missing-key count precisely because nothing called `m.*`
+  for it. 39 such strings across `/app/generate`, `/app/settings/taste`, `/app/tracks/[id]`,
+  `/app/playlists/[id]`, `MediaCard`, and `PlaylistImportModal` are now localised.
+- `/app/generate` lost its operational jargon along the way: "Session Intent Knobs", "graph
+  neighbourhood", "deterministic", and "Whole Taste Profile (All Anchors)" are gone in favour of the
+  plain wording the mobile twin already used. The two pages now share `generate_*` keys rather than
+  keeping parallel `mobile_generate_*` copies, so they cannot drift apart.
+- `/api/private-music/export` writes `#PLAYLIST:Halflight private music` instead of the old project
+  name into every exported `.m3u`.
 
 - The album, artist, track, and playlist page headers now show a plain type label ("Album", "Artist", …) above the title instead of the `HALFLIGHT // X SPECIFICATION` developer eyebrow.
 - The Listening Room header's inner elements now share one control metric — the brand mark, search field, and every icon button are the same height, radius, border, and hover treatment — and the search field grows to a 34rem cap instead of a fixed narrow width.

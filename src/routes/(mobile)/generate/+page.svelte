@@ -156,8 +156,8 @@
 <section class="mobile-generate" aria-labelledby="mobile-generate-title">
 	<MobileScreenHeader
 		headingId="mobile-generate-title"
-		heading={m.mobile_generate_title()}
-		lead={m.mobile_generate_description()}
+		heading={m.generate_title()}
+		lead={m.generate_description()}
 		kicker={m.brand_name()}
 	/>
 
@@ -182,7 +182,7 @@
 		class="mobile-generate-form"
 	>
 		<label>
-			<span>{m.mobile_generate_length()}</span>
+			<span>{m.generate_length()}</span>
 			<select name="targetCount" bind:value={targetCount}>
 				<option value={15}>{m.mobile_generate_length_15()}</option>
 				<option value={20}>{m.mobile_generate_length_20()}</option>
@@ -191,7 +191,7 @@
 		</label>
 
 		<label>
-			<span>{m.mobile_generate_familiarity()}</span>
+			<span>{m.generate_familiarity()}</span>
 			<input
 				name="familiarity"
 				type="range"
@@ -199,19 +199,19 @@
 				max="100"
 				step="25"
 				bind:value={familiarity}
-				aria-valuetext={`${familiarity}% ${m.mobile_generate_familiar()}`}
+				aria-valuetext={`${familiarity}% ${m.generate_more_familiar()}`}
 			/>
 			<span class="mobile-generate-range-labels">
-				{m.mobile_generate_discovery()} <b>{familiarity}%</b>
-				{m.mobile_generate_familiar()}
+				{m.generate_more_discovery()} <b>{familiarity}%</b>
+				{m.generate_more_familiar()}
 			</span>
 		</label>
 
 		{#if data.seedArtists.length > 0}
 			<label>
-				<span>{m.mobile_generate_seed()}</span>
+				<span>{m.generate_seed()}</span>
 				<select name="seedArtistId" bind:value={seedArtistId}>
-					<option value="">{m.mobile_generate_profile_seed()}</option>
+					<option value="">{m.generate_profile_seed()}</option>
 					{#each data.seedArtists as artist (artist.id)}
 						<option value={artist.id}>{artist.name}</option>
 					{/each}
@@ -227,7 +227,7 @@
 				disabled={isGenerating || !data.connection.connected}
 			>
 				<Sparkles size={17} class={isGenerating ? 'animate-spin' : ''} />
-				{isGenerating ? m.mobile_generate_generating() : m.mobile_generate_submit()}
+				{isGenerating ? m.generate_generating() : m.generate_submit()}
 			</Button>
 			{#if isGenerating}
 				<Button type="button" variant="secondary" size="md" onclick={cancelGeneration}>

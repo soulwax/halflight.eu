@@ -305,7 +305,7 @@ record implementation milestones; the acceptance gaps below still need delivery 
 | Transactional mail  | `nodemailer` and `src/lib/server/email.ts` submit verification email over SMTP                                                                             | Verify deployment reachability, delivery, localisation, and safe failures                                                                 |
 | Object storage      | Private music and playlist exports use S3-compatible buckets; completed HiRes assemblies have an opt-in isolated cache. `syn-worker` remains unimplemented | The HiRes cache stays off unless `HALFLIGHT_TIDAL_CACHE_ENABLED=true`; enabling needs provider permission and verified lifecycle deletion |
 | Design system       | Eight dark palettes, semantic tokens, extracted `player.css`, shared badges/formatters                                                                     | Apple Music-level hierarchy and two deliberate site compositions are missing                                                              |
-| i18n                | Paraglide `en` + `de-DE`                                                                                                                                   | Newer surfaces added strings ahead of the German catalogue                                                                                |
+| i18n                | Paraglide `en` + `de-DE` at full key parity, enforced by `src/lib/i18n-coverage.spec.ts`                                                                   | The developer-only diagnostics area stays English by decision                                                                             |
 | Testing             | Server and component suites, including taste profile, graph, scoring, sequencing, and redaction tests                                                      | Cross-site session and complete generation journeys need acceptance coverage                                                              |
 
 ## Product principles
@@ -2313,7 +2313,13 @@ Goal: turn the existing product into a coherent Halflight service before multipl
       operation deduplication and active-device ownership before a second site controls the queue. (M) —
       queue commands now rebase once after a 409 response, preserving local audio while retrying
       append, remove, reorder, clear, and deliberate replacement changes against the returned
-      revision. Stable queue-entry IDs, operation deduplication, and active-device ownership remain open.
+      revision. Stable queue-entry IDs and operation deduplication are now implemented end-to-end:
+      commands are entry-addressed, `queue_entries_json` persists them (migration `0021` backfills),
+      and `playback_operation_result` gives each intent a fingerprinted idempotency key applied
+      atomically. What remains: make that fingerprint independent of `expectedRevision` — a retry
+      after a lost response currently hashes differently and is rejected `400 invalid` — add a drain
+      path for a permanently-inapplicable operation so it cannot block the queue forever, and give
+      the device lease a fencing epoch, an SSR-visible identity, and pause-on-loss.
 - [ ] Record the domain/cookie/auth design for `halflight.eu` and `m.halflight.eu`; test both hosts
       without widening OAuth or encrypted-TIDAL cookie scope. (M)
 
@@ -2442,7 +2448,11 @@ Goal: make the player unambiguously the centre before building on top of it.
 - [ ] Conditional follow-up: approved bucket/worker staging with resource caps, same-origin Range
       proxying, purge controls, and direct fallback. This does not block the session milestone. (L)
 - [ ] Conditional follow-up: remux only where verified codec/container support improves playback. (M)
-- [ ] Bring the German catalogue level with recent surfaces. (M)
+- [x] Bring the German catalogue level with recent surfaces. (M) — the catalogues were already at
+      full key parity; the real gap was user-facing copy written straight into markup, which never
+      reached the catalogue and so produced no missing-key count. 39 such strings across six product
+      surfaces are now localised, and `src/lib/i18n-coverage.spec.ts` fails the build if more appear.
+      `/app/admin` is allowlisted per the diagnostics boundary above.
 
 Exit: playback is uninterruptible by navigation or a failed section; any list can become the queue;
 playback start times are measured by quality tier, with honest HiRes trade-offs.

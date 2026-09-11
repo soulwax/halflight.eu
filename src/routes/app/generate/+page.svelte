@@ -2,11 +2,11 @@
 	import { enhance } from '$app/forms';
 	import { AlertCircle, Sliders, Sparkles } from '@lucide/svelte';
 
-	import { player } from '#lib/player/player.svelte.js';
-	import { customPlaylists } from '#lib/player/customPlaylists.svelte.js';
-	import { m } from '#lib/paraglide/messages';
 	import GeneratedSet from '#lib/components/music/GeneratedSet.svelte';
 	import Button from '#lib/components/ui/Button.svelte';
+	import { m } from '#lib/paraglide/messages';
+	import { customPlaylists } from '#lib/player/customPlaylists.svelte.js';
+	import { player } from '#lib/player/player.svelte.js';
 	import type { GenerationStreamStage } from '#lib/taste/generation-progress.js';
 	import { readGenerationStream } from '#lib/taste/generation-stream.js';
 	import type { ProvisionalSet, ProvisionalTrack } from '#lib/taste/provisional';
@@ -31,21 +31,30 @@
 
 	// Mid-decade centre years for the era-window request-fit term; '' is unconstrained.
 	const ERA_OPTIONS = [
-		{ value: '', label: 'Any era' },
-		{ value: '1975', label: '1970s' },
-		{ value: '1985', label: '1980s' },
-		{ value: '1995', label: '1990s' },
-		{ value: '2005', label: '2000s' },
-		{ value: '2015', label: '2010s' },
-		{ value: '2025', label: '2020s' }
+		{ value: '', label: m.generate_era_any },
+		{ value: '1975', label: m.generate_era_1970s },
+		{ value: '1985', label: m.generate_era_1980s },
+		{ value: '1995', label: m.generate_era_1990s },
+		{ value: '2005', label: m.generate_era_2000s },
+		{ value: '2015', label: m.generate_era_2010s },
+		{ value: '2025', label: m.generate_era_2020s }
 	];
 
 	// Drop interludes and skits shorter than the chosen floor; '' keeps every length.
 	const MIN_LENGTH_OPTIONS = [
-		{ value: '', label: 'Any length' },
-		{ value: '60', label: '1 min or more' },
-		{ value: '90', label: '90 sec or more' },
-		{ value: '120', label: '2 min or more' }
+		{ value: '', label: m.generate_min_length_any },
+		{ value: '60', label: m.generate_min_length_60 },
+		{ value: '90', label: m.generate_min_length_90 },
+		{ value: '120', label: m.generate_min_length_120 }
+	];
+
+	const SIZE_OPTIONS = [
+		{ value: 15, label: m.generate_size_15 },
+		{ value: 20, label: m.generate_size_20 },
+		{ value: 25, label: m.generate_size_25 },
+		{ value: 30, label: m.generate_size_30 },
+		{ value: 40, label: m.generate_size_40 },
+		{ value: 50, label: m.generate_size_50 }
 	];
 
 	$effect(() => {
@@ -186,23 +195,22 @@
 </script>
 
 <svelte:head>
-	<title>Taste Engine Generator — Halflight</title>
+	<title>{m.generate_title()} — {m.brand_name()}</title>
 </svelte:head>
 
 <section class="max-w-4xl space-y-8" aria-labelledby="generator-title">
 	<header class="border-b-2 border-[var(--border-subtle)] pb-6">
 		<p class="font-mono text-xs font-bold tracking-[0.14em] text-[var(--text-muted)] uppercase">
-			HALFLIGHT // THE TASTE ENGINE
+			{m.home_generate_eyebrow()}
 		</p>
 		<h1
 			id="generator-title"
 			class="mt-1 text-3xl font-extrabold tracking-tight uppercase sm:text-4xl"
 		>
-			Generate an Honest Set
+			{m.generate_title()}
 		</h1>
 		<p class="mt-2 text-sm text-[var(--text-muted)]">
-			A deterministic listening session curated directly from your TIDAL anchors, graph
-			neighbourhood, and intent knobs. Every single pick is explainable.
+			{m.generate_description()}
 		</p>
 	</header>
 
@@ -230,7 +238,7 @@
 		<div class="absolute top-0 left-0 h-1 w-full bg-[var(--action)]"></div>
 		<h2 id="knobs-title" class="flex items-center gap-2 text-lg font-bold tracking-tight">
 			<Sliders size={18} class="text-[var(--action)]" />
-			Session Intent Knobs
+			{m.generate_shape_title()}
 		</h2>
 
 		<form
@@ -246,10 +254,13 @@
 			<div class="space-y-2">
 				<div class="flex items-center justify-between text-sm">
 					<label for="familiarity-knob" class="font-semibold text-[var(--text-primary)]">
-						Familiarity ↔ Discovery
+						{m.generate_familiarity()}
 					</label>
 					<span class="font-mono text-xs text-[var(--accent-gold)]">
-						{familiarity}% Familiar · {100 - familiarity}% Discovery
+						{m.generate_familiarity_readout({
+							familiar: familiarity,
+							discovery: 100 - familiarity
+						})}
 					</span>
 				</div>
 				<input
@@ -260,43 +271,43 @@
 					max="100"
 					step="5"
 					bind:value={familiarity}
-					class="h-2 w-full cursor-pointer appearance-none rounded bg-[var(--surface-canvas)] accent-[var(--action)]"
+					class="h-2 w-full cursor-pointer appearance-none rounded bg-[var(--surface-canvas)] accent-[var(--action)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--action)]"
 					aria-valuemin="0"
 					aria-valuemax="100"
 					aria-valuenow={familiarity}
-					aria-valuetext="{familiarity}% familiar, {100 - familiarity}% discovery"
+					aria-valuetext={m.generate_familiarity_readout({
+						familiar: familiarity,
+						discovery: 100 - familiarity
+					})}
 				/>
 				<div
 					class="flex justify-between text-[0.68rem] tracking-wider text-[var(--text-muted)] uppercase"
 				>
-					<span>100% Discovery (Neighbourhood)</span>
-					<span>Balanced</span>
-					<span>100% Anchors (Loved)</span>
+					<span>{m.generate_scale_discovery()}</span>
+					<span>{m.generate_scale_balanced()}</span>
+					<span>{m.generate_scale_favourites()}</span>
 				</div>
 			</div>
 
 			<!-- Set Length, Era, Minimum Length & Seed Selection Grid -->
-			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+			<div class="grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2">
 				<!-- Track Count -->
 				<div class="space-y-1.5">
 					<label
 						for="track-count-select"
 						class="text-xs font-bold tracking-wider text-[var(--text-muted)] uppercase"
 					>
-						Set Size
+						{m.generate_set_size()}
 					</label>
 					<select
 						id="track-count-select"
 						name="targetCount"
 						bind:value={targetCount}
-						class="w-full border border-[var(--border-subtle)] bg-[var(--surface-canvas)] px-3 py-2 text-sm text-[var(--text-primary)]"
+						class="w-full border border-[var(--border-subtle)] bg-[var(--surface-canvas)] px-3 py-2 text-sm text-[var(--text-primary)] focus-visible:border-[var(--action)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--action)]"
 					>
-						<option value={15}>15 tracks (~1 hour)</option>
-						<option value={20}>20 tracks (~1.3 hours)</option>
-						<option value={25}>25 tracks (~1.7 hours)</option>
-						<option value={30}>30 tracks (~2 hours)</option>
-						<option value={40}>40 tracks (~2.7 hours)</option>
-						<option value={50}>50 tracks (~3.5 hours)</option>
+						{#each SIZE_OPTIONS as option (option.value)}
+							<option value={option.value}>{option.label()}</option>
+						{/each}
 					</select>
 				</div>
 
@@ -306,16 +317,16 @@
 						for="era-select"
 						class="text-xs font-bold tracking-wider text-[var(--text-muted)] uppercase"
 					>
-						Era
+						{m.generate_era()}
 					</label>
 					<select
 						id="era-select"
 						name="eraCenter"
 						bind:value={eraCenter}
-						class="w-full border border-[var(--border-subtle)] bg-[var(--surface-canvas)] px-3 py-2 text-sm text-[var(--text-primary)]"
+						class="w-full border border-[var(--border-subtle)] bg-[var(--surface-canvas)] px-3 py-2 text-sm text-[var(--text-primary)] focus-visible:border-[var(--action)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--action)]"
 					>
 						{#each ERA_OPTIONS as option (option.value)}
-							<option value={option.value}>{option.label}</option>
+							<option value={option.value}>{option.label()}</option>
 						{/each}
 					</select>
 				</div>
@@ -326,16 +337,16 @@
 						for="min-length-select"
 						class="text-xs font-bold tracking-wider text-[var(--text-muted)] uppercase"
 					>
-						Minimum length
+						{m.generate_min_length()}
 					</label>
 					<select
 						id="min-length-select"
 						name="minDurationSeconds"
 						bind:value={minDurationSeconds}
-						class="w-full border border-[var(--border-subtle)] bg-[var(--surface-canvas)] px-3 py-2 text-sm text-[var(--text-primary)]"
+						class="w-full border border-[var(--border-subtle)] bg-[var(--surface-canvas)] px-3 py-2 text-sm text-[var(--text-primary)] focus-visible:border-[var(--action)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--action)]"
 					>
 						{#each MIN_LENGTH_OPTIONS as option (option.value)}
-							<option value={option.value}>{option.label}</option>
+							<option value={option.value}>{option.label()}</option>
 						{/each}
 					</select>
 				</div>
@@ -346,17 +357,17 @@
 						for="seed-artist-select"
 						class="text-xs font-bold tracking-wider text-[var(--text-muted)] uppercase"
 					>
-						Seed Origin
+						{m.generate_seed()}
 					</label>
 					<select
 						id="seed-artist-select"
 						name="seedArtistId"
 						bind:value={seedArtistId}
-						class="w-full border border-[var(--border-subtle)] bg-[var(--surface-canvas)] px-3 py-2 text-sm text-[var(--text-primary)]"
+						class="w-full border border-[var(--border-subtle)] bg-[var(--surface-canvas)] px-3 py-2 text-sm text-[var(--text-primary)] focus-visible:border-[var(--action)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--action)]"
 					>
-						<option value="">Whole Taste Profile (All Anchors)</option>
+						<option value="">{m.generate_profile_seed()}</option>
 						{#each data.seedArtists as artist (artist.id)}
-							<option value={artist.id}>Focus on: {artist.name}</option>
+							<option value={artist.id}>{m.generate_focus_on({ artist: artist.name })}</option>
 						{/each}
 					</select>
 				</div>
@@ -367,29 +378,38 @@
 					type="checkbox"
 					name="excludeExplicit"
 					bind:checked={excludeExplicit}
-					class="accent-[var(--action)]"
+					class="size-4 accent-[var(--action)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--action)]"
 				/>
-				Exclude explicit tracks
+				{m.generate_exclude_explicit()}
 			</label>
 
-			<div class="flex items-center gap-3 pt-2">
+			<div class="flex flex-wrap items-center gap-3 border-t border-[var(--border-subtle)] pt-5">
 				<Button
 					type="submit"
 					variant="primary"
 					size="md"
 					disabled={isGenerating || !data.connection.connected}
+					class="w-full sm:w-auto"
 				>
 					<Sparkles size={16} class={`mr-2 ${isGenerating ? 'animate-spin' : ''}`} />
-					{isGenerating ? 'Synthesizing Taste Set…' : 'Generate My Set'}
+					{isGenerating ? m.generate_generating() : m.generate_submit()}
 				</Button>
 				{#if isGenerating}
-					<Button type="button" variant="secondary" size="md" onclick={cancelGeneration}>
+					<Button
+						type="button"
+						variant="secondary"
+						size="md"
+						onclick={cancelGeneration}
+						class="w-full sm:w-auto"
+					>
 						{m.playlist_cancel()}
 					</Button>
 				{/if}
 
 				{#if !data.connection.connected}
-					<span class="text-xs text-[var(--danger)]">{m.generate_connection_required()}</span>
+					<span class="w-full text-xs text-[var(--danger)] sm:w-auto">
+						{m.generate_connection_required()}
+					</span>
 				{/if}
 			</div>
 			{#if isGenerating && progressLabel}
