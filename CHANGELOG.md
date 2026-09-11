@@ -21,6 +21,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   treated that failure identically to a transient network drop. A new `rejected` persistence status
   tells the owner an edit was discarded without touching the rest of their queue, and clears itself
   on the next clean save rather than needing to be dismissed.
+- An expired session is now reported as itself instead of as a connection problem. All four places
+  the player talks to `/api/playback-state` — sending a queue command, saving the resume snapshot,
+  refreshing after a conflict, and the background poll that keeps other tabs in sync — treated a
+  `401` identically to a dropped network request or a malformed response, so "Your queue has not
+  been saved. Check your connection and try again." was shown for a session that had simply ended,
+  telling the owner to do the one thing that could not fix it. The background poll was the worst
+  case: its failure path changed nothing visible at all, so a session ending in one tab surfaced
+  nowhere. A new `unauthenticated` status now shows a distinct message with a sign-in link, and
+  clears itself the same way `offline` already does once a request succeeds again.
 
 ## [0.1.0] - 2026-09-11
 

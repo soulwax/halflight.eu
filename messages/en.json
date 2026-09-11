@@ -405,6 +405,7 @@
 	"player_sync_refresh": "Refresh queue",
 	"player_sync_offline": "Your queue has not been saved. Check your connection and try again.",
 	"player_sync_rejected": "One of your queue changes couldn't be applied and was dropped. The rest of your queue is unaffected.",
+	"player_sync_unauthenticated": "Your session has ended. Sign in again to keep your queue in sync.",
 	"player_remove_from_queue": "Remove",
 	"player_previous": "Previous track",
 	"player_next": "Next track",

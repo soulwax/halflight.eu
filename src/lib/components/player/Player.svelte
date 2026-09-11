@@ -127,6 +127,11 @@
 			<p class="player-sync-status" role="status">{m.player_sync_offline()}</p>
 		{:else if player.persistenceStatus === 'rejected'}
 			<p class="player-sync-status" role="status">{m.player_sync_rejected()}</p>
+		{:else if player.persistenceStatus === 'unauthenticated'}
+			<div class="player-sync-status" role="status">
+				<span>{m.player_sync_unauthenticated()}</span>
+				<a class="player-sync-action" href="/sign-in">{m.sign_in_button()}</a>
+			</div>
 		{/if}
 
 		{#if player.isExpanded}

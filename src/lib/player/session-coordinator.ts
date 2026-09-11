@@ -29,7 +29,8 @@ export interface PlaybackPersistenceSnapshot extends PlaybackStateWrite {
 	queueCommands: QueueCommand[];
 }
 
-export type PlaybackPersistenceStatus = 'saved' | 'saving' | 'offline' | 'conflict' | 'rejected';
+export type PlaybackPersistenceStatus =
+	'saved' | 'saving' | 'offline' | 'conflict' | 'rejected' | 'unauthenticated';
 
 export function isTrackSummary(value: unknown): value is TrackSummary {
 	if (!value || typeof value !== 'object') return false;
@@ -302,6 +303,14 @@ export class PlaybackSessionCoordinator {
 				keepalive: true
 			});
 			const state = (await response.json().catch(() => null)) as SavedPlaybackState | null;
+			// Checked before the body is interpreted as a `SavedPlaybackState`: a
+			// 401's body never is one, so without this it fell into the next branch
+			// and was reported identically to a network drop — "check your
+			// connection" is actively wrong advice for a session that has ended.
+			if (response.status === 401) {
+				this.setStatus('unauthenticated');
+				return false;
+			}
 			if (
 				!state ||
 				!Array.isArray(state.queue) ||
@@ -381,6 +390,10 @@ export class PlaybackSessionCoordinator {
 				keepalive: true
 			});
 			const state = (await response.json().catch(() => null)) as SavedPlaybackState | null;
+			if (response.status === 401) {
+				this.setStatus('unauthenticated');
+				return;
+			}
 			if (response.status === 409) {
 				if (
 					!state ||
@@ -449,6 +462,10 @@ export class PlaybackSessionCoordinator {
 				cache: 'no-store'
 			});
 			const state = (await response.json().catch(() => null)) as SavedPlaybackState | null;
+			if (response.status === 401) {
+				this.setStatus('unauthenticated');
+				return;
+			}
 			if (
 				!response.ok ||
 				!state ||
@@ -495,6 +512,17 @@ export class PlaybackSessionCoordinator {
 				cache: 'no-store'
 			});
 			const state = (await response.json().catch(() => null)) as unknown;
+			// The background poll's failure path previously changed nothing the UI
+			// could see — a 401 here (the session has ended, in this tab or another)
+			// left the owner staring at a queue that would never sync again, with
+			// no indication why. `sessionSyncFailures` still backs off the retry
+			// interval the same as any other failure; it does not retry faster or
+			// slower for this one, only visibly.
+			if (response.status === 401) {
+				this.sessionSyncFailures += 1;
+				this.setStatus('unauthenticated');
+				return;
+			}
 			if (!response.ok || !isSavedPlaybackState(state)) {
 				this.sessionSyncFailures += 1;
 				return;
@@ -517,7 +545,10 @@ export class PlaybackSessionCoordinator {
 			}
 
 			if (state.revision === this.revision) {
-				if (!this.persistenceInFlight && this.status === 'offline') {
+				if (
+					!this.persistenceInFlight &&
+					(this.status === 'offline' || this.status === 'unauthenticated')
+				) {
 					this.setStatus('saved');
 				}
 				return;
@@ -533,7 +564,10 @@ export class PlaybackSessionCoordinator {
 				this.onApplySessionFn?.(state);
 			}
 
-			if (!this.persistenceInFlight && this.status === 'offline') {
+			if (
+				!this.persistenceInFlight &&
+				(this.status === 'offline' || this.status === 'unauthenticated')
+			) {
 				this.setStatus('saved');
 			}
 		} catch {

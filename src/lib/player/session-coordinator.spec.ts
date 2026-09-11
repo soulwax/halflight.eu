@@ -389,6 +389,107 @@ describe('PlaybackSessionCoordinator', () => {
 		expect(coordinator.queueCommands).toHaveLength(1);
 	});
 
+	it('distinguishes an ended session from a network drop when sending a queue command', async () => {
+		// A 401's body never parses as a SavedPlaybackState, so without checking
+		// the status first this fell into the same branch as a malformed response
+		// and was reported as 'offline' — "check your connection" is wrong advice
+		// for a session that has actually ended.
+		const fetchMock = vi.fn(
+			async () =>
+				new Response(JSON.stringify({ message: 'Unauthorized' }), {
+					status: 401
+				})
+		) as typeof fetch;
+
+		const coordinator = createCoordinator(fetchMock);
+		coordinator.recordCommand({
+			type: 'append',
+			entries: [makeEntry(sampleTrack1, 'entry-local')]
+		});
+
+		await vi.waitFor(() => expect(coordinator.status).toBe('unauthenticated'));
+		// The edit is not lost — it can be sent again once the owner signs back in.
+		expect(coordinator.queueCommands).toHaveLength(1);
+	});
+
+	it('distinguishes an ended session from a network drop when saving the snapshot', async () => {
+		const fetchMock = vi.fn(
+			async () =>
+				new Response(JSON.stringify({ message: 'Unauthorized' }), {
+					status: 401
+				})
+		) as typeof fetch;
+
+		const coordinator = createCoordinator(fetchMock);
+		coordinator.schedulePersistence();
+
+		await vi.waitFor(() => expect(coordinator.status).toBe('unauthenticated'));
+	});
+
+	it('distinguishes an ended session from a network drop when refreshing after a conflict', async () => {
+		const fetchMock = vi.fn(
+			async () =>
+				new Response(JSON.stringify({ message: 'Unauthorized' }), {
+					status: 401
+				})
+		) as typeof fetch;
+
+		const coordinator = createCoordinator(fetchMock);
+		coordinator.status = 'conflict';
+
+		await coordinator.refreshQueueFromServer();
+
+		expect(coordinator.status).toBe('unauthenticated');
+	});
+
+	it('surfaces a session that ended while only the background poll was running', async () => {
+		// Before this fix, `syncPlaybackState`'s failure path changed nothing the
+		// UI could observe: `sessionSyncFailures` incremented and the function
+		// returned, silently. The owner would see their queue simply stop syncing
+		// for good, with no indication why — the worst case, since every other
+		// call site at least reported 'offline'.
+		const fetchMock = vi.fn(
+			async () =>
+				new Response(JSON.stringify({ message: 'Unauthorized' }), {
+					status: 401
+				})
+		) as typeof fetch;
+
+		const coordinator = createCoordinator(fetchMock);
+		await coordinator.syncPlaybackState();
+
+		expect(coordinator.status).toBe('unauthenticated');
+	});
+
+	it('clears the unauthenticated status once the background poll succeeds again', async () => {
+		// The same recovery path 'offline' already had — signing back in (in this
+		// tab or another) should not require an extra dismissal.
+		let authenticated = false;
+		const fetchMock = vi.fn(async () => {
+			if (!authenticated) {
+				return new Response(JSON.stringify({ message: 'Unauthorized' }), { status: 401 });
+			}
+			return new Response(
+				JSON.stringify({
+					currentTrack: null,
+					queue: [],
+					history: [],
+					currentTime: 0,
+					revision: 1
+				}),
+				{ status: 200 }
+			);
+		}) as typeof fetch;
+
+		const coordinator = createCoordinator(fetchMock);
+		await coordinator.syncPlaybackState();
+		expect(coordinator.status).toBe('unauthenticated');
+
+		authenticated = true;
+		await coordinator.syncPlaybackState();
+		expect(coordinator.status).toBe('saved');
+	});
+
 	it('respects canPersist guard before initiating persistence', async () => {
 		const fetchMock = vi.fn() as typeof fetch;
 		let allowed = false;

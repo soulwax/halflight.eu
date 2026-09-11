@@ -37,6 +37,9 @@
 	font: inherit;
 	font-weight: 700;
 	cursor: pointer;
+	/* Also used as an <a> (the sign-in-again action): unset link defaults so it
+	   reads as the same control as the <button> instances. */
+	text-decoration: none;
 }
 .syn-player .player-sync-action:hover,
 .syn-player .player-sync-action:focus-visible {

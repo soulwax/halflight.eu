@@ -405,6 +405,7 @@
 	"player_sync_refresh": "Warteschlange aktualisieren",
 	"player_sync_offline": "Deine Warteschlange wurde nicht gespeichert. Prüfe die Verbindung und versuche es erneut.",
 	"player_sync_rejected": "Eine deiner Warteschlangen-Änderungen konnte nicht übernommen werden und wurde verworfen. Der Rest deiner Warteschlange ist davon nicht betroffen.",
+	"player_sync_unauthenticated": "Deine Sitzung ist abgelaufen. Melde dich erneut an, um deine Warteschlange zu synchronisieren.",
 	"player_remove_from_queue": "Entfernen",
 	"player_previous": "Vorheriger Titel",
 	"player_next": "Nächster Titel",
