@@ -7,9 +7,11 @@
 	import { m } from '#lib/paraglide/messages';
 	import GeneratedSet from '#lib/components/music/GeneratedSet.svelte';
 	import Button from '#lib/components/ui/Button.svelte';
+	import type { GenerationStreamStage } from '#lib/taste/generation-progress.js';
+	import { readGenerationStream } from '#lib/taste/generation-stream.js';
+	import type { ProvisionalSet, ProvisionalTrack } from '#lib/taste/provisional';
 	import type { TrackSummary } from '#lib/tidal/models';
 	import type { ActionData, PageData } from './$types';
-	import type { ProvisionalSet, ProvisionalTrack } from '#lib/server/taste/generate';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -21,6 +23,11 @@
 	let excludeExplicit = $state(false);
 	let isGenerating = $state(false);
 	let saveSuccess = $state(false);
+	let generatedSet = $state<ProvisionalSet | null>(null);
+	let progressStage = $state<GenerationStreamStage | null>(null);
+	let streamError = $state(false);
+	let generationRun = 0;
+	let generationAbort: AbortController | null = null;
 
 	// Mid-decade centre years for the era-window request-fit term; '' is unconstrained.
 	const ERA_OPTIONS = [
@@ -48,8 +55,64 @@
 	});
 
 	const currentSet = $derived<ProvisionalSet | null>(
-		form?.success && form?.set ? (form.set as ProvisionalSet) : null
+		generatedSet ?? (form?.success && form?.set ? (form.set as ProvisionalSet) : null)
 	);
+	const progressLabel = $derived(
+		progressStage === 'expanding'
+			? m.generation_progress_expanding()
+			: progressStage === 'scoring'
+				? m.generation_progress_scoring()
+				: progressStage === 'sequencing'
+					? m.generation_progress_sequencing()
+					: ''
+	);
+
+	async function startGeneration(formData: FormData): Promise<void> {
+		generationAbort?.abort();
+		const run = ++generationRun;
+		const abort = new AbortController();
+		generationAbort = abort;
+		isGenerating = true;
+		streamError = false;
+		saveSuccess = false;
+		progressStage = 'expanding';
+
+		try {
+			const response = await fetch('/api/taste/generate', {
+				method: 'POST',
+				body: formData,
+				signal: abort.signal
+			});
+			if (!response.ok || !response.body) {
+				if (run === generationRun) streamError = true;
+				return;
+			}
+
+			for await (const message of readGenerationStream(response)) {
+				if (run !== generationRun) continue;
+				if (message.type === 'progress') progressStage = message.stage;
+				else if (message.type === 'complete') generatedSet = message.set;
+				else streamError = true;
+			}
+		} catch (cause) {
+			if (
+				run === generationRun &&
+				!(cause instanceof DOMException && cause.name === 'AbortError')
+			) {
+				streamError = true;
+			}
+		} finally {
+			if (run === generationRun) {
+				isGenerating = false;
+				progressStage = null;
+				generationAbort = null;
+			}
+		}
+	}
+
+	function cancelGeneration(): void {
+		generationAbort?.abort();
+	}
 
 	function toTrackSummary(t: ProvisionalTrack): TrackSummary {
 		return {
@@ -143,16 +206,16 @@
 		</p>
 	</header>
 
-	{#if form?.errorCode}
+	{#if form?.errorCode || streamError}
 		<div
 			class="flex items-center gap-3 border border-[var(--danger)] bg-[var(--danger-subtle)] p-4 text-sm text-[var(--text-primary)]"
 			role="alert"
 		>
 			<AlertCircle size={18} class="shrink-0 text-[var(--danger)]" />
 			<p>
-				{form.errorCode === 'invalid_generation_input'
+				{form?.errorCode === 'invalid_generation_input'
 					? m.generate_invalid_input()
-					: form.errorCode === 'generation_connection_required'
+					: form?.errorCode === 'generation_connection_required'
 						? m.generate_connection_required()
 						: m.generate_unavailable()}
 			</p>
@@ -173,12 +236,9 @@
 		<form
 			method="POST"
 			action="?/generate"
-			use:enhance={() => {
-				isGenerating = true;
-				return async ({ update }) => {
-					isGenerating = false;
-					await update();
-				};
+			use:enhance={({ formData, cancel }) => {
+				cancel();
+				void startGeneration(formData);
 			}}
 			class="mt-6 space-y-6"
 		>
@@ -322,11 +382,21 @@
 					<Sparkles size={16} class={`mr-2 ${isGenerating ? 'animate-spin' : ''}`} />
 					{isGenerating ? 'Synthesizing Taste Set…' : 'Generate My Set'}
 				</Button>
+				{#if isGenerating}
+					<Button type="button" variant="secondary" size="md" onclick={cancelGeneration}>
+						{m.playlist_cancel()}
+					</Button>
+				{/if}
 
 				{#if !data.connection.connected}
 					<span class="text-xs text-[var(--danger)]">{m.generate_connection_required()}</span>
 				{/if}
 			</div>
+			{#if isGenerating && progressLabel}
+				<p class="text-sm text-[var(--text-muted)]" role="status" aria-live="polite">
+					{progressLabel}
+				</p>
+			{/if}
 		</form>
 	</section>
 

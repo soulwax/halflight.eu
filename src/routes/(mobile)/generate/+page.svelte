@@ -7,10 +7,8 @@
 	import { m } from '#lib/paraglide/messages.js';
 	import { customPlaylists } from '#lib/player/customPlaylists.svelte.js';
 	import { player } from '#lib/player/player.svelte.js';
-	import {
-		isGenerationStreamEvent,
-		type GenerationStreamStage
-	} from '#lib/taste/generation-progress.js';
+	import type { GenerationStreamStage } from '#lib/taste/generation-progress.js';
+	import { readGenerationStream } from '#lib/taste/generation-stream.js';
 	import type { ProvisionalSet, ProvisionalTrack } from '#lib/taste/provisional';
 	import type { TrackSummary } from '#lib/tidal/models.js';
 	import type { ActionData, PageData } from './$types';
@@ -60,34 +58,11 @@
 				return;
 			}
 
-			const reader = response.body.getReader();
-			const decoder = new TextDecoder();
-			let pending = '';
-			while (true) {
-				const { done, value } = await reader.read();
-				if (done) break;
-				pending += decoder.decode(value, { stream: true });
-				let boundary = pending.indexOf('\n\n');
-				while (boundary !== -1) {
-					const block = pending.slice(0, boundary);
-					pending = pending.slice(boundary + 2);
-					boundary = pending.indexOf('\n\n');
-					const raw = block
-						.split('\n')
-						.find((line) => line.startsWith('data: '))
-						?.slice(6);
-					if (!raw) continue;
-					let message: unknown = null;
-					try {
-						message = JSON.parse(raw);
-					} catch {
-						continue;
-					}
-					if (run !== generationRun || !isGenerationStreamEvent(message)) continue;
-					if (message.type === 'progress') progressStage = message.stage;
-					else if (message.type === 'complete') generatedSet = message.set;
-					else streamError = true;
-				}
+			for await (const message of readGenerationStream(response)) {
+				if (run !== generationRun) continue;
+				if (message.type === 'progress') progressStage = message.stage;
+				else if (message.type === 'complete') generatedSet = message.set;
+				else streamError = true;
 			}
 		} catch (cause) {
 			if (
