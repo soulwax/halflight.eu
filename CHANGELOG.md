@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Retrying a queue edit after a lost response is now correctly recognised as the same operation
+  and replayed from the cached result, instead of being rejected as invalid. The server's
+  idempotency check hashed the whole intent including `expectedRevision`, but the client sends its
+  own current revision on every attempt — so a retry sent after rebasing onto a revision it learned
+  about in the meantime hashed differently from the original request and came back `400 invalid`,
+  a status the client had no way to recover from.
+- A queue command that can never apply — most often a remove or move naming an entryId another
+  device already removed — is now dropped instead of retried forever. Previously it stayed at the
+  head of the buffer and blocked every command queued behind it indefinitely, since the client
+  treated that failure identically to a transient network drop. A new `rejected` persistence status
+  tells the owner an edit was discarded without touching the rest of their queue, and clears itself
+  on the next clean save rather than needing to be dismissed.
+
 ## [0.1.0] - 2026-09-11
 
 ### Added

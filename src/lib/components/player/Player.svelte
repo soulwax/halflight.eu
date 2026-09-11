@@ -125,6 +125,8 @@
 			</div>
 		{:else if player.persistenceStatus === 'offline'}
 			<p class="player-sync-status" role="status">{m.player_sync_offline()}</p>
+		{:else if player.persistenceStatus === 'rejected'}
+			<p class="player-sync-status" role="status">{m.player_sync_rejected()}</p>
 		{/if}
 
 		{#if player.isExpanded}

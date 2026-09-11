@@ -10,8 +10,10 @@ import {
 	parsePlaybackIntent,
 	parsePlaybackStateOrigin,
 	parsePlaybackStateRevision,
+	playbackIntentFingerprint,
 	savePlaybackState,
 	claimPlaybackDevice,
+	type PlaybackIntent,
 	type PlaybackState,
 	type PlaybackDeviceLeaseStore,
 	type PlaybackStateInput,
@@ -214,5 +216,53 @@ describe('playback state', () => {
 		const duplicate = { ...track, entryId: 'entry-existing' };
 
 		expect(applyQueueIntent([existing], { type: 'queue.append', entries: [duplicate] })).toBeNull();
+	});
+
+	describe('playbackIntentFingerprint', () => {
+		function intent(overrides: Partial<PlaybackIntent> = {}): PlaybackIntent {
+			return {
+				version: 2,
+				expectedRevision: 5,
+				operationId: 'operation-1',
+				origin: 'listening-room',
+				intent: { type: 'queue.append', entries: [queued] },
+				...overrides
+			};
+		}
+
+		it('is stable across a retry that carries a different expectedRevision', () => {
+			// This is the retry `persistQueueCommands` sends after a lost response:
+			// same operation, but the client has since learned a newer revision and
+			// rebased onto it before resending. The two must fingerprint identically
+			// or the dedup lookup in `dbPlaybackIntentStore.apply` never matches, and
+			// an already-applied operation is rejected a second time as `invalid`.
+			expect(playbackIntentFingerprint(intent({ expectedRevision: 5 }))).toBe(
+				playbackIntentFingerprint(intent({ expectedRevision: 6 }))
+			);
+		});
+
+		it('changes when the intent content differs', () => {
+			const append = playbackIntentFingerprint(intent());
+			const clear = playbackIntentFingerprint(intent({ intent: { type: 'queue.clear' } }));
+			expect(append).not.toBe(clear);
+		});
+
+		it('changes when origin or device differ, even for an identical intent', () => {
+			const base = playbackIntentFingerprint(intent());
+			expect(playbackIntentFingerprint(intent({ origin: 'halflight-now' }))).not.toBe(base);
+			expect(playbackIntentFingerprint(intent({ deviceId: 'device-a' }))).not.toBe(base);
+			expect(playbackIntentFingerprint(intent({ deviceId: 'device-a' }))).not.toBe(
+				playbackIntentFingerprint(intent({ deviceId: 'device-b' }))
+			);
+		});
+
+		it('does not depend on operationId', () => {
+			// operationId is already the lookup key in `apply()`; folding it into the
+			// hash too would be redundant, not incorrect, but keeping it out keeps the
+			// fingerprint's job legible: "is this the same request", not "same id".
+			expect(playbackIntentFingerprint(intent({ operationId: 'operation-1' }))).toBe(
+				playbackIntentFingerprint(intent({ operationId: 'operation-2' }))
+			);
+		});
 	});
 });

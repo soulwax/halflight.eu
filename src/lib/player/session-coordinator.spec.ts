@@ -270,6 +270,110 @@ describe('PlaybackSessionCoordinator', () => {
 		expect(appliedQueue.map((e) => e.id)).toEqual(['track-2', 'track-1']);
 	});
 
+	it('drops a permanently-inapplicable command instead of retrying it forever', async () => {
+		// The server's `400` here means "this operation can never apply" (e.g. a
+		// remove naming an entryId another device already removed) — distinct
+		// from a `409` conflict, which is retryable, and from a network failure,
+		// which is `offline`. Before the fix this fell into `!response.ok` and was
+		// treated exactly like `offline`: the command stayed at the head of the
+		// buffer and was resent, unchanged, on every future attempt, blocking
+		// every command queued behind it forever.
+		let intentCalls = 0;
+		const fetchMock = vi.fn(async (url: string | URL | Request) => {
+			if (String(url) === '/api/playback-state/intents') {
+				intentCalls += 1;
+				if (intentCalls === 1) {
+					// The first command (remove) can never apply.
+					return new Response(
+						JSON.stringify({
+							currentTrack: null,
+							queue: [makeEntry(sampleTrack2, 'entry-remote')],
+							history: [],
+							currentTime: 0,
+							revision: 9
+						}),
+						{ status: 400 }
+					);
+				}
+				// The second command (append), sent immediately after the drop.
+				return new Response(
+					JSON.stringify({
+						currentTrack: null,
+						queue: [
+							makeEntry(sampleTrack2, 'entry-remote'),
+							makeEntry(sampleTrack1, 'entry-local')
+						],
+						history: [],
+						currentTime: 0,
+						revision: 10
+					}),
+					{ status: 200 }
+				);
+			}
+			if (String(url) === '/api/playback-state') {
+				return new Response(JSON.stringify({ revision: 10 }), { status: 200 });
+			}
+			return new Response(null, { status: 404 });
+		}) as typeof fetch;
+
+		const coordinator = createCoordinator(fetchMock);
+		coordinator.recordCommand({ type: 'remove', entryId: 'entry-already-gone' });
+		coordinator.recordCommand({
+			type: 'append',
+			entries: [makeEntry(sampleTrack1, 'entry-local')]
+		});
+
+		// The batch as a whole still ends 'rejected', not 'saved': the append did
+		// land, but silently reporting 'saved' would erase the only signal that
+		// the remove ahead of it did not. It is informational, not blocking —
+		// unlike 'conflict' it does not hold up the next persistence cycle.
+		await vi.waitFor(() => expect(coordinator.status).toBe('rejected'));
+		expect(intentCalls).toBe(2);
+		// The un-appliable remove is gone; the append behind it still landed.
+		expect(coordinator.queueCommands).toHaveLength(0);
+		expect(appliedQueue.map((e) => e.id)).toEqual(['track-2', 'track-1']);
+		expect(coordinator.revision).toBe(10);
+
+		// A later, clean cycle clears it — the same way 'offline' clears on the
+		// next success, rather than needing an explicit dismissal.
+		coordinator.recordCommand({
+			type: 'append',
+			entries: [makeEntry(sampleTrack3, 'entry-local-2')]
+		});
+		await vi.waitFor(() => expect(coordinator.status).toBe('saved'));
+	});
+
+	it('reports the drop even when only the rejected command was queued', async () => {
+		// With nothing behind it, the snapshot write that follows would normally
+		// report `'saved'` — which is true of that write in isolation, but would
+		// silently erase the one signal that an edit was discarded, moments after
+		// it appeared.
+		const fetchMock = vi.fn(async (url: string | URL | Request) => {
+			if (String(url) === '/api/playback-state/intents') {
+				return new Response(
+					JSON.stringify({
+						currentTrack: null,
+						queue: [],
+						history: [],
+						currentTime: 0,
+						revision: 3
+					}),
+					{ status: 400 }
+				);
+			}
+			if (String(url) === '/api/playback-state') {
+				return new Response(JSON.stringify({ revision: 3 }), { status: 200 });
+			}
+			return new Response(null, { status: 404 });
+		}) as typeof fetch;
+
+		const coordinator = createCoordinator(fetchMock);
+		coordinator.recordCommand({ type: 'remove', entryId: 'entry-already-gone' });
+
+		await vi.waitFor(() => expect(coordinator.status).toBe('rejected'));
+		expect(coordinator.queueCommands).toHaveLength(0);
+	});
+
 	it('marks status offline on network failure and preserves buffered commands', async () => {
 		const fetchMock = vi.fn(async () => {
 			throw new Error('network down');

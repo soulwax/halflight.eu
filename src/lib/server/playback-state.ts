@@ -426,8 +426,35 @@ export function applyQueueIntent(queue: QueueEntry[], intent: QueueIntent): Queu
 	return next.slice(0, MAX_PLAYBACK_QUEUE_LENGTH);
 }
 
-function playbackIntentFingerprint(intent: PlaybackIntent): string {
-	return createHash('sha256').update(JSON.stringify(intent)).digest('hex');
+/**
+ * Identify the *content* of an intent for idempotency, deliberately excluding
+ * `operationId` (already the lookup key — hashing it too would be redundant)
+ * and `expectedRevision`.
+ *
+ * `expectedRevision` is transient: `session-coordinator.ts` sends the
+ * client's current revision on every attempt, including a retry of an
+ * already-applied operation after a lost response, once the client has
+ * rebased onto a newer revision it learned about in the meantime. Hashing it
+ * made that legitimate retry look like a different request: `apply()` finds
+ * a stored `playbackOperationResult` row for this `operationId` (proof the
+ * operation already succeeded once), but its `requestFingerprint` no longer
+ * matches, so the dedup check just below does not fire — and *any* stored
+ * row for this `operationId`, matching or not, short-circuits straight to
+ * `invalid: true`, a permanent `400` the client cannot recover by retrying.
+ * `intent.operationId` is minted once per logical command and only ever
+ * reused for a retry of that same command, so two requests sharing one
+ * operationId are always meant to be recognised as the same request.
+ */
+export function playbackIntentFingerprint(intent: PlaybackIntent): string {
+	return createHash('sha256')
+		.update(
+			JSON.stringify({
+				origin: intent.origin,
+				deviceId: intent.deviceId ?? null,
+				intent: intent.intent
+			})
+		)
+		.digest('hex');
 }
 
 function parseJson(value: string | null): unknown {

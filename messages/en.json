@@ -404,6 +404,7 @@
 	"player_sync_conflict": "Your queue changed elsewhere and has not been saved here.",
 	"player_sync_refresh": "Refresh queue",
 	"player_sync_offline": "Your queue has not been saved. Check your connection and try again.",
+	"player_sync_rejected": "One of your queue changes couldn't be applied and was dropped. The rest of your queue is unaffected.",
 	"player_remove_from_queue": "Remove",
 	"player_previous": "Previous track",
 	"player_next": "Next track",

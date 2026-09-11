@@ -29,7 +29,7 @@ export interface PlaybackPersistenceSnapshot extends PlaybackStateWrite {
 	queueCommands: QueueCommand[];
 }
 
-export type PlaybackPersistenceStatus = 'saved' | 'saving' | 'offline' | 'conflict';
+export type PlaybackPersistenceStatus = 'saved' | 'saving' | 'offline' | 'conflict' | 'rejected';
 
 export function isTrackSummary(value: unknown): value is TrackSummary {
 	if (!value || typeof value !== 'object') return false;
@@ -146,6 +146,14 @@ export class PlaybackSessionCoordinator {
 	queueCommands: QueueCommand[] = [];
 	reconciliationBase: SavedPlaybackState | null = null;
 	reconciliationAttempts = 0;
+	/**
+	 * Set when `persistQueueCommands` drops a permanently-inapplicable command
+	 * this cycle. `persistPlaybackState` checks it before deciding whether the
+	 * snapshot write that follows may report `'saved'` — otherwise that report
+	 * would silently overwrite `'rejected'` a moment after it was set, and the
+	 * one truthful signal that an edit was discarded would never reach the UI.
+	 */
+	private queueCommandWasRejected = false;
 
 	persistenceInFlight = false;
 	persistenceQueued = false;
@@ -275,6 +283,7 @@ export class PlaybackSessionCoordinator {
 	 */
 	async persistQueueCommands(): Promise<boolean> {
 		const deviceId = this.getDeviceIdFn();
+		this.queueCommandWasRejected = false;
 		while (this.queueCommands.length > 0) {
 			const command = this.queueCommands[0];
 			if (!command) return true;
@@ -314,6 +323,26 @@ export class PlaybackSessionCoordinator {
 				const rebased = rebaseQueue(state.queue, this.queueCommands, this.maxQueueLength);
 				this.onApplyQueueFn(rebased);
 				this.reconciliationAttempts += 1;
+				continue;
+			}
+			if (response.status === 400 && isSavedPlaybackState(state)) {
+				// The server has told us this exact operation can never apply — most
+				// often a remove/move naming an entryId another device already
+				// removed. That will not change by retrying: entry IDs are randomly
+				// minted per creation, so the target of a stale remove/move never
+				// comes back. Treating this like `offline` (as a bare `!response.ok`
+				// check would) left it retried forever, jamming every command queued
+				// behind it. Drop it, take the state the server actually holds as
+				// ground truth, and keep draining the rest of the buffer.
+				this.revision = state.revision;
+				this.applyActiveDevice(state);
+				if (this.queueCommands[0]?.operationId === operationId) this.queueCommands.shift();
+				const rebased = rebaseQueue(state.queue, this.queueCommands, this.maxQueueLength);
+				this.onApplyQueueFn(rebased);
+				this.reconciliationBase = null;
+				this.reconciliationAttempts = 0;
+				this.queueCommandWasRejected = true;
+				this.setStatus('rejected');
 				continue;
 			}
 			if (!response.ok) {
@@ -391,7 +420,10 @@ export class PlaybackSessionCoordinator {
 			this.queueCommands.splice(0, snapshot.queueCommands.length);
 			this.reconciliationBase = null;
 			this.reconciliationAttempts = 0;
-			this.setStatus('saved');
+			// A dropped command earlier in this cycle still needs to reach the
+			// owner; a `'saved'` here — true of the snapshot write in isolation —
+			// would silently erase that signal a moment after it appeared.
+			this.setStatus(this.queueCommandWasRejected ? 'rejected' : 'saved');
 		} catch {
 			this.setStatus('offline');
 		} finally {
