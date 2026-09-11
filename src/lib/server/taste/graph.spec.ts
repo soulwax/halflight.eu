@@ -167,4 +167,39 @@ describe('taste graph expansion', () => {
 		expect(res.candidates.length).toBe(0);
 		expect(res.degraded).toBe(true);
 	});
+
+	it('aborts an active graph read when the generation is cancelled', async () => {
+		const abort = new AbortController();
+		let receivedSignal: AbortSignal | undefined;
+		let started: (() => void) | undefined;
+		const readStarted = new Promise<void>((resolve) => {
+			started = resolve;
+		});
+		const blockingClient: GraphExpansionClient = {
+			async getSimilarArtists() {
+				return [];
+			},
+			getArtistTracks(_artistId, signal) {
+				receivedSignal = signal;
+				started?.();
+				return new Promise((_, reject) => {
+					signal?.addEventListener('abort', () => reject(signal.reason), { once: true });
+				});
+			}
+		};
+
+		const expansion = expandTasteGraph(
+			[{ id: 'a1', weight: 1 }],
+			blockingClient,
+			{ maxRequests: 5, fanoutLimit: 1, requestTimeoutMs: 10_000 },
+			undefined,
+			undefined,
+			abort.signal
+		);
+		await readStarted;
+		abort.abort(new DOMException('Cancelled by owner.', 'AbortError'));
+
+		await expect(expansion).rejects.toMatchObject({ name: 'AbortError' });
+		expect(receivedSignal?.aborted).toBe(true);
+	});
 });

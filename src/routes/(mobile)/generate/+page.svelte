@@ -7,6 +7,10 @@
 	import { m } from '#lib/paraglide/messages.js';
 	import { customPlaylists } from '#lib/player/customPlaylists.svelte.js';
 	import { player } from '#lib/player/player.svelte.js';
+	import {
+		isGenerationStreamEvent,
+		type GenerationStreamStage
+	} from '#lib/taste/generation-progress.js';
 	import type { ProvisionalSet, ProvisionalTrack } from '#lib/taste/provisional';
 	import type { TrackSummary } from '#lib/tidal/models.js';
 	import type { ActionData, PageData } from './$types';
@@ -17,10 +21,93 @@
 	let seedArtistId = $state('');
 	let isGenerating = $state(false);
 	let saveSuccess = $state(false);
+	let generatedSet = $state<ProvisionalSet | null>(null);
+	let progressStage = $state<GenerationStreamStage | null>(null);
+	let streamError = $state(false);
+	let generationRun = 0;
+	let generationAbort: AbortController | null = null;
 
 	const currentSet = $derived<ProvisionalSet | null>(
-		form?.success && form.set ? (form.set as ProvisionalSet) : null
+		generatedSet ?? (form?.success && form.set ? (form.set as ProvisionalSet) : null)
 	);
+	const progressLabel = $derived(
+		progressStage === 'expanding'
+			? m.generation_progress_expanding()
+			: progressStage === 'scoring'
+				? m.generation_progress_scoring()
+				: progressStage === 'sequencing'
+					? m.generation_progress_sequencing()
+					: ''
+	);
+
+	async function startGeneration(formData: FormData): Promise<void> {
+		generationAbort?.abort();
+		const run = ++generationRun;
+		const abort = new AbortController();
+		generationAbort = abort;
+		isGenerating = true;
+		streamError = false;
+		progressStage = 'expanding';
+
+		try {
+			const response = await fetch('/api/taste/generate', {
+				method: 'POST',
+				body: formData,
+				signal: abort.signal
+			});
+			if (!response.ok || !response.body) {
+				if (run === generationRun) streamError = true;
+				return;
+			}
+
+			const reader = response.body.getReader();
+			const decoder = new TextDecoder();
+			let pending = '';
+			while (true) {
+				const { done, value } = await reader.read();
+				if (done) break;
+				pending += decoder.decode(value, { stream: true });
+				let boundary = pending.indexOf('\n\n');
+				while (boundary !== -1) {
+					const block = pending.slice(0, boundary);
+					pending = pending.slice(boundary + 2);
+					boundary = pending.indexOf('\n\n');
+					const raw = block
+						.split('\n')
+						.find((line) => line.startsWith('data: '))
+						?.slice(6);
+					if (!raw) continue;
+					let message: unknown = null;
+					try {
+						message = JSON.parse(raw);
+					} catch {
+						continue;
+					}
+					if (run !== generationRun || !isGenerationStreamEvent(message)) continue;
+					if (message.type === 'progress') progressStage = message.stage;
+					else if (message.type === 'complete') generatedSet = message.set;
+					else streamError = true;
+				}
+			}
+		} catch (cause) {
+			if (
+				run === generationRun &&
+				!(cause instanceof DOMException && cause.name === 'AbortError')
+			) {
+				streamError = true;
+			}
+		} finally {
+			if (run === generationRun) {
+				isGenerating = false;
+				progressStage = null;
+				generationAbort = null;
+			}
+		}
+	}
+
+	function cancelGeneration(): void {
+		generationAbort?.abort();
+	}
 
 	function toTrackSummary(track: ProvisionalTrack): TrackSummary {
 		return {
@@ -99,12 +186,12 @@
 		kicker={m.brand_name()}
 	/>
 
-	{#if form?.errorCode}
+	{#if form?.errorCode || streamError}
 		<p class="mobile-generate-error" role="alert">
 			<AlertCircle size={18} aria-hidden="true" />
-			{form.errorCode === 'invalid_generation_input'
+			{form?.errorCode === 'invalid_generation_input'
 				? m.generate_invalid_input()
-				: form.errorCode === 'generation_connection_required'
+				: form?.errorCode === 'generation_connection_required'
 					? m.generate_connection_required()
 					: m.generate_unavailable()}
 		</p>
@@ -113,12 +200,9 @@
 	<form
 		method="POST"
 		action="?/generate"
-		use:enhance={() => {
-			isGenerating = true;
-			return async ({ update }) => {
-				await update();
-				isGenerating = false;
-			};
+		use:enhance={({ formData, cancel }) => {
+			cancel();
+			void startGeneration(formData);
 		}}
 		class="mobile-generate-form"
 	>
@@ -160,15 +244,25 @@
 			</label>
 		{/if}
 
-		<Button
-			type="submit"
-			variant="primary"
-			size="md"
-			disabled={isGenerating || !data.connection.connected}
-		>
-			<Sparkles size={17} class={isGenerating ? 'animate-spin' : ''} />
-			{isGenerating ? m.mobile_generate_generating() : m.mobile_generate_submit()}
-		</Button>
+		<div class="mobile-generate-actions">
+			<Button
+				type="submit"
+				variant="primary"
+				size="md"
+				disabled={isGenerating || !data.connection.connected}
+			>
+				<Sparkles size={17} class={isGenerating ? 'animate-spin' : ''} />
+				{isGenerating ? m.mobile_generate_generating() : m.mobile_generate_submit()}
+			</Button>
+			{#if isGenerating}
+				<Button type="button" variant="secondary" size="md" onclick={cancelGeneration}>
+					{m.playlist_cancel()}
+				</Button>
+			{/if}
+		</div>
+		{#if isGenerating && progressLabel}
+			<p class="mobile-generate-progress" role="status" aria-live="polite">{progressLabel}</p>
+		{/if}
 	</form>
 
 	{#if currentSet}
@@ -234,6 +328,18 @@
 
 	.mobile-generate-range-labels b {
 		color: var(--text-primary);
+	}
+
+	.mobile-generate-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.65rem;
+	}
+
+	.mobile-generate-progress {
+		margin: -0.25rem 0 0;
+		color: var(--text-muted);
+		font-size: var(--fs-xs);
 	}
 
 	.mobile-generate-error {

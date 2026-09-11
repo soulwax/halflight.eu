@@ -37,6 +37,18 @@ export interface GenerateTasteSetOptions {
 	/** Injectable clock + sleep for the graph expansion; real time by default. */
 	clock?: () => number;
 	sleep?: (ms: number) => Promise<void>;
+	/** Cancels active graph reads when the client abandons a streamed run. */
+	signal?: AbortSignal;
+	/** Safe, count-only stage updates for a streamed generation response. */
+	onProgress?: (progress: GenerationProgress) => void;
+}
+
+export type GenerationStage = 'expanding' | 'scoring' | 'sequencing';
+
+export interface GenerationProgress {
+	stage: GenerationStage;
+	requestsSpent?: number;
+	candidateCount?: number;
 }
 
 /**
@@ -79,12 +91,15 @@ export async function generateTasteSet(
 	}
 
 	// 2. Stage 3 — Budgeted Graph Expansion
+	options.onProgress?.({ stage: 'expanding', requestsSpent: 0, candidateCount: 0 });
 	const expansion = await expandTasteGraph(
 		anchors,
 		options.client,
 		options.budget,
 		options.clock,
-		options.sleep
+		options.sleep,
+		options.signal,
+		(progress) => options.onProgress?.({ stage: 'expanding', ...progress })
 	);
 
 	// 3. Stage 4a — Candidates assembly & ISRC deduplication
@@ -92,12 +107,14 @@ export async function generateTasteSet(
 		minDurationSeconds: options.knobs?.minDurationSeconds,
 		excludeExplicit: options.knobs?.excludeExplicit
 	});
+	options.onProgress?.({ stage: 'scoring', candidateCount: filtered.length });
 
 	// 4. Stage 4b — Transparent Multi-term Scoring
 	const scored = scoreCandidates(filtered, profile, { familiarity, era });
 
 	// 5. Stage 4c — Energy / Spacing Sequencing
 	const sequenced = sequenceCandidates(scored, { targetCount });
+	options.onProgress?.({ stage: 'sequencing', candidateCount: sequenced.length });
 
 	// 6. Stage 4d — Explainability & Provenance chips
 	const tracks: ProvisionalTrack[] = sequenced.map((track) => ({

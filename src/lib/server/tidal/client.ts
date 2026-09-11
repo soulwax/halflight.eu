@@ -28,6 +28,8 @@ export interface TidalRequestContext {
 	store?: TokenRowStore;
 	/** Kept for request compatibility; token material is always resolved from the user's DB row. */
 	cookies?: Cookies;
+	/** Optional request cancellation for bounded server-side reads. */
+	signal?: AbortSignal;
 }
 
 /**

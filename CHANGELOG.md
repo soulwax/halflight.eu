@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Halflight Now generation now reports truthful finding, matching, and sequencing stages while it
+  runs. The enhanced mobile form streams only safe counts, can be cancelled, and ignores a late
+  superseded response; its normal form action remains available without JavaScript. Each graph read
+  is cancellable and limited to five seconds within the existing nine-second overall budget, so a
+  slow provider request degrades a set instead of leaving the listening surface indefinitely busy.
+
 - Halflight Now can now make a concise, reviewable generated set from Home: choose a short length,
   familiarity, and (when available) one top artist anchor, then play, save, or export the provisional
   result without entering the desktop Listening Room.

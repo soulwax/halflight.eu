@@ -389,7 +389,7 @@ export function getArtistRelationship(
 			'page[cursor]': opts.cursor,
 			collapseBy: opts.collapseBy
 		})}`,
-		{},
+		{ signal: ctx?.signal },
 		ctx
 	);
 }
