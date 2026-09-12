@@ -439,7 +439,9 @@
 		color: var(--text-primary);
 	}
 
-	.generator-notice svg {
+	/* The icon is rendered by a Lucide component, so the element is not in this
+	   file's markup for the scoper to hash. */
+	.generator-notice :global(svg) {
 		flex: 0 0 auto;
 		margin-top: 0.15rem;
 		color: var(--danger);

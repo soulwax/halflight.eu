@@ -30,6 +30,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `pnpm test:unit` is deterministic again. The `client` and `storybook` projects each drive their
+  own headless Chromium pool, and at the default worker count the pair oversubscribed an 8-core
+  machine badly enough that interaction tests missed the 15s timeout — a different two to eight of
+  them on every run, which read as flakiness rather than as a resource ceiling. Every one of them
+  passed in isolation, and each project passed alone. `maxWorkers: 3` bounds the pool: 845/845
+  across repeated runs, at no wall-clock cost.
 - `Button`'s `ghost` variant had no CSS of its own — `.btn-ghost` never existed, so it mapped to
   the empty string and rendered identically to `secondary` at all nine call sites. Wherever the
   two sat together the hierarchy read as flat. Ghost is now the genuine third weight: no border or

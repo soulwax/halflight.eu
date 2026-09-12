@@ -53,6 +53,18 @@ export default defineConfig({
 		expect: {
 			requireAssertions: true
 		},
+		/*
+		 * Two of the three projects (`client` and `storybook`) each drive their own
+		 * headless Chromium pool. Left to the default worker count they open one
+		 * browser per core *each*, and the pair starve one another badly enough
+		 * that interaction tests — a click that waits on a portal to mount, a
+		 * transport button, a queue row — miss the 15s timeout. Which ones lose the
+		 * race varies per run, which is exactly how it reads as flakiness rather
+		 * than as a resource ceiling. Each project alone is green at any width; it
+		 * is only the pair that oversubscribes. Bounding the pool fixes the whole
+		 * class, and costs a little wall-clock on the node-only `server` project.
+		 */
+		maxWorkers: 3,
 		projects: [
 			{
 				extends: './vite.config.ts',

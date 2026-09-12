@@ -285,21 +285,6 @@
 		margin-top: var(--space-section);
 	}
 
-	.shortcuts a {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.4rem;
-		color: var(--text-secondary);
-		font-size: var(--fs-sm);
-		font-weight: 550;
-		text-decoration: none;
-		transition: color var(--dur-med) var(--ease-out);
-	}
-
-	.shortcuts a:hover {
-		color: var(--text-primary);
-	}
-
 	.track-grid {
 		display: grid;
 		grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -393,9 +378,21 @@
 	}
 
 	.shortcuts a {
+		display: flex;
+		align-items: center;
 		justify-content: space-between;
+		gap: 0.4rem;
 		padding: 1.1rem 1.25rem;
 		background: var(--surface-raised);
+		color: var(--text-secondary);
+		font-size: var(--fs-sm);
+		font-weight: 550;
+		text-decoration: none;
+		transition: color var(--dur-med) var(--ease-out);
+	}
+
+	.shortcuts a:hover {
+		color: var(--text-primary);
 	}
 
 	@media (max-width: 60rem) {
