@@ -31,22 +31,27 @@ describe('SongCard.svelte', () => {
 		await expect.element(page.getByTitle(m.track_badge_explicit())).toBeInTheDocument();
 	});
 
-	it('exposes play, play-next, queue, radio and add-to-playlist actions', async () => {
+	it('keeps play primary and groups the remaining listening actions in one menu', async () => {
 		render(SongCard, { track });
 		await expect
-			.element(page.getByRole('button', { name: m.player_play_track(), exact: true }).first())
+			.element(page.getByRole('button', { name: m.player_play_track(), exact: true }))
 			.toBeInTheDocument();
 		await expect
-			.element(page.getByRole('button', { name: m.player_play_next() }))
+			.element(page.getByRole('button', { name: m.track_action_menu(), exact: true }))
+			.toBeInTheDocument();
+
+		await page.getByRole('button', { name: m.track_action_menu(), exact: true }).click();
+		await expect
+			.element(page.getByRole('menuitem', { name: m.track_action_play_next() }))
 			.toBeInTheDocument();
 		await expect
-			.element(page.getByRole('button', { name: m.player_add_to_queue() }))
+			.element(page.getByRole('menuitem', { name: m.track_action_add_to_queue() }))
 			.toBeInTheDocument();
 		await expect
-			.element(page.getByRole('button', { name: m.player_start_radio() }))
+			.element(page.getByRole('menuitem', { name: m.track_action_start_radio() }))
 			.toBeInTheDocument();
 		await expect
-			.element(page.getByRole('button', { name: m.action_add_to_custom_playlist() }))
+			.element(page.getByRole('menuitem', { name: m.track_action_add_to_playlist() }))
 			.toBeInTheDocument();
 	});
 });

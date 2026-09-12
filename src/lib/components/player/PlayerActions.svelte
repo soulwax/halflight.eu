@@ -5,10 +5,12 @@
 		ExternalLink,
 		ListMusic,
 		Mic2,
+		MoreHorizontal,
 		PictureInPicture2,
 		Plus,
 		X
 	} from '@lucide/svelte';
+	import DropdownMenu, { type DropdownMenuItem } from '#lib/components/ui/DropdownMenu.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { player } from '#lib/player/player.svelte.js';
 	import { customPlaylists } from '#lib/player/customPlaylists.svelte.js';
@@ -21,6 +23,49 @@
 		isNarrow,
 		tidalUrl
 	}: { track: TrackSummary; floating: boolean; isNarrow: boolean; tidalUrl: string } = $props();
+
+	function openTidal() {
+		window.open(tidalUrl, '_blank', 'noopener,noreferrer');
+	}
+
+	const moreActions = $derived.by<DropdownMenuItem[]>(() => {
+		const actions: DropdownMenuItem[] = [
+			{
+				id: 'add-to-playlist',
+				label: m.player_add_to_playlist(),
+				icon: Plus,
+				onSelect: () => customPlaylists.promptAddToPlaylist(track)
+			}
+		];
+
+		if (!isNarrow) {
+			actions.push({
+				id: 'toggle-dock',
+				label: floating ? m.player_dock() : m.player_undock(),
+				icon: PictureInPicture2,
+				onSelect: () => player.toggleDock()
+			});
+		}
+
+		actions.push(
+			{
+				id: 'open-tidal',
+				label: m.player_open_tidal(),
+				icon: ExternalLink,
+				onSelect: openTidal
+			},
+			{
+				id: 'close-player',
+				label: m.player_close(),
+				icon: X,
+				danger: true,
+				separator: true,
+				onSelect: () => player.close()
+			}
+		);
+
+		return actions;
+	});
 </script>
 
 <div class="actions">
@@ -28,15 +73,6 @@
 		<PlayerVolume />
 	{/if}
 
-	<button
-		type="button"
-		class="a-btn"
-		onclick={() => customPlaylists.promptAddToPlaylist(track)}
-		title={m.player_add_to_playlist()}
-		aria-label={m.player_add_to_playlist()}
-	>
-		<Plus size={15} />
-	</button>
 	<button
 		type="button"
 		class="a-btn"
@@ -58,27 +94,6 @@
 	>
 		<Mic2 size={15} />
 	</button>
-	{#if !isNarrow}
-		<button
-			type="button"
-			class="a-btn"
-			onclick={() => player.toggleDock()}
-			title={floating ? m.player_dock() : m.player_undock()}
-			aria-label={floating ? m.player_dock() : m.player_undock()}
-		>
-			<PictureInPicture2 size={15} />
-		</button>
-	{/if}
-	<a
-		class="a-btn"
-		href={tidalUrl}
-		target="_blank"
-		rel="noreferrer"
-		title={m.player_open_tidal()}
-		aria-label={m.player_open_tidal()}
-	>
-		<ExternalLink size={13} />
-	</a>
 	<button
 		type="button"
 		class="a-btn"
@@ -88,13 +103,13 @@
 	>
 		{#if player.isExpanded}<ChevronDown size={16} />{:else}<ChevronUp size={16} />{/if}
 	</button>
-	<button
-		type="button"
-		class="a-btn"
-		onclick={() => player.close()}
-		title={m.player_close()}
-		aria-label={m.player_close()}
+	<DropdownMenu
+		items={moreActions}
+		triggerClass="player-more-actions"
+		triggerAriaLabel={m.track_action_menu()}
 	>
-		<X size={15} />
-	</button>
+		{#snippet trigger()}
+			<MoreHorizontal size={17} />
+		{/snippet}
+	</DropdownMenu>
 </div>

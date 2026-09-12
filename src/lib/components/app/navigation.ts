@@ -6,6 +6,8 @@ export interface AppNavigationItem {
 	label: string;
 	/** A lucide icon component rendered beside the label in the rail and mobile nav. */
 	icon?: LucideIcon;
+	/** Add a quiet visual break before this item in the desktop listening-room rail. */
+	dividerBefore?: boolean;
 	/** Override automatic exact/prefix matching when a route needs a custom active state. */
 	current?: boolean;
 }

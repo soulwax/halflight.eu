@@ -59,6 +59,9 @@
 	<nav class="side-nav-links px-3 pt-3 pb-5" aria-label={navigationLabel}>
 		<ul class="space-y-0.5">
 			{#each navigation as item (item.href)}
+				{#if item.dividerBefore}
+					<li class="side-nav-divider" aria-hidden="true"></li>
+				{/if}
 				{@const current = isCurrentNavigationItem(item, currentPath)}
 				<li>
 					<a
@@ -149,6 +152,15 @@
 		justify-content: center;
 		padding-right: 0.5rem;
 		padding-left: 0.5rem;
+	}
+	.side-nav-divider {
+		height: 1px;
+		margin: 0.75rem 0.5rem;
+		background: var(--border-subtle);
+	}
+	.side-nav-collapsed .side-nav-divider {
+		margin-right: 0.2rem;
+		margin-left: 0.2rem;
 	}
 	.side-nav-collapsed .nav-monogram {
 		display: grid;

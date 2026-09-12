@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- A more direct, player-first control model across the listening surfaces. Track cards now have one
+  clear Play control and a compact, keyboard-accessible More actions menu for play-next, queue,
+  radio, and playlist actions. The persistent player follows the same rule: queue, lyrics, and
+  expansion remain immediately available; saving, docking, TIDAL handoff, and closing live in one
+  labelled overflow menu. The desktop rail now makes Home, Search, and Library the clear primary
+  loop, separates mixes and curation, and keeps account configuration with the signed-in account.
+  This preserves every existing action while making the listening path legible at a glance.
 - The first Storybook coverage for the shared UI primitives: `Button`, `Badge`, `SectionHeader`,
   and the new `ViewHeader` (25 stories total), running through `@storybook/addon-vitest` with
   `@storybook/addon-a11y` on every story. The toolchain has been fully configured since the

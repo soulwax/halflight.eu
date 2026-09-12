@@ -1,13 +1,12 @@
 <script lang="ts">
 	import { formatDuration, formatReleaseDate } from '#lib/format';
 	import { m } from '#lib/paraglide/messages';
-	import { customPlaylists } from '#lib/player/customPlaylists.svelte';
 	import { player } from '#lib/player/player.svelte.js';
 	import type { TrackSummary } from '#lib/tidal/models';
 	import Badge from '#lib/components/ui/Badge.svelte';
-	import TrackRadioButton from './TrackRadioButton.svelte';
+	import TrackActionMenu from './TrackActionMenu.svelte';
 	import { resolve } from '$app/paths';
-	import { Check, Disc, ExternalLink, ListPlus, ListStart, Play, Plus } from '@lucide/svelte';
+	import { Disc, Play } from '@lucide/svelte';
 
 	let {
 		track,
@@ -22,17 +21,7 @@
 	} = $props();
 
 	let imageError = $state(false);
-	let queuedFeedback = $state(false);
 
-	function handleQueue() {
-		player.addToQueue(track, provenance);
-		queuedFeedback = true;
-		setTimeout(() => {
-			queuedFeedback = false;
-		}, 1200);
-	}
-
-	const tidalTrackUrl = $derived(`https://tidal.com/browse/track/${encodeURIComponent(track.id)}`);
 	const coverImage = $derived(track.imageUrl ?? track.album?.imageUrl);
 	const releaseYear = $derived(formatReleaseDate(track.album?.releaseDate));
 </script>
@@ -52,16 +41,6 @@
 				<Disc size={28} />
 			</div>
 		{/if}
-
-		<button
-			type="button"
-			class="artwork-play-btn"
-			onclick={() => player.play(track, contextTracks, provenance)}
-			title={m.player_play_track()}
-			aria-label={m.player_play_track()}
-		>
-			<Play size={16} fill="currentColor" />
-		</button>
 	</div>
 
 	<div class="song-details">
@@ -137,56 +116,9 @@
 			title={m.player_play_track()}
 			aria-label={m.player_play_track()}
 		>
-			<Play size={14} fill="currentColor" />
+			<Play size={15} fill="currentColor" />
 		</button>
-
-		<button
-			type="button"
-			class="action-btn"
-			onclick={() => player.playNext(track, provenance)}
-			title={m.player_play_next()}
-			aria-label={m.player_play_next()}
-		>
-			<ListStart size={15} />
-		</button>
-
-		<TrackRadioButton {track} class="action-btn" />
-
-		<button
-			type="button"
-			class="action-btn"
-			class:action-btn-active={queuedFeedback}
-			onclick={handleQueue}
-			title={m.player_add_to_queue()}
-			aria-label={m.player_add_to_queue()}
-		>
-			{#if queuedFeedback}
-				<Check size={14} class="text-(--action)" />
-			{:else}
-				<ListPlus size={15} />
-			{/if}
-		</button>
-
-		<button
-			type="button"
-			class="action-btn"
-			onclick={() => customPlaylists.promptAddToPlaylist(track)}
-			title={m.action_add_to_custom_playlist()}
-			aria-label={m.action_add_to_custom_playlist()}
-		>
-			<Plus size={15} />
-		</button>
-
-		<a
-			class="action-btn external-btn"
-			href={tidalTrackUrl}
-			target="_blank"
-			rel="noreferrer"
-			title={m.action_open_in_tidal()}
-			aria-label={m.action_open_in_tidal()}
-		>
-			<ExternalLink size={13} />
-		</a>
+		<TrackActionMenu {track} {contextTracks} {provenance} triggerClass="song-card-menu" />
 	</div>
 </article>
 
@@ -235,24 +167,6 @@
 		place-items: center;
 		color: var(--text-muted);
 		background: var(--surface-selected);
-	}
-
-	.artwork-play-btn {
-		position: absolute;
-		inset: 0;
-		display: grid;
-		place-items: center;
-		background: var(--scrim);
-		color: var(--scrim-ink);
-		border: 0;
-		opacity: 0;
-		cursor: pointer;
-		transition: opacity 0.15s ease;
-	}
-
-	.artwork-wrap:hover .artwork-play-btn,
-	.artwork-play-btn:focus-visible {
-		opacity: 1;
 	}
 
 	.song-details {
@@ -384,86 +298,41 @@
 	.card-actions {
 		display: flex;
 		align-items: center;
-		gap: 0.25rem;
+		gap: 0.4rem;
 		flex: 0 0 auto;
-	}
-
-	.card-actions .action-btn:not(.play-btn) {
-		width: 0;
-		border-width: 0;
-		opacity: 0;
-		overflow: hidden;
-		transition:
-			width var(--dur-fast, 120ms) ease,
-			opacity var(--dur-fast, 120ms) ease,
-			border-width var(--dur-fast, 120ms) ease;
-	}
-
-	.song-card:hover .card-actions .action-btn:not(.play-btn),
-	.song-card:focus-within .card-actions .action-btn:not(.play-btn) {
-		width: 1.9rem;
-		border-width: 1px;
-		opacity: 1;
 	}
 
 	.action-btn {
 		display: grid;
 		place-items: center;
-		width: 1.9rem;
-		height: 1.9rem;
-		border: 1px solid var(--border-subtle);
-		background: var(--surface-canvas);
-		color: var(--text-muted);
-		border-radius: var(--radius-sm, 6px);
+		width: 2.25rem;
+		height: 2.25rem;
+		border: 1px solid var(--action);
+		background: var(--action);
+		color: var(--action-contrast);
+		border-radius: var(--radius-full);
 		cursor: pointer;
 		padding: 0;
-		text-decoration: none;
-		transition: all 120ms cubic-bezier(0.16, 1, 0.3, 1);
+		transition:
+			transform var(--dur-fast) var(--ease-spring),
+			filter var(--dur-fast) ease;
 	}
 
 	.action-btn:hover {
-		color: var(--text-primary);
-		border-color: var(--border-strong);
-		background: var(--surface-selected);
-		box-shadow: 2px 2px 0px var(--border-strong);
-		transform: translate(-1px, -1px);
-	}
-
-	.action-btn-active {
-		border-color: var(--action);
-		background: var(--surface-selected);
-	}
-
-	.play-btn {
-		background: var(--action);
-		color: var(--action-contrast);
-		border-color: var(--action);
-	}
-
-	.play-btn:hover {
-		background: var(--action);
-		color: var(--action-contrast);
 		filter: brightness(1.1);
+		transform: scale(1.04);
 	}
 
-	.external-btn:hover {
-		color: var(--action);
+	.song-card :global(.song-card-menu) {
+		width: 2.25rem;
+		height: 2.25rem;
+		border-radius: var(--radius-full);
 	}
 
 	@media (max-width: 48rem) {
 		.song-card {
 			gap: 0.65rem;
 			padding: 0.6rem;
-		}
-
-		.external-btn {
-			display: none;
-		}
-	}
-
-	@container (max-width: 23rem) {
-		.card-actions .action-btn:not(.play-btn) {
-			display: none;
 		}
 	}
 </style>
