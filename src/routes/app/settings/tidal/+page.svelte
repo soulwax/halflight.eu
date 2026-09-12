@@ -2,6 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { Check, ExternalLink, Loader2, Music, Sparkles } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
+	import Button from '#lib/components/ui/Button.svelte';
 	import ViewHeader from '#lib/components/ui/ViewHeader.svelte';
 
 	import type { ActionData, PageData } from './$types';
@@ -118,7 +119,7 @@
 			<p class="status-label status-problem">{m.tidal_settings_attention()}</p>
 			<h2 id="connection-error-title">{m.tidal_settings_saved_connection_title()}</h2>
 			<p>{m.tidal_settings_saved_connection_description()}</p>
-			<a class="button" href={resolve('/tidal/connect')}>{m.tidal_reconnect()}</a>
+			<Button variant="primary" href={resolve('/tidal/connect')}>{m.tidal_reconnect()}</Button>
 		</section>
 	{:else if status.connected}
 		<section class="connection-card" aria-labelledby="connected-title">
@@ -136,9 +137,9 @@
 			{/if}
 
 			<div class="actions">
-				<a class="button" href={resolve('/tidal/connect')}>{m.tidal_reconnect()}</a>
+				<Button variant="primary" href={resolve('/tidal/connect')}>{m.tidal_reconnect()}</Button>
 				<form method="POST" action={resolve('/tidal/disconnect')}>
-					<button class="button button-secondary" type="submit">{m.tidal_disconnect()}</button>
+					<Button type="submit">{m.tidal_disconnect()}</Button>
 				</form>
 			</div>
 		</section>
@@ -148,7 +149,7 @@
 			<p class="status-label">{m.tidal_not_connected()}</p>
 			<h2 id="connect-title">{m.tidal_settings_connect_title()}</h2>
 			<p>{m.tidal_settings_connect_description()}</p>
-			<a class="button" href={resolve('/tidal/connect')}>{m.tidal_connect()}</a>
+			<Button variant="primary" href={resolve('/tidal/connect')}>{m.tidal_connect()}</Button>
 		</section>
 	{/if}
 
@@ -182,15 +183,15 @@
 					<span class="user-code">{deviceData.userCode}</span>
 				</div>
 				<div class="device-actions">
-					<a
-						class="button"
+					<Button
+						variant="primary"
 						href={`https://${deviceData.verificationUriComplete}`}
 						target="_blank"
 						rel="noreferrer"
 					>
-						<ExternalLink size={15} class="mr-1.5" />
+						<ExternalLink size={15} />
 						{m.tidal_device_auth_open()}
-					</a>
+					</Button>
 				</div>
 				<p class="waiting-text">
 					<Loader2 size={14} class="mr-1 inline animate-spin" />
@@ -201,14 +202,14 @@
 			<p class="notice notice-success">{m.tidal_device_auth_success()}</p>
 		{:else}
 			<div class="device-actions mt-3">
-				<button type="button" class="button" disabled={deviceLoading} onclick={startDeviceAuth}>
+				<Button variant="primary" disabled={deviceLoading} onclick={startDeviceAuth}>
 					{#if deviceLoading}
-						<Loader2 size={15} class="mr-1.5 animate-spin" />
+						<Loader2 size={15} class="animate-spin" />
 					{:else}
-						<Sparkles size={15} class="mr-1.5" />
+						<Sparkles size={15} />
 					{/if}
 					{m.tidal_device_auth_btn()}
-				</button>
+				</Button>
 			</div>
 			{#if deviceError}
 				<p class="notice notice-error mt-2">{deviceError}</p>
@@ -276,7 +277,7 @@
 				<span>{m.streaming_normalization_label()}</span>
 			</label>
 
-			<button class="button" type="submit">{m.streaming_settings_save()}</button>
+			<Button variant="primary" type="submit">{m.streaming_settings_save()}</Button>
 		</form>
 	</section>
 
@@ -300,9 +301,10 @@
 	.info-card,
 	.streaming-settings-card {
 		position: relative;
-		border: 2px solid var(--border-subtle);
-		border-radius: var(--radius-lg, 14px);
-		background: var(--surface-raised);
+		border: var(--module-border);
+		border-radius: var(--module-radius);
+		background: var(--module-bg);
+		box-shadow: var(--module-shadow);
 		padding: clamp(1.5rem, 3.5vw, 2rem);
 		overflow: hidden;
 	}
@@ -328,8 +330,8 @@
 	.device-auth-card {
 		position: relative;
 		margin-top: 1.5rem;
-		border: 2px solid var(--border-strong);
-		border-radius: var(--radius-md, 10px);
+		border: var(--module-border);
+		border-radius: var(--module-radius);
 		background: var(--surface-raised);
 		padding: 1.75rem;
 	}
@@ -368,7 +370,7 @@
 		font-weight: 700;
 		letter-spacing: 0.04em;
 		padding: 0.35rem 0.75rem;
-		border-radius: var(--radius-sm, 6px);
+		border-radius: var(--radius-sm);
 		border: 1px solid var(--border-strong);
 	}
 
@@ -386,7 +388,7 @@
 	.device-prompt-box {
 		margin-top: 1rem;
 		padding: 1.25rem;
-		border-radius: var(--radius-sm, 6px);
+		border-radius: var(--radius-sm);
 		background: var(--paper);
 		border: 1px solid var(--border-subtle);
 		display: flex;
@@ -406,7 +408,7 @@
 		padding: 0.75rem 1.5rem;
 		background: var(--surface-canvas);
 		border: 2px dashed var(--action);
-		border-radius: var(--radius-sm, 6px);
+		border-radius: var(--radius-sm);
 	}
 
 	.user-code {
@@ -426,7 +428,7 @@
 
 	.notice {
 		margin-bottom: 1.5rem;
-		border-radius: var(--radius-sm, 6px);
+		border-radius: var(--radius-sm);
 		color: var(--text-muted);
 	}
 
@@ -482,41 +484,6 @@
 		gap: 0.75rem;
 	}
 
-	.button {
-		display: inline-flex;
-		min-height: 2.85rem;
-		align-items: center;
-		justify-content: center;
-		border: 2px solid var(--border-strong);
-		border-radius: var(--radius-sm, 6px);
-		background: var(--action);
-		padding: 0.6rem 1.25rem;
-		color: var(--action-contrast);
-		font: inherit;
-		font-size: 0.85rem;
-		font-weight: 800;
-		text-transform: uppercase;
-		letter-spacing: 0.04em;
-		text-decoration: none;
-		cursor: pointer;
-		transition: all 0.12s ease;
-	}
-
-	.button:hover {
-		box-shadow: var(--shadow-panel);
-		transform: translate(-1px, -1px);
-	}
-
-	.button-secondary {
-		border: 2px solid var(--border-strong);
-		background: transparent;
-		color: var(--text-primary);
-	}
-
-	.button-secondary:hover {
-		background: var(--surface-selected);
-	}
-
 	.refresh-note,
 	.technical-detail {
 		margin-bottom: 1.25rem;
@@ -566,8 +533,8 @@
 	}
 
 	.streaming-settings-form select {
-		border: 2px solid var(--border-subtle);
-		border-radius: var(--radius-sm, 6px);
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-md);
 		background: var(--surface-canvas);
 		padding: 0.65rem 0.75rem;
 		color: var(--text-primary);

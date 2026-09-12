@@ -134,14 +134,11 @@
 	}
 
 	.app-shell {
-		--shell-inset: 0;
 		display: grid;
 		min-height: 100dvh;
 		width: 100%;
 		height: 100dvh;
 		overflow: hidden;
-		gap: var(--shell-inset);
-		padding: var(--shell-inset);
 		grid-template-columns: var(--shell-rail-current) minmax(0, 1fr);
 		grid-template-rows: var(--shell-header-h) minmax(0, 1fr) var(--shell-player-h) var(
 				--shell-footer-h

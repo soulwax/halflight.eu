@@ -363,7 +363,7 @@
 		max-height: min(70dvh, 34rem);
 		overflow-y: auto;
 		border: 1px solid var(--border-subtle);
-		border-radius: 0.85rem;
+		border-radius: var(--radius-lg);
 		background: var(--surface-raised);
 		box-shadow: 0 18px 34px -24px rgb(6 48 100 / 38%);
 	}
@@ -388,7 +388,7 @@
 		gap: 0.75rem;
 		padding: 0.6rem;
 		border: 0;
-		border-radius: 0.625rem;
+		border-radius: var(--radius-md);
 		background: transparent;
 		color: var(--text-primary);
 		text-align: left;
@@ -413,7 +413,7 @@
 		width: 2.1rem;
 		height: 2.1rem;
 		place-items: center;
-		border-radius: 0.5rem;
+		border-radius: var(--radius-sm);
 		background: color-mix(in oklab, var(--editorial-sky) 58%, var(--surface-raised));
 		color: var(--action);
 	}

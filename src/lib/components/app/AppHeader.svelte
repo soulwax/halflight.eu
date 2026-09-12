@@ -16,7 +16,7 @@
 </script>
 
 <header
-	class="app-header flex h-full min-h-14 w-full shrink-0 items-center gap-3 border-b border-[var(--border-subtle)] bg-[color-mix(in_oklab,var(--surface-raised)_94%,transparent)] px-4 backdrop-blur-md sm:min-h-16 sm:gap-4 sm:px-6"
+	class="app-header flex h-full w-full shrink-0 items-center gap-3 border-b border-[var(--border-subtle)] bg-[color-mix(in_oklab,var(--surface-raised)_94%,transparent)] px-(--shell-gutter) backdrop-blur-md sm:gap-4"
 >
 	<a href={user ? '/app' : '/'} class="header-brand" aria-label={m.brand_name()}>
 		<img src="/icons/halflight-64.png" alt={m.brand_name()} />

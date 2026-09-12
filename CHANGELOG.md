@@ -30,6 +30,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The app header was being clipped. `AppHeader` asked for 56px, and 64px above the `sm`
+  breakpoint, inside a grid row fixed at `--shell-header-h: 3.25rem` (52px) with
+  `overflow: hidden` — so its own bottom hairline was cut off entirely and its vertically
+  centred content sat about 6px below optical centre on every desktop width. The shell row is
+  now the single source of truth at 3.5rem and the header fills it, setting no height of its own.
+- The header and the content below it now start at the same left edge. `AppHeader` hardcoded
+  `px-4 sm:px-6` while `.app-shell-main` uses `var(--shell-gutter)`, so the brand mark sat a few
+  pixels inside or outside the content column depending on viewport width — visible as a wobble
+  in the one vertical line the eye follows down the page.
+- `HeaderSearch` — the most-looked-at chrome in the app — carried three radii outside the
+  six-step family (13.6px, 10px, 8px). It uses the tokens now.
+- Removed 112 lines of dead CSS from `layout.css`: a `@layer components` block labelled "Unified
+  Track Row" with seven rules that no markup anywhere references, while four real track-row
+  implementations live elsewhere. A shared layer nothing uses is worse than no shared layer,
+  because the next person reads it as the system.
+- `settings/tidal` was the last route contradicting the card and button systems outright: 2px
+  borders against the app's 1px hairline, a private fourth button implementation (uppercase 800,
+  `--radius-sm` where every other button is `--radius-md`, and a `translate(-1px, -1px)` hover —
+  the hard-offset idiom the design direction retired), and a `var(--radius-lg, 14px)` fallback
+  that claimed a different geometry than the 12px token it fell back from. Its cards now consume
+  the `--module-*` contract and its buttons are the `Button` primitive.
+- The `--module-*` contract now has more than one consumer, and the four card classes that were
+  declaring it longhand defer to it instead of restating it with `box-shadow: none`.
+- `--shell-inset` was a vestigial hook, permanently `0`, feeding a `gap` and a `padding` that
+  could therefore never do anything. Removed.
 - `pnpm test:unit` is deterministic again. The `client` and `storybook` projects each drive their
   own headless Chromium pool, and at the default worker count the pair oversubscribed an 8-core
   machine badly enough that interaction tests missed the 15s timeout — a different two to eight of
