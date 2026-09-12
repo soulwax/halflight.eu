@@ -63,7 +63,7 @@
 			{/if}
 		</div>
 
-		<div class="generated-set-actions" aria-label={m.generate_set_actions()}>
+		<div class="generated-set-actions" role="group" aria-label={m.generate_set_actions()}>
 			<Button variant="primary" size="sm" onclick={onPlay}>
 				<Play size={14} fill="currentColor" />
 				{m.player_play_all()}
@@ -81,6 +81,9 @@
 				<Download size={14} />
 				<span class="sr-only">{m.action_export_m3u8()}</span>
 			</Button>
+			{#if saveSuccess}
+				<p class="generated-set-saved" role="status">{m.generate_saved()}</p>
+			{/if}
 		</div>
 	</header>
 
@@ -116,10 +119,10 @@
 <style>
 	.generated-set {
 		overflow: hidden;
-		border: 1px solid var(--border-subtle);
-		border-radius: var(--radius-lg);
-		background: var(--surface-raised);
-		box-shadow: var(--shadow-panel);
+		border: var(--module-border);
+		border-radius: var(--module-radius);
+		background: var(--module-bg);
+		box-shadow: var(--module-shadow);
 	}
 
 	.generated-set-header {
@@ -135,11 +138,10 @@
 		min-width: 0;
 	}
 
-	.generated-set-eyebrow,
-	.generated-track-provenance {
+	.generated-set-eyebrow {
 		margin: 0;
 		color: var(--text-muted);
-		font-size: 0.7rem;
+		font-size: var(--fs-2xs);
 		font-weight: 700;
 		letter-spacing: 0.1em;
 		text-transform: uppercase;
@@ -147,24 +149,28 @@
 
 	.generated-set h2 {
 		margin: 0.4rem 0 0;
-		font-family: var(--font-display);
 		font-size: clamp(1.3rem, 2.5vw, 2rem);
-		font-weight: 650;
-		letter-spacing: -0.035em;
-		line-height: 1.08;
+		font-weight: 700;
+		letter-spacing: -0.02em;
+		line-height: 1.15;
 	}
 
 	.generated-set-metadata {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.6rem 1.25rem;
+		gap: 0.55rem;
 		margin: 1rem 0 0;
 	}
 
 	.generated-set-metadata div {
 		display: flex;
-		align-items: baseline;
-		gap: 0.35rem;
+		flex-direction: column;
+		gap: 0.1rem;
+		min-width: 4.75rem;
+		padding: 0.55rem 0.7rem;
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-sm);
+		background: var(--surface-canvas);
 	}
 
 	.generated-set-metadata dt,
@@ -173,17 +179,16 @@
 	.generated-track-duration {
 		margin: 0;
 		color: var(--text-muted);
-		font-size: 0.78rem;
+		font-size: var(--fs-2xs);
 	}
 
 	.generated-set-metadata dt {
-		text-transform: capitalize;
+		color: var(--text-muted);
 	}
 
 	.generated-set-metadata dd {
-		font-family: ui-monospace, monospace;
-		font-weight: 700;
-		color: var(--text-secondary);
+		font-weight: 650;
+		color: var(--text-primary);
 	}
 
 	.generated-set-notice {
@@ -202,6 +207,15 @@
 		gap: 0.5rem;
 	}
 
+	.generated-set-saved {
+		flex-basis: 100%;
+		margin: 0.15rem 0 0;
+		color: var(--success);
+		font-size: var(--fs-sm);
+		font-weight: 600;
+		text-align: right;
+	}
+
 	.generated-track-list {
 		margin: 0;
 		padding: 0;
@@ -210,13 +224,15 @@
 
 	.generated-track {
 		display: grid;
-		grid-template-columns: 2rem minmax(0, 1fr) auto;
+		grid-template-columns: 2.25rem minmax(0, 1fr) auto;
 		align-items: center;
 		gap: 0.75rem;
-		min-height: 4.75rem;
-		padding: 0.7rem clamp(1.25rem, 3vw, 2rem);
+		min-height: 5.25rem;
+		padding: 0.75rem clamp(1.25rem, 3vw, 2rem);
 		border-bottom: 1px solid var(--border-subtle);
-		transition: background-color 160ms ease;
+		transition:
+			background-color var(--dur-fast) var(--ease-out),
+			box-shadow var(--dur-fast) var(--ease-out);
 	}
 
 	.generated-track:last-child {
@@ -225,6 +241,10 @@
 
 	.generated-track:hover {
 		background: var(--surface-selected);
+	}
+
+	.generated-track:focus-within {
+		background: color-mix(in oklab, var(--surface-selected) 58%, var(--surface-raised));
 	}
 
 	.generated-track-index,
@@ -243,11 +263,11 @@
 
 	.generated-track-play {
 		display: grid;
-		width: 2rem;
-		height: 2rem;
+		width: 2.5rem;
+		height: 2.5rem;
 		place-items: center;
 		border: 1px solid var(--border-subtle);
-		border-radius: var(--radius-full);
+		border-radius: var(--radius-sm);
 		background: var(--surface-canvas);
 		color: var(--text-secondary);
 		cursor: pointer;
@@ -270,8 +290,8 @@
 	.generated-track-title {
 		margin: 0;
 		color: var(--text-primary);
-		font-size: 0.9rem;
-		font-weight: 700;
+		font-size: var(--fs-base);
+		font-weight: 650;
 	}
 
 	.generated-track-artists {
@@ -279,10 +299,12 @@
 	}
 
 	.generated-track-provenance {
-		margin-top: 0.25rem;
-		color: var(--action);
-		font-size: 0.62rem;
-		letter-spacing: 0.06em;
+		display: inline-block;
+		max-width: 100%;
+		margin-top: 0.3rem;
+		color: var(--text-secondary);
+		font-size: var(--fs-2xs);
+		font-weight: 600;
 	}
 
 	.sr-only {
@@ -304,6 +326,10 @@
 
 		.generated-set-actions {
 			justify-content: flex-start;
+		}
+
+		.generated-set-saved {
+			text-align: left;
 		}
 	}
 

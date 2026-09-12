@@ -62,7 +62,12 @@ export default defineConfig({
 		 * race varies per run, which is exactly how it reads as flakiness rather
 		 * than as a resource ceiling. Each project alone is green at any width; it
 		 * is only the pair that oversubscribes. Bounding the pool fixes the whole
-		 * class, and costs a little wall-clock on the node-only `server` project.
+		 * class. Vitest does not inherit the root worker ceiling into every
+		 * project, so the browser limits live with their respective project
+		 * definitions below: two Chromium workers for components and one for
+		 * Storybook. The explicit project order prevents those separate pools from
+		 * competing with one another. The root limit still keeps node-only work
+		 * bounded.
 		 */
 		maxWorkers: 3,
 		projects: [
@@ -70,6 +75,8 @@ export default defineConfig({
 				extends: './vite.config.ts',
 				test: {
 					name: 'client',
+					maxWorkers: 2,
+					sequence: { groupOrder: 1 },
 					browser: {
 						enabled: true,
 						provider: playwright(),
@@ -91,6 +98,7 @@ export default defineConfig({
 				extends: './vite.config.ts',
 				test: {
 					name: 'server',
+					sequence: { groupOrder: 2 },
 					environment: 'node',
 					include: ['src/**/*.{test,spec}.{js,ts}'],
 					exclude: ['src/**/*.svelte.{test,spec}.{js,ts}']
@@ -107,6 +115,8 @@ export default defineConfig({
 				],
 				test: {
 					name: 'storybook',
+					maxWorkers: 1,
+					sequence: { groupOrder: 3 },
 					browser: {
 						enabled: true,
 						headless: true,

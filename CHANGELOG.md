@@ -37,6 +37,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The generated-set review no longer switches back to an older, denser visual language after the
+  newly composed builder. Its listening summary now uses the shared module contract, track actions
+  have a dependable 40px target, provenance reads as supporting evidence rather than all-caps
+  telemetry, and saving announces a durable result to assistive technology as well as visually.
 - `score.ts` accepted an `artistCounts` option and computed its own static artist-repeat penalty,
   but `generate.ts` never populated it — permanently unreachable from the real generation pipeline,
   exercised only by its own test. The real, dynamic version of this penalty already lived in
