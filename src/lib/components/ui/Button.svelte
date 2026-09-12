@@ -12,11 +12,15 @@
 		onclick,
 		target,
 		rel,
+		download,
 		class: className = '',
 		children
 	}: {
 		href?: string;
 		type?: 'button' | 'submit' | 'reset';
+		// 'secondary' is `.btn-base` on its own — the bordered default. 'ghost'
+		// drops the border and fill so it can sit next to a secondary button
+		// without competing with it.
 		variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
 		size?: 'sm' | 'md' | 'lg';
 		disabled?: boolean;
@@ -25,13 +29,20 @@
 		onclick?: (event: MouseEvent) => void;
 		target?: string;
 		rel?: string;
+		/** Link-only: the filename a downloadable href should save as. */
+		download?: string;
 		class?: string;
 		children?: Snippet;
 	} = $props();
 
-	const variantClass = $derived(
-		variant === 'primary' ? 'btn-primary' : variant === 'danger' ? 'btn-danger' : ''
-	);
+	const VARIANT_CLASS = {
+		primary: 'btn-primary',
+		secondary: '',
+		danger: 'btn-danger',
+		ghost: 'btn-ghost'
+	} as const;
+
+	const variantClass = $derived(VARIANT_CLASS[variant]);
 
 	const sizeClass = $derived(size === 'sm' ? 'btn-sm' : size === 'lg' ? 'btn-lg' : '');
 </script>
@@ -44,6 +55,7 @@
 		aria-label={ariaLabel}
 		{target}
 		{rel}
+		{download}
 		{onclick}
 	>
 		{#if children}{@render children()}{/if}

@@ -9,6 +9,7 @@
 	import TrackQueueActions from '#lib/components/music/TrackQueueActions.svelte';
 	import Button from '#lib/components/ui/Button.svelte';
 	import SectionHeader from '#lib/components/ui/SectionHeader.svelte';
+	import ViewHeader from '#lib/components/ui/ViewHeader.svelte';
 	import { m } from '#lib/paraglide/messages';
 	import type { SearchResultGroups } from '#lib/tidal/models';
 	import { parseTidalResource } from '#lib/tidal/resource';
@@ -220,11 +221,12 @@
 </svelte:head>
 
 <section class="search-page" aria-labelledby="search-title">
-	<header class="search-header">
-		<p class="eyebrow">HALFLIGHT // EXPLORATION</p>
-		<h1 id="search-title" class="search-title">{m.search_title()}</h1>
-		<p class="intro">{m.search_subtitle()}</p>
-	</header>
+	<ViewHeader
+		eyebrow={m.view_eyebrow_search()}
+		title={m.search_title()}
+		titleId="search-title"
+		description={m.search_subtitle()}
+	/>
 
 	<form class="search-form" method="GET" role="search" onsubmit={handleSubmit}>
 		<label for="search-query" class="sr-only">{m.search_label()}</label>
@@ -360,25 +362,6 @@
 <style>
 	.search-page {
 		max-width: 72rem;
-	}
-
-	.search-header {
-		margin-bottom: 2rem;
-		border-bottom: 1px solid var(--border-subtle);
-		padding-bottom: 1.5rem;
-	}
-
-	.search-title {
-		margin: 0.25rem 0 0.5rem;
-		font-size: clamp(2rem, 5vw, 3rem);
-		font-weight: 700;
-		color: var(--text-primary);
-	}
-
-	.intro {
-		margin: 0;
-		color: var(--text-muted);
-		font-size: 0.95rem;
 	}
 
 	.search-form {

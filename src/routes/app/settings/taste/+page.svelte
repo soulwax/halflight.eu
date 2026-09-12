@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Badge from '#lib/components/ui/Badge.svelte';
 	import Button from '#lib/components/ui/Button.svelte';
+	import ViewHeader from '#lib/components/ui/ViewHeader.svelte';
 	import { m } from '#lib/paraglide/messages';
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
@@ -29,20 +30,14 @@
 </svelte:head>
 
 <section class="max-w-4xl space-y-8" aria-labelledby="taste-profile-title">
-	<header class="border-b-2 border-[var(--border-subtle)] pb-6">
-		<p class="font-mono text-xs font-bold tracking-[0.14em] text-[var(--text-muted)] uppercase">
-			{m.taste_profile_eyebrow()}
-		</p>
-		<h1
-			id="taste-profile-title"
-			class="mt-1 text-3xl font-extrabold tracking-tight uppercase sm:text-4xl"
-		>
-			{m.taste_profile_title()}
-		</h1>
-		<p class="mt-2 text-sm text-[var(--text-muted)]">
-			{m.taste_profile_description()}
-		</p>
-	</header>
+	<ViewHeader
+		eyebrow={m.taste_profile_eyebrow()}
+		title={m.taste_profile_title()}
+		titleId="taste-profile-title"
+		description={m.taste_profile_description()}
+	>
+		{#snippet mark()}<Sparkles size={22} />{/snippet}
+	</ViewHeader>
 
 	{#if form?.error}
 		<div

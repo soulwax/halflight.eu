@@ -2,6 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { Check, ExternalLink, Loader2, Music, Sparkles } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
+	import ViewHeader from '#lib/components/ui/ViewHeader.svelte';
 
 	import type { ActionData, PageData } from './$types';
 
@@ -86,11 +87,12 @@
 </svelte:head>
 
 <section class="tidal-settings" aria-labelledby="tidal-settings-title">
-	<header class="settings-header">
-		<p class="eyebrow">HALFLIGHT // SYSTEM CONFIGURATION</p>
-		<h1 id="tidal-settings-title">{m.tidal_settings_title()}</h1>
-		<p class="intro">{m.tidal_settings_subtitle()}</p>
-	</header>
+	<ViewHeader
+		eyebrow={m.view_eyebrow_tidal()}
+		title={m.tidal_settings_title()}
+		titleId="tidal-settings-title"
+		description={m.tidal_settings_subtitle()}
+	/>
 
 	{#if data.notice.error}
 		<p class="notice notice-error" role="alert">{m.tidal_settings_connection_failed()}</p>
@@ -291,37 +293,6 @@
 <style>
 	.tidal-settings {
 		max-width: 48rem;
-	}
-
-	.settings-header {
-		margin-bottom: 2rem;
-		border-bottom: 2px solid var(--border-subtle);
-		padding-bottom: 1.5rem;
-	}
-
-	.eyebrow {
-		margin: 0 0 0.5rem;
-		color: var(--text-muted);
-		font-family: ui-monospace, monospace;
-		font-size: 0.75rem;
-		font-weight: 800;
-		letter-spacing: 0.14em;
-		text-transform: uppercase;
-	}
-
-	h1 {
-		margin: 0;
-		font-size: clamp(2.2rem, 5vw, 3.5rem);
-		font-weight: 800;
-		letter-spacing: -0.04em;
-		line-height: 1.05;
-		text-transform: uppercase;
-	}
-
-	.intro {
-		margin: 0.75rem 0 0;
-		color: var(--text-muted);
-		font-size: 1.05rem;
 	}
 
 	.notice,

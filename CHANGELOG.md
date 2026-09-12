@@ -7,8 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The first Storybook coverage for the shared UI primitives: `Button`, `Badge`, `SectionHeader`,
+  and the new `ViewHeader` (25 stories total), running through `@storybook/addon-vitest` with
+  `@storybook/addon-a11y` on every story. The toolchain has been fully configured since the
+  project's scaffolding but held zero story files.
+- `ViewHeader` — the one header a top-level view gets: eyebrow, a single hero line, and an optional
+  supporting sentence. Nine routes (`/app`, `api`, `generate`, `library`, `mixes`, `search`,
+  `settings/lastfm`, `settings/taste`, `settings/tidal`) had each hand-rolled this and drifted into
+  four different `<h1>` treatments from 24px/600 to 56px/800/uppercase, despite `layout.css`
+  already commenting `--fs-2xl` as "the one hero line per view, no bigger". All nine now share one
+  component and are pinned to the token, not a route-local rule.
+- The six `HALFLIGHT // …` view eyebrows are now catalogue messages with German translations.
+  They had been English literals in markup all along; `i18n-coverage.spec.ts` never caught them
+  because the guard skips any string with no lowercase letter, and these are set in caps.
+- `i18n-coverage.spec.ts` now also catches copy hardcoded into a component _prop_ —
+  `ariaLabel="Export as M3U8 Playlist"`, `title="MY CUSTOM PLAYLISTS"` — not just visible text
+  nodes. One of these had sat in `/app/library` since before the original sweep; the aria-label
+  case is worse than a visible miss, since it reaches only screen-reader users. Fixed three such
+  strings across `albums/[id]`, `playlists/[id]`, and `library` while hardening the guard.
+
 ### Fixed
 
+- `Button`'s `ghost` variant had no CSS of its own — `.btn-ghost` never existed, so it mapped to
+  the empty string and rendered identically to `secondary` at all nine call sites. Wherever the
+  two sat together the hierarchy read as flat. Ghost is now the genuine third weight: no border or
+  fill at rest, a soft sky wash on hover, so the bordered secondary beside it stays the stronger
+  offer.
+- `/app` Home offered the same thing twice. Its resume card's last branch invites the listener to
+  generate a set, and a standing generation band two rows below repeated that invitation in a
+  second card treatment — so the emptiest possible Home was the one that shouted loudest. The band
+  now appears only when the resume card is offering something else, and the resume card's eyebrow
+  says which of the two it is. Home also moved onto `ViewHeader` and `SectionHeader`, which
+  removes its private `.eyebrow` fork (weight 650 / tracking .11em against the shared 600 / .08em)
+  and the two differently-shaped "see more" affordances that sat in identically-shaped headings.
+- `settings/lastfm` styled its buttons with bare `button` and `.button` element selectors — a third
+  private button implementation, at `--radius-sm` where every other button in the app is
+  `--radius-md`. It uses the `Button` primitive now.
+- `Badge`'s `tag` variant — used by the taste settings page's confidence badge for every level
+  below "high" — had no template branch of its own and fell through to the `quality` branch,
+  running the audio-quality-tier classifier on a whole sentence. Harmless only by coincidence,
+  since that classifier's fallback colour happens to match what a plain tag should look like; a
+  future change to quality-tier styling could have silently broken it. Now its own explicit branch,
+  same rendered colour.
 - Retrying a queue edit after a lost response is now correctly recognised as the same operation
   and replayed from the cached result, instead of being rejected as invalid. The server's
   idempotency check hashed the whole intent including `expectedRevision`, but the client sends its

@@ -11,6 +11,7 @@
 	import { readGenerationStream } from '#lib/taste/generation-stream.js';
 	import type { ProvisionalSet, ProvisionalTrack } from '#lib/taste/provisional';
 	import type { TrackSummary } from '#lib/tidal/models';
+	import ViewHeader from '#lib/components/ui/ViewHeader.svelte';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -198,28 +199,19 @@
 	<title>{m.generate_title()} — {m.brand_name()}</title>
 </svelte:head>
 
-<section class="max-w-4xl space-y-8" aria-labelledby="generator-title">
-	<header class="border-b-2 border-[var(--border-subtle)] pb-6">
-		<p class="font-mono text-xs font-bold tracking-[0.14em] text-[var(--text-muted)] uppercase">
-			{m.home_generate_eyebrow()}
-		</p>
-		<h1
-			id="generator-title"
-			class="mt-1 text-3xl font-extrabold tracking-tight uppercase sm:text-4xl"
-		>
-			{m.generate_title()}
-		</h1>
-		<p class="mt-2 text-sm text-[var(--text-muted)]">
-			{m.generate_description()}
-		</p>
-	</header>
+<section class="generator-page" aria-labelledby="generator-title">
+	<ViewHeader
+		eyebrow={m.home_generate_eyebrow()}
+		title={m.generate_title()}
+		titleId="generator-title"
+		description={m.generate_description()}
+	>
+		{#snippet mark()}<Sparkles size={22} />{/snippet}
+	</ViewHeader>
 
 	{#if form?.errorCode || streamError}
-		<div
-			class="flex items-center gap-3 border border-[var(--danger)] bg-[var(--danger-subtle)] p-4 text-sm text-[var(--text-primary)]"
-			role="alert"
-		>
-			<AlertCircle size={18} class="shrink-0 text-[var(--danger)]" />
+		<div class="generator-notice" role="alert">
+			<AlertCircle size={18} aria-hidden="true" />
 			<p>
 				{form?.errorCode === 'invalid_generation_input'
 					? m.generate_invalid_input()
@@ -230,16 +222,14 @@
 		</div>
 	{/if}
 
-	<!-- Knobs Configuration Panel -->
-	<section
-		class="relative overflow-hidden border border-[var(--border-subtle)] bg-[var(--surface-raised)] p-6"
-		aria-labelledby="knobs-title"
-	>
-		<div class="absolute top-0 left-0 h-1 w-full bg-[var(--action)]"></div>
-		<h2 id="knobs-title" class="flex items-center gap-2 text-lg font-bold tracking-tight">
-			<Sliders size={18} class="text-[var(--action)]" />
-			{m.generate_shape_title()}
-		</h2>
+	<section class="generator-builder" aria-labelledby="knobs-title">
+		<header class="generator-builder-heading">
+			<div class="generator-builder-icon" aria-hidden="true"><Sliders size={20} /></div>
+			<div>
+				<h2 id="knobs-title">{m.generate_shape_title()}</h2>
+				<p>{m.generate_description()}</p>
+			</div>
+		</header>
 
 		<form
 			method="POST"
@@ -248,20 +238,19 @@
 				cancel();
 				void startGeneration(formData);
 			}}
-			class="mt-6 space-y-6"
+			class="generator-builder-form"
 		>
-			<!-- Familiarity Slider -->
-			<div class="space-y-2">
-				<div class="flex items-center justify-between text-sm">
-					<label for="familiarity-knob" class="font-semibold text-[var(--text-primary)]">
+			<div class="generator-familiarity">
+				<div class="generator-familiarity-heading">
+					<label for="familiarity-knob">
 						{m.generate_familiarity()}
 					</label>
-					<span class="font-mono text-xs text-[var(--accent-gold)]">
+					<output for="familiarity-knob">
 						{m.generate_familiarity_readout({
 							familiar: familiarity,
 							discovery: 100 - familiarity
 						})}
-					</span>
+					</output>
 				</div>
 				<input
 					id="familiarity-knob"
@@ -271,7 +260,7 @@
 					max="100"
 					step="5"
 					bind:value={familiarity}
-					class="h-2 w-full cursor-pointer appearance-none rounded bg-[var(--surface-canvas)] accent-[var(--action)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--action)]"
+					class="generator-range"
 					aria-valuemin="0"
 					aria-valuemax="100"
 					aria-valuenow={familiarity}
@@ -280,30 +269,23 @@
 						discovery: 100 - familiarity
 					})}
 				/>
-				<div
-					class="flex justify-between text-[0.68rem] tracking-wider text-[var(--text-muted)] uppercase"
-				>
+				<div class="generator-familiarity-scale" aria-hidden="true">
 					<span>{m.generate_scale_discovery()}</span>
 					<span>{m.generate_scale_balanced()}</span>
 					<span>{m.generate_scale_favourites()}</span>
 				</div>
 			</div>
 
-			<!-- Set Length, Era, Minimum Length & Seed Selection Grid -->
-			<div class="grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2">
-				<!-- Track Count -->
-				<div class="space-y-1.5">
-					<label
-						for="track-count-select"
-						class="text-xs font-bold tracking-wider text-[var(--text-muted)] uppercase"
-					>
+			<div class="generator-fields">
+				<div class="generator-field">
+					<label for="track-count-select">
 						{m.generate_set_size()}
 					</label>
 					<select
 						id="track-count-select"
 						name="targetCount"
 						bind:value={targetCount}
-						class="w-full border border-[var(--border-subtle)] bg-[var(--surface-canvas)] px-3 py-2 text-sm text-[var(--text-primary)] focus-visible:border-[var(--action)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--action)]"
+						class="generator-select"
 					>
 						{#each SIZE_OPTIONS as option (option.value)}
 							<option value={option.value}>{option.label()}</option>
@@ -311,39 +293,26 @@
 					</select>
 				</div>
 
-				<!-- Era Window -->
-				<div class="space-y-1.5">
-					<label
-						for="era-select"
-						class="text-xs font-bold tracking-wider text-[var(--text-muted)] uppercase"
-					>
+				<div class="generator-field">
+					<label for="era-select">
 						{m.generate_era()}
 					</label>
-					<select
-						id="era-select"
-						name="eraCenter"
-						bind:value={eraCenter}
-						class="w-full border border-[var(--border-subtle)] bg-[var(--surface-canvas)] px-3 py-2 text-sm text-[var(--text-primary)] focus-visible:border-[var(--action)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--action)]"
-					>
+					<select id="era-select" name="eraCenter" bind:value={eraCenter} class="generator-select">
 						{#each ERA_OPTIONS as option (option.value)}
 							<option value={option.value}>{option.label()}</option>
 						{/each}
 					</select>
 				</div>
 
-				<!-- Minimum Track Length -->
-				<div class="space-y-1.5">
-					<label
-						for="min-length-select"
-						class="text-xs font-bold tracking-wider text-[var(--text-muted)] uppercase"
-					>
+				<div class="generator-field">
+					<label for="min-length-select">
 						{m.generate_min_length()}
 					</label>
 					<select
 						id="min-length-select"
 						name="minDurationSeconds"
 						bind:value={minDurationSeconds}
-						class="w-full border border-[var(--border-subtle)] bg-[var(--surface-canvas)] px-3 py-2 text-sm text-[var(--text-primary)] focus-visible:border-[var(--action)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--action)]"
+						class="generator-select"
 					>
 						{#each MIN_LENGTH_OPTIONS as option (option.value)}
 							<option value={option.value}>{option.label()}</option>
@@ -351,19 +320,15 @@
 					</select>
 				</div>
 
-				<!-- Seed Anchor Selection -->
-				<div class="space-y-1.5">
-					<label
-						for="seed-artist-select"
-						class="text-xs font-bold tracking-wider text-[var(--text-muted)] uppercase"
-					>
+				<div class="generator-field">
+					<label for="seed-artist-select">
 						{m.generate_seed()}
 					</label>
 					<select
 						id="seed-artist-select"
 						name="seedArtistId"
 						bind:value={seedArtistId}
-						class="w-full border border-[var(--border-subtle)] bg-[var(--surface-canvas)] px-3 py-2 text-sm text-[var(--text-primary)] focus-visible:border-[var(--action)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--action)]"
+						class="generator-select"
 					>
 						<option value="">{m.generate_profile_seed()}</option>
 						{#each data.seedArtists as artist (artist.id)}
@@ -373,50 +338,42 @@
 				</div>
 			</div>
 
-			<label class="flex cursor-pointer items-center gap-2 text-sm text-[var(--text-primary)]">
+			<label class="generator-toggle">
 				<input
 					type="checkbox"
 					name="excludeExplicit"
 					bind:checked={excludeExplicit}
-					class="size-4 accent-[var(--action)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--action)]"
+					class="generator-toggle-control"
 				/>
 				{m.generate_exclude_explicit()}
 			</label>
 
-			<div class="flex flex-wrap items-center gap-3 border-t border-[var(--border-subtle)] pt-5">
-				<Button
-					type="submit"
-					variant="primary"
-					size="md"
-					disabled={isGenerating || !data.connection.connected}
-					class="w-full sm:w-auto"
-				>
-					<Sparkles size={16} class={`mr-2 ${isGenerating ? 'animate-spin' : ''}`} />
-					{isGenerating ? m.generate_generating() : m.generate_submit()}
-				</Button>
-				{#if isGenerating}
+			<footer class="generator-actions">
+				<div class="generator-action-buttons">
 					<Button
-						type="button"
-						variant="secondary"
+						type="submit"
+						variant="primary"
 						size="md"
-						onclick={cancelGeneration}
-						class="w-full sm:w-auto"
+						disabled={isGenerating || !data.connection.connected}
 					>
-						{m.playlist_cancel()}
+						<Sparkles size={16} aria-hidden="true" class={isGenerating ? 'animate-spin' : ''} />
+						{isGenerating ? m.generate_generating() : m.generate_submit()}
 					</Button>
-				{/if}
+					{#if isGenerating}
+						<Button type="button" variant="secondary" size="md" onclick={cancelGeneration}>
+							{m.playlist_cancel()}
+						</Button>
+					{/if}
+				</div>
 
 				{#if !data.connection.connected}
-					<span class="w-full text-xs text-[var(--danger)] sm:w-auto">
+					<p class="generator-connection-note">
 						{m.generate_connection_required()}
-					</span>
+					</p>
+				{:else if isGenerating && progressLabel}
+					<p class="generator-progress" role="status" aria-live="polite">{progressLabel}</p>
 				{/if}
-			</div>
-			{#if isGenerating && progressLabel}
-				<p class="text-sm text-[var(--text-muted)]" role="status" aria-live="polite">
-					{progressLabel}
-				</p>
-			{/if}
+			</footer>
 		</form>
 	</section>
 
@@ -432,3 +389,219 @@
 		/>
 	{/if}
 </section>
+
+<style>
+	.generator-page {
+		display: grid;
+		gap: var(--space-section);
+		max-width: 70rem;
+	}
+
+	.generator-builder-heading {
+		display: flex;
+		align-items: flex-start;
+		gap: 1rem;
+	}
+
+	.generator-builder-icon {
+		display: grid;
+		flex: 0 0 auto;
+		place-items: center;
+		border-radius: var(--radius-md);
+		background: var(--surface-selected);
+		color: var(--action);
+	}
+
+	.generator-builder-icon {
+		width: 2.5rem;
+		height: 2.5rem;
+	}
+
+	.generator-builder h2 {
+		margin: 0;
+		color: var(--text-primary);
+	}
+
+	.generator-builder-heading p {
+		max-width: 42rem;
+		margin: 0.45rem 0 0;
+		color: var(--text-secondary);
+	}
+
+	.generator-notice {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.75rem;
+		padding: 1rem 1.1rem;
+		border: 1px solid color-mix(in oklab, var(--danger) 35%, var(--border-subtle));
+		border-radius: var(--radius-md);
+		background: var(--danger-subtle);
+		color: var(--text-primary);
+	}
+
+	.generator-notice svg {
+		flex: 0 0 auto;
+		margin-top: 0.15rem;
+		color: var(--danger);
+	}
+
+	.generator-notice p,
+	.generator-connection-note,
+	.generator-progress {
+		margin: 0;
+	}
+
+	.generator-builder {
+		display: grid;
+		gap: clamp(1.25rem, 2.5vw, 1.75rem);
+		padding: var(--space-panel);
+		border: var(--module-border);
+		border-radius: var(--module-radius);
+		background: var(--module-bg);
+		box-shadow: var(--module-shadow);
+	}
+
+	.generator-builder-form {
+		display: grid;
+		gap: clamp(1.25rem, 2.5vw, 1.75rem);
+	}
+
+	.generator-familiarity {
+		padding: 1rem 1.1rem 0.8rem;
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-md);
+		background: color-mix(in oklab, var(--surface-selected) 30%, var(--surface-raised));
+	}
+
+	.generator-familiarity-heading,
+	.generator-actions {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+	}
+
+	.generator-familiarity-heading label {
+		color: var(--text-primary);
+		font-weight: 650;
+	}
+
+	.generator-familiarity-heading output {
+		color: var(--text-secondary);
+		font-size: var(--fs-sm);
+	}
+
+	.generator-range {
+		width: 100%;
+		margin: 1rem 0 0.4rem;
+		accent-color: var(--action);
+	}
+
+	.generator-familiarity-scale {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		color: var(--text-muted);
+		font-size: var(--fs-2xs);
+	}
+
+	.generator-familiarity-scale span:nth-child(2) {
+		text-align: center;
+	}
+
+	.generator-familiarity-scale span:last-child {
+		text-align: right;
+	}
+
+	.generator-fields {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 1rem;
+	}
+
+	.generator-field {
+		display: grid;
+		gap: 0.45rem;
+		color: var(--text-secondary);
+		font-size: var(--fs-sm);
+		font-weight: 600;
+	}
+
+	.generator-select {
+		min-height: 2.7rem;
+		padding: 0 0.8rem;
+		border: 1px solid var(--border-strong);
+		border-radius: var(--radius-sm);
+		background: var(--surface-canvas);
+		color: var(--text-primary);
+		font: inherit;
+		font-weight: 500;
+	}
+
+	.generator-select:hover {
+		border-color: color-mix(in oklab, var(--action) 45%, var(--border-strong));
+	}
+
+	.generator-select:focus-visible,
+	.generator-range:focus-visible,
+	.generator-toggle-control:focus-visible {
+		outline: 2px solid var(--focus-ring);
+		outline-offset: 2px;
+	}
+
+	.generator-toggle {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+		width: max-content;
+		min-height: 2.75rem;
+		color: var(--text-secondary);
+		font-size: var(--fs-sm);
+		cursor: pointer;
+	}
+
+	.generator-toggle-control {
+		width: 1rem;
+		height: 1rem;
+		accent-color: var(--action);
+	}
+
+	.generator-actions {
+		padding-top: 1.25rem;
+		border-top: 1px solid var(--border-subtle);
+	}
+
+	.generator-action-buttons {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.6rem;
+	}
+
+	.generator-connection-note,
+	.generator-progress {
+		max-width: 24rem;
+		color: var(--text-secondary);
+		font-size: var(--fs-sm);
+		text-align: right;
+	}
+
+	.generator-connection-note {
+		color: var(--danger);
+	}
+
+	@media (max-width: 42rem) {
+		.generator-fields {
+			grid-template-columns: 1fr;
+		}
+
+		.generator-familiarity-heading,
+		.generator-actions {
+			align-items: flex-start;
+			flex-direction: column;
+		}
+
+		.generator-connection-note,
+		.generator-progress {
+			text-align: left;
+		}
+	}
+</style>

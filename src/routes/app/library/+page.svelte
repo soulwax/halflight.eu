@@ -15,6 +15,7 @@
 	import StateCard from '#lib/components/music/StateCard.svelte';
 	import Button from '#lib/components/ui/Button.svelte';
 	import SectionHeader from '#lib/components/ui/SectionHeader.svelte';
+	import ViewHeader from '#lib/components/ui/ViewHeader.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { customPlaylists } from '#lib/player/customPlaylists.svelte';
 	import type { TrackSummary } from '#lib/tidal/models';
@@ -47,16 +48,17 @@
 </svelte:head>
 
 <section class="library" aria-labelledby="library-title">
-	<header class="library-header">
-		<p class="eyebrow">HALFLIGHT // PERSONAL CATALOGUE</p>
-		<h1 id="library-title" class="library-title">{m.library_title()}</h1>
-		<p class="intro">{m.library_subtitle()}</p>
-	</header>
+	<ViewHeader
+		eyebrow={m.view_eyebrow_library()}
+		title={m.library_title()}
+		titleId="library-title"
+		description={m.library_subtitle()}
+	/>
 
 	<!-- Custom Playlists Section -->
 	<section class="custom-pl-block" aria-labelledby="user-playlists-title">
 		<SectionHeader
-			title="MY CUSTOM PLAYLISTS"
+			title={m.library_custom_title()}
 			titleId="user-playlists-title"
 			count={customPlaylists.playlists.length}
 		>
@@ -221,25 +223,6 @@
 <style>
 	.library {
 		max-width: 72rem;
-	}
-
-	.library-header {
-		margin-bottom: 2.25rem;
-		border-bottom: 1px solid var(--border-subtle);
-		padding-bottom: 1.5rem;
-	}
-
-	.library-title {
-		margin: 0.25rem 0 0.5rem;
-		font-size: clamp(2rem, 5vw, 3rem);
-		font-weight: 700;
-		color: var(--text-primary);
-	}
-
-	.intro {
-		margin: 0;
-		color: var(--text-muted);
-		font-size: 0.95rem;
 	}
 
 	.custom-pl-block {

@@ -102,7 +102,7 @@
 							downloadM3u8File(`${data.album.title}.m3u8`, m3uContent);
 						}}
 						title={m.action_export_m3u8()}
-						ariaLabel="Export as M3U8 Playlist"
+						ariaLabel={m.action_export_m3u8()}
 					>
 						<Download size={14} />
 						M3U8

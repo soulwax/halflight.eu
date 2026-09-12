@@ -280,7 +280,7 @@
 			</section>
 		{/if}
 
-		<PageActions tidalUrl={tidalTrackUrl} tidalLabel="Open in TIDAL" {retryHref} />
+		<PageActions tidalUrl={tidalTrackUrl} {retryHref} />
 	{:else}
 		<StateCard state={data.state} configured={data.configured} {retryHref} />
 	{/if}

@@ -7,6 +7,7 @@
 	import Button from '#lib/components/ui/Button.svelte';
 	import SectionHeader from '#lib/components/ui/SectionHeader.svelte';
 	import StateCard from '#lib/components/music/StateCard.svelte';
+	import ViewHeader from '#lib/components/ui/ViewHeader.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -34,11 +35,12 @@
 </svelte:head>
 
 <section class="mixes-page" aria-labelledby="mixes-title">
-	<header class="mixes-header">
-		<p class="eyebrow">HALFLIGHT // AUTOMATED COMPOSITION</p>
-		<h1 id="mixes-title" class="mixes-title">{m.mixes_title()}</h1>
-		<p class="intro">{m.mixes_subtitle()}</p>
-	</header>
+	<ViewHeader
+		eyebrow={m.view_eyebrow_mixes()}
+		title={m.mixes_title()}
+		titleId="mixes-title"
+		description={m.mixes_subtitle()}
+	/>
 
 	{#if !data.connected}
 		<StateCard
@@ -126,26 +128,6 @@
 <style>
 	.mixes-page {
 		max-width: 72rem;
-	}
-
-	.mixes-header {
-		margin-bottom: 2rem;
-		border-bottom: 1px solid var(--border-subtle);
-		padding-bottom: 1.5rem;
-	}
-
-	.mixes-title {
-		margin: 0.25rem 0 0.5rem;
-		font-size: clamp(2rem, 5vw, 3rem);
-		font-weight: 700;
-		color: var(--text-primary);
-	}
-
-	.intro {
-		margin: 0;
-		color: var(--text-muted);
-		font-size: 0.95rem;
-		line-height: 1.5;
 	}
 
 	.mix-tabs {

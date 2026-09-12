@@ -24,4 +24,17 @@ describe('Badge.svelte', () => {
 		render(Badge, { variant: 'accent', text: 'NEW', title: 'Fresh release' });
 		await expect.element(page.getByTitle('Fresh release')).toHaveTextContent('NEW');
 	});
+
+	it('renders a tag as its own neutral variant, not as an unrecognised quality', async () => {
+		// The taste settings page's confidence badge picks between 'accent' (high
+		// confidence) and 'tag' (every other level). 'tag' used to fall through to
+		// the 'quality' branch by accident, running `qualityTier()` on a whole
+		// sentence — harmless today only because that function's fallback happens
+		// to be the same muted colour. Pin the tag as its own explicit case so a
+		// future change to quality-tier styling can't silently break it.
+		render(Badge, { variant: 'tag', text: 'Initial confidence' });
+		const el = page.getByText('Initial confidence');
+		await expect.element(el).toBeInTheDocument();
+		await expect.element(el).toHaveAttribute('data-tier', 'lossy');
+	});
 });

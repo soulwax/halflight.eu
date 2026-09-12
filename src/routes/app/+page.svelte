@@ -5,6 +5,8 @@
 	import { customPlaylists } from '#lib/player/customPlaylists.svelte.js';
 	import { player } from '#lib/player/player.svelte.js';
 	import Button from '#lib/components/ui/Button.svelte';
+	import SectionHeader from '#lib/components/ui/SectionHeader.svelte';
+	import ViewHeader from '#lib/components/ui/ViewHeader.svelte';
 	import SongCard from '#lib/components/music/SongCard.svelte';
 	import StateCard from '#lib/components/music/StateCard.svelte';
 	import type { PageData } from './$types';
@@ -15,6 +17,14 @@
 		player.currentTrack?.imageUrl ?? player.currentTrack?.album?.imageUrl
 	);
 	const savedSets = $derived(customPlaylists.playlists.slice(0, 4));
+
+	/**
+	 * With nothing playing and no mix to fall back on, the resume card's own last
+	 * branch already asks the listener to generate a set. The standing generation
+	 * band below it then repeated the same offer, in a second card treatment, two
+	 * rows apart — so the emptiest possible Home was the one that shouted loudest.
+	 */
+	const resumeIsGenerateInvitation = $derived(!player.currentTrack && !data.dailyMix[0]);
 </script>
 
 <svelte:head>
@@ -23,11 +33,12 @@
 </svelte:head>
 
 <section class="home" aria-labelledby="home-title">
-	<header class="home-intro">
-		<p class="eyebrow">{m.home_eyebrow()}</p>
-		<h1 id="home-title">{m.home_title({ name: data.user.name })}</h1>
-		<p>{m.home_subtitle()}</p>
-	</header>
+	<ViewHeader
+		eyebrow={m.home_eyebrow()}
+		title={m.home_title({ name: data.user.name })}
+		titleId="home-title"
+		description={m.home_subtitle()}
+	/>
 
 	{#if data.connection.connected}
 		<section
@@ -40,7 +51,9 @@
 			{/if}
 
 			<div class="continuation-copy">
-				<p class="eyebrow">{m.home_resume_eyebrow()}</p>
+				<p class="eyebrow">
+					{resumeIsGenerateInvitation ? m.home_generate_eyebrow() : m.home_resume_eyebrow()}
+				</p>
 				{#if player.currentTrack}
 					<h2 id="continue-title">{player.currentTrack.title}</h2>
 					<p>{player.currentTrack.artists.map((artist) => artist.name).join(', ')}</p>
@@ -82,30 +95,34 @@
 			</div>
 		</section>
 
-		<section class="generation" aria-labelledby="generation-title">
-			<div>
-				<p class="eyebrow">{m.home_generate_eyebrow()}</p>
-				<h2 id="generation-title">{m.home_generate_title()}</h2>
-				<p>{m.home_generate_description()}</p>
-			</div>
-			<Button href={resolve('/app/generate')} variant="secondary">
-				<Wand2 size={16} />
-				{m.home_generate_action()}
-			</Button>
-		</section>
+		{#if !resumeIsGenerateInvitation}
+			<section class="generation" aria-labelledby="generation-title">
+				<div>
+					<p class="eyebrow">{m.home_generate_eyebrow()}</p>
+					<h2 id="generation-title">{m.home_generate_title()}</h2>
+					<p>{m.home_generate_description()}</p>
+				</div>
+				<Button href={resolve('/app/generate')} variant="secondary">
+					<Wand2 size={16} />
+					{m.home_generate_action()}
+				</Button>
+			</section>
+		{/if}
 
 		{#if data.dailyMix.length}
 			<section class="home-section" aria-labelledby="daily-mix-title">
-				<div class="section-heading">
-					<div>
-						<p class="eyebrow">{m.home_mix_eyebrow()}</p>
-						<h2 id="daily-mix-title">{m.home_daily_mix_title()}</h2>
-					</div>
-					<a href={resolve('/app/mixes')}>
-						{m.home_mixes_action()}
-						<ArrowRight size={16} />
-					</a>
-				</div>
+				<SectionHeader
+					eyebrow={m.home_mix_eyebrow()}
+					title={m.home_daily_mix_title()}
+					titleId="daily-mix-title"
+				>
+					{#snippet actions()}
+						<Button href={resolve('/app/mixes')} variant="ghost" size="sm">
+							{m.home_mixes_action()}
+							<ArrowRight size={15} />
+						</Button>
+					{/snippet}
+				</SectionHeader>
 
 				<div class="track-grid">
 					{#each data.dailyMix as track, index (track.id)}
@@ -117,15 +134,17 @@
 
 		{#if savedSets.length}
 			<section class="home-section" aria-labelledby="saved-sets-title">
-				<div class="section-heading">
-					<div>
-						<p class="eyebrow">{m.home_saved_sets_eyebrow()}</p>
-						<h2 id="saved-sets-title">{m.home_saved_sets_title()}</h2>
-					</div>
-					<Button href={resolve('/app/generate')} variant="ghost" size="sm">
-						{m.home_saved_sets_new()}
-					</Button>
-				</div>
+				<SectionHeader
+					eyebrow={m.home_saved_sets_eyebrow()}
+					title={m.home_saved_sets_title()}
+					titleId="saved-sets-title"
+				>
+					{#snippet actions()}
+						<Button href={resolve('/app/generate')} variant="ghost" size="sm">
+							{m.home_saved_sets_new()}
+						</Button>
+					{/snippet}
+				</SectionHeader>
 
 				<div class="saved-set-grid">
 					{#each savedSets as playlist (playlist.id)}
@@ -181,41 +200,11 @@
 		padding: clamp(0.75rem, 1.5vw, 1.5rem) 0 3rem;
 	}
 
-	.home-intro {
-		max-width: 44rem;
-		margin-bottom: var(--space-section);
-	}
-
-	.eyebrow {
-		margin: 0 0 0.35rem;
-		color: var(--text-muted);
-		font-size: var(--fs-2xs);
-		font-weight: 650;
-		letter-spacing: 0.11em;
-		text-transform: uppercase;
-	}
-
-	.home-intro h1,
 	.continuation h2,
-	.generation h2,
-	.section-heading h2 {
+	.generation h2 {
 		margin: 0;
 		letter-spacing: -0.02em;
 		color: var(--text-primary);
-	}
-
-	.home-intro h1 {
-		font-size: var(--fs-xl);
-		font-weight: 600;
-		line-height: 1.1;
-	}
-
-	.home-intro > p:last-child {
-		margin: 0.5rem 0 0;
-		max-width: 34rem;
-		color: var(--text-secondary);
-		font-size: var(--fs-sm);
-		line-height: 1.55;
 	}
 
 	.continuation {
@@ -296,20 +285,6 @@
 		margin-top: var(--space-section);
 	}
 
-	.section-heading {
-		display: flex;
-		align-items: baseline;
-		justify-content: space-between;
-		gap: 1.5rem;
-		margin-bottom: 0.85rem;
-	}
-
-	.section-heading h2 {
-		font-size: var(--fs-lg);
-		font-weight: 600;
-	}
-
-	.section-heading a,
 	.shortcuts a {
 		display: inline-flex;
 		align-items: center;
@@ -321,7 +296,6 @@
 		transition: color var(--dur-med) var(--ease-out);
 	}
 
-	.section-heading a:hover,
 	.shortcuts a:hover {
 		color: var(--text-primary);
 	}
@@ -389,7 +363,7 @@
 		aspect-ratio: 1;
 		place-items: center;
 		border: 0;
-		border-radius: 50%;
+		border-radius: var(--radius-full);
 		background: var(--text-primary);
 		color: var(--surface-canvas);
 		cursor: pointer;
@@ -413,7 +387,7 @@
 		gap: 1px;
 		margin-top: clamp(3rem, 6vw, 5.5rem);
 		border: 1px solid var(--border-subtle);
-		border-radius: 1rem;
+		border-radius: var(--radius-xl);
 		overflow: hidden;
 		background: var(--border-subtle);
 	}
@@ -446,8 +420,7 @@
 			align-self: start;
 		}
 
-		.generation,
-		.section-heading {
+		.generation {
 			align-items: start;
 			flex-direction: column;
 		}

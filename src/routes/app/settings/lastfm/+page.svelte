@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { m } from '#lib/paraglide/messages';
+	import Button from '#lib/components/ui/Button.svelte';
+	import ViewHeader from '#lib/components/ui/ViewHeader.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -11,11 +13,12 @@
 </svelte:head>
 
 <section class="lastfm-settings" aria-labelledby="lastfm-title">
-	<header>
-		<p class="eyebrow">HALFLIGHT // LAST.FM</p>
-		<h1 id="lastfm-title">{m.lastfm_settings_title()}</h1>
-		<p>{m.lastfm_settings_description()}</p>
-	</header>
+	<ViewHeader
+		eyebrow={m.view_eyebrow_lastfm()}
+		title={m.lastfm_settings_title()}
+		titleId="lastfm-title"
+		description={m.lastfm_settings_description()}
+	/>
 
 	{#if data.notice.connected}
 		<p class="notice success" role="status">{m.lastfm_connected_notice()}</p>
@@ -33,12 +36,12 @@
 			<h2>{m.lastfm_connected_title({ username: data.connection.username ?? '' })}</h2>
 			<p>{m.lastfm_connected_description()}</p>
 			<form method="POST" action={resolve('/lastfm/disconnect')}>
-				<button type="submit" class="secondary">{m.lastfm_disconnect()}</button>
+				<Button type="submit">{m.lastfm_disconnect()}</Button>
 			</form>
 		{:else}
 			<h2>{m.lastfm_connect_title()}</h2>
 			<p>{m.lastfm_connect_description()}</p>
-			<a class="button" href={resolve('/lastfm/connect')}>{m.lastfm_connect()}</a>
+			<Button variant="primary" href={resolve('/lastfm/connect')}>{m.lastfm_connect()}</Button>
 		{/if}
 	</section>
 </section>
@@ -46,15 +49,6 @@
 <style>
 	.lastfm-settings {
 		max-width: 44rem;
-	}
-	header {
-		margin-bottom: 2rem;
-	}
-	h1 {
-		margin: 0.25rem 0 0.5rem;
-	}
-	header p:last-child {
-		color: var(--text-muted);
 	}
 	.connection-card,
 	.notice {
@@ -68,24 +62,6 @@
 	}
 	.connection-card p {
 		color: var(--text-muted);
-	}
-	.button,
-	button {
-		display: inline-block;
-		border: 0;
-		border-radius: var(--radius-sm);
-		background: var(--action);
-		color: var(--action-contrast);
-		padding: 0.7rem 1rem;
-		font: inherit;
-		font-weight: 700;
-		text-decoration: none;
-		cursor: pointer;
-	}
-	.secondary {
-		background: transparent;
-		border: 1px solid var(--border-strong);
-		color: var(--text-primary);
 	}
 	.notice {
 		margin-bottom: 1rem;

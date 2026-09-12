@@ -451,6 +451,31 @@
 		color: #ffffff;
 	}
 
+	/*
+	 * The quiet third step: no chrome at rest, so a secondary (bordered) button
+	 * beside it still reads as the stronger offer. `Button`'s `ghost` variant
+	 * resolved to no class at all before this existed, which flattened the
+	 * hierarchy wherever the two sat together.
+	 */
+	.btn-ghost {
+		border-color: transparent;
+		background: transparent;
+		color: var(--text-secondary);
+		box-shadow: none;
+	}
+
+	.btn-ghost:hover:not(:disabled) {
+		border-color: transparent;
+		background: color-mix(in oklab, var(--sky) 40%, transparent);
+		color: var(--text-primary);
+		box-shadow: none;
+		transform: none;
+	}
+
+	.btn-ghost:active:not(:disabled) {
+		background: color-mix(in oklab, var(--sky) 60%, transparent);
+	}
+
 	.btn-sm {
 		padding: 0.35rem 0.75rem;
 		font-size: 0.72rem;
