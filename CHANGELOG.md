@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Library-style track lists now use the same player-first action hierarchy as cards: a single
+  labelled overflow menu replaces repeated play-next, queue, radio, and playlist buttons, while
+  the track currently in the player remains visibly highlighted. The full track-list context is
+  retained when choosing Play now from that menu.
 - A more direct, player-first control model across the listening surfaces. Track cards now have one
   clear Play control and a compact, keyboard-accessible More actions menu for play-next, queue,
   radio, and playlist actions. The persistent player follows the same rule: queue, lyrics, and

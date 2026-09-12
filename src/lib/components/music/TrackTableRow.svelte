@@ -10,11 +10,13 @@
 	let {
 		track,
 		columns,
+		isPlaying = false,
 		onActivate,
 		actions
 	}: {
 		track: TrackSummary;
 		columns: TrackColumn[];
+		isPlaying?: boolean;
 		onActivate: () => void;
 		actions?: Snippet;
 	} = $props();
@@ -57,7 +59,7 @@
 	});
 </script>
 
-<div class="tt-row" role="row">
+<div class:tt-row-playing={isPlaying} class="tt-row" role="row">
 	<span class="tt-art" role="cell">
 		{#if cover && !imageError}
 			<img src={cover} alt="" loading="lazy" onerror={() => (imageError = true)} />
@@ -136,6 +138,14 @@
 
 	.tt-row:hover {
 		background: var(--surface-selected);
+	}
+
+	.tt-row-playing {
+		background: color-mix(in oklab, var(--action) 8%, var(--surface-raised));
+	}
+
+	.tt-row-playing .tt-title {
+		color: var(--action);
 	}
 
 	.tt-art {

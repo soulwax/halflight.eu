@@ -106,12 +106,17 @@
 			{onfinalize}
 		>
 			{#each tracks as track, index (keyOf(track, index))}
-				<TrackTableRow {track} {columns} onActivate={() => activate(track, index)}>
+				<TrackTableRow
+					{track}
+					{columns}
+					isPlaying={player.currentTrack?.id === track.id}
+					onActivate={() => activate(track, index)}
+				>
 					{#snippet actions()}
 						{#if rowActions}
 							{@render rowActions(track, index)}
 						{:else}
-							<TrackQueueActions {track} {provenance} />
+							<TrackQueueActions {track} contextTracks={activeContext} {provenance} />
 						{/if}
 					{/snippet}
 				</TrackTableRow>
@@ -120,12 +125,17 @@
 	{:else}
 		<div class="tt-body" role="rowgroup">
 			{#each tracks as track, index (keyOf(track, index))}
-				<TrackTableRow {track} {columns} onActivate={() => activate(track, index)}>
+				<TrackTableRow
+					{track}
+					{columns}
+					isPlaying={player.currentTrack?.id === track.id}
+					onActivate={() => activate(track, index)}
+				>
 					{#snippet actions()}
 						{#if rowActions}
 							{@render rowActions(track, index)}
 						{:else}
-							<TrackQueueActions {track} {provenance} />
+							<TrackQueueActions {track} contextTracks={activeContext} {provenance} />
 						{/if}
 					{/snippet}
 				</TrackTableRow>

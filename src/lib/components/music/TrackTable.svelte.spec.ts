@@ -33,12 +33,9 @@ describe('TrackTable.svelte', () => {
 			.not.toBeInTheDocument();
 	});
 
-	it('gives every ordinary track row the shared next, queue, and radio actions', async () => {
+	it('gives every ordinary track row one shared listening-actions menu', async () => {
 		render(TrackTable, { tracks, columns: ['duration'] });
 
-		expect(page.getByRole('button', { name: m.player_play_next() }).all()).toHaveLength(2);
-		expect(page.getByRole('button', { name: m.player_add_to_queue() }).all()).toHaveLength(2);
-		expect(page.getByRole('button', { name: m.player_start_radio() }).all()).toHaveLength(2);
 		expect(page.getByRole('button', { name: m.track_action_menu() }).all()).toHaveLength(2);
 	});
 

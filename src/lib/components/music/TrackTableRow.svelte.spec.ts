@@ -43,6 +43,14 @@ describe('TrackTableRow.svelte', () => {
 		expect(onActivate).toHaveBeenCalledOnce();
 	});
 
+	it('marks the active track without changing its play control', async () => {
+		render(TrackTableRow, { track, columns: ['duration'], isPlaying: true, onActivate: () => {} });
+		await expect.element(page.getByRole('row')).toHaveClass('tt-row-playing');
+		await expect
+			.element(page.getByRole('button', { name: m.player_play_track() }))
+			.toBeInTheDocument();
+	});
+
 	it('renders the row actions snippet', async () => {
 		render(TrackTableRow, {
 			track,
