@@ -4,6 +4,7 @@
 	import { m } from '#lib/paraglide/messages.js';
 	import Button from '#lib/components/ui/Button.svelte';
 	import ViewHeader from '#lib/components/ui/ViewHeader.svelte';
+	import Notice from '#lib/components/ui/Notice.svelte';
 
 	import type { ActionData, PageData } from './$types';
 
@@ -96,11 +97,11 @@
 	/>
 
 	{#if data.notice.error}
-		<p class="notice notice-error" role="alert">{m.tidal_settings_connection_failed()}</p>
+		<Notice tone="danger">{m.tidal_settings_connection_failed()}</Notice>
 	{:else if data.notice.connected}
-		<p class="notice notice-success" role="status">{m.tidal_settings_connected_notice()}</p>
+		<Notice tone="success">{m.tidal_settings_connected_notice()}</Notice>
 	{:else if data.notice.disconnected}
-		<p class="notice" role="status">{m.tidal_settings_disconnected_notice()}</p>
+		<Notice>{m.tidal_settings_disconnected_notice()}</Notice>
 	{/if}
 
 	{#if !status.configured}
@@ -129,7 +130,7 @@
 			<p>{m.tidal_settings_connected_description()}</p>
 
 			{#if !status.hasWriteScopes}
-				<p class="notice notice-warning" role="alert">{m.playlist_reconnect_write()}</p>
+				<Notice tone="warning">{m.playlist_reconnect_write()}</Notice>
 			{/if}
 
 			{#if status.stale}
@@ -199,7 +200,7 @@
 				</p>
 			</div>
 		{:else if deviceStatus === 'success'}
-			<p class="notice notice-success">{m.tidal_device_auth_success()}</p>
+			<Notice tone="success">{m.tidal_device_auth_success()}</Notice>
 		{:else}
 			<div class="device-actions mt-3">
 				<Button variant="primary" disabled={deviceLoading} onclick={startDeviceAuth}>
@@ -212,7 +213,7 @@
 				</Button>
 			</div>
 			{#if deviceError}
-				<p class="notice notice-error mt-2">{deviceError}</p>
+				<Notice tone="danger">{deviceError}</Notice>
 			{/if}
 		{/if}
 	</section>
@@ -224,9 +225,9 @@
 		</div>
 
 		{#if form?.streamingSettingsSaved}
-			<p class="notice notice-success" role="status">{m.streaming_settings_saved()}</p>
+			<Notice tone="success">{m.streaming_settings_saved()}</Notice>
 		{:else if form?.streamingSettingsError}
-			<p class="notice notice-error" role="alert">{m.streaming_settings_error()}</p>
+			<Notice tone="danger">{m.streaming_settings_error()}</Notice>
 		{/if}
 
 		<form method="POST" action="?/saveStreamingSettings" class="streaming-settings-form">
@@ -296,7 +297,6 @@
 		max-width: 48rem;
 	}
 
-	.notice,
 	.connection-card,
 	.info-card,
 	.streaming-settings-card {
@@ -424,25 +424,6 @@
 		color: var(--text-muted);
 		font-size: 0.8rem;
 		font-family: var(--font-mono, monospace);
-	}
-
-	.notice {
-		margin-bottom: 1.5rem;
-		border-radius: var(--radius-sm);
-		color: var(--text-muted);
-	}
-
-	.notice-success {
-		border-color: var(--action);
-		border-left-width: 4px;
-		color: var(--text-primary);
-	}
-
-	.notice-error {
-		border-color: var(--danger);
-		background: var(--danger-subtle);
-		color: var(--danger);
-		font-weight: 700;
 	}
 
 	.connection-card h2,

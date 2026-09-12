@@ -13,6 +13,7 @@
 	import { m } from '#lib/paraglide/messages';
 	import type { SearchResultGroups } from '#lib/tidal/models';
 	import { parseTidalResource } from '#lib/tidal/resource';
+	import Notice from '#lib/components/ui/Notice.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -270,9 +271,9 @@
 			description={m.search_not_connected_description()}
 		/>
 	{:else if searchError === 'invalid_query'}
-		<p class="state-error" role="alert">{m.search_invalid_query()}</p>
+		<Notice tone="danger">{m.search_invalid_query()}</Notice>
 	{:else if searchError === 'unavailable'}
-		<p class="state-error" role="alert">{m.search_error()}</p>
+		<Notice tone="danger">{m.search_error()}</Notice>
 	{:else if !activeQuery}
 		<StateCard title={m.search_empty_title()} description={m.search_empty_description()} />
 	{:else if resultCount === 0 && !isSearching}

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { m } from '#lib/paraglide/messages.js';
+	import Notice from '#lib/components/ui/Notice.svelte';
 	import { enhance } from '$app/forms';
 	import type { ActionData } from './$types';
 
@@ -19,10 +20,10 @@
 		<p class="intro">{m.sign_in_subtitle()}</p>
 
 		{#if form?.signInFailed || form?.signUpFailed}
-			<p class="form-error" role="alert">{m.sign_in_error()}</p>
+			<Notice tone="danger">{m.sign_in_error()}</Notice>
 		{/if}
 		{#if form?.verificationSent}
-			<p class="form-success" role="status">{m.sign_up_verification_sent()}</p>
+			<Notice tone="success">{m.sign_up_verification_sent()}</Notice>
 		{/if}
 
 		<form method="post" action="?/signInSocial">
@@ -234,21 +235,5 @@
 
 	.auth-form > button {
 		width: 100%;
-	}
-
-	.form-error {
-		margin: 0 0 1rem;
-		border-radius: 0.75rem;
-		background: var(--danger-subtle);
-		padding: 0.75rem;
-		color: var(--danger);
-	}
-
-	.form-success {
-		margin: 0 0 1rem;
-		border-radius: 0.75rem;
-		background: var(--success-subtle);
-		padding: 0.75rem;
-		color: var(--success);
 	}
 </style>

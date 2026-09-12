@@ -19,6 +19,7 @@
 	import { m } from '#lib/paraglide/messages.js';
 	import { customPlaylists } from '#lib/player/customPlaylists.svelte';
 	import type { TrackSummary } from '#lib/tidal/models';
+	import Notice from '#lib/components/ui/Notice.svelte';
 	import { resolve } from '$app/paths';
 	import type { PageData } from './$types';
 
@@ -182,7 +183,7 @@
 				/>
 
 				{#if !section.ok}
-					<p class="group-empty" role="alert">{m.library_section_error()}</p>
+					<Notice tone="danger">{m.library_section_error()}</Notice>
 				{:else if section.items.length === 0}
 					<p class="group-empty">{m.library_section_empty()}</p>
 				{:else if section.kind === 'tracks'}

@@ -3,11 +3,10 @@
 	import Button from '#lib/components/ui/Button.svelte';
 	import ViewHeader from '#lib/components/ui/ViewHeader.svelte';
 	import { m } from '#lib/paraglide/messages';
+	import Notice from '#lib/components/ui/Notice.svelte';
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
 	import {
-		AlertTriangle,
-		CheckCircle2,
 		Download,
 		Info,
 		Pin,
@@ -40,23 +39,11 @@
 	</ViewHeader>
 
 	{#if form?.error}
-		<div
-			class="flex items-center gap-3 border border-[var(--danger)] bg-[var(--danger-subtle)] p-4 text-sm text-[var(--text-primary)]"
-			role="alert"
-		>
-			<AlertTriangle size={18} class="shrink-0 text-[var(--danger)]" />
-			<p>{form.error}</p>
-		</div>
+		<Notice tone="danger">{form.error}</Notice>
 	{/if}
 
 	{#if form?.message}
-		<div
-			class="flex items-center gap-3 border border-[var(--accent-jade)] bg-[var(--surface-raised)] p-4 text-sm text-[var(--text-primary)]"
-			role="status"
-		>
-			<CheckCircle2 size={18} class="shrink-0 text-[var(--accent-jade)]" />
-			<p>{form.message}</p>
-		</div>
+		<Notice tone="success">{form.message}</Notice>
 	{/if}
 
 	<!-- Plain Language Summary Card -->

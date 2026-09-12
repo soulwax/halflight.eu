@@ -336,16 +336,6 @@
 		margin-top: 0.5rem;
 	}
 
-	.state-error {
-		border: 1px solid var(--danger);
-		background: var(--danger-subtle);
-		padding: 1rem 1.25rem;
-		border-radius: var(--radius-md);
-		color: var(--text-primary);
-		margin: 1.5rem 0;
-		font-size: 0.92rem;
-	}
-
 	/* ---- Unified Badges ---- */
 	.badge-quality {
 		display: inline-block;

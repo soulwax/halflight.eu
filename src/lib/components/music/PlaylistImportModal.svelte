@@ -4,6 +4,7 @@
 	import { m } from '#lib/paraglide/messages.js';
 	import { customPlaylists } from '#lib/player/customPlaylists.svelte';
 	import Button from '#lib/components/ui/Button.svelte';
+	import Notice from '#lib/components/ui/Notice.svelte';
 
 	interface ImportablePlaylist {
 		id: string;
@@ -156,16 +157,11 @@
 
 		<div class="modal-body">
 			{#if errorMessage}
-				<div class="notice-box notice-error" role="alert">
-					<p>{errorMessage}</p>
-				</div>
+				<Notice tone="danger">{errorMessage}</Notice>
 			{/if}
 
 			{#if successMessage}
-				<div class="notice-box notice-success" role="status">
-					<Check size={16} />
-					<p>{successMessage}</p>
-				</div>
+				<Notice tone="success">{successMessage}</Notice>
 			{/if}
 
 			{#if isLoading}
@@ -331,27 +327,6 @@
 		flex-direction: column;
 		gap: 1rem;
 		flex: 1;
-	}
-
-	.notice-box {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		padding: 0.75rem 1rem;
-		font-size: 0.85rem;
-		border: 1px solid transparent;
-	}
-
-	.notice-error {
-		background: var(--danger-subtle);
-		border-color: color-mix(in srgb, var(--danger) 30%, transparent);
-		color: var(--danger);
-	}
-
-	.notice-success {
-		background: var(--success-subtle);
-		border-color: color-mix(in srgb, var(--success) 30%, transparent);
-		color: var(--success);
 	}
 
 	.loading-wrap,

@@ -12,6 +12,7 @@
 	import { m } from '#lib/paraglide/messages.js';
 	import Button from '#lib/components/ui/Button.svelte';
 	import ViewHeader from '#lib/components/ui/ViewHeader.svelte';
+	import Notice from '#lib/components/ui/Notice.svelte';
 	import { resolve } from '$app/paths';
 
 	const groupCopy: Record<ApiGroup, () => string> = {
@@ -259,7 +260,7 @@
 					</button>
 				</div>
 				{#if resultError}
-					<p class="api-console-error" role="alert">{resultError}</p>
+					<Notice tone="danger">{resultError}</Notice>
 				{:else if result}
 					<div class="api-result">
 						<p><strong>{m.api_reference_status()}</strong> {result.status}</p>
@@ -533,11 +534,6 @@
 		color: var(--text-secondary);
 		font-family: var(--font-mono);
 		font-size: 0.76rem;
-	}
-	.api-console-error {
-		padding: 0.9rem;
-		color: var(--danger);
-		font-size: 0.85rem;
 	}
 	@media (max-width: 48rem) {
 		.api-workbench {

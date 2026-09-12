@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { AlertCircle, Sliders, Sparkles } from '@lucide/svelte';
+	import { Sliders, Sparkles } from '@lucide/svelte';
 
 	import GeneratedSet from '#lib/components/music/GeneratedSet.svelte';
 	import Button from '#lib/components/ui/Button.svelte';
@@ -12,6 +12,7 @@
 	import type { ProvisionalSet, ProvisionalTrack } from '#lib/taste/provisional';
 	import type { TrackSummary } from '#lib/tidal/models';
 	import ViewHeader from '#lib/components/ui/ViewHeader.svelte';
+	import Notice from '#lib/components/ui/Notice.svelte';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -210,16 +211,13 @@
 	</ViewHeader>
 
 	{#if form?.errorCode || streamError}
-		<div class="generator-notice" role="alert">
-			<AlertCircle size={18} aria-hidden="true" />
-			<p>
-				{form?.errorCode === 'invalid_generation_input'
-					? m.generate_invalid_input()
-					: form?.errorCode === 'generation_connection_required'
-						? m.generate_connection_required()
-						: m.generate_unavailable()}
-			</p>
-		</div>
+		<Notice tone="danger">
+			{form?.errorCode === 'invalid_generation_input'
+				? m.generate_invalid_input()
+				: form?.errorCode === 'generation_connection_required'
+					? m.generate_connection_required()
+					: m.generate_unavailable()}
+		</Notice>
 	{/if}
 
 	<section class="generator-builder" aria-labelledby="knobs-title">
@@ -428,26 +426,6 @@
 		color: var(--text-secondary);
 	}
 
-	.generator-notice {
-		display: flex;
-		align-items: flex-start;
-		gap: 0.75rem;
-		padding: 1rem 1.1rem;
-		border: 1px solid color-mix(in oklab, var(--danger) 35%, var(--border-subtle));
-		border-radius: var(--radius-md);
-		background: var(--danger-subtle);
-		color: var(--text-primary);
-	}
-
-	/* The icon is rendered by a Lucide component, so the element is not in this
-	   file's markup for the scoper to hash. */
-	.generator-notice :global(svg) {
-		flex: 0 0 auto;
-		margin-top: 0.15rem;
-		color: var(--danger);
-	}
-
-	.generator-notice p,
 	.generator-connection-note,
 	.generator-progress {
 		margin: 0;

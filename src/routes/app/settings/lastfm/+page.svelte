@@ -3,6 +3,7 @@
 	import { m } from '#lib/paraglide/messages';
 	import Button from '#lib/components/ui/Button.svelte';
 	import ViewHeader from '#lib/components/ui/ViewHeader.svelte';
+	import Notice from '#lib/components/ui/Notice.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -21,11 +22,11 @@
 	/>
 
 	{#if data.notice.connected}
-		<p class="notice success" role="status">{m.lastfm_connected_notice()}</p>
+		<Notice tone="success">{m.lastfm_connected_notice()}</Notice>
 	{:else if data.notice.disconnected}
-		<p class="notice" role="status">{m.lastfm_disconnected_notice()}</p>
+		<Notice>{m.lastfm_disconnected_notice()}</Notice>
 	{:else if data.notice.error}
-		<p class="notice error" role="alert">{m.lastfm_error()}</p>
+		<Notice tone="danger">{m.lastfm_error()}</Notice>
 	{/if}
 
 	<section class="connection-card">
@@ -50,8 +51,7 @@
 	.lastfm-settings {
 		max-width: 44rem;
 	}
-	.connection-card,
-	.notice {
+	.connection-card {
 		border: 1px solid var(--border-subtle);
 		border-radius: var(--radius-md);
 		background: var(--surface-raised);
@@ -62,14 +62,5 @@
 	}
 	.connection-card p {
 		color: var(--text-muted);
-	}
-	.notice {
-		margin-bottom: 1rem;
-	}
-	.success {
-		color: var(--success);
-	}
-	.error {
-		color: var(--danger);
 	}
 </style>

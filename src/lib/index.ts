@@ -1,6 +1,7 @@
 // UI Primitives
 export { default as Badge } from './components/ui/Badge.svelte';
 export { default as Button } from './components/ui/Button.svelte';
+export { default as Notice } from './components/ui/Notice.svelte';
 export { default as SectionHeader } from './components/ui/SectionHeader.svelte';
 export { default as ViewHeader } from './components/ui/ViewHeader.svelte';
 export { default as Dialog } from './components/ui/Dialog.svelte';
