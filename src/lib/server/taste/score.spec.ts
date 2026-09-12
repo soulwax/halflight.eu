@@ -44,15 +44,10 @@ describe('candidate scoring', () => {
 		expect(scoredDiscovery.novelty).toBeGreaterThan(0.5);
 	});
 
-	it('penalizes artist over-representation', () => {
-		const normal = scoreCandidate(lovedTrack, profile, { familiarity: 50 });
-		const penalized = scoreCandidate(lovedTrack, profile, {
-			familiarity: 50,
-			artistCounts: new Map([['anchor1', 3]])
-		});
-
-		expect(penalized.score).toBeLessThan(normal.score);
-	});
+	// The artist-repeat penalty is applied by `sequence.ts` during selection, not
+	// here — see the note on `scoreCandidate`'s combined-score step. Covered by
+	// sequence.spec.ts's "applies repeat penalties while selecting and is stable
+	// regardless of input order".
 
 	it('rewards tracks inside a requested era window and penalizes those outside', () => {
 		const inWindow: FilteredCandidate = { ...discoveryTrack, id: 't-2016', year: 2016 };

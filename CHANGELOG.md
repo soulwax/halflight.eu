@@ -26,9 +26,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   disagreed about geometry, colour, and which ARIA live-region role to use. All eight now use the
   primitive, which picks the role from the tone: a failure interrupts (`alert`), anything else
   waits its turn (`status`).
-- - The six `HALFLIGHT // …` view eyebrows are now catalogue messages with German translations.
-    They had been English literals in markup all along; `i18n-coverage.spec.ts` never caught them
-    because the guard skips any string with no lowercase letter, and these are set in caps.
+- The six `HALFLIGHT // …` view eyebrows are now catalogue messages with German translations.
+  They had been English literals in markup all along; `i18n-coverage.spec.ts` never caught them
+  because the guard skips any string with no lowercase letter, and these are set in caps.
 - `i18n-coverage.spec.ts` now also catches copy hardcoded into a component _prop_ —
   `ariaLabel="Export as M3U8 Playlist"`, `title="MY CUSTOM PLAYLISTS"` — not just visible text
   nodes. One of these had sat in `/app/library` since before the original sweep; the aria-label
@@ -37,6 +37,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `score.ts` accepted an `artistCounts` option and computed its own static artist-repeat penalty,
+  but `generate.ts` never populated it — permanently unreachable from the real generation pipeline,
+  exercised only by its own test. The real, dynamic version of this penalty already lived in
+  `sequence.ts`, which — unlike a pre-selection snapshot — can actually track how many times an
+  artist has been picked as selection proceeds. Removed the dead option and its computation from
+  `score.ts`; `ARTIST_REPEAT_PENALTY` stays there since `sequence.ts` already imports it from that
+  module.
 - Two surfaces told success from failure by text colour alone — `settings/lastfm`'s
   `.success`/`.error` and `sign-in`'s `.form-success`/`.form-error` were identical but for the
   colour of the words. `Notice` always carries a tone icon as well as a tint, so the distinction
@@ -44,11 +51,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `settings/tidal`'s "reconnect before saving playlists" warning had been rendering as a neutral
   grey notice: it asks for `.notice-warning`, and that class is defined nowhere — the same silent
   no-op the `ghost` button variant had. It is a real warning tone now.
-- - The app header was being clipped. `AppHeader` asked for 56px, and 64px above the `sm`
-    breakpoint, inside a grid row fixed at `--shell-header-h: 3.25rem` (52px) with
-    `overflow: hidden` — so its own bottom hairline was cut off entirely and its vertically
-    centred content sat about 6px below optical centre on every desktop width. The shell row is
-    now the single source of truth at 3.5rem and the header fills it, setting no height of its own.
+- The app header was being clipped. `AppHeader` asked for 56px, and 64px above the `sm`
+  breakpoint, inside a grid row fixed at `--shell-header-h: 3.25rem` (52px) with
+  `overflow: hidden` — so its own bottom hairline was cut off entirely and its vertically
+  centred content sat about 6px below optical centre on every desktop width. The shell row is
+  now the single source of truth at 3.5rem and the header fills it, setting no height of its own.
 - The header and the content below it now start at the same left edge. `AppHeader` hardcoded
   `px-4 sm:px-6` while `.app-shell-main` uses `var(--shell-gutter)`, so the brand mark sat a few
   pixels inside or outside the content column depending on viewport width — visible as a wobble

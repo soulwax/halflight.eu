@@ -2497,15 +2497,32 @@ Goal: a real set from a real profile.
 
 - [x] Budgeted `graph.ts` expansion over relationship edges, with degradation. (L)
 - [x] `candidates.ts` — initial pool, ID/ISRC dedupe, artist/era filters, injected cooldown IDs. (M)
-- [ ] Filter eligible variants before dedupe, check all artist exclusions, and wire bounded
-      cooldown persistence. (M)
+- [x] Filter eligible variants before dedupe, check all artist exclusions, and wire bounded
+      cooldown persistence. (M) — `candidates.ts` checks cooldown, all-artist exclusions, era
+      exclusions, minimum length, and explicit-content before ID/ISRC dedup, so an ineligible
+      variant can never suppress an eligible remaster or release. `cooldown.ts` is a bounded (500
+      tracks, 30-day expiry, capped writes), fail-open Postgres store; both generate pages call
+      `/api/generation-cooldown` once a set is genuinely accepted (played or saved), not on every
+      preview or regenerate.
 - [x] `score.ts` — initial artist/era affinity, novelty, and optional artist-count penalty. (M)
-- [ ] Apply diversity penalties during selection; add supported request-fit terms and stable
-      tie-breaking, with input-order and missing-field tests. (M)
+- [x] Apply diversity penalties during selection; add supported request-fit terms and stable
+      tie-breaking, with input-order and missing-field tests. (M) — `sequence.ts` applies the
+      artist-repeat penalty dynamically during selection (incrementing counts as picks are made,
+      which a pre-selection snapshot could not reflect), with stable identifier tie-breaking and a
+      test proving the result is independent of input order. The era-window request-fit term lives
+      in `score.ts`. Found while verifying this: `score.ts` also accepted an `artistCounts` option
+      and computed its own static version of the same penalty, but `generate.ts` never populated it
+      — permanently unreachable from the real pipeline, exercised only by its own test. Removed;
+      `ARTIST_REPEAT_PENALTY` stays in `score.ts` since `sequence.ts` already imports it from there
+      and applies it, correctly, on its own.
 - [x] `sequence.ts` — initial affinity opener and artist spacing. Energy arcs and deliberate
       closers remain Phase D work. (M)
 - [x] `/app/generate` with a first knob subset (length, familiarity, seeds). (L)
-- [ ] Actual progress streaming, deadline enforcement, pacing, cancellation, and stale-run protection. (M)
+- [x] Actual progress streaming, deadline enforcement, pacing, cancellation, and stale-run
+      protection. (M) — `/api/taste/generate` is SSE, aborts upstream graph reads on the request
+      signal, and both `/app/generate` and `(mobile)/generate` guard every state write with a
+      monotonic run counter so a superseded response can never land. Graph expansion paces
+      upstream calls and enforces its own 9s wall-clock ceiling independently of the client.
 - [x] Provisional queue in the player; save to Halflight; optional TIDAL push. (M)
 - [x] Retire the hardcoded `SOUNDSCAPE_QUERIES` generator. (S)
 

@@ -1,6 +1,12 @@
 import type { FilteredCandidate } from './candidates';
 import type { TasteProfile } from './profile';
 
+/**
+ * How much each prior pick of the same artist discounts a later candidate.
+ * Defined here (re-exported for `sequence.ts`) because it is conceptually a
+ * scoring weight, but *applied* only by `sequence.ts` — see the note on
+ * {@link ScoreOptions}.
+ */
 export const ARTIST_REPEAT_PENALTY = 0.35;
 
 /** How much a fully-in-window (or fully-out-of-window) era fit moves the score. */
@@ -23,7 +29,6 @@ export interface EraWindow {
 
 export interface ScoreOptions {
 	familiarity: number; // 0 (100% discovery) to 100 (100% familiar)
-	artistCounts?: Map<string, number>; // for dynamic penalty calculation
 	era?: EraWindow; // optional era-window request-fit term
 }
 
@@ -65,13 +70,15 @@ export function scoreCandidate(
 		fit = Math.max(0, 1 - distance / spread);
 	}
 
-	// 4. Penalty for artist over-representation
-	const count = options.artistCounts?.get(candidate.primaryArtistId) ?? 0;
-	const penalty = count * ARTIST_REPEAT_PENALTY;
-
-	// 5. Combined transparent score
+	// 4. Combined transparent score. No artist-repeat penalty here: this
+	// function scores one candidate against the profile, before any selection
+	// order exists, so it has nothing to count occurrences *of*. That penalty
+	// is `sequence.ts`'s job — it knows how many times an artist has already
+	// been chosen as of this point in the set, which a pre-selection snapshot
+	// passed in here never could reflect accurately once picks start excluding
+	// candidates from the pool.
 	const score = Number(
-		(affinity * wFam + novelty * wDisc + (fit - 0.5) * ERA_FIT_WEIGHT - penalty).toFixed(4)
+		(affinity * wFam + novelty * wDisc + (fit - 0.5) * ERA_FIT_WEIGHT).toFixed(4)
 	);
 
 	return {
