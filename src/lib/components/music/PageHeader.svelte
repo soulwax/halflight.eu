@@ -79,7 +79,7 @@
 			color-mix(in oklab, var(--editorial-blush, var(--surface-raised)) 34%, var(--surface-raised))
 		);
 		border-radius: var(--radius-xl);
-		box-shadow: 0 18px 34px -28px rgb(6 48 100 / 35%);
+		box-shadow: 0 18px 34px -28px rgb(0 0 0 / 70%);
 		margin-bottom: 2rem;
 	}
 
@@ -90,7 +90,7 @@
 		border: 1px solid var(--border-subtle);
 		border-radius: var(--radius-md);
 		background: var(--surface-raised);
-		box-shadow: 0 14px 26px -18px rgb(6 48 100 / 42%);
+		box-shadow: 0 14px 26px -18px rgb(0 0 0 / 74%);
 		flex-shrink: 0;
 	}
 

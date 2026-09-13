@@ -199,7 +199,7 @@
 		border: 1px solid var(--border-subtle);
 		border-radius: var(--radius-full);
 		background: var(--surface-selected);
-		box-shadow: 0 24px 42px -26px rgb(6 48 100 / 40%);
+		box-shadow: 0 24px 42px -26px rgb(0 0 0 / 70%);
 	}
 
 	.artist-avatar img {

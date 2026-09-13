@@ -35,7 +35,7 @@
 	<link rel="icon" type="image/png" sizes="192x192" href="/icons/halflight-192.png" />
 	{#if isMobile}
 		<link rel="manifest" href="/manifest.webmanifest" />
-		<meta name="theme-color" content="#f5f8fb" />
+		<meta name="theme-color" content="#0b0d10" />
 		<meta name="mobile-web-app-capable" content="yes" />
 		<meta name="apple-mobile-web-app-capable" content="yes" />
 		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />

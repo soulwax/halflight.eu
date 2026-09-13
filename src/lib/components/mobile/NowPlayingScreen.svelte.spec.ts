@@ -42,6 +42,10 @@ describe('NowPlayingScreen.svelte', () => {
 		const cta = page.getByRole('link', { name: m.now_idle_cta() });
 		await expect.element(cta).toBeInTheDocument();
 		expect(cta.element().getAttribute('href')).toBe('/home');
+		await expect.element(page.getByText(m.now_idle_description())).toBeInTheDocument();
+		await expect
+			.element(page.getByRole('link', { name: m.now_idle_search() }))
+			.toHaveAttribute('href', '/search');
 	});
 
 	it('shows artwork, identity, seek control and transport for the current track', async () => {

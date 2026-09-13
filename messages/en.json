@@ -575,6 +575,8 @@
 	"now_playing_heading": "Now Playing",
 	"now_close_player": "Close Now Playing",
 	"now_idle_message": "Nothing is playing yet.",
+	"now_idle_description": "Find something you love, or return Home for a listening suggestion.",
+	"now_idle_search": "Find music",
 	"now_idle_cta": "Go to Home",
 	"now_home_heading": "Home",
 	"now_home_continue_heading": "Continue listening",

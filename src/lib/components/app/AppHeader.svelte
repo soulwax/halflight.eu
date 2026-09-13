@@ -19,7 +19,7 @@
 	class="app-header flex h-full w-full shrink-0 items-center gap-3 border-b border-[var(--border-subtle)] bg-[color-mix(in_oklab,var(--surface-raised)_94%,transparent)] px-(--shell-gutter) backdrop-blur-md sm:gap-4"
 >
 	<a href={user ? '/app' : '/'} class="header-brand" aria-label={m.brand_name()}>
-		<img src="/icons/halflight-64.png" alt={m.brand_name()} />
+		<span>{m.brand_name()}</span>
 	</a>
 
 	<div class="header-search-slot">
@@ -72,11 +72,11 @@
 	/* One control metric for every inner header element. */
 	.header-brand,
 	.header-btn {
-		display: grid;
+		display: flex;
 		flex: none;
-		width: 2.5rem;
 		height: 2.5rem;
-		place-items: center;
+		align-items: center;
+		justify-content: center;
 		border-radius: var(--radius-lg);
 		transition:
 			border-color 140ms ease,
@@ -85,9 +85,18 @@
 			opacity 140ms ease;
 	}
 
-	.header-brand img {
-		width: 1.9rem;
-		height: 1.9rem;
+	.header-brand {
+		padding-inline: 0.25rem;
+		color: var(--text-primary);
+		font-size: 1.05rem;
+		font-weight: 750;
+		letter-spacing: -0.035em;
+		text-decoration: none;
+		text-transform: lowercase;
+	}
+
+	.header-btn {
+		width: 2.5rem;
 	}
 
 	.header-brand:hover {
@@ -141,15 +150,9 @@
 	}
 
 	@media (max-width: 42rem) {
-		.header-brand,
 		.header-btn {
 			width: 2.25rem;
 			height: 2.25rem;
-		}
-
-		.header-brand img {
-			width: 1.7rem;
-			height: 1.7rem;
 		}
 
 		.header-actions {

@@ -4,15 +4,13 @@ import { render } from 'vitest-browser-svelte';
 import AppHeader from './AppHeader.svelte';
 
 describe('AppHeader.svelte', () => {
-	it('renders logo linking to / and login button when user is logged out', async () => {
+	it('renders the wordmark linking to / and login button when user is logged out', async () => {
 		render(AppHeader, { user: null });
 
 		// Logo links to root when unauthenticated
 		const logoLink = page.getByRole('link', { name: 'Halflight' });
 		await expect.element(logoLink).toHaveAttribute('href', '/');
-		await expect
-			.element(page.getByRole('img', { name: 'Halflight' }))
-			.toHaveAttribute('src', '/icons/halflight-64.png');
+		await expect.element(logoLink).toHaveTextContent('Halflight');
 
 		// Login button links to /sign-in
 		const loginLink = page.getByRole('link', { name: 'Sign in' });

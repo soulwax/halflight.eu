@@ -80,6 +80,7 @@
 		onclick={() => player.openPanel('queue')}
 		title={m.player_queue()}
 		aria-label={m.player_queue()}
+		aria-expanded={player.isExpanded && player.panel === 'queue'}
 	>
 		<ListMusic size={15} />
 		{#if player.queueCount > 0}<span class="count">{player.queueCount}</span>{/if}
@@ -91,6 +92,7 @@
 		onclick={() => player.openPanel('lyrics')}
 		title={m.player_lyrics()}
 		aria-label={m.player_lyrics()}
+		aria-expanded={player.isExpanded && player.panel === 'lyrics'}
 	>
 		<Mic2 size={15} />
 	</button>

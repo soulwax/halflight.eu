@@ -92,7 +92,7 @@
 		border: 2px solid var(--border-strong);
 		border-radius: var(--radius-xl, 16px);
 		box-shadow:
-			0 24px 56px -8px rgb(6 48 100 / 45%),
+			0 24px 56px -8px rgb(0 0 0 / 72%),
 			4px 4px 0px var(--border-strong);
 		z-index: 160;
 		display: flex;

@@ -365,7 +365,7 @@
 		border: 1px solid var(--border-subtle);
 		border-radius: var(--radius-lg);
 		background: var(--surface-raised);
-		box-shadow: 0 18px 34px -24px rgb(6 48 100 / 38%);
+		box-shadow: 0 18px 34px -24px rgb(0 0 0 / 72%);
 	}
 	.result-group {
 		padding: 0.5rem;

@@ -10,6 +10,7 @@
 		header?: Snippet;
 		aside?: Snippet;
 		asideLabel?: string;
+		asideOpen?: boolean;
 		player?: Snippet;
 		footer?: Snippet;
 		navigation: AppNavigationItem[];
@@ -34,6 +35,7 @@
 		header,
 		aside,
 		asideLabel,
+		asideOpen = false,
 		player,
 		footer,
 		navigation,
@@ -72,6 +74,7 @@
 <div class="app-shell-canvas">
 	<div
 		class="app-shell"
+		class:has-footer={Boolean(footer)}
 		style={railCollapsed
 			? '--shell-rail-current: var(--shell-rail-w-collapsed)'
 			: '--shell-rail-current: var(--shell-rail-w)'}
@@ -101,7 +104,7 @@
 			<div class="app-shell-main-content">{@render children()}</div>
 		</main>
 
-		{#if aside && asideLabel}
+		{#if aside && asideLabel && asideOpen}
 			<aside class="app-shell-aside" aria-label={asideLabel}>
 				{@render aside()}
 			</aside>
@@ -134,6 +137,7 @@
 	}
 
 	.app-shell {
+		--shell-footer-current: 0px;
 		display: grid;
 		min-height: 100dvh;
 		width: 100%;
@@ -141,13 +145,16 @@
 		overflow: hidden;
 		grid-template-columns: var(--shell-rail-current) minmax(0, 1fr);
 		grid-template-rows: var(--shell-header-h) minmax(0, 1fr) var(--shell-player-h) var(
-				--shell-footer-h
+				--shell-footer-current
 			);
 		grid-template-areas:
 			'rail header'
 			'rail main'
 			'player player'
 			'footer footer';
+	}
+	.app-shell.has-footer {
+		--shell-footer-current: var(--shell-footer-h);
 	}
 
 	/* Chrome regions: translucent vibrancy so artwork colour bleeds into the frame. */
@@ -212,11 +219,16 @@
 			display: block;
 			grid-area: aside;
 		}
+		/* On wide screens the explicitly opened context drawer owns the queue.
+		   Keep the docked player compact instead of rendering the same panel twice. */
+		.app-shell:has(.app-shell-aside) .app-shell-player :global(.syn-player.expanded .panel) {
+			display: none;
+		}
 	}
 
 	@media (max-width: 63.99rem) {
 		.app-shell {
-			--shell-footer-h: auto;
+			--shell-footer-current: auto;
 			grid-template-columns: minmax(0, 1fr);
 			grid-template-areas: 'header' 'main' 'player' 'footer';
 		}

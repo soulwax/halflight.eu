@@ -259,11 +259,18 @@
 			</div>
 		</div>
 	{:else}
-		<div class="flex flex-1 flex-col items-center justify-center gap-4 text-center">
-			<p class="text-(--text-muted)">{m.now_idle_message()}</p>
-			<a href={resolve('/(mobile)/home')} class="text-sm text-(--action) underline"
-				>{m.now_idle_cta()}</a
-			>
+		<div class="flex flex-1 flex-col items-center justify-center px-2 text-center">
+			<div class="now-idle-disc" aria-hidden="true"><Disc size={42} strokeWidth={1.4} /></div>
+			<p class="mt-6 text-xl font-semibold tracking-tight text-(--text-primary)">
+				{m.now_idle_message()}
+			</p>
+			<p class="mt-2 max-w-70 text-sm leading-6 text-(--text-muted)">
+				{m.now_idle_description()}
+			</p>
+			<div class="mt-7 flex w-full max-w-70 flex-col gap-3">
+				<a href={resolve('/(mobile)/search')} class="now-idle-primary">{m.now_idle_search()}</a>
+				<a href={resolve('/(mobile)/home')} class="now-idle-secondary">{m.now_idle_cta()}</a>
+			</div>
 		</div>
 	{/if}
 </div>
@@ -271,7 +278,49 @@
 <style>
 	.now-artwork {
 		border-radius: var(--radius-xl);
-		box-shadow: 0 24px 42px -26px rgb(6 48 100 / 44%);
+		box-shadow: 0 24px 42px -26px rgb(0 0 0 / 78%);
+	}
+
+	.now-idle-disc {
+		display: grid;
+		width: 6.5rem;
+		aspect-ratio: 1;
+		place-items: center;
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-full);
+		background:
+			radial-gradient(circle at 50% 50%, var(--surface-raised) 0 13%, transparent 14%),
+			repeating-radial-gradient(
+				circle at 50% 50%,
+				color-mix(in oklab, var(--text-muted) 18%, transparent) 0 1px,
+				transparent 2px 7px
+			),
+			var(--surface-selected);
+		color: var(--text-secondary);
+		box-shadow: var(--shadow-panel);
+	}
+
+	.now-idle-primary,
+	.now-idle-secondary {
+		display: flex;
+		min-height: 3rem;
+		align-items: center;
+		justify-content: center;
+		border-radius: var(--radius-full);
+		font-size: var(--fs-sm);
+		font-weight: 650;
+		text-decoration: none;
+	}
+
+	.now-idle-primary {
+		background: var(--action);
+		color: var(--action-contrast);
+		box-shadow: 0 12px 28px -16px color-mix(in oklab, var(--action) 70%, transparent);
+	}
+
+	.now-idle-secondary {
+		border: 1px solid var(--border-strong);
+		color: var(--text-primary);
 	}
 
 	.now-toggle {

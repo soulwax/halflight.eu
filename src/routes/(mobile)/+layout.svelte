@@ -78,17 +78,18 @@
 	const isOnNowRoute = $derived(
 		page.url.pathname === nowRoot || page.url.pathname.startsWith(`${nowRoot}/`)
 	);
+	const isFullNowPlaying = $derived(isOnNowRoute && Boolean(player.currentTrack));
 </script>
 
 <div class="mobile-shell flex min-h-dvh flex-col bg-(--surface-canvas) text-(--text-primary)">
-	{#if !isOnNowRoute}
-		<header class="mobile-app-header relative flex shrink-0 items-center justify-center">
+	{#if !isFullNowPlaying}
+		<header class="mobile-app-header flex shrink-0 items-center justify-between">
 			<a class="mobile-brand" href={resolve('/(mobile)/home')} aria-label={m.brand_name()}>
-				<img src="/icons/halflight-64.png" alt="" class="h-8 w-8" />
+				<span>{m.brand_name()}</span>
 			</a>
 			<a
 				href={resolve('/(mobile)/settings')}
-				class="mobile-header-action absolute right-1 flex h-12 w-12 items-center justify-center text-(--text-muted) hover:text-(--text-primary) focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-(--focus-ring)"
+				class="mobile-header-action flex h-12 w-12 items-center justify-center text-(--text-muted) hover:text-(--text-primary) focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-(--focus-ring)"
 				aria-label={m.mobile_settings_title()}
 			>
 				<Settings size={20} aria-hidden="true" />
@@ -102,7 +103,7 @@
 	>
 		{@render children()}
 	</main>
-	{#if !isOnNowRoute}
+	{#if !isFullNowPlaying}
 		<MiniPlayer />
 		<NowTabBar currentPath={page.url.pathname} />
 	{/if}
@@ -128,13 +129,20 @@
 		background: color-mix(in oklab, var(--surface-raised) 84%, transparent);
 		backdrop-filter: blur(18px) saturate(1.35);
 		-webkit-backdrop-filter: blur(18px) saturate(1.35);
+		padding-right: 0.25rem;
+		padding-left: 1rem;
 	}
 
 	.mobile-brand {
-		display: grid;
-		place-items: center;
-		min-width: 3rem;
+		display: flex;
+		align-items: center;
 		min-height: 3rem;
+		color: var(--text-primary);
+		font-size: 1rem;
+		font-weight: 700;
+		letter-spacing: -0.03em;
+		text-decoration: none;
+		text-transform: lowercase;
 	}
 
 	.mobile-header-action {

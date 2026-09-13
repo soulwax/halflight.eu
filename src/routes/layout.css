@@ -3,50 +3,48 @@
 @plugin '@tailwindcss/typography';
 
 :root {
-	color-scheme: light;
+	color-scheme: dark;
 
-	/* ---- Halflight light: off-white paper, white surfaces, deep-blue ink. ----
+	/* ---- Halflight dark: deep neutral canvas, lifted listening surfaces, cool light. ----
 	   Canonical values in docs/style-guide.html. */
-	--paper: #f5f8fb;
-	--surface: #ffffff;
-	--ink: #063064;
-	--slate: #7c8aa8;
-	--faint: #aeb8cc;
-	--line: #eef1f6;
-	--sky: #bfe7f4;
-	--sky-deep: #7fc9e0;
-	--blush: #f1cdec;
+	--paper: #0b0d10;
+	--surface: #14171c;
+	--ink: #f4f6f8;
+	--slate: #9aa3b2;
+	--faint: #626b78;
+	--line: #252a32;
+	--sky: #202d3c;
+	--sky-deep: #355675;
+	--blush: #352634;
 
 	/* Editorial wash tokens consumed by the shell + section headers. */
 	--editorial-sky: var(--sky);
 	--editorial-blush: var(--blush);
 	--editorial-faint: var(--faint);
 
-	/* HiRes/lossless fidelity badges — tuned to read on white, not for chrome. */
-	--accent-gold: #b26a00;
-	--accent-gold-deep: #8f5400;
-	--accent-jade: #0e7f8c;
-	--accent-oxblood: #c22a52;
+	/* HiRes/lossless fidelity badges remain distinct without competing with artwork. */
+	--accent-gold: #e6ae59;
+	--accent-gold-deep: #b98538;
+	--accent-jade: #57bdc8;
+	--accent-oxblood: #ec6f91;
 
 	--surface-canvas: var(--paper);
 	--surface-raised: var(--surface);
 	--surface-selected: var(--sky);
 	--border-subtle: var(--line);
-	--border-strong: #d5dded;
+	--border-strong: #3b424d;
 	--text-primary: var(--ink);
-	--text-secondary: #3c4d6b;
+	--text-secondary: #c6ccd5;
 	--text-muted: var(--slate);
 
-	--action: #0d5fae;
-	--action-contrast: #ffffff;
-	--danger: #d92057;
-	--danger-subtle: #fff0f4;
-	/* Status siblings of --danger, tuned the same way: legible on white paper,
-	   muted enough to sit beside sky selection without shouting. */
-	--success: #0e7f6b;
-	--success-subtle: #edf9f5;
-	--warning: #a86400;
-	--warning-subtle: #fff5e9;
+	--action: #5aa7ff;
+	--action-contrast: #06111d;
+	--danger: #ff7198;
+	--danger-subtle: #311923;
+	--success: #62d1b5;
+	--success-subtle: #142a26;
+	--warning: #f0b768;
+	--warning-subtle: #302516;
 
 	/* Scrim over album art. Deliberately neutral rather than ink-tinted: it
 	   covers arbitrary artwork, where a blue cast reads as a colour error. */
@@ -54,8 +52,8 @@
 	--scrim-ink: #ffffff;
 	/* Dialog backdrop. Ink-tinted like the shadows, and one value — modals used
 	   to carry four different blacks between them. */
-	--overlay: rgb(6 48 100 / 0.55);
-	--focus-ring: #0d5fae;
+	--overlay: rgb(0 0 0 / 0.72);
+	--focus-ring: #78b8ff;
 
 	/* ---- Geometry: one small family of soft radii. ---- */
 	--radius-xs: 4px;
@@ -81,9 +79,9 @@
 	--dur-med: 180ms;
 	--dur-slow: 280ms;
 
-	/* ---- Shallow blue elevation — hairlines carry most of the separation. ---- */
-	--shadow-panel: 0 1px 2px rgb(6 48 100 / 0.05), 0 10px 26px -14px rgb(6 48 100 / 0.14);
-	--shadow-float: 0 2px 8px rgb(6 48 100 / 0.09), 0 22px 48px -18px rgb(6 48 100 / 0.2);
+	/* ---- Quiet neutral depth — artwork and the single action accent carry colour. ---- */
+	--shadow-panel: 0 1px 1px rgb(0 0 0 / 0.3), 0 14px 30px -20px rgb(0 0 0 / 0.8);
+	--shadow-float: 0 4px 12px rgb(0 0 0 / 0.32), 0 28px 60px -22px rgb(0 0 0 / 0.9);
 
 	/* ---- Module: the single contract for a tile (region or content block). ---- */
 	--module-radius: var(--radius-lg);

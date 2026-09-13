@@ -76,7 +76,7 @@
 
 	.mobile-mini-art {
 		border-radius: var(--radius-sm);
-		box-shadow: 0 6px 16px -10px rgb(6 48 100 / 60%);
+		box-shadow: 0 6px 16px -10px rgb(0 0 0 / 80%);
 	}
 
 	.mini-progress {

@@ -2,7 +2,6 @@
 	import AppAside from '#lib/components/app/AppAside.svelte';
 	import AppHeader from '#lib/components/app/AppHeader.svelte';
 	import AppShell from '#lib/components/app/AppShell.svelte';
-	import Footer from '#lib/components/Footer.svelte';
 	import PlaylistDialog from '#lib/components/music/PlaylistDialog.svelte';
 	import QueuePanel from '#lib/components/player/panels/QueuePanel.svelte';
 	import Player from '#lib/components/player/Player.svelte';
@@ -11,7 +10,7 @@
 	import { player } from '#lib/player/player.svelte.js';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { Disc3, Home, Library, Search, Sparkles, Waves } from '@lucide/svelte';
+	import { Disc3, Home, Library, Search, Sparkles, Waves, X } from '@lucide/svelte';
 	import type { Snippet } from 'svelte';
 	import { onMount } from 'svelte';
 	import type { LayoutData } from './$types';
@@ -46,11 +45,18 @@
 {#snippet playerRegion()}
 	<Player />
 {/snippet}
-{#snippet footerRegion()}
-	<Footer />
+{#snippet queueAsideActions()}
+	<button
+		type="button"
+		class="flex h-10 w-10 items-center justify-center rounded-(--radius-full) text-(--text-muted) hover:bg-(--surface-selected) hover:text-(--text-primary)"
+		onclick={() => player.openPanel('queue')}
+		aria-label={m.player_collapse()}
+	>
+		<X size={18} aria-hidden="true" />
+	</button>
 {/snippet}
 {#snippet queueAside()}
-	<AppAside title={m.player_queue()}>
+	<AppAside title={m.player_queue()} actions={queueAsideActions}>
 		<QueuePanel />
 	</AppAside>
 {/snippet}
@@ -60,8 +66,8 @@
 	header={appHeader}
 	aside={queueAside}
 	asideLabel={m.player_queue()}
+	asideOpen={player.isExpanded && player.panel === 'queue'}
 	player={playerRegion}
-	footer={footerRegion}
 	currentPath={page.url.pathname}
 	skipLinkLabel={m.skip_to_content()}
 	navigationLabel={m.nav_primary()}

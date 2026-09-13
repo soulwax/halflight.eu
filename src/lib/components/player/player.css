@@ -12,7 +12,7 @@
 	flex-direction: column;
 	background: var(--surface-raised);
 	border-top: 1px solid var(--border-subtle);
-	box-shadow: 0 -8px 24px -24px rgb(6 48 100 / 30%);
+	box-shadow: 0 -8px 24px -24px rgb(0 0 0 / 72%);
 }
 
 .player-sync-status {

@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Halflight now opens on a single dark listening canvas across desktop and mobile, with neutral
+  elevated surfaces and a restrained blue playback accent so artwork supplies the changing colour.
+  Both shells use the lowercase wordmark instead of asking a tiny illustrated icon to identify the
+  service, and the installed mobile launch colours match the live interface.
+- The empty mobile Now Playing destination is a useful part of the app instead of a blank dead end:
+  it keeps the compact header and primary tab bar, explains the idle state, and offers direct Search
+  and Home actions with full-size touch targets.
+- The wide Listening Room queue is now an intentional context drawer. It consumes the right column
+  only after the queue action is opened, closes from its own header, and avoids duplicating the same
+  queue beneath the docked player; narrower desktops retain the existing expanded-player panel.
+
 - Library-style track lists now use the same player-first action hierarchy as cards: a single
   labelled overflow menu replaces repeated play-next, queue, radio, and playlist buttons, while
   the track currently in the player remains visibly highlighted. The full track-list context is
