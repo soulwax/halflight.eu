@@ -77,4 +77,15 @@ describe('AppHeader.svelte', () => {
 		const settingsLink = page.getByRole('link', { name: 'Settings' });
 		await expect.element(settingsLink).toBeInTheDocument();
 	});
+
+	it('lets a dedicated search view own the only search field', async () => {
+		render(AppHeader, {
+			user: { name: 'soulwax', email: 'soulwax@example.com' },
+			showSearch: false
+		});
+
+		await expect
+			.element(page.getByRole('combobox', { name: 'Search Halflight' }))
+			.not.toBeInTheDocument();
+	});
 });

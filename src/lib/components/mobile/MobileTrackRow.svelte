@@ -8,10 +8,18 @@
 	let {
 		track,
 		onActivate,
+		contextTracks,
+		provenance,
+		onStartRadio,
+		radioDisabled = false,
 		actions
 	}: {
 		track: TrackSummary;
 		onActivate: () => void;
+		contextTracks?: TrackSummary[];
+		provenance?: string;
+		onStartRadio?: () => void | Promise<void>;
+		radioDisabled?: boolean;
 		actions?: Snippet;
 	} = $props();
 
@@ -47,7 +55,14 @@
 		</div>
 	{:else}
 		<div class="mobile-track-actions">
-			<TrackActionMenu {track} triggerClass="mobile-action-btn" />
+			<TrackActionMenu
+				{track}
+				{contextTracks}
+				{provenance}
+				{onStartRadio}
+				{radioDisabled}
+				triggerClass="mobile-action-btn"
+			/>
 		</div>
 	{/if}
 </div>

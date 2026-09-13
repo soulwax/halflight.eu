@@ -10,9 +10,10 @@
 			isAdministrator?: boolean;
 			isFirstAdministrator?: boolean;
 		} | null;
+		showSearch?: boolean;
 	}
 
-	let { user = null }: Props = $props();
+	let { user = null, showSearch = true }: Props = $props();
 </script>
 
 <header
@@ -23,7 +24,7 @@
 	</a>
 
 	<div class="header-search-slot">
-		{#if user}
+		{#if user && showSearch}
 			<HeaderSearch />
 		{/if}
 	</div>

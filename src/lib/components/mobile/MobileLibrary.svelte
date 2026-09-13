@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { Disc, ListPlus, ListStart, Play } from '@lucide/svelte';
+	import { Disc, ListPlus, Play } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { player } from '#lib/player/player.svelte.js';
 	import type { MobileLibraryData } from '#lib/tidal/mobile-library';
@@ -79,7 +79,7 @@
 		{:else}
 			<ul class="library-list">
 				{#each data.playlists as playlist (playlist.id)}
-					<li>
+					<li class="playlist-row">
 						<a class="identity" href={resolve('/(mobile)/playlists/[id]', { id: playlist.id })}>
 							{@render artwork(playlist.items[0])}
 							<div class="copy">
@@ -87,21 +87,22 @@
 								<p>{m.now_library_count({ count: playlist.items.length })}</p>
 							</div>
 						</a>
-						<div class="actions">
+						<div class="playlist-actions">
 							<button
 								type="button"
 								disabled={!playlist.items.length}
 								aria-label={m.now_library_play({ title: playlist.title })}
 								onclick={() => play(playlist.title, playlist.items)}
 							>
-								<Play size={18} aria-hidden="true" />{m.player_play_all()}
+								<Play size={18} aria-hidden="true" />
 							</button>
 							<button
 								type="button"
 								disabled={!playlist.items.length}
+								aria-label={m.player_add_to_queue()}
 								onclick={() => enqueue(playlist.title, playlist.items)}
 							>
-								<ListPlus size={18} aria-hidden="true" />{m.player_add_to_queue()}
+								<ListPlus size={18} aria-hidden="true" />
 							</button>
 						</div>
 					</li>
@@ -114,34 +115,12 @@
 		<ul class="favorite-track-list">
 			{#each data.tracks as track (track.id)}
 				<li>
-					<MobileTrackRow {track} onActivate={() => play(track.title, [track])}>
-						{#snippet actions()}
-							<div class="favorite-track-actions">
-								<button
-									type="button"
-									aria-label={m.now_library_play({ title: track.title })}
-									onclick={() => play(track.title, [track])}
-								>
-									<Play size={18} aria-hidden="true" />{m.player_play_track()}
-								</button>
-								<button
-									type="button"
-									aria-label={m.player_play_next()}
-									onclick={() => {
-										player.playNext(track, m.now_library_favorites());
-										feedback = m.now_library_next_added({ title: track.title });
-									}}><ListStart size={18} aria-hidden="true" /></button
-								>
-								<button
-									type="button"
-									aria-label={m.player_add_to_queue()}
-									onclick={() => enqueue(track.title, [track])}
-								>
-									<ListPlus size={18} aria-hidden="true" />
-								</button>
-							</div>
-						{/snippet}
-					</MobileTrackRow>
+					<MobileTrackRow
+						{track}
+						contextTracks={data.tracks}
+						provenance={m.now_library_favorites()}
+						onActivate={() => play(track.title, [track])}
+					/>
 				</li>
 			{/each}
 		</ul>
@@ -201,10 +180,23 @@
 	}
 	.filters {
 		margin-block: 0 0.5rem;
+		padding: 0.25rem;
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-full);
+		background: color-mix(in oklab, var(--surface-raised) 78%, transparent);
 	}
 	.filters a {
 		flex: 1;
+		min-height: 2.5rem;
+		border: 0;
+		border-radius: var(--radius-full);
+		background: transparent;
 		text-align: center;
+	}
+	.filters a[aria-current='page'] {
+		background: var(--surface-selected);
+		color: var(--text-primary);
+		box-shadow: inset 0 0 0 1px var(--border-strong);
 	}
 	button,
 	.filters a,
@@ -247,8 +239,9 @@
 		list-style: none;
 	}
 	.library-list > li {
-		display: grid;
-		gap: 0.75rem;
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
 		padding-block: 1rem;
 		border-bottom: 1px solid var(--border-subtle);
 	}
@@ -257,6 +250,7 @@
 		align-items: center;
 		gap: 1rem;
 		min-width: 0;
+		flex: 1;
 		color: inherit;
 		text-decoration: none;
 		border-radius: var(--radius-md);
@@ -292,8 +286,25 @@
 		font-size: 0.85rem;
 		overflow-wrap: anywhere;
 	}
-	.actions button {
-		flex: 1;
+	.playlist-actions {
+		display: flex;
+		flex: none;
+		gap: 0.125rem;
+	}
+	.playlist-actions button {
+		width: 2.75rem;
+		min-width: 2.75rem;
+		height: 2.75rem;
+		min-height: 2.75rem;
+		padding: 0;
+		border: 0;
+		border-radius: var(--radius-full);
+		background: transparent;
+		color: var(--text-muted);
+	}
+	.playlist-actions button:first-child {
+		background: var(--action);
+		color: var(--action-contrast);
 	}
 	.favorite-track-list {
 		margin: 0;
@@ -302,33 +313,6 @@
 	}
 	.favorite-track-list > li {
 		border-bottom: 1px solid var(--border-subtle);
-	}
-	.favorite-track-actions {
-		display: flex;
-		align-items: center;
-		gap: 0.125rem;
-	}
-	.favorite-track-actions button {
-		display: grid;
-		width: 2.75rem;
-		min-width: 2.75rem;
-		height: 2.75rem;
-		min-height: 2.75rem;
-		padding: 0;
-		place-items: center;
-		border: 0;
-		background: transparent;
-		color: var(--text-muted);
-	}
-	.favorite-track-actions button:first-child {
-		width: 3rem;
-	}
-	.favorite-track-actions button:active,
-	.favorite-track-actions button:focus-visible {
-		background: var(--surface-selected);
-		color: var(--action);
-		outline: 2px solid var(--focus-ring);
-		outline-offset: 1px;
 	}
 	.notice {
 		padding-block: 2rem;

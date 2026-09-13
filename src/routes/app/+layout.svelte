@@ -6,7 +6,7 @@
 	import QueuePanel from '#lib/components/player/panels/QueuePanel.svelte';
 	import Player from '#lib/components/player/Player.svelte';
 	import { m } from '#lib/paraglide/messages.js';
-	import { localizeHref } from '#lib/paraglide/runtime';
+	import { deLocalizeHref, localizeHref } from '#lib/paraglide/runtime';
 	import { player } from '#lib/player/player.svelte.js';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
@@ -30,6 +30,7 @@
 		{ href: localizeHref(resolve('/app/generate')), label: m.nav_generate(), icon: Sparkles },
 		{ href: localizeHref(resolve('/app/settings/taste')), label: m.nav_taste(), icon: Waves }
 	]);
+	const showHeaderSearch = $derived(deLocalizeHref(page.url.pathname) !== '/app/search');
 
 	$effect(() => {
 		player.applyStreamingSettings(data.streamingSettings);
@@ -40,7 +41,7 @@
 </script>
 
 {#snippet appHeader()}
-	<AppHeader user={data.user} />
+	<AppHeader user={data.user} showSearch={showHeaderSearch} />
 {/snippet}
 {#snippet playerRegion()}
 	<Player />

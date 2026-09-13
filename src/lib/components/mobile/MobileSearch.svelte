@@ -1,16 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import {
-		Album,
-		ListPlus,
-		ListStart,
-		Loader2,
-		Play,
-		Radio,
-		Search,
-		UserRound
-	} from '@lucide/svelte';
+	import { Album, Loader2, Search, UserRound } from '@lucide/svelte';
 	import { onDestroy, onMount } from 'svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { player } from '#lib/player/player.svelte.js';
@@ -270,44 +261,14 @@
 					<h2 id="mobile-search-tracks">{m.search_tracks()}</h2>
 					<div class="track-list">
 						{#each results.tracks as track (track.id)}
-							<MobileTrackRow {track} onActivate={() => play(track)}>
-								{#snippet actions()}
-									<div class="track-actions">
-										<button
-											type="button"
-											onclick={() => play(track)}
-											aria-label={m.player_play_track()}
-										>
-											<Play size={16} fill="currentColor" />
-										</button>
-										<button
-											type="button"
-											onclick={() =>
-												player.playNext(track, m.now_search_provenance({ query: trimmedQuery }))}
-											aria-label={m.player_play_next()}
-										>
-											<ListStart size={16} />
-										</button>
-										<button
-											type="button"
-											onclick={() =>
-												player.addToQueue(track, m.now_search_provenance({ query: trimmedQuery }))}
-											aria-label={m.player_add_to_queue()}
-										>
-											<ListPlus size={16} />
-										</button>
-										<button
-											type="button"
-											onclick={() => void startRadio(track)}
-											disabled={startingRadioId !== null}
-											aria-busy={startingRadioId === track.id}
-											aria-label={m.player_start_radio()}
-										>
-											<Radio size={16} />
-										</button>
-									</div>
-								{/snippet}
-							</MobileTrackRow>
+							<MobileTrackRow
+								{track}
+								contextTracks={results.tracks}
+								provenance={m.now_search_provenance({ query: trimmedQuery })}
+								onActivate={() => play(track)}
+								onStartRadio={() => startRadio(track)}
+								radioDisabled={startingRadioId !== null}
+							/>
 						{/each}
 					</div>
 				</section>
@@ -440,31 +401,6 @@
 	}
 	.catalogue-result {
 		text-decoration: none;
-	}
-	.track-actions {
-		display: flex;
-		flex: none;
-		gap: 0.15rem;
-	}
-	.track-actions button {
-		display: grid;
-		width: 3rem;
-		height: 3rem;
-		place-items: center;
-		border: 0;
-		border-radius: var(--radius-sm);
-		background: transparent;
-		color: var(--text-muted);
-	}
-	.track-actions button:active,
-	.track-actions button:focus-visible {
-		background: var(--surface-selected);
-		color: var(--action);
-		outline: 2px solid var(--focus-ring);
-		outline-offset: 1px;
-	}
-	.track-actions button:disabled {
-		opacity: 0.5;
 	}
 	.recovery-action {
 		display: inline-flex;

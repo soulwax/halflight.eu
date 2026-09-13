@@ -62,13 +62,12 @@ describe('MobileLibrary.svelte', () => {
 			data: { ...savedData, tab: 'tracks', playlists: [], tracks: [track] }
 		});
 
-		await page.getByRole('button', { name: m.player_play_next() }).click();
+		await page.getByRole('button', { name: m.track_action_menu() }).click();
+		await page.getByRole('menuitem', { name: m.track_action_play_next() }).click();
 		expect(player.queue).toEqual([
 			expect.objectContaining({ id: track.id, provenance: m.now_library_favorites() })
 		]);
-		await expect
-			.element(page.getByRole('status'))
-			.toHaveTextContent(m.now_library_next_added({ title: track.title }));
+		expect(player.currentTrack).toBeNull();
 	});
 
 	it('plays a favorite when its art-led row is tapped', async () => {

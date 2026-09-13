@@ -10,6 +10,8 @@
 		track,
 		contextTracks,
 		provenance,
+		onStartRadio,
+		radioDisabled = false,
 		align = 'end',
 		side = 'bottom',
 		triggerClass = '',
@@ -18,6 +20,8 @@
 		track: TrackSummary;
 		contextTracks?: TrackSummary[];
 		provenance?: string;
+		onStartRadio?: () => void | Promise<void>;
+		radioDisabled?: boolean;
 		align?: 'start' | 'center' | 'end';
 		side?: 'top' | 'right' | 'bottom' | 'left';
 		triggerClass?: string;
@@ -61,7 +65,8 @@
 			id: 'start-radio',
 			label: m.track_action_start_radio(),
 			icon: Radio,
-			onSelect: () => void startRadio()
+			disabled: radioDisabled,
+			onSelect: () => void (onStartRadio ? onStartRadio() : startRadio())
 		},
 		{
 			id: 'add-to-playlist',

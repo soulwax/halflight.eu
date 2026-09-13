@@ -19,6 +19,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The wide Listening Room queue is now an intentional context drawer. It consumes the right column
   only after the queue action is opened, closes from its own header, and avoids duplicating the same
   queue beneath the docked player; narrower desktops retain the existing expanded-player panel.
+- Mobile Search and Library now protect the track title as the primary tap target. Play-next,
+  queue, radio, and playlist actions live in the same accessible overflow menu used elsewhere,
+  instead of compressing every result behind four adjacent icon buttons. Saved playlists keep a
+  compact play/queue pair beside their identity rather than repeating two full-width action bars.
+- The Listening Room Search route now owns its search field. The global header search remains
+  available everywhere else but steps aside on that route, removing two competing inputs for the
+  same task.
 
 - Library-style track lists now use the same player-first action hierarchy as cards: a single
   labelled overflow menu replaces repeated play-next, queue, radio, and playlist buttons, while
