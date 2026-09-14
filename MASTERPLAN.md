@@ -2539,7 +2539,14 @@ Goal: the difference between "a good playlist" and "uncannily accurate".
       evidence. Desktop and Halflight Now render them through Paraglide; set runtime separates
       provider-known seconds from a visibly labelled estimate and names missing coverage. Summary
       copy says “outside your anchors,” never claims untracked listening history.
-- [ ] Per-slot swap and fast re-run over a reused pool. (M)
+- [ ] Per-slot swap and fast re-run over a reused pool. (M) — review now supports immediate,
+      deterministic per-slot swaps from the bounded candidate pool returned by the active run. The
+      pool remains response-local (not a catalogue cache). `#lib/taste/review.ts` owns selection:
+      repeated swaps rotate through the whole pool, neighbouring-artist spacing yields only when
+      nothing else remains, and duration/discovery values are recomputed with the server's own
+      estimate and anchor threshold. Focus stays on the swapped slot and the replacement is
+      announced through Paraglide; fast-check covers uniqueness, pool membership, immutability,
+      spacing, and summary honesty. A full re-run over a reusable cross-request pool remains open.
 - [ ] Exclusions and cooldown as first-class, persisted controls. (M)
 - [ ] Contributor and label edges (producer/writer coherence). (M)
 - [ ] Conditional waveform experiment using approved peaks and the existing audio element. (M)

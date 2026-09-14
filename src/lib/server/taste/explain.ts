@@ -1,4 +1,8 @@
-import type { ConfidenceLabel, ProvenanceReason } from '#lib/taste/provisional';
+import {
+	UNKNOWN_DURATION_ESTIMATE_SECONDS,
+	type ConfidenceLabel,
+	type ProvenanceReason
+} from '#lib/taste/provisional';
 import type { ScoredCandidate } from './score';
 import type { TasteProfile } from './profile';
 
@@ -12,8 +16,15 @@ export interface SetExplanation {
 	degraded: boolean;
 }
 
-/** Used only to make an incomplete set's displayed runtime approximately useful. */
-export const UNKNOWN_DURATION_ESTIMATE_SECONDS = 210;
+export { UNKNOWN_DURATION_ESTIMATE_SECONDS };
+
+/** Artist affinity below this counts as outside the owner's anchors. */
+export const ANCHOR_AFFINITY_THRESHOLD = 0.25;
+
+/** The one definition of "outside your anchors", shared by set summaries and review flags. */
+export function isOutsideAnchors(artistId: string, profile: TasteProfile): boolean {
+	return (profile.artists[artistId] ?? 0) < ANCHOR_AFFINITY_THRESHOLD;
+}
 
 /**
  * Creates locale-neutral provenance. Presentation code resolves its message in
@@ -58,10 +69,8 @@ export function explainSet(
 	const estimatedDurationSeconds =
 		knownDurationSeconds + unknownDurationCount * UNKNOWN_DURATION_ESTIMATE_SECONDS;
 
-	// Calculate discovery share (tracks not in profile anchors)
-	const discoveryCount = tracks.filter(
-		(t) => (profile.artists[t.primaryArtistId] ?? 0) < 0.25
-	).length;
+	// Discovery share: picks outside the owner's anchors.
+	const discoveryCount = tracks.filter((t) => isOutsideAnchors(t.primaryArtistId, profile)).length;
 
 	const discoveryPercentage = trackCount > 0 ? Math.round((discoveryCount / trackCount) * 100) : 0;
 

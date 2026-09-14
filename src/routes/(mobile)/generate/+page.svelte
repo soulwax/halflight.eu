@@ -125,6 +125,11 @@
 		);
 	}
 
+	function reviewSet(next: ProvisionalSet): void {
+		generatedSet = next;
+		saveSuccess = false;
+	}
+
 	function saveSet(): void {
 		if (!currentSet?.tracks.length) return;
 		const date = new Date().toLocaleDateString();
@@ -250,6 +255,7 @@
 				onPlayTrack={playTrack}
 				onSave={saveSet}
 				onExport={downloadM3U8}
+				onSetChange={reviewSet}
 			/>
 		</div>
 	{/if}

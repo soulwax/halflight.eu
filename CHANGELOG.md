@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Generated sets can now be reviewed one slot at a time. Swap draws the next replacement from a
+  bounded, deterministic candidate pool returned with that one generation — repeated swaps rotate
+  through the whole pool instead of flipping between two tracks — keeps neighbouring slots free of
+  the same artist where it can, and updates the set's duration and discovery summary before any
+  playback or save action. Keyboard focus stays on the swapped slot, and screen readers hear which
+  track replaced which. It makes no extra TIDAL request and never persists the pool.
+
 - Halflight now opens on a single dark listening canvas across desktop and mobile, with neutral
   elevated surfaces and a restrained blue playback accent so artwork supplies the changing colour.
   Both shells use the lowercase wordmark instead of asking a tiny illustrated icon to identify the

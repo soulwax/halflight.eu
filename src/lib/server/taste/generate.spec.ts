@@ -40,6 +40,7 @@ describe('taste generation orchestrator', () => {
 		expect(result.confidenceLabel).toBe('none');
 		expect(result.estimatedDurationSeconds).toBe(0);
 		expect(result.unknownDurationCount).toBe(0);
+		expect(result.swapCandidates).toEqual([]);
 	});
 
 	it('generates an honest sequenced set with structured reasons', async () => {
@@ -60,5 +61,9 @@ describe('taste generation orchestrator', () => {
 		expect(result.tracks[0].reason).toHaveProperty('artistId', 'a1');
 		expect(result.unknownDurationCount).toBe(0);
 		expect(result.degraded).toBe(false);
+		// The review pool leads with the chosen tracks, then the unchosen scored candidates.
+		expect(result.swapCandidates?.slice(0, 3)).toEqual(result.tracks);
+		expect(result.swapCandidates).toHaveLength(4);
+		expect(result.swapCandidates?.every((track) => track.outsideAnchors !== undefined)).toBe(true);
 	});
 });

@@ -34,7 +34,12 @@ export interface ProvisionalTrack {
 	duration?: number;
 	releaseDate?: string;
 	reason: ProvenanceReason;
+	/** Derived affinity only; lets an in-memory review swap keep summary metrics honest. */
+	outsideAnchors?: boolean;
 }
+
+/** Planning estimate for a track whose duration the provider did not supply. */
+export const UNKNOWN_DURATION_ESTIMATE_SECONDS = 210;
 
 /** Stable confidence token; the display label is resolved in the request locale. */
 export type ConfidenceLabel = 'none' | 'initial' | 'good' | 'high';
@@ -54,5 +59,10 @@ export interface ProvisionalSetSummary {
 
 export interface ProvisionalSet extends ProvisionalSetSummary {
 	tracks: ProvisionalTrack[];
+	/**
+	 * A bounded, response-local review pool. It is never persisted and makes a
+	 * slot swap immediate without another provider request.
+	 */
+	swapCandidates?: ProvisionalTrack[];
 	generatedAt: string;
 }

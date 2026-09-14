@@ -3,7 +3,7 @@ import { expandTasteGraph, type GraphExpansionBudget, type GraphExpansionClient 
 import { filterCandidates } from './candidates';
 import { scoreCandidates } from './score';
 import { sequenceCandidates } from './sequence';
-import { explainTrack, explainSet } from './explain';
+import { explainTrack, explainSet, isOutsideAnchors } from './explain';
 import type { ProvisionalSet, ProvisionalTrack } from '#lib/taste/provisional';
 
 // Re-exported so existing `#lib/server/taste/generate` importers keep working;
@@ -12,6 +12,7 @@ export type { ProvisionalSet, ProvisionalTrack };
 
 /** Half-width in years of the era window when a centre year is requested. */
 export const DEFAULT_ERA_SPREAD = 8;
+const MAX_SWAP_CANDIDATES = 120;
 
 export interface GenerateKnobs {
 	targetCount?: number;
@@ -85,6 +86,7 @@ export async function generateTasteSet(
 			discoveryPercentage: 0,
 			confidenceLabel: 'none',
 			degraded: true,
+			swapCandidates: [],
 			generatedAt: now.toISOString()
 		};
 	}
@@ -116,20 +118,34 @@ export async function generateTasteSet(
 	options.onProgress?.({ stage: 'sequencing', candidateCount: sequenced.length });
 
 	// 6. Stage 4d — Explainability & Provenance chips
-	const tracks: ProvisionalTrack[] = sequenced.map((track) => ({
+	const toProvisionalTrack = (track: (typeof scored)[number]): ProvisionalTrack => ({
 		id: track.id,
 		title: track.title,
 		artists: track.artists,
 		duration: track.duration,
 		releaseDate: track.releaseDate,
-		reason: explainTrack(track, profile)
-	}));
+		reason: explainTrack(track, profile),
+		outsideAnchors: isOutsideAnchors(track.primaryArtistId, profile)
+	});
+	const tracks = sequenced.map(toProvisionalTrack);
+	// Keep the review pool bounded and deterministic. It lives only in the
+	// response, never in Postgres or Redis, so a swap cannot cause another API read.
+	const selectedIds = new Set(sequenced.map((track) => track.id));
+	const swapCandidates = [
+		...sequenced,
+		...scored
+			.filter((track) => !selectedIds.has(track.id))
+			.sort((a, b) => b.score - a.score || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+	]
+		.slice(0, MAX_SWAP_CANDIDATES)
+		.map(toProvisionalTrack);
 
 	const explanation = explainSet(sequenced, profile, expansion.degraded);
 
 	return {
 		...explanation,
 		tracks,
+		swapCandidates,
 		generatedAt: now.toISOString()
 	};
 }

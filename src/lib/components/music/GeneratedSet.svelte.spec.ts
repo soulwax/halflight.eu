@@ -58,6 +58,10 @@ describe('GeneratedSet.svelte', () => {
 		await expect
 			.element(page.getByText(m.generate_duration_estimated_detail({ known: 1, unknown: 1 })))
 			.toBeInTheDocument();
+		// Without a set owner there is nothing to receive a swap, so none is offered.
+		await expect
+			.element(page.getByRole('button', { name: m.generate_swap_track({ title: 'First Track' }) }))
+			.not.toBeInTheDocument();
 
 		await page.getByRole('button', { name: m.player_play_all() }).click();
 		await page.getByRole('button', { name: `${m.player_play_track()}: First Track` }).click();
@@ -68,6 +72,49 @@ describe('GeneratedSet.svelte', () => {
 		expect(onPlayTrack).toHaveBeenCalledWith(set.tracks[0]);
 		expect(onSave).toHaveBeenCalledOnce();
 		expect(onExport).toHaveBeenCalledOnce();
+	}, 30_000);
+
+	it('swaps a slot in place, keeps focus on it, and announces the replacement', async () => {
+		const third = {
+			...set.tracks[1],
+			id: 'third',
+			title: 'Third Track',
+			artists: [{ id: 'other', name: 'Another Artist' }]
+		};
+		const onSetChange = vi.fn<(next: ProvisionalSet) => void>();
+		const { rerender } = render(GeneratedSet, {
+			set: { ...set, swapCandidates: [...set.tracks, third] },
+			onPlay: vi.fn(),
+			onPlayTrack: vi.fn(),
+			onSave: vi.fn(),
+			onExport: vi.fn(),
+			onSetChange
+		});
+
+		await page
+			.getByRole('button', { name: m.generate_swap_track({ title: 'First Track' }) })
+			.click();
+
+		expect(onSetChange).toHaveBeenCalledOnce();
+		const next = onSetChange.mock.calls[0][0];
+		expect(next.tracks.map((track) => track.id)).toEqual(['third', 'second']);
+
+		await rerender({ set: next });
+
+		await expect
+			.element(page.getByRole('button', { name: m.generate_swap_track({ title: 'Third Track' }) }))
+			.toHaveFocus();
+		await expect
+			.element(
+				page.getByText(
+					m.generate_swapped_track({
+						position: 1,
+						previous: 'First Track',
+						replacement: 'Third Track'
+					})
+				)
+			)
+			.toBeInTheDocument();
 	}, 30_000);
 
 	it('renders an honest cold-start state instead of zero-duration playlist controls', async () => {

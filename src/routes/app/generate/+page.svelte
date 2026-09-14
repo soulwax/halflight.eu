@@ -164,6 +164,11 @@
 		player.play(target, summaries);
 	}
 
+	function reviewSet(next: ProvisionalSet) {
+		generatedSet = next;
+		saveSuccess = false;
+	}
+
 	function saveToPlaylists() {
 		if (!currentSet || currentSet.tracks.length === 0) return;
 		const summaries = currentSet.tracks.map(toTrackSummary);
@@ -385,6 +390,7 @@
 			onPlayTrack={playSingleTrack}
 			onSave={saveToPlaylists}
 			onExport={downloadM3U8}
+			onSetChange={reviewSet}
 		/>
 	{/if}
 </section>

@@ -1,8 +1,10 @@
 <script lang="ts">
-	import { Check, Download, ListMusic, Play } from '@lucide/svelte';
+	import { tick } from 'svelte';
+	import { Check, Download, ListMusic, Play, RefreshCw } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import Button from '#lib/components/ui/Button.svelte';
 	import type { ProvisionalSet, ProvisionalTrack } from '#lib/taste/provisional';
+	import { findSwapCandidate, reviewSwap } from '#lib/taste/review.js';
 	import {
 		localizeConfidence,
 		localizeDurationCoverage,
@@ -18,9 +20,49 @@
 		onPlayTrack: (track: ProvisionalTrack) => void;
 		onSave: () => void;
 		onExport: () => void;
+		/** Receives the set after a slot swap; without it the review offers no Swap action. */
+		onSetChange?: (set: ProvisionalSet) => void;
 	}
 
-	let { set, saveSuccess = false, onPlay, onPlayTrack, onSave, onExport }: Props = $props();
+	let {
+		set,
+		saveSuccess = false,
+		onPlay,
+		onPlayTrack,
+		onSave,
+		onExport,
+		onSetChange
+	}: Props = $props();
+
+	let trackList = $state<HTMLOListElement | undefined>(undefined);
+	let swapAnnouncement = $state<{ generatedAt: string; text: string } | null>(null);
+
+	function canSwap(index: number): boolean {
+		return onSetChange !== undefined && findSwapCandidate(set, index) !== null;
+	}
+
+	function swap(index: number): void {
+		const result = reviewSwap(set, index);
+		if (!result || !onSetChange) return;
+
+		onSetChange(result.set);
+		swapAnnouncement = {
+			generatedAt: set.generatedAt,
+			text: m.generate_swapped_track({
+				position: index + 1,
+				previous: result.previous.title,
+				replacement: result.replacement.title
+			})
+		};
+		// Rows are keyed by position, so the focused Swap button survives the swap. When
+		// that slot has nothing left to offer the button leaves; keep focus in its row.
+		void tick().then(() => {
+			const row = trackList?.children.item(index);
+			if (row && !row.contains(document.activeElement)) {
+				row.querySelector<HTMLButtonElement>('.generated-track-play')?.focus();
+			}
+		});
+	}
 
 	function formatDuration(seconds?: number): string {
 		if (!seconds) return '—';
@@ -95,8 +137,9 @@
 	</header>
 
 	{#if !isEmpty}
-		<ol class="generated-track-list">
-			{#each set.tracks as track, index (track.id + '-' + index)}
+		<ol class="generated-track-list" bind:this={trackList}>
+			<!-- Keyed by position: a swap replaces a slot's track, not its row, so focus stays put. -->
+			{#each set.tracks as track, index (index)}
 				<li class="generated-track">
 					<span class="generated-track-index" aria-hidden="true">{index + 1}</span>
 					<div class="generated-track-main">
@@ -108,6 +151,16 @@
 						>
 							<Play size={14} fill="currentColor" />
 						</button>
+						{#if canSwap(index)}
+							<button
+								type="button"
+								class="generated-track-swap"
+								onclick={() => swap(index)}
+								aria-label={m.generate_swap_track({ title: track.title })}
+							>
+								<RefreshCw size={14} aria-hidden="true" />
+							</button>
+						{/if}
 						<div class="min-w-0">
 							<p class="generated-track-title">{track.title}</p>
 							<p class="generated-track-artists">
@@ -124,6 +177,9 @@
 				</li>
 			{/each}
 		</ol>
+		<p class="sr-only" role="status">
+			{swapAnnouncement?.generatedAt === set.generatedAt ? swapAnnouncement.text : ''}
+		</p>
 	{/if}
 </section>
 
@@ -284,7 +340,7 @@
 
 	.generated-track-main {
 		display: grid;
-		grid-template-columns: auto minmax(0, 1fr);
+		grid-template-columns: auto auto minmax(0, 1fr);
 		align-items: center;
 		gap: 0.75rem;
 		min-width: 0;
@@ -300,6 +356,24 @@
 		background: var(--surface-canvas);
 		color: var(--text-secondary);
 		cursor: pointer;
+	}
+
+	.generated-track-swap {
+		display: grid;
+		width: 2.5rem;
+		height: 2.5rem;
+		place-items: center;
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-sm);
+		background: transparent;
+		color: var(--text-muted);
+		cursor: pointer;
+	}
+
+	.generated-track-swap:hover,
+	.generated-track-swap:focus-visible {
+		border-color: var(--action);
+		color: var(--action);
 	}
 
 	.generated-track-play:hover,
