@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { PanelLeftClose, PanelLeftOpen } from '@lucide/svelte';
+	import { LogOut, PanelLeftClose, PanelLeftOpen, Settings } from '@lucide/svelte';
 	import type { AppNavigationItem } from './navigation.js';
 	import { isCurrentNavigationItem } from './navigation.js';
 
@@ -85,11 +85,14 @@
 
 	<div class="side-nav-account mt-auto border-t border-[var(--border-subtle)] p-3">
 		{#if accountHref && accountLabel}
-			<a class="app-account-link" href={accountHref}>
-				{#if userName}<span class="side-nav-label truncate font-bold">{userName}</span>{/if}
-				<span class="side-nav-label text-xs tracking-wider text-[var(--text-muted)] uppercase"
-					>{accountLabel}</span
-				>
+			<a class="app-account-link" href={accountHref} title={collapsed ? accountLabel : undefined}>
+				<Settings size={17} aria-hidden="true" />
+				<div class="side-nav-labels">
+					{#if userName}<span class="side-nav-label truncate font-bold">{userName}</span>{/if}
+					<span class="side-nav-label text-xs tracking-wider text-[var(--text-muted)] uppercase"
+						>{accountLabel}</span
+					>
+				</div>
 			</a>
 		{:else if userName}
 			<p class="side-nav-label truncate text-xs tracking-wider text-[var(--text-muted)] uppercase">
@@ -101,7 +104,9 @@
 				<button
 					class="app-account-link app-account-link-signout w-full cursor-pointer text-left"
 					type="submit"
+					title={collapsed ? signOutLabel : undefined}
 				>
+					<LogOut size={17} aria-hidden="true" />
 					<span class="side-nav-label text-xs font-bold tracking-wider uppercase"
 						>{signOutLabel}</span
 					>
@@ -185,13 +190,34 @@
 	.side-nav-collapsed .side-nav-account {
 		padding: 0.75rem 0.5rem;
 	}
+	.side-nav-collapsed .side-nav-labels {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip: rect(0 0 0 0);
+		clip-path: inset(50%);
+		white-space: nowrap;
+	}
 	.side-nav-collapsed .app-account-link {
 		align-items: center;
+		justify-content: center;
 		padding: 0.5rem;
 	}
 	.side-nav-account :global(.app-account-link) {
 		min-height: 2.5rem;
 		padding: 0.55rem 0.7rem;
+		display: flex;
+		align-items: center;
+		gap: 0.55rem;
+	}
+	/* Account links expand beyond the icon-only collapsed layout. */
+	.side-nav-account :global(.app-account-link) {
+		flex-direction: column;
+	}
+	.side-nav-account :global(.app-account-link-signout) {
+		flex-direction: row;
+		gap: 0.4rem;
 	}
 	/* Sign-out gets the same danger settle as the header's sign-out button. */
 	.side-nav-account :global(.app-account-link-signout:hover) {

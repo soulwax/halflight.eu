@@ -61,4 +61,28 @@ describe('SideNav.svelte', () => {
 		await page.getByRole('button', { name: 'Expand navigation' }).click();
 		expect(toggles).toBe(1);
 	});
+
+	it('shows icons for account settings and sign-out when collapsed', async () => {
+		render(SideNav, {
+			...base,
+			currentPath: '/app',
+			userName: 'soulwax',
+			accountHref: '/app/settings/tidal',
+			accountLabel: 'Settings',
+			signOutAction: '/logout',
+			signOutLabel: 'Sign out',
+			collapsed: true,
+			onToggleRail: () => {},
+			collapseRailLabel: 'Collapse navigation',
+			expandRailLabel: 'Expand navigation'
+		});
+
+		// Both buttons should be accessible by title when collapsed (labels are hidden).
+		await expect
+			.element(page.getByRole('link', { name: /Settings/ }))
+			.toHaveAttribute('title', 'Settings');
+		await expect
+			.element(page.getByRole('button', { name: /Sign out/ }))
+			.toHaveAttribute('title', 'Sign out');
+	});
 });
