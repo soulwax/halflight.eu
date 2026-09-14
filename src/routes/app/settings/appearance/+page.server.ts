@@ -1,5 +1,4 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { parseStreamingSettingsInput, saveStreamingSettings } from '#lib/server/streaming-settings';
 import {
 	parseThemeSettingsInput,
 	saveThemeSettings,
@@ -11,25 +10,16 @@ import type { Actions, PageServerLoad } from './$types';
 export const load: PageServerLoad = (event) => {
 	if (!event.locals.user) redirect(302, '/sign-in');
 
-	return { themes: THEMES, themeMeta: THEME_META };
+	// hooks.server.ts already resolved and memoised this for the response's
+	// own `data-theme` attribute; reuse it rather than reading the store again.
+	return {
+		theme: event.locals.theme,
+		themes: THEMES,
+		themeMeta: THEME_META
+	};
 };
 
 export const actions: Actions = {
-	saveStreamingSettings: async (event) => {
-		if (!event.locals.user) redirect(302, '/sign-in');
-
-		const formData = await event.request.formData();
-		const settings = parseStreamingSettingsInput({
-			preferredQuality: formData.get('preferredQuality')?.toString(),
-			volume: formData.get('volume')?.toString(),
-			loudnessNormalization: formData.get('loudnessNormalization')?.toString()
-		});
-		if (!settings) return fail(400, { streamingSettingsError: true });
-
-		await saveStreamingSettings(event.locals.user.id, settings);
-		return { streamingSettingsSaved: true };
-	},
-
 	saveTheme: async (event) => {
 		if (!event.locals.user) redirect(302, '/sign-in');
 

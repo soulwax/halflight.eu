@@ -224,9 +224,9 @@ upstream shape is verified.
 ### Data layer & storage
 
 Drizzle + Postgres (Neon). App tables in `src/lib/server/db/schema.ts`: `tidal_auth`,
-`administrator`, `user_status`, `user_playlist`, `streaming_settings`, `playback_state`,
-`playback_operation_result`, `taste_profile`, `generation_cooldown`, `private_music_file`,
-`tidal_cache_object`, `lastfm_connection`. Better Auth tables are **generated** in
+`administrator`, `user_status`, `user_playlist`, `streaming_settings`, `user_appearance`,
+`playback_state`, `playback_operation_result`, `taste_profile`, `generation_cooldown`,
+`private_music_file`, `tidal_cache_object`, `lastfm_connection`. Better Auth tables are **generated** in
 `auth.schema.ts` (`pnpm auth:schema`). Store only Syn-owned state and identifiers — no
 catalogue text, artwork, or listening log. Some paths self-heal a missing table/row
 (`ensurePlaylistTable()`, settings defaults) because a fresh deploy may race the migration.
@@ -270,8 +270,20 @@ are enabled (no `.remote.ts` modules exist yet). Async mode is **disabled under 
 (`async: !process.env.VITEST`) because it breaks `vitest-browser-svelte`'s polling matchers
 on components that read a `$derived` — keep `await` out of markup.
 
-**Appearance**: one dark system of semantic CSS variables in `src/routes/layout.css`;
-canonical values and component treatments are in `docs/style-guide.html`.
+**Appearance**: four selectable themes (`dark` [default, the original Halflight look], `light`,
+`warm-night`, `electric`) as semantic CSS variable blocks in `src/routes/layout.css`, each under
+`[data-theme='…']` (not `:root[data-theme]`, so a swatch can nest its own `data-theme` and render
+true colours regardless of the page's active theme — see the Appearance settings picker). Colours
+live once, in CSS; `#lib/server/theme-settings.ts` (`THEME_META`) carries only ids and display
+metadata, never hex values. `user_appearance` persists the choice per account;
+`hooks.server.ts` resolves it once per request — DB (memoised) when signed in, else the `hf-theme`
+cookie — and bakes it into `<html data-theme>` via `transformPageChunk` (an `app.html`
+`%theme.value%` placeholder) before first byte, so there's no flash of the wrong palette. A
+signed-in request also re-writes the cookie from the DB value, so it self-heals after a change on
+another device. `/app/settings/appearance` and `(mobile)/settings`'s Appearance section both save
+through the same `saveThemeSettings`; the root layout's `$effect` re-applies `data-theme` after a
+save so the switch is instant, without a reload. Canonical dark-theme values and component
+treatments are also documented in `docs/style-guide.html` (not yet updated for the other three).
 
 ### Routes at a glance
 

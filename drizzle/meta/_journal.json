@@ -183,6 +183,13 @@
       "when": 1789070023229,
       "tag": "0025_nifty_white_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1789425955486,
+      "tag": "0026_solid_onslaught",
+      "breakpoints": true
     }
   ]
 }

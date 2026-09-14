@@ -4,9 +4,11 @@ import type { LayoutServerLoad } from './$types';
 export const load: LayoutServerLoad = (event) => {
 	// The offline fallback is deliberately public: it must be safe to precache
 	// and render during a cold launch without serialising a signed-in account or
-	// any listening-session data into the response.
+	// any listening-session data into the response. The theme still applies —
+	// hooks.server.ts already resolved it from the cookie — so offline doesn't
+	// flash back to the default palette.
 	if (isPublicMobileRoute(event.url.pathname)) {
-		return { user: null };
+		return { user: null, theme: event.locals.theme };
 	}
 
 	const user = event.locals.user
@@ -18,6 +20,7 @@ export const load: LayoutServerLoad = (event) => {
 		: null;
 
 	return {
-		user
+		user,
+		theme: event.locals.theme
 	};
 };

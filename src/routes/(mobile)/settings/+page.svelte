@@ -1,11 +1,24 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { CircleCheck, Download, SlidersHorizontal } from '@lucide/svelte';
+	import { CircleCheck, Download, Palette, SlidersHorizontal } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import MobileSubScreenHeader from '#lib/components/mobile/MobileSubScreenHeader.svelte';
+	import type { Theme } from '#lib/server/theme-settings';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form?: ActionData } = $props();
+
+	const selectedTheme = $derived<Theme>(form?.theme ?? data.theme);
+	const THEME_LABELS: Record<Theme, { name: () => string; description: () => string }> = {
+		dark: { name: m.theme_dark_name, description: m.theme_dark_description },
+		light: { name: m.theme_light_name, description: m.theme_light_description },
+		'warm-night': { name: m.theme_warm_night_name, description: m.theme_warm_night_description },
+		electric: { name: m.theme_electric_name, description: m.theme_electric_description }
+	};
+
+	function previewTheme(theme: Theme): void {
+		document.documentElement.dataset.theme = theme;
+	}
 
 	type InstallPromptEvent = Event & {
 		prompt(): Promise<void>;
@@ -168,6 +181,55 @@
 		</form>
 	</section>
 
+	<section class="card" aria-labelledby="mobile-settings-appearance-title">
+		<div class="card-heading">
+			<Palette size={20} aria-hidden="true" />
+			<div>
+				<h2 id="mobile-settings-appearance-title">{m.appearance_settings_title()}</h2>
+				<p>{m.appearance_settings_description()}</p>
+			</div>
+		</div>
+
+		{#if form?.themeSaved}
+			<p class="notice success" role="status">
+				<CircleCheck size={18} aria-hidden="true" />{m.appearance_saved_notice()}
+			</p>
+		{:else if form?.themeError}
+			<p class="notice error" role="alert">{m.appearance_error_notice()}</p>
+		{/if}
+
+		<form method="POST" action="?/saveTheme">
+			<fieldset class="quality-choices">
+				<legend>{m.appearance_theme_legend()}</legend>
+				{#each data.themes as theme (theme)}
+					{@const label = THEME_LABELS[theme]}
+					<label class:chosen={selectedTheme === theme}>
+						<input
+							type="radio"
+							name="theme"
+							value={theme}
+							checked={selectedTheme === theme}
+							onchange={() => previewTheme(theme)}
+							aria-label={label.name()}
+						/>
+						<span
+							class="theme-swatch"
+							data-theme={theme}
+							role="img"
+							aria-label={m.theme_preview_label({ theme: label.name() })}
+						></span>
+						<span>
+							<strong>{label.name()}</strong>
+							<small>{label.description()}</small>
+						</span>
+					</label>
+				{/each}
+			</fieldset>
+
+			<button type="submit">{m.appearance_save()}</button>
+		</form>
+	</section>
+
 	<section class="card connection" aria-labelledby="mobile-settings-connection-title">
 		<h2 id="mobile-settings-connection-title">{m.mobile_settings_connection_title()}</h2>
 		{#if !data.connection.configured}
@@ -288,6 +350,16 @@
 		width: 1.25rem;
 		height: 1.25rem;
 		accent-color: var(--action);
+	}
+	/* Carries its own `data-theme`, so it renders in that theme's real colours
+	   regardless of the page's currently active theme (see layout.css). */
+	.theme-swatch {
+		flex-shrink: 0;
+		width: 2.25rem;
+		height: 2.25rem;
+		border: 1px solid var(--line);
+		border-radius: var(--radius-sm);
+		background: linear-gradient(135deg, var(--paper) 50%, var(--action) 50%);
 	}
 	.quality-choices strong,
 	.quality-choices small {

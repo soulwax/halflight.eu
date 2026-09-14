@@ -11,12 +11,31 @@
 
 	let { data, children }: { data: LayoutData; children: Snippet } = $props();
 
+	// The mobile browser/OS chrome colour cannot be a CSS custom property — it
+	// needs a literal string at head-render time — so this is the one place
+	// each theme's `--paper` is deliberately restated outside `layout.css`.
+	const MOBILE_CHROME_COLOR: Record<LayoutData['theme'], string> = {
+		dark: '#0b0d10',
+		light: '#ffffff',
+		'warm-night': '#1a1512',
+		electric: '#0f0f1a'
+	};
+
 	onMount(() => {
 		if ('serviceWorker' in navigator && !import.meta.env.DEV) {
 			navigator.serviceWorker.register('/service-worker.js').catch(() => {
 				// Best-effort service worker registration
 			});
 		}
+	});
+
+	// `app.html` already bakes the right theme into the first response via
+	// `hooks.server.ts`'s `transformPageChunk`, so this never causes the flash
+	// it would on a cold load. It exists for the case that value changes
+	// without a full navigation — the Appearance settings action returns fresh
+	// `theme` data — so the switch is instant instead of waiting for reload.
+	$effect(() => {
+		document.documentElement.dataset.theme = data.theme;
 	});
 
 	// Halflight Now (the `(mobile)` route group) owns its own compact header,
@@ -35,7 +54,7 @@
 	<link rel="icon" type="image/png" sizes="192x192" href="/icons/halflight-192.png" />
 	{#if isMobile}
 		<link rel="manifest" href="/manifest.webmanifest" />
-		<meta name="theme-color" content="#0b0d10" />
+		<meta name="theme-color" content={MOBILE_CHROME_COLOR[data.theme]} />
 		<meta name="mobile-web-app-capable" content="yes" />
 		<meta name="apple-mobile-web-app-capable" content="yes" />
 		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />

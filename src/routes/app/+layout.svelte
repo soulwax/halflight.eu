@@ -10,7 +10,7 @@
 	import { player } from '#lib/player/player.svelte.js';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { Disc3, Home, Library, Search, Sparkles, Waves, X } from '@lucide/svelte';
+	import { Disc3, Home, Library, Palette, Search, Sparkles, Waves, X } from '@lucide/svelte';
 	import type { Snippet } from 'svelte';
 	import { onMount } from 'svelte';
 	import type { LayoutData } from './$types';
@@ -28,7 +28,12 @@
 			dividerBefore: true
 		},
 		{ href: localizeHref(resolve('/app/generate')), label: m.nav_generate(), icon: Sparkles },
-		{ href: localizeHref(resolve('/app/settings/taste')), label: m.nav_taste(), icon: Waves }
+		{ href: localizeHref(resolve('/app/settings/taste')), label: m.nav_taste(), icon: Waves },
+		{
+			href: localizeHref(resolve('/app/settings/appearance')),
+			label: m.nav_appearance(),
+			icon: Palette
+		}
 	]);
 	const showHeaderSearch = $derived(deLocalizeHref(page.url.pathname) !== '/app/search');
 

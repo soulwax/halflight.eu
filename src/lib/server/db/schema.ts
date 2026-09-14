@@ -93,6 +93,28 @@ export const streamingSettings = pgTable(
 );
 
 /**
+ * The owner's selected visual theme. Separate from `streaming_settings`
+ * because appearance and audio preferences are different concerns that
+ * change independently; a reconnect or quality change must never touch this.
+ */
+export const userAppearance = pgTable(
+	'user_appearance',
+	{
+		userId: text('user_id')
+			.primaryKey()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		theme: text('theme').notNull().default('dark'),
+		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+	},
+	(table) => [
+		check(
+			'user_appearance_theme',
+			sql`${table.theme} in ('dark', 'light', 'warm-night', 'electric')`
+		)
+	]
+);
+
+/**
  * The owner's resumable player state. This is deliberately bounded workflow
  * state, not a catalogue cache: it contains only the currently playing track,
  * a short queue/history, and the last known position. It never holds stream

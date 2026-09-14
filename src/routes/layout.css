@@ -2,7 +2,8 @@
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
 
-:root {
+[data-theme='dark'],
+:root:not([data-theme]) {
 	color-scheme: dark;
 
 	/* ---- Halflight dark: deep neutral canvas, lifted listening surfaces, cool light. ----
@@ -17,25 +18,13 @@
 	--sky-deep: #355675;
 	--blush: #352634;
 
-	/* Editorial wash tokens consumed by the shell + section headers. */
-	--editorial-sky: var(--sky);
-	--editorial-blush: var(--blush);
-	--editorial-faint: var(--faint);
-
-	/* HiRes/lossless fidelity badges remain distinct without competing with artwork. */
 	--accent-gold: #e6ae59;
 	--accent-gold-deep: #b98538;
 	--accent-jade: #57bdc8;
 	--accent-oxblood: #ec6f91;
 
-	--surface-canvas: var(--paper);
-	--surface-raised: var(--surface);
-	--surface-selected: var(--sky);
-	--border-subtle: var(--line);
 	--border-strong: #3b424d;
-	--text-primary: var(--ink);
 	--text-secondary: #c6ccd5;
-	--text-muted: var(--slate);
 
 	--action: #5aa7ff;
 	--action-contrast: #06111d;
@@ -46,14 +35,136 @@
 	--warning: #f0b768;
 	--warning-subtle: #302516;
 
-	/* Scrim over album art. Deliberately neutral rather than ink-tinted: it
-	   covers arbitrary artwork, where a blue cast reads as a colour error. */
 	--scrim: rgb(0 0 0 / 0.55);
 	--scrim-ink: #ffffff;
-	/* Dialog backdrop. Ink-tinted like the shadows, and one value — modals used
-	   to carry four different blacks between them. */
 	--overlay: rgb(0 0 0 / 0.72);
 	--focus-ring: #78b8ff;
+}
+
+/* Light: bright, high-contrast palette for daytime use. */
+[data-theme='light'] {
+	color-scheme: light;
+
+	--paper: #ffffff;
+	--surface: #f5f7fb;
+	--ink: #0a0c0f;
+	--slate: #5a6370;
+	--faint: #8a92a0;
+	--line: #d8dce5;
+	--sky: #e8f0ff;
+	--sky-deep: #c8dff5;
+	--blush: #fce8f0;
+
+	--accent-gold: #d4a84a;
+	--accent-gold-deep: #a88530;
+	--accent-jade: #2a9fa8;
+	--accent-oxblood: #c94a6d;
+
+	--border-strong: #b8c0cc;
+	--text-secondary: #3a4250;
+
+	--action: #0066cc;
+	--action-contrast: #f0f5ff;
+	--danger: #d91e4a;
+	--danger-subtle: #ffe8f2;
+	--success: #0f8860;
+	--success-subtle: #e0f7f0;
+	--warning: #d9860f;
+	--warning-subtle: #fff0e0;
+
+	--scrim: rgb(0 0 0 / 0.45);
+	--scrim-ink: #ffffff;
+	--overlay: rgb(20 23 28 / 0.4);
+	--focus-ring: #0066cc;
+}
+
+/* Warm Night: amber and sepia tones for comfortable late-night listening. */
+[data-theme='warm-night'] {
+	color-scheme: dark;
+
+	--paper: #1a1512;
+	--surface: #241f18;
+	--ink: #f5eee5;
+	--slate: #b8a89a;
+	--faint: #8a7a6a;
+	--line: #3d342a;
+	--sky: #3d2f1f;
+	--sky-deep: #5a3f28;
+	--blush: #4a2f35;
+
+	--accent-gold: #f0a860;
+	--accent-gold-deep: #d88040;
+	--accent-jade: #8ab8a0;
+	--accent-oxblood: #d86b5a;
+
+	--border-strong: #4d4030;
+	--text-secondary: #d8c8b8;
+
+	--action: #f5a860;
+	--action-contrast: #1a1512;
+	--danger: #e07060;
+	--danger-subtle: #3a2520;
+	--success: #7ac8a0;
+	--success-subtle: #1a3a2a;
+	--warning: #f0a860;
+	--warning-subtle: #3a2810;
+
+	--scrim: rgb(10 6 2 / 0.55);
+	--scrim-ink: #ffffff;
+	--overlay: rgb(10 6 2 / 0.72);
+	--focus-ring: #f5c070;
+}
+
+/* Electric: modern, vibrant, high-contrast for focused listening. */
+[data-theme='electric'] {
+	color-scheme: dark;
+
+	--paper: #0f0f1a;
+	--surface: #1a1a2e;
+	--ink: #f0f8ff;
+	--slate: #a0b8ff;
+	--faint: #6080d0;
+	--line: #2a2a44;
+	--sky: #1a2a4a;
+	--sky-deep: #2a4a7a;
+	--blush: #3a2a5a;
+
+	--accent-gold: #ffdd00;
+	--accent-gold-deep: #ffcc00;
+	--accent-jade: #00ffcc;
+	--accent-oxblood: #ff1493;
+
+	--border-strong: #3a3a5a;
+	--text-secondary: #c0d0ff;
+
+	--action: #00d4ff;
+	--action-contrast: #0f0f1a;
+	--danger: #ff0080;
+	--danger-subtle: #4a0f2a;
+	--success: #00ff80;
+	--success-subtle: #0a3a1a;
+	--warning: #ffaa00;
+	--warning-subtle: #4a3a0a;
+
+	--scrim: rgb(5 5 15 / 0.6);
+	--scrim-ink: #ffffff;
+	--overlay: rgb(5 5 15 / 0.75);
+	--focus-ring: #00d4ff;
+}
+
+/* ---- Tokens shared by every theme: derived aliases, geometry, type, motion. ---- */
+:root {
+	/* Editorial wash tokens consumed by the shell + section headers. */
+	--editorial-sky: var(--sky);
+	--editorial-blush: var(--blush);
+	--editorial-faint: var(--faint);
+
+	--surface-canvas: var(--paper);
+	--surface-raised: var(--surface);
+	--surface-selected: var(--sky);
+	--border-subtle: var(--line);
+	--text-primary: var(--ink);
+	--text-muted: var(--slate);
 
 	/* ---- Geometry: one small family of soft radii. ---- */
 	--radius-xs: 4px;
