@@ -23,6 +23,6 @@ describe('AlbumArtPanel.svelte', () => {
 	it('shows a fallback when there is no artwork', async () => {
 		render(AlbumArtPanel, { track: { ...track, album: { id: 'al1', title: 'Autobahn' } } });
 		await expect.element(page.getByRole('img')).not.toBeInTheDocument();
-		await expect.element(page.getByRole('button')).toBeInTheDocument();
+		await expect.element(page.getByRole('button')).not.toBeInTheDocument();
 	});
 });

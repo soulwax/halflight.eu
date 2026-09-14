@@ -66,6 +66,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The player dock now follows the familiar three-part playback model: track identity on the left,
+  transport with its timeline in the centre, and queue/lyrics/session utilities on the right. Its
+  controls have dependable targets, the seek input has a full-height hit area, and artwork is no
+  longer a hidden duplicate play/pause button. Play now becomes Pause while audio is running—not
+  the unrelated “Collapse player”—and selecting an already active detail tab no longer closes the
+  player. More actions now opens the specifically named Playback details panel instead of
+  unpredictably reopening a remembered panel. Player chrome uses the style guide's neutral surface
+  and blue action colours; gold remains reserved for actual HiRes/headroom meaning.
 - The generated-set review no longer switches back to an older, denser visual language after the
   newly composed builder. Its listening summary now uses the shared module contract, track actions
   have a dependable 40px target, provenance reads as supporting evidence rather than all-caps

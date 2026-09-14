@@ -41,15 +41,15 @@
 		type="button"
 		class="t-btn play"
 		onclick={() => player.togglePlayPause()}
-		title={player.isPlaying ? m.player_collapse() : m.player_play_track()}
-		aria-label={player.isPlaying ? m.player_collapse() : m.player_play_track()}
+		title={player.isPlaying ? m.player_pause() : m.player_play_track()}
+		aria-label={player.isPlaying ? m.player_pause() : m.player_play_track()}
 	>
 		{#if player.isLoading}
-			<Loader2 size={17} class="animate-spin" />
+			<Loader2 size={19} class="animate-spin" />
 		{:else if player.isPlaying}
-			<Pause size={17} fill="currentColor" />
+			<Pause size={19} fill="currentColor" />
 		{:else}
-			<Play size={17} fill="currentColor" />
+			<Play size={19} fill="currentColor" />
 		{/if}
 	</button>
 	<button

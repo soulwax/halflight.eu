@@ -1,9 +1,14 @@
 import { page } from 'vitest/browser';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import PlayerTransport from './PlayerTransport.svelte';
 import { player } from '#lib/player/player.svelte.js';
 import { m } from '#lib/paraglide/messages.js';
+
+afterEach(() => {
+	player.isPlaying = false;
+	player.shuffle = false;
+});
 
 describe('PlayerTransport.svelte', () => {
 	it('exposes shuffle, previous, play, next and repeat controls', async () => {
@@ -23,6 +28,19 @@ describe('PlayerTransport.svelte', () => {
 		render(PlayerTransport);
 		await page.getByRole('button', { name: m.player_shuffle() }).click();
 		expect(player.shuffle).toBe(true);
-		player.shuffle = false;
+	});
+
+	it('names the central control after the audio action it performs', async () => {
+		player.isPlaying = false;
+		render(PlayerTransport);
+		await expect
+			.element(page.getByRole('button', { name: m.player_play_track() }))
+			.toBeInTheDocument();
+
+		player.isPlaying = true;
+		await expect.element(page.getByRole('button', { name: m.player_pause() })).toBeInTheDocument();
+		await expect
+			.element(page.getByRole('button', { name: m.player_collapse() }))
+			.not.toBeInTheDocument();
 	});
 });

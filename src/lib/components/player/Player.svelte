@@ -92,11 +92,12 @@
 		style={floating ? `left:${player.floatingPos.x}px;top:${player.floatingPos.y}px` : ''}
 		aria-label={m.player_now_playing()}
 	>
-		<PlayerSeekBar />
-
 		<div class="bar">
 			<NowPlaying {track} />
-			<PlayerTransport />
+			<div class="player-center">
+				<PlayerTransport />
+				<PlayerSeekBar />
+			</div>
 			<PlayerActions {track} {floating} {isNarrow} {tidalUrl} />
 		</div>
 		{#if player.isPlaybackActiveElsewhere}
@@ -140,11 +141,6 @@
 	</section>
 {:else}
 	<section class="syn-player idle" aria-label={m.player_now_playing()}>
-		<div class="seek" aria-hidden="true">
-			<span class="time">0:00</span>
-			<div class="seek-track"><span class="seek-fill" style="width:0"></span></div>
-			<span class="time">0:00</span>
-		</div>
 		<div class="bar">
 			<div class="identity">
 				<span class="cover cover-idle" aria-hidden="true">
@@ -157,16 +153,23 @@
 					</span>
 				</div>
 			</div>
-			<div class="transport">
-				<button type="button" class="t-btn" disabled aria-label={m.player_previous()}>
-					<SkipBack size={16} />
-				</button>
-				<button type="button" class="t-btn play" disabled aria-label={m.player_play_track()}>
-					<Play size={17} fill="currentColor" />
-				</button>
-				<button type="button" class="t-btn" disabled aria-label={m.player_next()}>
-					<SkipForward size={16} />
-				</button>
+			<div class="player-center">
+				<div class="transport">
+					<button type="button" class="t-btn" disabled aria-label={m.player_previous()}>
+						<SkipBack size={18} />
+					</button>
+					<button type="button" class="t-btn play" disabled aria-label={m.player_play_track()}>
+						<Play size={19} fill="currentColor" />
+					</button>
+					<button type="button" class="t-btn" disabled aria-label={m.player_next()}>
+						<SkipForward size={18} />
+					</button>
+				</div>
+				<div class="seek" aria-hidden="true">
+					<span class="time">0:00</span>
+					<div class="seek-track"><span class="seek-fill" style="width:0"></span></div>
+					<span class="time">0:00</span>
+				</div>
 			</div>
 			<div class="actions"></div>
 		</div>

@@ -11,6 +11,7 @@
 		<link href="https://fonts.googleapis.com/css?family=Fjalla+One&display=swap" rel="stylesheet" />
 		<style>
 			:root {
+				/* Halflight colour authority. The prototype layout below is illustrative only. */
 				color-scheme: dark;
 				--ink: #f4f6f8;
 				--muted: #9aa3b2;
@@ -21,6 +22,11 @@
 				--sky-deep: #355675;
 				--blush: #352634;
 				--line: #252a32;
+				--action: #5aa7ff;
+				--action-contrast: #06111d;
+				--success: #62d1b5;
+				--warning: #f0b768;
+				--danger: #ff7198;
 				--player-h: 84px;
 				--sidebar-w: 232px;
 			}
@@ -287,7 +293,7 @@
 				color: var(--muted);
 			}
 			.track-card.is-current .track-name {
-				color: #5aa7ff;
+				color: var(--action);
 			}
 
 			/* List (Library / Search / Liked) */
@@ -348,7 +354,7 @@
 				transform: scale(1.15);
 			}
 			.row-like.liked {
-				color: #e0245e;
+				color: var(--danger);
 			}
 
 			.empty-state {
@@ -494,7 +500,7 @@
 				transform: scale(1.1);
 			}
 			.np-actions .np-like.liked {
-				color: #e0245e;
+				color: var(--danger);
 			}
 			.np-actions .np-skip svg {
 				width: 17px;
@@ -654,7 +660,7 @@
 				display: block;
 			}
 			.pb-heart.liked {
-				color: #e0245e;
+				color: var(--danger);
 			}
 			.pb-expand svg {
 				width: 16px;
@@ -714,7 +720,7 @@
 		<div class="app">
 			<!-- Sidebar -->
 			<aside class="sidebar">
-				<div class="brand">Drift</div>
+				<div class="brand">Halflight</div>
 				<ul class="nav-list">
 					<li class="nav-item active" data-nav="discover">
 						<svg

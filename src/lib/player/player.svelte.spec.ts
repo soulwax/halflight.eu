@@ -566,6 +566,15 @@ describe('PlayerState', () => {
 		expect(player.isExpanded).toBe(false);
 	});
 
+	it('selectPanel changes tabs without collapsing the player', () => {
+		const player = new PlayerState();
+		player.selectPanel('source');
+		expect(player.isExpanded).toBe(true);
+		expect(player.panel).toBe('source');
+		player.selectPanel('source');
+		expect(player.isExpanded).toBe(true);
+	});
+
 	it('advancing to the next track clears every trace of the previous one', () => {
 		const player = new PlayerState();
 		player.play(sampleTrack1, [sampleTrack1, sampleTrack2]);

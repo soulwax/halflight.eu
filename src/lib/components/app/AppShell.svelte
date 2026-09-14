@@ -198,7 +198,6 @@
 		grid-area: player;
 		min-width: 0;
 		z-index: var(--z-player);
-		border-top: 1px solid var(--border-subtle);
 		overflow: hidden;
 	}
 	.app-shell-footer {

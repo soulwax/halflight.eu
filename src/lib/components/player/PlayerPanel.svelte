@@ -46,7 +46,7 @@
 					role="tab"
 					aria-selected={player.panel === 'queue'}
 					class:on={player.panel === 'queue'}
-					onclick={() => (player.panel = 'queue')}
+					onclick={() => player.selectPanel('queue')}
 				>
 					<ListMusic size={13} />
 					{m.player_queue()}
@@ -57,7 +57,7 @@
 					role="tab"
 					aria-selected={player.panel === 'lyrics'}
 					class:on={player.panel === 'lyrics'}
-					onclick={() => player.openPanel('lyrics')}
+					onclick={() => player.selectPanel('lyrics')}
 				>
 					<Mic2 size={13} />
 					{m.player_lyrics()}
@@ -67,7 +67,7 @@
 					role="tab"
 					aria-selected={player.panel === 'source'}
 					class:on={player.panel === 'source'}
-					onclick={() => (player.panel = 'source')}
+					onclick={() => player.selectPanel('source')}
 				>
 					<Radio size={13} />
 					{m.player_source()}

@@ -1,13 +1,13 @@
 <script lang="ts">
 	import {
 		ChevronDown,
-		ChevronUp,
 		ExternalLink,
 		ListMusic,
 		Mic2,
 		MoreHorizontal,
 		PictureInPicture2,
 		Plus,
+		Radio,
 		X
 	} from '@lucide/svelte';
 	import DropdownMenu, { type DropdownMenuItem } from '#lib/components/ui/DropdownMenu.svelte';
@@ -37,6 +37,22 @@
 				onSelect: () => customPlaylists.promptAddToPlaylist(track)
 			}
 		];
+
+		actions.push({
+			id: 'playback-details',
+			label: m.player_source(),
+			icon: Radio,
+			onSelect: () => player.selectPanel('source')
+		});
+
+		if (player.isExpanded) {
+			actions.push({
+				id: 'collapse-details',
+				label: m.player_collapse(),
+				icon: ChevronDown,
+				onSelect: () => player.toggleExpanded()
+			});
+		}
 
 		if (!isNarrow) {
 			actions.push({
@@ -95,15 +111,6 @@
 		aria-expanded={player.isExpanded && player.panel === 'lyrics'}
 	>
 		<Mic2 size={15} />
-	</button>
-	<button
-		type="button"
-		class="a-btn"
-		onclick={() => player.toggleExpanded()}
-		title={player.isExpanded ? m.player_collapse() : m.player_expand()}
-		aria-label={player.isExpanded ? m.player_collapse() : m.player_expand()}
-	>
-		{#if player.isExpanded}<ChevronDown size={16} />{:else}<ChevronUp size={16} />{/if}
 	</button>
 	<DropdownMenu
 		items={moreActions}

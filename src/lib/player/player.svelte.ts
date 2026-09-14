@@ -826,13 +826,19 @@ export class PlayerState {
 		if (this.isExpanded && this.panel === panel) {
 			this.isExpanded = false;
 		} else {
-			this.panel = panel;
-			this.isExpanded = true;
-		}
-		if (panel === 'lyrics' && this.isExpanded && !this.lyrics && this.currentTrack) {
-			void this.loadLyrics(this.currentTrack.id);
+			this.selectPanel(panel, false);
 		}
 		this.savePrefs();
+	}
+
+	/** Select a visible detail tab without treating the active tab as a close button. */
+	selectPanel(panel: PlayerPanel, save = true): void {
+		this.panel = panel;
+		this.isExpanded = true;
+		if (panel === 'lyrics' && !this.lyrics && this.currentTrack) {
+			void this.loadLyrics(this.currentTrack.id);
+		}
+		if (save) this.savePrefs();
 	}
 
 	toggleShuffle(): void {
