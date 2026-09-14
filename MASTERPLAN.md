@@ -2533,8 +2533,12 @@ Exit: a generated hour is better than TIDAL's own mix for the owner, and every p
 Goal: the difference between "a good playlist" and "uncannily accurate".
 
 - [ ] The full knob set, presets, and profile-derived defaults. (L)
-- [ ] Structured reasons rendered through Paraglide; honest familiarity, duration, and confidence
-      labels in provenance chips and set summaries throughout. (M)
+- [x] Structured reasons rendered through Paraglide; honest familiarity, duration, and confidence
+      labels in provenance chips and set summaries throughout. (M) — generation now returns
+      locale-neutral reason codes with supporting artist/seed identifiers and optional release-year
+      evidence. Desktop and Halflight Now render them through Paraglide; set runtime separates
+      provider-known seconds from a visibly labelled estimate and names missing coverage. Summary
+      copy says “outside your anchors,” never claims untracked listening history.
 - [ ] Per-slot swap and fast re-run over a reused pool. (M)
 - [ ] Exclusions and cooldown as first-class, persisted controls. (M)
 - [ ] Contributor and label edges (producer/writer coherence). (M)

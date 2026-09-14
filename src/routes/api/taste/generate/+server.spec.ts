@@ -21,10 +21,10 @@ import { POST } from './+server';
 
 const set: ProvisionalSet = {
 	tracks: [],
-	summary: 'A small, honest set',
 	trackCount: 0,
-	totalDurationFormatted: '0m',
-	totalDurationSeconds: 0,
+	knownDurationSeconds: 0,
+	unknownDurationCount: 0,
+	estimatedDurationSeconds: 0,
 	discoveryPercentage: 0,
 	confidenceLabel: 'initial',
 	degraded: false,

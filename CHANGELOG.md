@@ -66,6 +66,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Generated-set explanations no longer arrive as English sentences baked by the server. The taste
+  pipeline returns structured evidence, then desktop and Halflight Now render the reason in the
+  active locale. Runtime is now honest too: provider-known duration and missing coverage are kept
+  separate, any estimate says so, and summaries describe picks as outside the owner's anchors
+  rather than claiming untracked listening history.
 - The player dock now follows the familiar three-part playback model: track identity on the left,
   transport with its timeline in the centre, and queue/lyrics/session utilities on the right. Its
   controls have dependable targets, the seek input has a full-height hit area, and artwork is no

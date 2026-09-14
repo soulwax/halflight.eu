@@ -1,4 +1,3 @@
-import { m } from '#lib/paraglide/messages.js';
 import type { TasteProfile } from './profile';
 import { expandTasteGraph, type GraphExpansionBudget, type GraphExpansionClient } from './graph';
 import { filterCandidates } from './candidates';
@@ -79,10 +78,10 @@ export async function generateTasteSet(
 	if (anchors.length === 0) {
 		return {
 			tracks: [],
-			summary: m.taste_set_cold_start(),
 			trackCount: 0,
-			totalDurationFormatted: '0m',
-			totalDurationSeconds: 0,
+			knownDurationSeconds: 0,
+			unknownDurationCount: 0,
+			estimatedDurationSeconds: 0,
 			discoveryPercentage: 0,
 			confidenceLabel: 'none',
 			degraded: true,
@@ -123,7 +122,7 @@ export async function generateTasteSet(
 		artists: track.artists,
 		duration: track.duration,
 		releaseDate: track.releaseDate,
-		provenance: explainTrack(track, profile)
+		reason: explainTrack(track, profile)
 	}));
 
 	const explanation = explainSet(sequenced, profile, expansion.degraded);

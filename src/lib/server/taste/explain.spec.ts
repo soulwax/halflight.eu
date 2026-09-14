@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { explainTrack, explainSet } from './explain';
 import { emptyTasteProfile } from './profile';
-import { m } from '#lib/paraglide/messages.js';
 import type { ScoredCandidate } from './score';
 
 describe('taste explainability', () => {
@@ -54,33 +53,51 @@ describe('taste explainability', () => {
 		provenance: { edge: 'similar_artist', seedArtistId: 'anchor1', seedArtistName: 'Bonobo' }
 	};
 
-	it('explains anchor tracks accurately with release date', () => {
-		const explanation = explainTrack(anchorTrack, profile);
-		expect(explanation).toBe(`${m.taste_provenance_anchor({ artist: 'Bonobo' })} · 2017`);
+	it('returns structured evidence for anchor tracks', () => {
+		expect(explainTrack(anchorTrack, profile)).toEqual({
+			code: 'anchor_artist',
+			artistId: 'anchor1',
+			artistName: 'Bonobo',
+			releaseYear: '2017'
+		});
 	});
 
-	it('explains pinned tracks accurately', () => {
-		const explanation = explainTrack(pinnedTrack, profile);
-		expect(explanation).toBe(`${m.taste_provenance_pinned({ artist: 'Tycho' })} · 2016`);
+	it('marks owner-pinned artists without generating prose', () => {
+		expect(explainTrack(pinnedTrack, profile)).toEqual({
+			code: 'pinned_artist',
+			artistId: 'pinned1',
+			artistName: 'Tycho',
+			releaseYear: '2016'
+		});
 	});
 
-	it('explains similar artist discovery tracks with seed artist attribution', () => {
-		const explanation = explainTrack(discoveryTrack, profile);
-		expect(explanation).toBe(`${m.taste_provenance_similar({ seed: 'Bonobo' })} · 2020`);
+	it('retains the supporting seed for similar-artist discovery', () => {
+		expect(explainTrack(discoveryTrack, profile)).toEqual({
+			code: 'similar_artist',
+			seedArtistId: 'anchor1',
+			seedArtistName: 'Bonobo',
+			releaseYear: '2020'
+		});
 	});
 
-	it('drops the year suffix when the track has no release date', () => {
+	it('omits release evidence when the provider did not supply it', () => {
 		const undated: ScoredCandidate = { ...anchorTrack, releaseDate: undefined };
-		expect(explainTrack(undated, profile)).toBe(m.taste_provenance_anchor({ artist: 'Bonobo' }));
+		expect(explainTrack(undated, profile)).not.toHaveProperty('releaseYear');
 	});
 
-	it('synthesizes a transparent set explanation with duration and discovery share', () => {
+	it('keeps known and estimated duration coverage separate', () => {
 		const setExpl = explainSet([anchorTrack, discoveryTrack], profile, false);
 
 		expect(setExpl.trackCount).toBe(2);
 		expect(setExpl.discoveryPercentage).toBe(50); // 1 out of 2 is discovery
-		expect(setExpl.summary).toContain('2 tracks');
-		expect(setExpl.summary).toContain('50% new to you');
+		expect(setExpl.knownDurationSeconds).toBe(460);
+		expect(setExpl.unknownDurationCount).toBe(0);
+		expect(setExpl.estimatedDurationSeconds).toBe(460);
+
+		const incomplete = explainSet([{ ...anchorTrack, duration: undefined }], profile, false);
+		expect(incomplete.knownDurationSeconds).toBe(0);
+		expect(incomplete.unknownDurationCount).toBe(1);
+		expect(incomplete.estimatedDurationSeconds).toBeGreaterThan(0);
 	});
 
 	it('emits a stable confidence token, not a display string', () => {

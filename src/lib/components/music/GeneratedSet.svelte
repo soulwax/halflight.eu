@@ -3,6 +3,13 @@
 	import { m } from '#lib/paraglide/messages.js';
 	import Button from '#lib/components/ui/Button.svelte';
 	import type { ProvisionalSet, ProvisionalTrack } from '#lib/taste/provisional';
+	import {
+		localizeConfidence,
+		localizeDurationCoverage,
+		localizeProvenanceReason,
+		localizeSetDuration,
+		localizeSetSummary
+	} from '#lib/taste/presentation.js';
 
 	interface Props {
 		set: ProvisionalSet;
@@ -21,18 +28,8 @@
 		return `${minutes}:${(seconds % 60).toString().padStart(2, '0')}`;
 	}
 
-	function localizeConfidence(label: ProvisionalSet['confidenceLabel']): string {
-		switch (label) {
-			case 'high':
-				return m.generate_confidence_high();
-			case 'initial':
-				return m.generate_confidence_initial();
-			case 'none':
-				return m.generate_confidence_none();
-			default:
-				return m.generate_confidence_good();
-		}
-	}
+	const durationCoverage = $derived(localizeDurationCoverage(set));
+	const isEmpty = $derived(set.trackCount === 0);
 </script>
 
 <section class="generated-set" aria-labelledby="generated-set-heading">
@@ -40,80 +37,94 @@
 		<div class="generated-set-copy">
 			<p class="generated-set-eyebrow">{m.nav_generate()}</p>
 			<h2 id="generated-set-heading">{m.generate_set_title()}</h2>
-			<dl class="generated-set-metadata">
-				<div>
-					<dt>{m.playlist_track_count()}</dt>
-					<dd>{set.trackCount}</dd>
-				</div>
-				<div>
-					<dt>{m.album_duration()}</dt>
-					<dd>{set.totalDurationFormatted}</dd>
-				</div>
-				<div>
-					<dt>{m.generate_discovery()}</dt>
-					<dd>{set.discoveryPercentage}%</dd>
-				</div>
-				<div>
-					<dt>{m.generate_confidence()}</dt>
-					<dd>{localizeConfidence(set.confidenceLabel)}</dd>
-				</div>
-			</dl>
+			{#if isEmpty}
+				<p class="generated-set-empty">{m.taste_set_cold_start()}</p>
+			{:else}
+				<p class="generated-set-summary">{localizeSetSummary(set)}</p>
+				<dl class="generated-set-metadata">
+					<div>
+						<dt>{m.playlist_track_count()}</dt>
+						<dd>{set.trackCount}</dd>
+					</div>
+					<div>
+						<dt>{m.album_duration()}</dt>
+						<dd>{localizeSetDuration(set)}</dd>
+					</div>
+					<div>
+						<dt>{m.generate_discovery()}</dt>
+						<dd>{set.discoveryPercentage}%</dd>
+					</div>
+					<div>
+						<dt>{m.generate_confidence()}</dt>
+						<dd>{localizeConfidence(set.confidenceLabel)}</dd>
+					</div>
+				</dl>
+				{#if durationCoverage}
+					<p class="generated-set-duration-note">{durationCoverage}</p>
+				{/if}
+			{/if}
 			{#if set.degraded}
 				<p class="generated-set-notice">{m.generate_degraded()}</p>
 			{/if}
 		</div>
 
-		<div class="generated-set-actions" role="group" aria-label={m.generate_set_actions()}>
-			<Button variant="primary" size="sm" onclick={onPlay}>
-				<Play size={14} fill="currentColor" />
-				{m.player_play_all()}
-			</Button>
-			<Button variant="secondary" size="sm" onclick={onSave} disabled={saveSuccess}>
+		{#if !isEmpty}
+			<div class="generated-set-actions" role="group" aria-label={m.generate_set_actions()}>
+				<Button variant="primary" size="sm" onclick={onPlay}>
+					<Play size={14} fill="currentColor" />
+					{m.player_play_all()}
+				</Button>
+				<Button variant="secondary" size="sm" onclick={onSave} disabled={saveSuccess}>
+					{#if saveSuccess}
+						<Check size={14} class="text-[var(--accent-jade)]" />
+						{m.generate_saved()}
+					{:else}
+						<ListMusic size={14} />
+						{m.playlist_save()}
+					{/if}
+				</Button>
+				<Button variant="secondary" size="sm" onclick={onExport} title={m.action_export_m3u8()}>
+					<Download size={14} />
+					<span class="sr-only">{m.action_export_m3u8()}</span>
+				</Button>
 				{#if saveSuccess}
-					<Check size={14} class="text-[var(--accent-jade)]" />
-					{m.generate_saved()}
-				{:else}
-					<ListMusic size={14} />
-					{m.playlist_save()}
+					<p class="generated-set-saved" role="status">{m.generate_saved()}</p>
 				{/if}
-			</Button>
-			<Button variant="secondary" size="sm" onclick={onExport} title={m.action_export_m3u8()}>
-				<Download size={14} />
-				<span class="sr-only">{m.action_export_m3u8()}</span>
-			</Button>
-			{#if saveSuccess}
-				<p class="generated-set-saved" role="status">{m.generate_saved()}</p>
-			{/if}
-		</div>
+			</div>
+		{/if}
 	</header>
 
-	<ol class="generated-track-list">
-		{#each set.tracks as track, index (track.id + '-' + index)}
-			<li class="generated-track">
-				<span class="generated-track-index" aria-hidden="true">{index + 1}</span>
-				<div class="generated-track-main">
-					<button
-						type="button"
-						class="generated-track-play"
-						onclick={() => onPlayTrack(track)}
-						aria-label={`${m.player_play_track()}: ${track.title}`}
-					>
-						<Play size={14} fill="currentColor" />
-					</button>
-					<div class="min-w-0">
-						<p class="generated-track-title">{track.title}</p>
-						<p class="generated-track-artists">
-							{track.artists.map((artist) => artist.name).join(', ')}
-						</p>
-						<p class="generated-track-provenance">
-							<span class="sr-only">{m.generate_track_reason()}: </span>{track.provenance}
-						</p>
+	{#if !isEmpty}
+		<ol class="generated-track-list">
+			{#each set.tracks as track, index (track.id + '-' + index)}
+				<li class="generated-track">
+					<span class="generated-track-index" aria-hidden="true">{index + 1}</span>
+					<div class="generated-track-main">
+						<button
+							type="button"
+							class="generated-track-play"
+							onclick={() => onPlayTrack(track)}
+							aria-label={`${m.player_play_track()}: ${track.title}`}
+						>
+							<Play size={14} fill="currentColor" />
+						</button>
+						<div class="min-w-0">
+							<p class="generated-track-title">{track.title}</p>
+							<p class="generated-track-artists">
+								{track.artists.map((artist) => artist.name).join(', ')}
+							</p>
+							<p class="generated-track-provenance">
+								<span class="sr-only">{m.generate_track_reason()}: </span>{localizeProvenanceReason(
+									track.reason
+								)}
+							</p>
+						</div>
 					</div>
-				</div>
-				<span class="generated-track-duration">{formatDuration(track.duration)}</span>
-			</li>
-		{/each}
-	</ol>
+					<span class="generated-track-duration">{formatDuration(track.duration)}</span>
+				</li>
+			{/each}
+		</ol>
+	{/if}
 </section>
 
 <style>
@@ -160,6 +171,24 @@
 		flex-wrap: wrap;
 		gap: 0.55rem;
 		margin: 1rem 0 0;
+	}
+
+	.generated-set-summary,
+	.generated-set-empty,
+	.generated-set-duration-note {
+		margin: 0.7rem 0 0;
+		color: var(--text-secondary);
+		font-size: var(--fs-sm);
+		line-height: 1.45;
+	}
+
+	.generated-set-duration-note {
+		color: var(--text-muted);
+		font-size: var(--fs-xs);
+	}
+
+	.generated-set-empty {
+		max-width: 36rem;
 	}
 
 	.generated-set-metadata div {

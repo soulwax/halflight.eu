@@ -9,6 +9,7 @@
 	import { player } from '#lib/player/player.svelte.js';
 	import type { GenerationStreamStage } from '#lib/taste/generation-progress.js';
 	import { readGenerationStream } from '#lib/taste/generation-stream.js';
+	import { localizeProvenanceReason, localizeSetSummary } from '#lib/taste/presentation.js';
 	import type { ProvisionalSet, ProvisionalTrack } from '#lib/taste/provisional';
 	import type { TrackSummary } from '#lib/tidal/models';
 	import ViewHeader from '#lib/components/ui/ViewHeader.svelte';
@@ -132,7 +133,7 @@
 			title: t.title,
 			artists: t.artists,
 			duration: t.duration,
-			provenance: t.provenance
+			provenance: localizeProvenanceReason(t.reason)
 		};
 	}
 
@@ -168,7 +169,7 @@
 		const summaries = currentSet.tracks.map(toTrackSummary);
 		const now = new Date();
 		const title = m.taste_saved_title({ date: now.toLocaleDateString() });
-		const desc = m.taste_saved_description({ summary: currentSet.summary });
+		const desc = m.taste_saved_description({ summary: localizeSetSummary(currentSet) });
 
 		customPlaylists.createPlaylist(title, desc, summaries);
 		saveSuccess = true;

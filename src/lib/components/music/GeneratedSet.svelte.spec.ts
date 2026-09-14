@@ -6,10 +6,10 @@ import type { ProvisionalSet } from '#lib/taste/provisional';
 import GeneratedSet from './GeneratedSet.svelte';
 
 const set: ProvisionalSet = {
-	summary: 'Set · 2 tracks',
 	trackCount: 2,
-	totalDurationFormatted: '7m',
-	totalDurationSeconds: 420,
+	knownDurationSeconds: 210,
+	unknownDurationCount: 1,
+	estimatedDurationSeconds: 420,
 	discoveryPercentage: 50,
 	confidenceLabel: 'high',
 	degraded: false,
@@ -20,14 +20,18 @@ const set: ProvisionalSet = {
 			title: 'First Track',
 			artists: [{ id: 'artist', name: 'An Artist' }],
 			duration: 210,
-			provenance: 'Similar to An Artist'
+			reason: {
+				code: 'similar_artist',
+				seedArtistId: 'artist',
+				seedArtistName: 'An Artist'
+			}
 		},
 		{
 			id: 'second',
 			title: 'Second Track',
 			artists: [{ id: 'artist', name: 'An Artist' }],
 			duration: 210,
-			provenance: 'Matched to your taste profile'
+			reason: { code: 'profile_match' }
 		}
 	]
 };
@@ -45,7 +49,15 @@ describe('GeneratedSet.svelte', () => {
 			.element(page.getByRole('heading', { name: m.generate_set_title() }))
 			.toBeInTheDocument();
 		await expect.element(page.getByText('Similar to An Artist')).toBeInTheDocument();
-		await expect.element(page.getByText(m.generate_confidence_high())).toBeInTheDocument();
+		await expect
+			.element(page.getByText(m.generate_confidence_high(), { exact: true }))
+			.toBeInTheDocument();
+		await expect
+			.element(page.getByText(m.generate_duration_approximate({ duration: '7m' }), { exact: true }))
+			.toBeInTheDocument();
+		await expect
+			.element(page.getByText(m.generate_duration_estimated_detail({ known: 1, unknown: 1 })))
+			.toBeInTheDocument();
 
 		await page.getByRole('button', { name: m.player_play_all() }).click();
 		await page.getByRole('button', { name: `${m.player_play_track()}: First Track` }).click();
@@ -57,4 +69,29 @@ describe('GeneratedSet.svelte', () => {
 		expect(onSave).toHaveBeenCalledOnce();
 		expect(onExport).toHaveBeenCalledOnce();
 	}, 30_000);
+
+	it('renders an honest cold-start state instead of zero-duration playlist controls', async () => {
+		const emptySet: ProvisionalSet = {
+			...set,
+			tracks: [],
+			trackCount: 0,
+			knownDurationSeconds: 0,
+			unknownDurationCount: 0,
+			estimatedDurationSeconds: 0,
+			confidenceLabel: 'none'
+		};
+
+		render(GeneratedSet, {
+			set: emptySet,
+			onPlay: vi.fn(),
+			onPlayTrack: vi.fn(),
+			onSave: vi.fn(),
+			onExport: vi.fn()
+		});
+
+		await expect.element(page.getByText(m.taste_set_cold_start())).toBeInTheDocument();
+		await expect
+			.element(page.getByRole('group', { name: m.generate_set_actions() }))
+			.not.toBeInTheDocument();
+	});
 });

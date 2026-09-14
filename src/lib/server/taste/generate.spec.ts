@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { generateTasteSet } from './generate';
 import { emptyTasteProfile } from './profile';
-import { m } from '#lib/paraglide/messages.js';
 import type { GraphExpansionClient } from './graph';
 
 describe('taste generation orchestrator', () => {
@@ -32,17 +31,18 @@ describe('taste generation orchestrator', () => {
 		}
 	};
 
-	it('returns a graceful degradation message on cold start (0 anchors)', async () => {
+	it('returns a locale-neutral empty set on cold start (0 anchors)', async () => {
 		const profile = emptyTasteProfile();
 		const result = await generateTasteSet(profile, { client: mockClient });
 
 		expect(result.trackCount).toBe(0);
 		expect(result.degraded).toBe(true);
 		expect(result.confidenceLabel).toBe('none');
-		expect(result.summary).toBe(m.taste_set_cold_start());
+		expect(result.estimatedDurationSeconds).toBe(0);
+		expect(result.unknownDurationCount).toBe(0);
 	});
 
-	it('generates an honest sequenced set with provenance chips', async () => {
+	it('generates an honest sequenced set with structured reasons', async () => {
 		const profile = emptyTasteProfile();
 		profile.artists = { a1: 1 };
 		profile.confidence.artists = 0.8;
@@ -56,8 +56,9 @@ describe('taste generation orchestrator', () => {
 
 		expect(result.trackCount).toBe(3);
 		expect(result.tracks.length).toBe(3);
-		expect(result.tracks[0].provenance).toContain('Artist a1');
-		expect(result.summary).toContain('3 tracks');
+		expect(result.tracks[0].reason.code).toBe('anchor_artist');
+		expect(result.tracks[0].reason).toHaveProperty('artistId', 'a1');
+		expect(result.unknownDurationCount).toBe(0);
 		expect(result.degraded).toBe(false);
 	});
 });

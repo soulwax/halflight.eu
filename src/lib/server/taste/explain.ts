@@ -1,66 +1,47 @@
-import { m } from '#lib/paraglide/messages.js';
-import type { ConfidenceLabel } from '#lib/taste/provisional';
+import type { ConfidenceLabel, ProvenanceReason } from '#lib/taste/provisional';
 import type { ScoredCandidate } from './score';
 import type { TasteProfile } from './profile';
 
 export interface SetExplanation {
-	summary: string;
 	trackCount: number;
-	totalDurationFormatted: string;
-	totalDurationSeconds: number;
+	knownDurationSeconds: number;
+	unknownDurationCount: number;
+	estimatedDurationSeconds: number;
 	discoveryPercentage: number;
 	confidenceLabel: ConfidenceLabel;
 	degraded: boolean;
 }
 
-/** The localised display label for a confidence token. */
-export function confidenceText(label: ConfidenceLabel): string {
-	switch (label) {
-		case 'high':
-			return m.generate_confidence_high();
-		case 'good':
-			return m.generate_confidence_good();
-		case 'initial':
-			return m.generate_confidence_initial();
-		case 'none':
-			return m.generate_confidence_none();
-	}
-}
+/** Used only to make an incomplete set's displayed runtime approximately useful. */
+export const UNKNOWN_DURATION_ESTIMATE_SECONDS = 210;
 
 /**
- * Format duration in seconds to "Xm" or "Xh Ym"
+ * Creates locale-neutral provenance. Presentation code resolves its message in
+ * the active locale, so pure generation can be tested independently of i18n.
  */
-function formatDuration(totalSeconds: number): string {
-	const minutes = Math.floor(totalSeconds / 60);
-	if (minutes < 60) return `${minutes}m`;
-	const hours = Math.floor(minutes / 60);
-	const remMinutes = minutes % 60;
-	return remMinutes > 0 ? `${hours}h ${remMinutes}m` : `${hours}h`;
-}
-
-/**
- * Generates an explainable provenance chip for an individual track. Rendered in
- * the request locale — `explainSet`/`explainTrack` run inside the `?/generate`
- * action, which `paraglideMiddleware` has already scoped.
- */
-export function explainTrack(track: ScoredCandidate, profile: TasteProfile): string {
-	const seed = track.provenance.seedArtistName || track.primaryArtistName;
+export function explainTrack(track: ScoredCandidate, profile: TasteProfile): ProvenanceReason {
 	const year = track.releaseDate ? track.releaseDate.slice(0, 4) : undefined;
 
-	let base: string;
 	if (track.provenance.edge === 'anchor') {
 		const override = profile.overrides.artists[track.primaryArtistId];
-		base =
-			override === 'pinned'
-				? m.taste_provenance_pinned({ artist: track.primaryArtistName })
-				: m.taste_provenance_anchor({ artist: track.primaryArtistName });
-	} else if (track.provenance.edge === 'similar_artist') {
-		base = m.taste_provenance_similar({ seed });
-	} else {
-		base = m.taste_provenance_profile();
+		return {
+			code: override === 'pinned' ? 'pinned_artist' : 'anchor_artist',
+			artistId: track.primaryArtistId,
+			artistName: track.primaryArtistName,
+			...(year ? { releaseYear: year } : {})
+		};
 	}
 
-	return year ? `${base} · ${year}` : base;
+	if (track.provenance.edge === 'similar_artist') {
+		return {
+			code: 'similar_artist',
+			seedArtistId: track.provenance.seedArtistId,
+			seedArtistName: track.provenance.seedArtistName || track.primaryArtistName,
+			...(year ? { releaseYear: year } : {})
+		};
+	}
+
+	return { code: 'profile_match', ...(year ? { releaseYear: year } : {}) };
 }
 
 /**
@@ -72,8 +53,10 @@ export function explainSet(
 	degraded: boolean
 ): SetExplanation {
 	const trackCount = tracks.length;
-	const totalDurationSeconds = tracks.reduce((acc, curr) => acc + (curr.duration ?? 210), 0);
-	const totalDurationFormatted = formatDuration(totalDurationSeconds);
+	const knownDurationSeconds = tracks.reduce((acc, current) => acc + (current.duration ?? 0), 0);
+	const unknownDurationCount = tracks.filter((track) => track.duration === undefined).length;
+	const estimatedDurationSeconds =
+		knownDurationSeconds + unknownDurationCount * UNKNOWN_DURATION_ESTIMATE_SECONDS;
 
 	// Calculate discovery share (tracks not in profile anchors)
 	const discoveryCount = tracks.filter(
@@ -91,18 +74,11 @@ export function explainSet(
 		confidenceLabel = 'high';
 	}
 
-	const summary = m.taste_set_summary({
-		count: trackCount,
-		duration: totalDurationFormatted,
-		discovery: discoveryPercentage,
-		confidence: confidenceText(confidenceLabel)
-	});
-
 	return {
-		summary,
 		trackCount,
-		totalDurationFormatted,
-		totalDurationSeconds,
+		knownDurationSeconds,
+		unknownDurationCount,
+		estimatedDurationSeconds,
 		discoveryPercentage,
 		confidenceLabel,
 		degraded
