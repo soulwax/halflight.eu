@@ -38,18 +38,24 @@ import { m } from '#lib/paraglide/messages.js';
  * duplicate this mapping between them — that duplication is exactly what
  * this module replaced.
  */
-export const THEMES = ['dark', 'light', 'warm-night', 'electric'] as const;
+export const THEMES = ['dark', 'light', 'warm-night', 'blue-hour', 'electric'] as const;
 export type Theme = (typeof THEMES)[number];
 
 export const DEFAULT_THEME: Theme = 'dark';
 
 export interface ThemeMeta {
 	id: Theme;
-	nameKey: 'theme_dark_name' | 'theme_light_name' | 'theme_warm_night_name' | 'theme_electric_name';
+	nameKey:
+		| 'theme_dark_name'
+		| 'theme_light_name'
+		| 'theme_warm_night_name'
+		| 'theme_blue_hour_name'
+		| 'theme_electric_name';
 	descriptionKey:
 		| 'theme_dark_description'
 		| 'theme_light_description'
 		| 'theme_warm_night_description'
+		| 'theme_blue_hour_description'
 		| 'theme_electric_description';
 	/** Sets `color-scheme` and decides contrast for UA-styled controls (scrollbars, form fields). */
 	colorScheme: 'dark' | 'light';
@@ -74,6 +80,12 @@ export const THEME_META: Record<Theme, ThemeMeta> = {
 		descriptionKey: 'theme_warm_night_description',
 		colorScheme: 'dark'
 	},
+	'blue-hour': {
+		id: 'blue-hour',
+		nameKey: 'theme_blue_hour_name',
+		descriptionKey: 'theme_blue_hour_description',
+		colorScheme: 'dark'
+	},
 	electric: {
 		id: 'electric',
 		nameKey: 'theme_electric_name',
@@ -96,6 +108,7 @@ const THEME_LABEL_MESSAGES: Record<Theme, ThemeLabelMessages> = {
 	dark: { name: m.theme_dark_name, description: m.theme_dark_description },
 	light: { name: m.theme_light_name, description: m.theme_light_description },
 	'warm-night': { name: m.theme_warm_night_name, description: m.theme_warm_night_description },
+	'blue-hour': { name: m.theme_blue_hour_name, description: m.theme_blue_hour_description },
 	electric: { name: m.theme_electric_name, description: m.theme_electric_description }
 };
 

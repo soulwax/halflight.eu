@@ -315,6 +315,8 @@
 	"theme_light_description": "Eine helle, kontrastreiche Palette für den Tag.",
 	"theme_warm_night_name": "Warme Nacht",
 	"theme_warm_night_description": "Bernstein- und Sepiatöne für angenehmes Hören am späten Abend.",
+	"theme_blue_hour_name": "Blaue Stunde",
+	"theme_blue_hour_description": "Samtiges Indigo, seegrünes Licht und weiche, weite Bewegungen für die Zeit kurz nach der Dämmerung.",
 	"theme_electric_name": "Electric",
 	"theme_electric_description": "Eine moderne, kontrastreiche Palette in kräftigen Farben.",
 	"theme_preview_label": "{theme}-Vorschau",

@@ -315,6 +315,8 @@
 	"theme_light_description": "A bright, high-contrast palette for daytime use.",
 	"theme_warm_night_name": "Warm Night",
 	"theme_warm_night_description": "Amber and sepia tones for comfortable late-night listening.",
+	"theme_blue_hour_name": "Blue Hour",
+	"theme_blue_hour_description": "Velvet indigo, sea-glass light, and soft, spacious motion for the moment just after dusk.",
 	"theme_electric_name": "Electric",
 	"theme_electric_description": "A modern, vibrant palette with high contrast.",
 	"theme_preview_label": "{theme} preview",

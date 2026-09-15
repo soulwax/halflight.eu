@@ -292,6 +292,62 @@
 	--focus-ring-offset: 3px;
 }
 
+/* Blue Hour: deep indigo, sea-glass light, and the spacious hush after dusk. */
+[data-theme='blue-hour'] {
+	color-scheme: dark;
+
+	--paper: #10182d;
+	--surface: #182442;
+	--ink: #f1f4ff;
+	--slate: #b4bfdb;
+	--faint: #7785aa;
+	--line: #2b3a61;
+	--sky: #1d3159;
+	--sky-deep: #294a7a;
+	--blush: #382d58;
+
+	--accent-gold: #f3c779;
+	--accent-gold-deep: #c9933f;
+	--accent-jade: #75d4ce;
+	--accent-oxblood: #e881a6;
+
+	--border-strong: #45557c;
+	--text-secondary: #d2daf0;
+
+	--action: #8cc9ff;
+	--action-contrast: #0c1730;
+	--danger: #ff9ab5;
+	--danger-subtle: #48263d;
+	--success: #82d8c8;
+	--success-subtle: #183b3d;
+	--warning: #f3c779;
+	--warning-subtle: #473819;
+
+	--scrim: rgb(5 10 25 / 0.62);
+	--scrim-ink: #ffffff;
+	--overlay: rgb(7 13 31 / 0.76);
+	--focus-ring: #a8d7ff;
+
+	/* Beyond colour: a cloud-soft silhouette and a broad, moonlit bloom. */
+	--radius-xs: 8px;
+	--radius-sm: 12px;
+	--radius-md: 18px;
+	--radius-lg: 24px;
+	--radius-xl: 30px;
+	--shadow-panel: 0 8px 20px -14px rgb(2 7 22 / 0.72), 0 24px 50px -28px rgb(80 139 255 / 0.7);
+	--shadow-float: 0 14px 30px -18px rgb(2 7 22 / 0.82), 0 38px 78px -32px rgb(80 139 255 / 0.78);
+	--ease-out: cubic-bezier(0.22, 0.75, 0.24, 1);
+	--dur-fast: 150ms;
+	--dur-med: 230ms;
+	--dur-slow: 380ms;
+	/* A rounded heading face makes the theme feel buoyant without adding a font request. */
+	--font-heading: ui-rounded, 'SF Pro Rounded', 'Arial Rounded MT Bold', var(--font-display);
+	--heading-weight: 650;
+	--heading-tracking: -0.02em;
+	--focus-ring-width: 3px;
+	--focus-ring-offset: 4px;
+}
+
 /* Electric: modern, vibrant, high-contrast for focused listening. */
 [data-theme='electric'] {
 	color-scheme: dark;

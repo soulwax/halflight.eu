@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Blue Hour, a fifth selectable Halflight theme. Its deep indigo canvas, sea-glass accents,
+  cloud-soft geometry, diffuse moonlit depth, rounded headings, and patient transitions make the
+  post-dusk listening room feel distinct from Dark, Warm Night, and Electric. It is available in
+  both Appearance pickers and keeps the mobile browser chrome in the same midnight blue.
 - Four selectable themes — Halflight Dark (the original), Light, Warm Night, and Electric — under
   a new `/app/settings/appearance` page (and a matching section in Halflight Now's Settings). Each
   is more than a palette: Light's headings set in an editorial serif over a crisper, flatter frame;
