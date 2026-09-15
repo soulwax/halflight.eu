@@ -88,12 +88,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Every theme's "beyond colour" identity — radius, shadow, motion, heading typography — silently
+  fell back to Dark's values everywhere, regardless of which theme was active. `layout.css` had the
+  shared, un-themed defaults declared _after_ the four theme blocks; since `:root` and
+  `[data-theme='…']` match the same `<html>` element at identical specificity, the later block wins
+  for any property both declare, so the defaults always overrode every theme's own customisation.
+  Colours still varied correctly (each theme's colour tokens have no competing default to lose to),
+  which is exactly why this went unnoticed through code review and every test in the suite — the
+  bug was invisible to both. Caught only by actually running the app and reading real computed
+  styles from a live browser, not by reasoning about the CSS from source: `--radius-md`, `--shadow-panel`,
+  and `--font-heading` all read back as Dark's value in every theme until this fix, confirmed with a
+  throwaway inspection script before and after. Reordering the shared defaults before the theme
+  registry fixes it; a hazard comment at both ends of the reorder explains why the order is load-bearing.
 - `ViewHeader`'s `<h1>` — the one hero line shared by nine top-level routes — hardcoded its own
   font weight and letter-spacing, so none of it ever showed a theme's heading identity: Electric's
   uppercase monospace readout, Light's editorial serif, nothing reached the single most visible
   heading in the app. It now inherits them from `layout.css`'s shared rule like the real `<h1>` it
   is. Caught by fixing the previous Storybook gap and actually looking at what a theme switch would
   show; a new test pins it by proving a red run against the old code, not just a passing one now.
+- The sign-in page's own `<h1>` — the actual first thing any visitor sees — had the same problem
+  one property narrower: a hardcoded `letter-spacing` blocked only a theme's heading tracking, while
+  its weight and family already inherited correctly. Removed and verified against a running dev
+  server across all four themes; Electric's wide tracking on the uppercase monospace heading reads
+  as intentional even at this heading's much larger size, not a mistake.
 - Storybook rendered every story with no design tokens at all: `layout.css` was never imported
   into its preview, since the real app only loads it through the root layout Storybook doesn't run
   through, so buttons, badges, and every other component showed with unset colours, radii, and

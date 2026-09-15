@@ -280,7 +280,14 @@ under `[data-theme='…']` (not `:root[data-theme]`, so a swatch can nest its ow
 render its theme's true look — colour, radius, shadow — regardless of the page's active theme; see
 the Appearance settings picker). `dark`'s values are the shared `:root` defaults, so its own block
 holds only colour — a theme block need only override what it wants to do differently, colour being
-the one required part. `#lib/theme.ts` (client-safe: `THEMES`, `THEME_META`, `getThemeLabel`)
+the one required part. **That shared `:root` must stay physically before the theme registry in the
+file** — it and every `[data-theme='…']` block match `<html>` at equal specificity, so whichever is
+textually last wins any property both declare; this order once silently pinned every theme's
+radius/shadow/motion/heading to dark's values while colours kept working (they have no competing
+default to lose to), undetected by every test in the suite since component tests don't load
+`layout.css` and Storybook didn't either until the same investigation fixed that too — only running
+the app and reading real computed styles caught it. `#lib/theme.ts` (client-safe: `THEMES`,
+`THEME_META`, `getThemeLabel`)
 carries only ids and display metadata, never style values, and its own comment is the "adding a
 theme" recipe: four small, compiler- and `i18n-coverage.spec.ts`-enforced touches (id, metadata,
 two message keys, one CSS block), no component change and no DB migration

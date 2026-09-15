@@ -14,14 +14,16 @@
  *      re-exported from `#lib/server/theme-settings.ts` for persistence).
  *   2. Add `theme_<id>_name` / `theme_<id>_description` to both
  *      `messages/en.json` and `messages/de-de.json`.
- *   3. Add a `[data-theme='id']{ … }` block below. The colour tokens (down
- *      to `--focus-ring`) are the one required part — they are the theme's
- *      actual identity. Every "beyond colour" token — radii, shadow,
- *      motion, `--font-heading`/`--heading-*`, `--focus-ring-*` — has a
- *      default in the shared `:root` block further down, where `dark`'s own
- *      values live (it is the reference every other theme's block states
- *      only a delta against, which is why its own block below is pure
- *      colour). Redeclare only what this theme should do differently.
+ *   3. Add a `[data-theme='id']{ … }` block among the ones just below. The
+ *      colour tokens (down to `--focus-ring`) are the one required part —
+ *      they are the theme's actual identity. Every "beyond colour" token —
+ *      radii, shadow, motion, `--font-heading`/`--heading-*`,
+ *      `--focus-ring-*` — has a default in the shared `:root` block just
+ *      above (it MUST stay above the theme registry — see that block's own
+ *      comment for why), where `dark`'s own values live, since it's the
+ *      reference every other theme's block states only a delta against —
+ *      which is why dark's own block is pure colour. Redeclare only what a
+ *      new theme should do differently.
  * No component file, settings page, or database migration needs to change —
  * everything downstream reads these custom properties or the two registries
  * above.
@@ -33,6 +35,119 @@
  * it is not a current reference for any theme, including dark.
  * -------------------------------------------------------------------------
  */
+
+/* ---- Tokens every theme starts from: derived aliases, geometry, type,
+   motion. Declared BEFORE the theme registry below on purpose — :root and
+   [data-theme='…'] match the same <html> element at equal specificity, so
+   whichever block comes LAST in the file wins for any property both
+   declare. A theme's override only takes effect because this block
+   precedes it; moving this after the theme registry silently breaks every
+   theme's radius/shadow/motion/heading customisation back to these
+   defaults, which is exactly the bug this comment exists to prevent
+   someone (most likely a future me) from reintroducing. ---- */
+:root {
+	/* Editorial wash tokens consumed by the shell + section headers. */
+	--editorial-sky: var(--sky);
+	--editorial-blush: var(--blush);
+	--editorial-faint: var(--faint);
+
+	--surface-canvas: var(--paper);
+	--surface-raised: var(--surface);
+	--surface-selected: var(--sky);
+	--border-subtle: var(--line);
+	--text-primary: var(--ink);
+	--text-muted: var(--slate);
+
+	/* ---- Geometry: one small family of radii. A theme block below may
+	   override every one of these to change how sharp or soft every corner
+	   in the app reads — `dark`'s own values live here, since it is the
+	   reference every other theme's block only states a delta against. ---- */
+	--radius-xs: 4px;
+	--radius-sm: 6px;
+	--radius-md: 10px;
+	--radius-lg: 12px;
+	--radius-xl: 16px;
+	--radius-full: 9999px;
+
+	/* ---- Type scale: sizes stay identical across themes (density and
+	   layout must not shift when the owner switches looks); a theme's
+	   *character* comes from --font-heading/--heading-* just below instead. ---- */
+	--fs-2xs: 0.6875rem; /* 11px — micro labels, counts */
+	--fs-xs: 0.75rem; /* 12px — eyebrows, metadata */
+	--fs-sm: 0.8125rem; /* 13px — secondary UI */
+	--fs-base: 0.875rem; /* 14px — body */
+	--fs-md: 1rem; /* 16px — h3, lead copy */
+	--fs-lg: 1.1875rem; /* 19px — section headings */
+	--fs-xl: 1.5rem; /* 24px — page titles */
+	--fs-2xl: 2rem; /* 32px — the one hero line per view, no bigger */
+
+	/* One clean UI sans at real weights, and a headline face h1–h3 use
+	   instead when a theme sets one (see --font-heading below). Neither
+	   name is an actually-loaded webfont (no @font-face, no Google Fonts
+	   link) — these are pure system stacks, kept that way deliberately so
+	   no theme adds a third-party font request. */
+	--font-display: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+	--font-mono: ui-monospace, 'SFMono-Regular', Consolas, monospace;
+	/* ---- Heading identity: h1–h3 read these, not --font-display/weight
+	   600/-0.014em, directly — so a theme can restyle every heading in the
+	   app by overriding only what it wants to change here. ---- */
+	--font-heading: var(--font-display);
+	--heading-weight: 600;
+	--heading-tracking: -0.014em;
+	--heading-transform: none;
+
+	/* ---- Motion: quiet by default. Hover/press feedback settles within
+	   120–220ms; a theme may speed this up or slow it down entirely. ---- */
+	--ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+	--dur-fast: 120ms;
+	--dur-med: 180ms;
+	--dur-slow: 280ms;
+
+	/* ---- Depth: quiet and neutral by default — artwork and the single
+	   action accent carry colour, not the shadow. A theme may replace
+	   either with something with real character (a warm glow, a neon
+	   edge-light, none at all). ---- */
+	--shadow-panel: 0 1px 1px rgb(0 0 0 / 0.3), 0 14px 30px -20px rgb(0 0 0 / 0.8);
+	--shadow-float: 0 4px 12px rgb(0 0 0 / 0.32), 0 28px 60px -22px rgb(0 0 0 / 0.9);
+
+	/* ---- Focus: the shared `:focus-visible` rule (further below, in
+	   @layer base) reads these two sizing tokens plus --focus-ring's colour
+	   from the active theme. ---- */
+	--focus-ring-width: 2px;
+	--focus-ring-offset: 2px;
+
+	/* ---- Module: the single contract for a tile (region or content block). ---- */
+	--module-radius: var(--radius-lg);
+	--module-border: 1px solid var(--line);
+	--module-bg: var(--surface);
+	--module-shadow: var(--shadow-panel);
+
+	/* ---- Vertical rhythm — tight enough that content, not whitespace, fills the view. ---- */
+	--space-section: clamp(1.75rem, 3.5vw, 2.75rem);
+	--space-panel: clamp(1.25rem, 2.5vw, 2rem);
+	--content-max: 82rem;
+
+	/* ---- Listening Room shell: one grid owns the desktop app geometry. ---- */
+	--shell-rail-w: 14.5rem;
+	--shell-rail-w-collapsed: 4rem;
+	--shell-aside-w: 20rem;
+	/* The header fills this row exactly; `AppHeader` sets no height of its own.
+	   It used to ask for 56/64px inside a 52px `overflow: hidden` row, so its
+	   bottom hairline and the lower 12px of its content were clipped away. */
+	--shell-header-h: 3.5rem;
+	--shell-player-h: auto;
+	--shell-footer-h: 0.625rem;
+	--shell-gutter: clamp(1rem, 2vw, 2.25rem);
+	--z-rail: 10;
+	--z-header: 20;
+	--z-aside: 15;
+	--z-player: 30;
+	--z-footer: 5;
+	--z-overlay: 50;
+	--z-toast: 60;
+
+	--hairline: 1px solid var(--border-subtle);
+}
 
 [data-theme='dark'],
 :root:not([data-theme]) {
@@ -234,110 +349,6 @@
 	--heading-tracking: 0.04em;
 	--heading-transform: uppercase;
 	--focus-ring-width: 3px;
-}
-
-/* ---- Tokens shared by every theme: derived aliases, geometry, type, motion. ---- */
-:root {
-	/* Editorial wash tokens consumed by the shell + section headers. */
-	--editorial-sky: var(--sky);
-	--editorial-blush: var(--blush);
-	--editorial-faint: var(--faint);
-
-	--surface-canvas: var(--paper);
-	--surface-raised: var(--surface);
-	--surface-selected: var(--sky);
-	--border-subtle: var(--line);
-	--text-primary: var(--ink);
-	--text-muted: var(--slate);
-
-	/* ---- Geometry: one small family of radii. A theme block above may
-	   override every one of these to change how sharp or soft every corner
-	   in the app reads — `dark`'s own values live here, since it is the
-	   reference every other theme's block only states a delta against. ---- */
-	--radius-xs: 4px;
-	--radius-sm: 6px;
-	--radius-md: 10px;
-	--radius-lg: 12px;
-	--radius-xl: 16px;
-	--radius-full: 9999px;
-
-	/* ---- Type scale: sizes stay identical across themes (density and
-	   layout must not shift when the owner switches looks); a theme's
-	   *character* comes from --font-heading/--heading-* below instead. ---- */
-	--fs-2xs: 0.6875rem; /* 11px — micro labels, counts */
-	--fs-xs: 0.75rem; /* 12px — eyebrows, metadata */
-	--fs-sm: 0.8125rem; /* 13px — secondary UI */
-	--fs-base: 0.875rem; /* 14px — body */
-	--fs-md: 1rem; /* 16px — h3, lead copy */
-	--fs-lg: 1.1875rem; /* 19px — section headings */
-	--fs-xl: 1.5rem; /* 24px — page titles */
-	--fs-2xl: 2rem; /* 32px — the one hero line per view, no bigger */
-
-	/* One clean UI sans at real weights, and a headline face h1–h3 use
-	   instead when a theme sets one (see --font-heading below). Neither
-	   name is an actually-loaded webfont (no @font-face, no Google Fonts
-	   link) — these are pure system stacks, kept that way deliberately so
-	   no theme adds a third-party font request. */
-	--font-display: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-	--font-mono: ui-monospace, 'SFMono-Regular', Consolas, monospace;
-	/* ---- Heading identity: h1–h3 read these, not --font-display/weight
-	   600/-0.014em, directly — so a theme can restyle every heading in the
-	   app by overriding only what it wants to change here. ---- */
-	--font-heading: var(--font-display);
-	--heading-weight: 600;
-	--heading-tracking: -0.014em;
-	--heading-transform: none;
-
-	/* ---- Motion: quiet by default. Hover/press feedback settles within
-	   120–220ms; a theme may speed this up or slow it down entirely. ---- */
-	--ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-	--dur-fast: 120ms;
-	--dur-med: 180ms;
-	--dur-slow: 280ms;
-
-	/* ---- Depth: quiet and neutral by default — artwork and the single
-	   action accent carry colour, not the shadow. A theme may replace
-	   either with something with real character (a warm glow, a neon
-	   edge-light, none at all). ---- */
-	--shadow-panel: 0 1px 1px rgb(0 0 0 / 0.3), 0 14px 30px -20px rgb(0 0 0 / 0.8);
-	--shadow-float: 0 4px 12px rgb(0 0 0 / 0.32), 0 28px 60px -22px rgb(0 0 0 / 0.9);
-
-	/* ---- Focus: the shared `:focus-visible` rule (below) reads these two
-	   sizing tokens plus --focus-ring's colour from the active theme. ---- */
-	--focus-ring-width: 2px;
-	--focus-ring-offset: 2px;
-
-	/* ---- Module: the single contract for a tile (region or content block). ---- */
-	--module-radius: var(--radius-lg);
-	--module-border: 1px solid var(--line);
-	--module-bg: var(--surface);
-	--module-shadow: var(--shadow-panel);
-
-	/* ---- Vertical rhythm — tight enough that content, not whitespace, fills the view. ---- */
-	--space-section: clamp(1.75rem, 3.5vw, 2.75rem);
-	--space-panel: clamp(1.25rem, 2.5vw, 2rem);
-	--content-max: 82rem;
-
-	/* ---- Listening Room shell: one grid owns the desktop app geometry. ---- */
-	--shell-rail-w: 14.5rem;
-	--shell-rail-w-collapsed: 4rem;
-	--shell-aside-w: 20rem;
-	/* The header fills this row exactly; `AppHeader` sets no height of its own.
-	   It used to ask for 56/64px inside a 52px `overflow: hidden` row, so its
-	   bottom hairline and the lower 12px of its content were clipped away. */
-	--shell-header-h: 3.5rem;
-	--shell-player-h: auto;
-	--shell-footer-h: 0.625rem;
-	--shell-gutter: clamp(1rem, 2vw, 2.25rem);
-	--z-rail: 10;
-	--z-header: 20;
-	--z-aside: 15;
-	--z-player: 30;
-	--z-footer: 5;
-	--z-overlay: 50;
-	--z-toast: 60;
-
-	--hairline: 1px solid var(--border-subtle);
 }
 
 .font-display {

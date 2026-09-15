@@ -123,10 +123,16 @@
 		margin: 0 0 1.5rem;
 	}
 
+	/* letter-spacing is deliberately not set here: this real <h1> inherits
+	   the active theme's --heading-tracking (and weight/family/transform)
+	   from layout.css's shared h1,h2,h3 rule — the first thing a visitor
+	   sees, so it's exactly where a theme's identity should show. Verified
+	   against a running dev server across all four themes; Electric's wide
+	   tracking on the uppercase monospace heading reads as intentional, not
+	   broken, even at this much larger size than ViewHeader's. */
 	h1 {
 		margin: 0;
 		font-size: clamp(2rem, 6vw, 2.75rem);
-		letter-spacing: -0.05em;
 	}
 
 	.intro {
