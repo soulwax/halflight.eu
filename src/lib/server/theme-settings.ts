@@ -2,55 +2,21 @@ import { eq } from 'drizzle-orm';
 import { db } from '#lib/server/db';
 import { userAppearance } from '#lib/server/db/schema';
 import { log } from '#lib/server/log';
+import { DEFAULT_THEME, isTheme, type Theme } from '#lib/theme.js';
 
-/**
- * Every theme's actual colour values live once, in `src/routes/layout.css`'s
- * `[data-theme="…"]` blocks — this list only names them and carries display
- * metadata for the settings picker. Keeping colours in CSS alone means a
- * palette can never drift between what is defined and what is rendered.
- */
-export const THEMES = ['dark', 'light', 'warm-night', 'electric'] as const;
-export type Theme = (typeof THEMES)[number];
-
-export const DEFAULT_THEME: Theme = 'dark';
-
-export interface ThemeMeta {
-	id: Theme;
-	nameKey: 'theme_dark_name' | 'theme_light_name' | 'theme_warm_night_name' | 'theme_electric_name';
-	descriptionKey:
-		| 'theme_dark_description'
-		| 'theme_light_description'
-		| 'theme_warm_night_description'
-		| 'theme_electric_description';
-	colorScheme: 'dark' | 'light';
-}
-
-export const THEME_META: Record<Theme, ThemeMeta> = {
-	dark: {
-		id: 'dark',
-		nameKey: 'theme_dark_name',
-		descriptionKey: 'theme_dark_description',
-		colorScheme: 'dark'
-	},
-	light: {
-		id: 'light',
-		nameKey: 'theme_light_name',
-		descriptionKey: 'theme_light_description',
-		colorScheme: 'light'
-	},
-	'warm-night': {
-		id: 'warm-night',
-		nameKey: 'theme_warm_night_name',
-		descriptionKey: 'theme_warm_night_description',
-		colorScheme: 'dark'
-	},
-	electric: {
-		id: 'electric',
-		nameKey: 'theme_electric_name',
-		descriptionKey: 'theme_electric_description',
-		colorScheme: 'dark'
-	}
-};
+// The theme identity itself (id, metadata, "how to add one") lives in the
+// client-safe `#lib/theme.ts` — a picker component needs it too, and none of
+// it touches the database. Re-exported here so existing server-side imports
+// (`hooks.server.ts`, the settings `+page.server.ts` files) keep one import
+// path for "everything about themes, including persistence".
+export {
+	DEFAULT_THEME,
+	isTheme,
+	THEME_META,
+	THEMES,
+	type Theme,
+	type ThemeMeta
+} from '#lib/theme.js';
 
 export interface ThemeSettings {
 	theme: Theme;
@@ -86,10 +52,6 @@ export const dbThemeSettingsStore: ThemeSettingsStore = {
 		return parseThemeSettings(rows[0]);
 	}
 };
-
-export function isTheme(value: string): value is Theme {
-	return (THEMES as readonly string[]).includes(value);
-}
 
 export function parseThemeSettings(value: { theme: string }): ThemeSettings {
 	return {

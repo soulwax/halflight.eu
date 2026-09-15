@@ -6,7 +6,7 @@
 	import Button from '#lib/components/ui/Button.svelte';
 	import ViewHeader from '#lib/components/ui/ViewHeader.svelte';
 	import Notice from '#lib/components/ui/Notice.svelte';
-	import type { Theme } from '#lib/server/theme-settings';
+	import { getThemeLabel, type Theme } from '#lib/theme.js';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -15,13 +15,6 @@
 	// radio group is the user's own in-progress pick until they submit it.
 	let selected = $state<Theme>(untrack(() => form?.theme ?? data.theme));
 	let saving = $state(false);
-
-	const THEME_LABELS: Record<Theme, { name: () => string; description: () => string }> = {
-		dark: { name: m.theme_dark_name, description: m.theme_dark_description },
-		light: { name: m.theme_light_name, description: m.theme_light_description },
-		'warm-night': { name: m.theme_warm_night_name, description: m.theme_warm_night_description },
-		electric: { name: m.theme_electric_name, description: m.theme_electric_description }
-	};
 
 	// Reflects the pick immediately on this page's own chrome — the shared
 	// root layout only re-applies `data-theme` to <html> once the form action
@@ -65,7 +58,7 @@
 			<legend class="theme-legend">{m.appearance_theme_legend()}</legend>
 			<div class="theme-grid">
 				{#each data.themes as theme (theme)}
-					{@const label = THEME_LABELS[theme]}
+					{@const label = getThemeLabel(theme)}
 					<label class="theme-option" class:theme-option-selected={selected === theme}>
 						<input
 							type="radio"
@@ -79,7 +72,7 @@
 							class="theme-swatch"
 							data-theme={theme}
 							role="img"
-							aria-label={m.theme_preview_label({ theme: label.name() })}
+							aria-label={m.theme_preview_label({ theme: label.name })}
 						>
 							<span class="theme-swatch-surface">
 								<span class="theme-swatch-accent"></span>
@@ -87,12 +80,12 @@
 						</span>
 						<span class="theme-option-copy">
 							<span class="theme-option-name">
-								{label.name()}
+								{label.name}
 								{#if selected === theme}
 									<Check size={14} aria-hidden="true" />
 								{/if}
 							</span>
-							<span class="theme-option-description">{label.description()}</span>
+							<span class="theme-option-description">{label.description}</span>
 						</span>
 					</label>
 				{/each}
@@ -162,9 +155,11 @@
 		box-shadow: 0 0 0 1px var(--action);
 	}
 
-	/* Each swatch carries its own `data-theme`, so it renders in that theme's
-	   real colours regardless of the page's currently active theme — see the
-	   broadened `[data-theme]` selectors in layout.css. */
+	/* Each swatch carries its own `data-theme`, so it renders with that
+	   theme's real colour, radius, and shadow regardless of the page's
+	   currently active theme — see the broadened `[data-theme]` selectors
+	   in layout.css. This is a genuine preview of the theme's character,
+	   not just its palette. */
 	.theme-swatch {
 		display: flex;
 		flex-shrink: 0;
@@ -172,9 +167,10 @@
 		justify-content: center;
 		width: 3.25rem;
 		height: 3.25rem;
-		border: 1px solid var(--line);
+		border: var(--module-border);
 		border-radius: var(--radius-sm);
 		background: var(--paper);
+		box-shadow: var(--shadow-panel);
 	}
 
 	.theme-swatch-surface {

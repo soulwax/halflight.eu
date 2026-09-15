@@ -10,14 +10,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Four selectable themes — Halflight Dark (the original), Light, Warm Night, and Electric — under
-  a new `/app/settings/appearance` page (and a matching section in Halflight Now's Settings). The
+  a new `/app/settings/appearance` page (and a matching section in Halflight Now's Settings). Each
+  is more than a palette: Light's headings set in an editorial serif over a crisper, flatter frame;
+  Warm Night rounds every corner and trades hard shadows for a warm amber glow, with gentler
+  motion; Electric turns headings into an uppercase monospace readout inside sharp, near-square
+  edges lit by a neon glow instead of a drop shadow, with snappier transitions throughout. The
   choice is saved per account in a new `user_appearance` table and follows the owner to every
   device; a signed-in request always re-syncs it into a fast, non-sensitive `hf-theme` cookie so
   anonymous pages (sign-in, offline) keep the last-seen look without a database read. The palette
   is baked into the very first byte of HTML via `hooks.server.ts`, so there is no flash of the
-  wrong theme on load, and picking a new one applies everywhere instantly, without a reload. Each
-  theme's picker swatch renders in its own real colours (colours live once, in `layout.css`'s
-  `[data-theme]` blocks — nothing is duplicated into TypeScript).
+  wrong theme on load, and picking a new one applies everywhere instantly, without a reload. Every
+  theme's picker swatch renders in its own real colours, radius, and shadow (style lives once, in
+  `layout.css`'s `[data-theme]` blocks — nothing is duplicated into TypeScript), and adding another
+  theme needs no database migration and no component change: four small, compiler- and
+  test-enforced touches, documented in `#lib/theme.ts`.
 - Generated sets can now be reviewed one slot at a time. Swap draws the next replacement from a
   bounded, deterministic candidate pool returned with that one generation — repeated swaps rotate
   through the whole pool instead of flipping between two tracks — keeps neighbouring slots free of

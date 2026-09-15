@@ -96,23 +96,20 @@ export const streamingSettings = pgTable(
  * The owner's selected visual theme. Separate from `streaming_settings`
  * because appearance and audio preferences are different concerns that
  * change independently; a reconnect or quality change must never touch this.
+ *
+ * Deliberately no CHECK constraint on `theme`: the set of valid themes is
+ * meant to grow (see `#lib/server/theme-settings.ts`'s `THEMES`), and that is
+ * the single source of truth `saveThemeSettings` already validates every
+ * write against — a DB-level enum would force a migration for every new
+ * theme, which is exactly the friction this table is designed to avoid.
  */
-export const userAppearance = pgTable(
-	'user_appearance',
-	{
-		userId: text('user_id')
-			.primaryKey()
-			.references(() => user.id, { onDelete: 'cascade' }),
-		theme: text('theme').notNull().default('dark'),
-		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
-	},
-	(table) => [
-		check(
-			'user_appearance_theme',
-			sql`${table.theme} in ('dark', 'light', 'warm-night', 'electric')`
-		)
-	]
-);
+export const userAppearance = pgTable('user_appearance', {
+	userId: text('user_id')
+		.primaryKey()
+		.references(() => user.id, { onDelete: 'cascade' }),
+	theme: text('theme').notNull().default('dark'),
+	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+});
 
 /**
  * The owner's resumable player state. This is deliberately bounded workflow

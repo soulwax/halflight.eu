@@ -1,0 +1,1 @@
+ALTER TABLE "user_appearance" DROP CONSTRAINT "user_appearance_theme";

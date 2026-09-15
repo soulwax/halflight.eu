@@ -3,18 +3,12 @@
 	import { CircleCheck, Download, Palette, SlidersHorizontal } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import MobileSubScreenHeader from '#lib/components/mobile/MobileSubScreenHeader.svelte';
-	import type { Theme } from '#lib/server/theme-settings';
+	import { getThemeLabel, type Theme } from '#lib/theme.js';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form?: ActionData } = $props();
 
 	const selectedTheme = $derived<Theme>(form?.theme ?? data.theme);
-	const THEME_LABELS: Record<Theme, { name: () => string; description: () => string }> = {
-		dark: { name: m.theme_dark_name, description: m.theme_dark_description },
-		light: { name: m.theme_light_name, description: m.theme_light_description },
-		'warm-night': { name: m.theme_warm_night_name, description: m.theme_warm_night_description },
-		electric: { name: m.theme_electric_name, description: m.theme_electric_description }
-	};
 
 	function previewTheme(theme: Theme): void {
 		document.documentElement.dataset.theme = theme;
@@ -202,7 +196,7 @@
 			<fieldset class="quality-choices">
 				<legend>{m.appearance_theme_legend()}</legend>
 				{#each data.themes as theme (theme)}
-					{@const label = THEME_LABELS[theme]}
+					{@const label = getThemeLabel(theme)}
 					<label class:chosen={selectedTheme === theme}>
 						<input
 							type="radio"
@@ -210,17 +204,17 @@
 							value={theme}
 							checked={selectedTheme === theme}
 							onchange={() => previewTheme(theme)}
-							aria-label={label.name()}
+							aria-label={label.name}
 						/>
 						<span
 							class="theme-swatch"
 							data-theme={theme}
 							role="img"
-							aria-label={m.theme_preview_label({ theme: label.name() })}
+							aria-label={m.theme_preview_label({ theme: label.name })}
 						></span>
 						<span>
-							<strong>{label.name()}</strong>
-							<small>{label.description()}</small>
+							<strong>{label.name}</strong>
+							<small>{label.description}</small>
 						</span>
 					</label>
 				{/each}
@@ -357,9 +351,10 @@
 		flex-shrink: 0;
 		width: 2.25rem;
 		height: 2.25rem;
-		border: 1px solid var(--line);
+		border: var(--module-border);
 		border-radius: var(--radius-sm);
 		background: linear-gradient(135deg, var(--paper) 50%, var(--action) 50%);
+		box-shadow: var(--shadow-panel);
 	}
 	.quality-choices strong,
 	.quality-choices small {

@@ -271,19 +271,31 @@ are enabled (no `.remote.ts` modules exist yet). Async mode is **disabled under 
 on components that read a `$derived` — keep `await` out of markup.
 
 **Appearance**: four selectable themes (`dark` [default, the original Halflight look], `light`,
-`warm-night`, `electric`) as semantic CSS variable blocks in `src/routes/layout.css`, each under
-`[data-theme='…']` (not `:root[data-theme]`, so a swatch can nest its own `data-theme` and render
-true colours regardless of the page's active theme — see the Appearance settings picker). Colours
-live once, in CSS; `#lib/server/theme-settings.ts` (`THEME_META`) carries only ids and display
-metadata, never hex values. `user_appearance` persists the choice per account;
+`warm-night`, `electric`), each more than a palette — radius scale, shadow character, motion
+timing, and heading typography (`--font-heading`/`--heading-weight`/`--heading-tracking`/
+`--heading-transform`, read by the shared `h1,h2,h3` rule) all vary too, e.g. Electric's headings
+are an uppercase monospace readout inside near-square, neon-edge-lit corners. Every token lives as
+a semantic CSS variable block in `src/routes/layout.css`'s "Theme registry" section, each theme
+under `[data-theme='…']` (not `:root[data-theme]`, so a swatch can nest its own `data-theme` and
+render its theme's true look — colour, radius, shadow — regardless of the page's active theme; see
+the Appearance settings picker). `dark`'s values are the shared `:root` defaults, so its own block
+holds only colour — a theme block need only override what it wants to do differently, colour being
+the one required part. `#lib/theme.ts` (client-safe: `THEMES`, `THEME_META`, `getThemeLabel`)
+carries only ids and display metadata, never style values, and its own comment is the "adding a
+theme" recipe: four small, compiler- and `i18n-coverage.spec.ts`-enforced touches (id, metadata,
+two message keys, one CSS block), no component change and no DB migration
+(`user_appearance.theme` deliberately has no CHECK constraint — `parseThemeSettingsInput`, gated by
+`isTheme`, is the one place that decides what's valid). `#lib/server/theme-settings.ts` re-exports
+`#lib/theme.ts` and adds the DB-backed store. `user_appearance` persists the choice per account;
 `hooks.server.ts` resolves it once per request — DB (memoised) when signed in, else the `hf-theme`
 cookie — and bakes it into `<html data-theme>` via `transformPageChunk` (an `app.html`
 `%theme.value%` placeholder) before first byte, so there's no flash of the wrong palette. A
 signed-in request also re-writes the cookie from the DB value, so it self-heals after a change on
-another device. `/app/settings/appearance` and `(mobile)/settings`'s Appearance section both save
-through the same `saveThemeSettings`; the root layout's `$effect` re-applies `data-theme` after a
-save so the switch is instant, without a reload. Canonical dark-theme values and component
-treatments are also documented in `docs/style-guide.html` (not yet updated for the other three).
+another device. `/app/settings/appearance` and `(mobile)/settings`'s Appearance section both call
+the shared `getThemeLabel` (no duplicated label map) and save through `saveThemeSettings`; the root
+layout's `$effect` re-applies `data-theme` after a save so the switch is instant, without a reload.
+Canonical dark-theme values and component treatments are also documented in `docs/style-guide.html`
+(not yet updated for the other three).
 
 ### Routes at a glance
 
