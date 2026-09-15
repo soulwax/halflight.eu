@@ -1,10 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
-import {
-	parseThemeSettingsInput,
-	saveThemeSettings,
-	THEME_META,
-	THEMES
-} from '#lib/server/theme-settings';
+import { parseThemeSettingsInput, saveThemeSettings, THEMES } from '#lib/server/theme-settings';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = (event) => {
@@ -12,10 +7,11 @@ export const load: PageServerLoad = (event) => {
 
 	// hooks.server.ts already resolved and memoised this for the response's
 	// own `data-theme` attribute; reuse it rather than reading the store again.
+	// Labels resolve client-side via `getThemeLabel` (`#lib/theme.ts`), so
+	// there's no metadata to send beyond the id list itself.
 	return {
 		theme: event.locals.theme,
-		themes: THEMES,
-		themeMeta: THEME_META
+		themes: THEMES
 	};
 };
 

@@ -3,11 +3,8 @@ import {
 	__resetThemeSettingsMemo,
 	DEFAULT_THEME_SETTINGS,
 	getThemeSettings,
-	isTheme,
 	parseThemeSettingsInput,
 	saveThemeSettings,
-	THEME_META,
-	THEMES,
 	type ThemeSettingsStore
 } from './theme-settings';
 
@@ -65,27 +62,13 @@ describe('theme settings', () => {
 		await expect(getThemeSettings('user-1', store)).resolves.toEqual({ theme: 'electric' });
 	});
 
-	it('recognises every declared theme and rejects everything else', () => {
-		for (const theme of THEMES) {
-			expect(isTheme(theme)).toBe(true);
-		}
-		expect(isTheme('midnight')).toBe(false);
-		expect(isTheme('')).toBe(false);
-	});
-
+	// `isTheme`, `THEMES`, and `THEME_META` are re-exported from `#lib/theme.ts`
+	// unchanged — see `theme.spec.ts` for their coverage. This file tests only
+	// what it adds: input parsing and the DB-backed persistence above.
 	it('accepts only a known theme id as input', () => {
 		expect(parseThemeSettingsInput({ theme: 'light' })).toEqual({ theme: 'light' });
 		expect(parseThemeSettingsInput({ theme: 'neon' })).toBe(null);
 		expect(parseThemeSettingsInput({ theme: null })).toBe(null);
 		expect(parseThemeSettingsInput({})).toBe(null);
-	});
-
-	it('declares matching metadata for every theme, each with the correct colour scheme', () => {
-		for (const theme of THEMES) {
-			expect(THEME_META[theme].id).toBe(theme);
-			expect(['dark', 'light']).toContain(THEME_META[theme].colorScheme);
-		}
-		expect(THEME_META.light.colorScheme).toBe('light');
-		expect(THEME_META.dark.colorScheme).toBe('dark');
 	});
 });

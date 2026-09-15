@@ -25,8 +25,12 @@
  * No component file, settings page, or database migration needs to change —
  * everything downstream reads these custom properties or the two registries
  * above.
- * Canonical dark-theme values are also in docs/style-guide.html (not yet
- * extended to the other themes).
+ * Preview every theme against real components in Storybook (`pnpm storybook`
+ * — the toolbar's theme switcher is built from `#lib/theme.ts` too, so a new
+ * theme appears there automatically). `docs/style-guide.html` is an older,
+ * hand-built mockup that predates this token system (its own variable names,
+ * an unrelated nav, and a Google Fonts link the real app has never loaded) —
+ * it is not a current reference for any theme, including dark.
  * -------------------------------------------------------------------------
  */
 
@@ -35,7 +39,7 @@
 	color-scheme: dark;
 
 	/* ---- Halflight dark: deep neutral canvas, lifted listening surfaces, cool light. ----
-	   Canonical values in docs/style-guide.html. */
+	   This block is the canonical values — see the file-level comment above. */
 	--paper: #0b0d10;
 	--surface: #14171c;
 	--ink: #f4f6f8;

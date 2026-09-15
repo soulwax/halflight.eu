@@ -294,8 +294,10 @@ signed-in request also re-writes the cookie from the DB value, so it self-heals 
 another device. `/app/settings/appearance` and `(mobile)/settings`'s Appearance section both call
 the shared `getThemeLabel` (no duplicated label map) and save through `saveThemeSettings`; the root
 layout's `$effect` re-applies `data-theme` after a save so the switch is instant, without a reload.
-Canonical dark-theme values and component treatments are also documented in `docs/style-guide.html`
-(not yet updated for the other three).
+Storybook (`pnpm storybook`) imports `layout.css` and carries a theme switcher in its toolbar (built
+from `#lib/theme.ts`, so a new theme needs no separate Storybook wiring) — that, not
+`docs/style-guide.html`, is the live, accurate reference for every theme; the HTML file is an older
+hand-built mockup with its own variable names and an unrelated nav, current for none of them.
 
 ### Routes at a glance
 

@@ -30,7 +30,6 @@ describe('/app/settings/appearance load', () => {
 		const result = load(event());
 		expect(result).toMatchObject({ theme: 'dark' });
 		expect(result).toHaveProperty('themes');
-		expect(result).toHaveProperty('themeMeta');
 	});
 
 	it('redirects an unauthenticated visitor to sign-in', () => {

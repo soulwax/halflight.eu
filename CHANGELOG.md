@@ -88,6 +88,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Storybook rendered every story with no design tokens at all: `layout.css` was never imported
+  into its preview, since the real app only loads it through the root layout Storybook doesn't run
+  through, so buttons, badges, and every other component showed with unset colours, radii, and
+  shadows. Fixed, and its toolbar now carries a theme switcher built from `#lib/theme.ts` — the
+  first genuinely accurate, live reference for all four themes; `docs/style-guide.html`, which
+  predates the token system entirely, no longer claims to be one.
 - A queued or resumed track whose display metadata failed to load during a connection blip no
   longer shows "Track details are unavailable" for the rest of the page's life. The one-shot
   hydration fetch now retries a transient failure (a dropped connection, an upstream 5xx) up to
