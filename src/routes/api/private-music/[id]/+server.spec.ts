@@ -41,7 +41,7 @@ describe('/api/private-music/[id]', () => {
 		mocks.deleteObject.mockReset();
 	});
 
-	it('streams a private file through Syn', async () => {
+	it('streams a private file inline through Syn', async () => {
 		mocks.get.mockResolvedValue(file);
 		mocks.getObject.mockResolvedValue(
 			new ReadableStream({
@@ -52,9 +52,23 @@ describe('/api/private-music/[id]', () => {
 			})
 		);
 		const response = await GET(event());
-		expect(response.headers.get('Content-Disposition')).toContain('demo.flac');
+		expect(response.headers.get('Content-Disposition')).toBe(
+			'inline; filename="demo.flac"; filename*=UTF-8\'\'demo.flac'
+		);
 		expect(response.headers.get('Accept-Ranges')).toBe('bytes');
 		expect(await response.text()).toBe('audio');
+	});
+
+	it('turns an explicit download request into an attachment without exposing the bucket', async () => {
+		mocks.get.mockResolvedValue({ ...file, fileName: 'Björk; demo.flac' });
+		mocks.getObject.mockResolvedValue(new ReadableStream());
+		const response = await GET(
+			event(new Request('https://syn.test/api/private-music/file-1?download=1'))
+		);
+		expect(response.headers.get('Content-Disposition')).toBe(
+			'attachment; filename="Bj_rk; demo.flac"; filename*=UTF-8\'\'Bj%C3%B6rk%3B%20demo.flac'
+		);
+		expect(response.headers.get('X-Content-Type-Options')).toBe('nosniff');
 	});
 
 	it('serves valid byte ranges without disclosing the object location', async () => {

@@ -112,8 +112,9 @@ export const apiEndpoints: ApiEndpoint[] = [
 		id: 'private-music-download',
 		group: 'storage',
 		method: 'GET',
-		path: '/api/private-music/{id}',
-		responseExample: '200 audio stream · Range and ETag supported'
+		path: '/api/private-music/{id}?download={0|1}',
+		responseExample:
+			'200 authenticated inline audio stream · Range and ETag supported; download=1 is attachment'
 	},
 	{
 		id: 'track-metadata',

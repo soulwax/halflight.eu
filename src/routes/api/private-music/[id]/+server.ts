@@ -22,10 +22,32 @@ function fileTag(file: DownloadFile): string {
 	return entityTag(file.id, file.sizeBytes, Date.parse(file.createdAt));
 }
 
-function responseHeaders(file: DownloadFile, range?: { start: number; end: number }): Headers {
+function safeContentDisposition(fileName: string, download: boolean): string {
+	const fallback = Array.from(fileName)
+		.map((character) =>
+			character.codePointAt(0)! >= 32 && character.codePointAt(0)! <= 126 ? character : '_'
+		)
+		.join('')
+		.replaceAll('"', '_')
+		.slice(0, 180);
+	const encoded = encodeURIComponent(fileName).replace(
+		/[!'()]/g,
+		(character) => `%${character.codePointAt(0)!.toString(16).toUpperCase()}`
+	);
+	return `${download ? 'attachment' : 'inline'}; filename="${fallback || 'audio'}"; filename*=UTF-8''${encoded}`;
+}
+
+function isDownloadRequest(request: Request): boolean {
+	return new URL(request.url).searchParams.get('download') === '1';
+}
+
+function responseHeaders(
+	file: DownloadFile,
+	options: { download: boolean; range?: { start: number; end: number } }
+): Headers {
 	const headers = new Headers({
 		'Content-Type': file.contentType,
-		'Content-Disposition': `attachment; filename="${file.fileName}"`,
+		'Content-Disposition': safeContentDisposition(file.fileName, options.download),
 		'Cache-Control': 'private, no-store',
 		'Accept-Ranges': 'bytes',
 		'X-Content-Type-Options': 'nosniff',
@@ -34,9 +56,12 @@ function responseHeaders(file: DownloadFile, range?: { start: number; end: numbe
 		'Last-Modified': new Date(file.createdAt).toUTCString()
 	});
 
-	if (range) {
-		headers.set('Content-Length', String(range.end - range.start + 1));
-		headers.set('Content-Range', `bytes ${range.start}-${range.end}/${file.sizeBytes}`);
+	if (options.range) {
+		headers.set('Content-Length', String(options.range.end - options.range.start + 1));
+		headers.set(
+			'Content-Range',
+			`bytes ${options.range.start}-${options.range.end}/${file.sizeBytes}`
+		);
 	} else {
 		headers.set('Content-Length', String(file.sizeBytes));
 	}
@@ -48,9 +73,10 @@ export const GET: RequestHandler = async (event) => {
 	const userId = requireOwner(event);
 	const file = await dbPrivateMusicStore.get(userId, event.params.id ?? '');
 	if (!file) error(404, 'Private music file not found');
+	const download = isDownloadRequest(event.request);
 	const tag = fileTag(file);
 	if (matchesEntityTag(event.request.headers.get('if-none-match'), tag)) {
-		return new Response(null, { status: 304, headers: responseHeaders(file) });
+		return new Response(null, { status: 304, headers: responseHeaders(file, { download }) });
 	}
 	const rangeHeader = event.request.headers.get('range');
 	const canUseRange = rangeIsUsable(event.request, tag);
@@ -74,7 +100,7 @@ export const GET: RequestHandler = async (event) => {
 		if (!body) error(404, 'Private music file not found');
 		return new Response(body, {
 			status: range ? 206 : 200,
-			headers: responseHeaders(file, range ?? undefined)
+			headers: responseHeaders(file, { download, range: range ?? undefined })
 		});
 	} catch (cause) {
 		log.warn('private music download failed', { cause });
@@ -86,10 +112,11 @@ export const HEAD: RequestHandler = async (event) => {
 	const userId = requireOwner(event);
 	const file = await dbPrivateMusicStore.get(userId, event.params.id ?? '');
 	if (!file) error(404, 'Private music file not found');
+	const download = isDownloadRequest(event.request);
 	if (matchesEntityTag(event.request.headers.get('if-none-match'), fileTag(file))) {
-		return new Response(null, { status: 304, headers: responseHeaders(file) });
+		return new Response(null, { status: 304, headers: responseHeaders(file, { download }) });
 	}
-	return new Response(null, { headers: responseHeaders(file) });
+	return new Response(null, { headers: responseHeaders(file, { download }) });
 };
 
 export const DELETE: RequestHandler = async (event) => {

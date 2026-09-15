@@ -2,6 +2,7 @@ import { error, json, type RequestHandler } from '@sveltejs/kit';
 import { log } from '#lib/server/log';
 import {
 	dbPrivateMusicStore,
+	PRIVATE_MUSIC_FORMATS,
 	MAX_PRIVATE_MUSIC_FILE_BYTES,
 	MAX_PRIVATE_MUSIC_TOTAL_BYTES,
 	parsePrivateMusicUpload
@@ -18,6 +19,11 @@ export const GET: RequestHandler = async (event) => {
 	const files = await dbPrivateMusicStore.list(userId);
 	const usedBytes = files.reduce((total, file) => total + file.sizeBytes, 0);
 	return json({
+		formats: PRIVATE_MUSIC_FORMATS.map(({ label, contentType, extensions }) => ({
+			label,
+			contentType,
+			extensions
+		})),
 		storage: {
 			fileCount: files.length,
 			usedBytes,

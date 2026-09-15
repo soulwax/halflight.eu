@@ -4,7 +4,16 @@ const mocks = vi.hoisted(() => ({
 	list: vi.fn(),
 	totalBytes: vi.fn(),
 	create: vi.fn(),
-	put: vi.fn()
+	put: vi.fn(),
+	formats: [
+		{ label: 'MP3', contentType: 'audio/mpeg', extensions: ['mp3'] },
+		{ label: 'FLAC', contentType: 'audio/flac', extensions: ['flac'] },
+		{ label: 'AAC', contentType: 'audio/aac', extensions: ['aac'] },
+		{ label: 'M4A', contentType: 'audio/mp4', extensions: ['m4a', 'mp4'] },
+		{ label: 'Ogg', contentType: 'audio/ogg', extensions: ['ogg', 'oga'] },
+		{ label: 'WAV', contentType: 'audio/wav', extensions: ['wav'] },
+		{ label: 'WebM', contentType: 'audio/webm', extensions: ['webm'] }
+	]
 }));
 
 vi.mock('#lib/server/private-music', () => ({
@@ -15,6 +24,7 @@ vi.mock('#lib/server/private-music', () => ({
 	},
 	MAX_PRIVATE_MUSIC_FILE_BYTES: 128 * 1024 * 1024,
 	MAX_PRIVATE_MUSIC_TOTAL_BYTES: 512 * 1024 * 1024,
+	PRIVATE_MUSIC_FORMATS: mocks.formats,
 	parsePrivateMusicUpload: (value: FormDataEntryValue | null) =>
 		value instanceof File
 			? { success: true as const, file: value, fileName: value.name, contentType: value.type }
@@ -54,6 +64,7 @@ describe('/api/private-music', () => {
 		]);
 		const response = await GET(event());
 		expect(await response.json()).toEqual({
+			formats: mocks.formats,
 			storage: {
 				fileCount: 1,
 				usedBytes: 42,

@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Private-music uploads now have one explicit format contract: MP3, FLAC, AAC, M4A, Ogg, WAV, and
+  WebM are accepted through browser MIME aliases or a recognised filename extension, then stored
+  with a canonical media type in the isolated owner-only bucket. The private-music API lists these
+  formats for the upcoming library upload surface, while its authenticated media proxy now serves
+  audio inline for listening and uses `?download=1` for an explicit attachment download; byte
+  ranges, validators, `nosniff`, and bucket-URL privacy remain intact.
 - Blue Hour, a fifth selectable Halflight theme. Its deep indigo canvas, sea-glass accents,
   cloud-soft geometry, diffuse moonlit depth, rounded headings, and patient transitions make the
   post-dusk listening room feel distinct from Dark, Warm Night, and Electric. It is available in
