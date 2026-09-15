@@ -82,6 +82,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A queued or resumed track whose display metadata failed to load during a connection blip no
+  longer shows "Track details are unavailable" for the rest of the page's life. The one-shot
+  hydration fetch now retries a transient failure (a dropped connection, an upstream 5xx) up to
+  three times with backoff, while a confirmed 404 is still left alone rather than retried forever.
+  Opening the queue also asks again immediately, instead of waiting out the backoff.
 - Generated-set explanations no longer arrive as English sentences baked by the server. The taste
   pipeline returns structured evidence, then desktop and Halflight Now render the reason in the
   active locale. Runtime is now honest too: provider-known duration and missing coverage are kept

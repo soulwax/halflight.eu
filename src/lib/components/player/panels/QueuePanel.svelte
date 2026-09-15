@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { tick } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { ArrowDown, ArrowUp, Trash2 } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { player } from '#lib/player/player.svelte.js';
@@ -18,6 +18,12 @@
 			items = [...player.queue];
 		}
 	});
+
+	// A track that predates the display model (or missed its one automatic
+	// hydration attempt during a connection blip) shows as "Track details are
+	// unavailable" until something asks again — opening the queue is the
+	// moment that stub is actually seen, so ask again right here.
+	onMount(() => player.retryUnresolvedMetadata());
 
 	function handleConsider(e: CustomEvent<DndEvent<QueueEntry>>) {
 		isDragging = true;

@@ -18,6 +18,7 @@ afterEach(() => {
 		'fetch',
 		vi.fn(() => Promise.reject(new Error('fetch disabled in component tests')))
 	);
+	vi.useRealTimers();
 });
 
 const sampleTrack1: TrackSummary = {
@@ -729,6 +730,202 @@ describe('PlayerState', () => {
 		expect(player.queue[0]?.artists).toEqual([{ id: 'artist-2', name: 'The Cure' }]);
 		expect(player.history[0]?.title).toBe('Transmission');
 		expect(player.history[0]?.artists).toEqual([{ id: 'artist-3', name: 'Joy Division' }]);
+	});
+
+	it('retries a transient hydration failure (a dropped connection, an upstream blip) and recovers', async () => {
+		vi.useFakeTimers();
+		let attempts = 0;
+		vi.stubGlobal(
+			'fetch',
+			vi.fn((url: string) => {
+				if (!String(url).endsWith('/metadata')) return Promise.reject(new Error('offline'));
+				attempts++;
+				// The first two attempts land mid-outage; the third succeeds.
+				if (attempts < 3) return Promise.resolve(new Response(null, { status: 502 }));
+				return Promise.resolve(
+					new Response(
+						JSON.stringify({
+							track: {
+								kind: 'track',
+								id: 'track-1',
+								title: 'Bela Lugosi Is Dead',
+								artists: [{ id: 'artist-1', name: 'Bauhaus' }]
+							}
+						}),
+						{ status: 200 }
+					)
+				);
+			})
+		);
+
+		const player = new PlayerState();
+		player.restorePlaybackState({
+			currentTrack: {
+				kind: 'track',
+				id: 'track-1',
+				title: 'track-1',
+				artists: [{ id: 'artist-1', name: 'artist-1' }]
+			},
+			queue: [],
+			history: [],
+			currentTime: 0
+		});
+
+		await vi.advanceTimersByTimeAsync(0);
+		expect(attempts).toBe(1);
+		expect(player.currentTrack?.title).toBe('track-1'); // still unresolved
+
+		await vi.advanceTimersByTimeAsync(1500); // first backoff
+		expect(attempts).toBe(2);
+		await vi.advanceTimersByTimeAsync(3000); // second backoff
+		expect(attempts).toBe(3);
+
+		expect(player.currentTrack?.title).toBe('Bela Lugosi Is Dead');
+	});
+
+	/** `restorePlaybackState` also fires a `/cover` lookup; isolate the metadata calls from it. */
+	function metadataCallCount(fetchSpy: ReturnType<typeof vi.fn>): number {
+		return fetchSpy.mock.calls.filter(([url]) => String(url).endsWith('/metadata')).length;
+	}
+
+	it('gives up after a bounded number of transient retries, without hammering the endpoint forever', async () => {
+		vi.useFakeTimers();
+		const fetchSpy = vi.fn((url: string) => {
+			if (!String(url).endsWith('/metadata')) return Promise.reject(new Error('offline'));
+			return Promise.resolve(new Response(null, { status: 502 }));
+		});
+		vi.stubGlobal('fetch', fetchSpy);
+
+		const player = new PlayerState();
+		player.restorePlaybackState({
+			currentTrack: {
+				kind: 'track',
+				id: 'track-1',
+				title: 'track-1',
+				artists: [{ id: 'artist-1', name: 'artist-1' }]
+			},
+			queue: [],
+			history: [],
+			currentTime: 0
+		});
+
+		await vi.advanceTimersByTimeAsync(0); // attempt 1
+		await vi.advanceTimersByTimeAsync(1500); // attempt 2
+		await vi.advanceTimersByTimeAsync(3000); // attempt 3 — the last one
+		expect(metadataCallCount(fetchSpy)).toBe(3);
+
+		// No further retry is ever scheduled past the bound.
+		await vi.advanceTimersByTimeAsync(60_000);
+		expect(metadataCallCount(fetchSpy)).toBe(3);
+		expect(player.currentTrack?.title).toBe('track-1'); // stays honestly unresolved
+	});
+
+	it('never retries a confirmed 404 — that request can never be answered', async () => {
+		vi.useFakeTimers();
+		const fetchSpy = vi.fn((url: string) => {
+			if (!String(url).endsWith('/metadata')) return Promise.reject(new Error('offline'));
+			return Promise.resolve(new Response(JSON.stringify({ error: 'not_found' }), { status: 404 }));
+		});
+		vi.stubGlobal('fetch', fetchSpy);
+
+		const player = new PlayerState();
+		player.restorePlaybackState({
+			currentTrack: {
+				kind: 'track',
+				id: 'track-1',
+				title: 'track-1',
+				artists: [{ id: 'artist-1', name: 'artist-1' }]
+			},
+			queue: [],
+			history: [],
+			currentTime: 0
+		});
+
+		await vi.advanceTimersByTimeAsync(60_000);
+		expect(metadataCallCount(fetchSpy)).toBe(1);
+		expect(player.currentTrack?.title).toBe('track-1');
+	});
+
+	it('retryUnresolvedMetadata() gives a transient failure another chance immediately', async () => {
+		vi.useFakeTimers();
+		let attempts = 0;
+		vi.stubGlobal(
+			'fetch',
+			vi.fn((url: string) => {
+				if (!String(url).endsWith('/metadata')) return Promise.reject(new Error('offline'));
+				attempts++;
+				if (attempts === 1) return Promise.resolve(new Response(null, { status: 502 }));
+				return Promise.resolve(
+					new Response(
+						JSON.stringify({
+							track: {
+								kind: 'track',
+								id: 'track-1',
+								title: 'Bela Lugosi Is Dead',
+								artists: [{ id: 'artist-1', name: 'Bauhaus' }]
+							}
+						}),
+						{ status: 200 }
+					)
+				);
+			})
+		);
+
+		const player = new PlayerState();
+		player.restorePlaybackState({
+			currentTrack: {
+				kind: 'track',
+				id: 'track-1',
+				title: 'track-1',
+				artists: [{ id: 'artist-1', name: 'artist-1' }]
+			},
+			queue: [],
+			history: [],
+			currentTime: 0
+		});
+
+		// Flushes the first attempt's whole lifecycle, including the `finally`
+		// that clears the in-flight guard — not just the moment `fetch` is called.
+		await vi.advanceTimersByTimeAsync(0);
+		expect(attempts).toBe(1);
+		expect(player.currentTrack?.title).toBe('track-1'); // still unresolved, backoff not due yet
+
+		// This is what QueuePanel calls on mount — no need to wait out the backoff.
+		player.retryUnresolvedMetadata();
+		await vi.advanceTimersByTimeAsync(0);
+
+		expect(player.currentTrack?.title).toBe('Bela Lugosi Is Dead');
+		expect(attempts).toBe(2);
+	});
+
+	it('retryUnresolvedMetadata() leaves a confirmed 404 alone', async () => {
+		vi.useFakeTimers();
+		const fetchSpy = vi.fn((url: string) => {
+			if (!String(url).endsWith('/metadata')) return Promise.reject(new Error('offline'));
+			return Promise.resolve(new Response(JSON.stringify({ error: 'not_found' }), { status: 404 }));
+		});
+		vi.stubGlobal('fetch', fetchSpy);
+
+		const player = new PlayerState();
+		player.restorePlaybackState({
+			currentTrack: {
+				kind: 'track',
+				id: 'track-1',
+				title: 'track-1',
+				artists: [{ id: 'artist-1', name: 'artist-1' }]
+			},
+			queue: [],
+			history: [],
+			currentTime: 0
+		});
+
+		await vi.advanceTimersByTimeAsync(0);
+		expect(metadataCallCount(fetchSpy)).toBe(1);
+
+		player.retryUnresolvedMetadata();
+		await vi.advanceTimersByTimeAsync(0);
+
+		expect(metadataCallCount(fetchSpy)).toBe(1); // no wasted request for a track that will never exist
 	});
 
 	it('does not fetch a cover when the track already has artwork', async () => {

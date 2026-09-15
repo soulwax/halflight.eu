@@ -1,5 +1,5 @@
 import { page } from 'vitest/browser';
-import { describe, expect, it, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import QueuePanel from './QueuePanel.svelte';
 import { player } from '#lib/player/player.svelte.js';
@@ -22,7 +22,20 @@ beforeEach(() => {
 	player.currentTrack = null;
 });
 
+afterEach(() => {
+	vi.restoreAllMocks();
+});
+
 describe('QueuePanel.svelte', () => {
+	it('gives a stalled "Track details are unavailable" entry another chance on open', async () => {
+		// A track that failed its one automatic hydration attempt during a
+		// connection blip stays a stub until something asks again; opening the
+		// queue is the moment that stub is actually seen, so it must ask again.
+		const retry = vi.spyOn(player, 'retryUnresolvedMetadata').mockImplementation(() => {});
+		render(QueuePanel);
+		expect(retry).toHaveBeenCalledOnce();
+	});
+
 	it('shows the empty-queue message when nothing is queued', async () => {
 		render(QueuePanel);
 		await expect.element(page.getByText(m.player_queue_empty())).toBeInTheDocument();

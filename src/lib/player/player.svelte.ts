@@ -1,4 +1,4 @@
-import { SvelteMap } from 'svelte/reactivity';
+import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 import type { TrackSummary } from '#lib/tidal/models.js';
 import { qualityTier, type QualityTier } from '#lib/format';
 import { assessPlayback, type PlaybackAssessment } from './playback-assessment.js';
@@ -47,6 +47,10 @@ const MAX_QUEUE_LENGTH = 100;
 const MAX_HISTORY_LENGTH = 50;
 const PREFS_KEY = 'syn:player:prefs';
 const PLAYBACK_DEVICE_KEY = 'syn:player:device-id';
+/** Bounded retry for a transient metadata-hydration failure (a dropped
+ *  connection, an upstream blip) — a real 404 is never retried. */
+const MAX_METADATA_ATTEMPTS = 3;
+const METADATA_RETRY_BASE_MS = 1500;
 
 function shuffled<T>(items: T[]): T[] {
 	const copy = [...items];
@@ -192,6 +196,10 @@ export class PlayerState {
 	private scrobbledCurrentTrack = false;
 	private metadataCache = new SvelteMap<string, TrackSummary>();
 	private metadataRequests = new SvelteMap<string, Promise<void>>();
+	/** Attempts spent on a transient failure; absent/0 means "not yet tried". */
+	private metadataAttempts = new SvelteMap<string, number>();
+	/** A confirmed 404 — retrying can only waste a request the track will never satisfy. */
+	private metadataUnavailable = new SvelteSet<string>();
 	private deviceId: string | null = null;
 
 	constructor() {
@@ -695,9 +703,15 @@ export class PlayerState {
 	 * Restore current-track identity from TIDAL when a resumable session only
 	 * contains legacy or unresolved identifiers. This is deliberately one track
 	 * at a time, does not delay audio, and caches only for the page lifetime.
+	 *
+	 * A transient failure (a dropped connection, an upstream blip — anything
+	 * that isn't a confirmed 404) gets a few bounded, backed-off retries rather
+	 * than leaving the stub in place for the rest of the page's life: this is
+	 * one-shot only from the caller's point of view, but not from the track's.
 	 */
 	private async resolveTrackMetadata(track: TrackSummary): Promise<void> {
 		if (!isBrowser || !needsTrackMetadata(track)) return;
+		if (this.metadataUnavailable.has(track.id)) return;
 
 		const cached = this.metadataCache.get(track.id);
 		if (cached) {
@@ -713,9 +727,26 @@ export class PlayerState {
 				const response = await fetch(`/api/tracks/${encodeURIComponent(track.id)}/metadata`).catch(
 					() => null
 				);
-				if (!response?.ok) return;
+
+				// A confirmed 404 will never resolve; anything else (no response,
+				// 5xx, "not connected") might just be transient.
+				if (response?.status === 404) {
+					this.metadataUnavailable.add(track.id);
+					this.metadataAttempts.delete(track.id);
+					return;
+				}
+				if (!response?.ok) {
+					this.scheduleMetadataRetry(track);
+					return;
+				}
+
 				const body = (await response.json().catch(() => null)) as { track?: unknown } | null;
-				if (!isTrackSummary(body?.track) || body.track.id !== track.id) return;
+				if (!isTrackSummary(body?.track) || body.track.id !== track.id) {
+					this.scheduleMetadataRetry(track);
+					return;
+				}
+
+				this.metadataAttempts.delete(track.id);
 				this.metadataCache.set(track.id, body.track);
 				this.applyTrackMetadata(body.track);
 			} finally {
@@ -725,6 +756,33 @@ export class PlayerState {
 
 		this.metadataRequests.set(track.id, request);
 		return request;
+	}
+
+	private scheduleMetadataRetry(track: TrackSummary): void {
+		const attempts = (this.metadataAttempts.get(track.id) ?? 0) + 1;
+		this.metadataAttempts.set(track.id, attempts);
+		if (attempts >= MAX_METADATA_ATTEMPTS) return;
+
+		setTimeout(() => void this.resolveTrackMetadata(track), METADATA_RETRY_BASE_MS * attempts);
+	}
+
+	/**
+	 * Give every still-unresolved track another chance right now, rather than
+	 * waiting out the backoff — the queue panel calls this on open, since that
+	 * is the moment a stale "Track details are unavailable" stub is actually
+	 * seen. A confirmed 404 is deliberately left alone: retrying a track that
+	 * doesn't exist only spends a request no answer will ever satisfy.
+	 */
+	retryUnresolvedMetadata(): void {
+		if (!isBrowser) return;
+		const candidates = [
+			...(this.currentTrack ? [this.currentTrack] : []),
+			...this.queue,
+			...this.history
+		].filter((track) => needsTrackMetadata(track) && !this.metadataUnavailable.has(track.id));
+
+		for (const track of candidates) this.metadataAttempts.delete(track.id);
+		this.hydrateTrackMetadata(candidates);
 	}
 
 	/**
