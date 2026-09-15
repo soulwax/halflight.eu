@@ -75,6 +75,7 @@ export const POST: RequestHandler = async (event) => {
 				fileName: stored.fileName,
 				contentType: stored.contentType,
 				sizeBytes: stored.sizeBytes,
+				createdAt: stored.createdAt,
 				downloadUrl: `/api/private-music/${stored.id}`
 			},
 			{ status: 201 }

@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
 	getUserPlaylists: vi.fn(),
 	getConnectionStatus: vi.fn(),
-	getCollectionPage: vi.fn()
+	getCollectionPage: vi.fn(),
+	listPrivateMusic: vi.fn()
 }));
 
 vi.mock('#lib/server/playlists', () => ({ getUserPlaylists: mocks.getUserPlaylists }));
@@ -11,6 +12,13 @@ vi.mock('#lib/server/tidal', () => ({
 	getConnectionStatus: mocks.getConnectionStatus,
 	tidalApi: { getCollectionPage: mocks.getCollectionPage }
 }));
+vi.mock('#lib/server/private-music', () => ({
+	MAX_PRIVATE_MUSIC_FILE_BYTES: 128 * 1024 * 1024,
+	MAX_PRIVATE_MUSIC_TOTAL_BYTES: 512 * 1024 * 1024,
+	PRIVATE_MUSIC_FORMATS: [{ label: 'MP3', contentType: 'audio/mpeg', extensions: ['mp3'] }],
+	dbPrivateMusicStore: { list: mocks.listPrivateMusic }
+}));
+vi.mock('#lib/server/private-music-bucket', () => ({ privateMusicBucket: { enabled: true } }));
 
 import { load } from './+page.server';
 
@@ -28,6 +36,32 @@ describe('/library +page.server', () => {
 		mocks.getUserPlaylists.mockReset();
 		mocks.getConnectionStatus.mockReset();
 		mocks.getCollectionPage.mockReset();
+		mocks.listPrivateMusic.mockReset();
+		mocks.listPrivateMusic.mockResolvedValue([]);
+	});
+
+	it('loads private music without querying TIDAL', async () => {
+		mocks.listPrivateMusic.mockResolvedValue([
+			{
+				id: 'local-1',
+				fileName: 'night-drive.flac',
+				contentType: 'audio/flac',
+				sizeBytes: 42,
+				createdAt: '2026-01-01T00:00:00.000Z'
+			}
+		]);
+
+		const result = await load(event('https://m.halflight.eu/library?tab=private'));
+
+		expect(result).toMatchObject({
+			tab: 'private',
+			status: 'ready',
+			privateMusic: {
+				storage: { fileCount: 1, usedBytes: 42 },
+				files: [{ id: 'local-1', downloadUrl: '/api/private-music/local-1' }]
+			}
+		});
+		expect(mocks.getConnectionStatus).not.toHaveBeenCalled();
 	});
 
 	it('paginates only the owner saved playlists', async () => {

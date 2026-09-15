@@ -1,4 +1,11 @@
 import { error, redirect } from '@sveltejs/kit';
+import {
+	MAX_PRIVATE_MUSIC_FILE_BYTES,
+	MAX_PRIVATE_MUSIC_TOTAL_BYTES,
+	PRIVATE_MUSIC_FORMATS,
+	dbPrivateMusicStore
+} from '#lib/server/private-music';
+import { privateMusicBucket } from '#lib/server/private-music-bucket';
 import { getUserPlaylists } from '#lib/server/playlists';
 import { getConnectionStatus, tidalApi } from '#lib/server/tidal';
 import { normaliseCollectionPage } from '#lib/server/tidal/normalise';
@@ -11,10 +18,36 @@ export const load: PageServerLoad = async (event): Promise<MobileLibraryData> =>
 	if (!event.locals.user) redirect(302, '/sign-in');
 	if (!event.locals.isAdministrator) error(403, 'Forbidden');
 
-	const tab = event.url.searchParams.get('tab') === 'tracks' ? 'tracks' : 'saved';
+	const tabParam = event.url.searchParams.get('tab');
+	const tab = tabParam === 'private' || tabParam === 'tracks' ? tabParam : 'saved';
+	const files = await dbPrivateMusicStore.list(event.locals.user.id);
+	const usedBytes = files.reduce((total, file) => total + file.sizeBytes, 0);
 	const result: MobileLibraryData = {
 		tab,
 		status: 'ready',
+		privateMusic: {
+			enabled: privateMusicBucket.enabled,
+			formats: PRIVATE_MUSIC_FORMATS.map(({ label, contentType, extensions }) => ({
+				label,
+				contentType,
+				extensions: [...extensions]
+			})),
+			storage: {
+				fileCount: files.length,
+				usedBytes,
+				availableBytes: Math.max(0, MAX_PRIVATE_MUSIC_TOTAL_BYTES - usedBytes),
+				maxTotalBytes: MAX_PRIVATE_MUSIC_TOTAL_BYTES,
+				maxFileBytes: MAX_PRIVATE_MUSIC_FILE_BYTES
+			},
+			files: files.map(({ id, fileName, contentType, sizeBytes, createdAt }) => ({
+				id,
+				fileName,
+				contentType,
+				sizeBytes,
+				createdAt,
+				downloadUrl: `/api/private-music/${id}`
+			}))
+		},
 		playlists: [],
 		tracks: [],
 		previousQuery: null,
@@ -23,6 +56,7 @@ export const load: PageServerLoad = async (event): Promise<MobileLibraryData> =>
 	};
 
 	try {
+		if (tab === 'private') return result;
 		if (tab === 'saved') {
 			const playlists = await getUserPlaylists(event.locals.user.id);
 			const requestedPage = Number(event.url.searchParams.get('page') ?? 1);

@@ -18,6 +18,18 @@ const track: TrackSummary = {
 const savedData: MobileLibraryData = {
 	tab: 'saved',
 	status: 'ready',
+	privateMusic: {
+		enabled: true,
+		formats: [{ label: 'MP3', contentType: 'audio/mpeg', extensions: ['mp3'] }],
+		storage: {
+			fileCount: 0,
+			usedBytes: 0,
+			availableBytes: 512 * 1024 * 1024,
+			maxTotalBytes: 512 * 1024 * 1024,
+			maxFileBytes: 128 * 1024 * 1024
+		},
+		files: []
+	},
 	tracks: [],
 	previousQuery: null,
 	nextQuery: null,
@@ -33,7 +45,7 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 describe('MobileLibrary.svelte', () => {
-	it('shows the two library views and saved-playlist actions', async () => {
+	it('shows the three library views and saved-playlist actions', async () => {
 		render(MobileLibrary, { data: savedData });
 
 		await expect
@@ -41,6 +53,9 @@ describe('MobileLibrary.svelte', () => {
 			.toBeInTheDocument();
 		await expect
 			.element(page.getByRole('link', { name: m.now_library_saved() }))
+			.toBeInTheDocument();
+		await expect
+			.element(page.getByRole('link', { name: m.now_library_private_music() }))
 			.toBeInTheDocument();
 		await expect
 			.element(page.getByRole('link', { name: m.now_library_favorites() }))
@@ -55,6 +70,17 @@ describe('MobileLibrary.svelte', () => {
 		await expect
 			.element(page.getByRole('status'))
 			.toHaveTextContent(m.now_library_added({ title: 'After midnight' }));
+	});
+
+	it('keeps private music available without a TIDAL connection', async () => {
+		render(MobileLibrary, {
+			data: { ...savedData, tab: 'private', status: 'disconnected' }
+		});
+
+		await expect
+			.element(page.getByRole('heading', { name: m.private_music_title() }))
+			.toBeInTheDocument();
+		await expect.element(page.getByText(m.private_music_empty())).toBeInTheDocument();
 	});
 
 	it('puts a favorite on deck and reports it', async () => {

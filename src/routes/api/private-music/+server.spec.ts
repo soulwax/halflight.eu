@@ -108,6 +108,10 @@ describe('/api/private-music', () => {
 		expect(mocks.create).toHaveBeenCalledWith(
 			expect.objectContaining({ userId: 'owner', fileName: 'demo.flac' })
 		);
+		expect(await response.json()).toMatchObject({
+			createdAt: '2026-01-01T00:00:00.000Z',
+			downloadUrl: expect.stringMatching(/^\/api\/private-music\//)
+		});
 	});
 
 	it('does not expose private music to a non-owner', async () => {

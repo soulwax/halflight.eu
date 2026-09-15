@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Library is now built around the owner's music, not only the provider collection. Desktop places a
+  private “Your music” shelf ahead of custom playlists and a clearly-labelled TIDAL section; the
+  mobile Library adds the same independent tab. Both show precise storage usage, accepted formats,
+  drag-and-drop/file-picker uploads with byte-level progress, safe inline listening through Syn's
+  authenticated proxy, an explicit download action, and a confirmed permanent deletion action.
+  Private music works without a TIDAL connection and is intentionally kept out of the permanent
+  TIDAL-only player queue for this first release.
 - Private-music uploads now have one explicit format contract: MP3, FLAC, AAC, M4A, Ogg, WAV, and
   WebM are accepted through browser MIME aliases or a recognised filename extension, then stored
   with a canonical media type in the isolated owner-only bucket. The private-music API lists these

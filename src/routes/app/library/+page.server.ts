@@ -1,4 +1,11 @@
-import { redirect } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
+import {
+	MAX_PRIVATE_MUSIC_FILE_BYTES,
+	MAX_PRIVATE_MUSIC_TOTAL_BYTES,
+	PRIVATE_MUSIC_FORMATS,
+	dbPrivateMusicStore
+} from '#lib/server/private-music';
+import { privateMusicBucket } from '#lib/server/private-music-bucket';
 import { getConnectionStatus, tidalApi } from '#lib/server/tidal';
 import { normaliseCollectionPage } from '#lib/server/tidal/normalise';
 import type { PageServerLoad } from './$types';
@@ -9,10 +16,41 @@ const KINDS: LibraryKind[] = ['albums', 'artists', 'tracks', 'playlists'];
 
 export const load: PageServerLoad = async (event) => {
 	if (!event.locals.user) redirect(302, '/sign-in');
+	if (!event.locals.isAdministrator) error(403, 'Forbidden');
+	const files = await dbPrivateMusicStore.list(event.locals.user.id);
+	const usedBytes = files.reduce((total, file) => total + file.sizeBytes, 0);
+	const privateMusic = {
+		enabled: privateMusicBucket.enabled,
+		formats: PRIVATE_MUSIC_FORMATS.map(({ label, contentType, extensions }) => ({
+			label,
+			contentType,
+			extensions: [...extensions]
+		})),
+		storage: {
+			fileCount: files.length,
+			usedBytes,
+			availableBytes: Math.max(0, MAX_PRIVATE_MUSIC_TOTAL_BYTES - usedBytes),
+			maxTotalBytes: MAX_PRIVATE_MUSIC_TOTAL_BYTES,
+			maxFileBytes: MAX_PRIVATE_MUSIC_FILE_BYTES
+		},
+		files: files.map(({ id, fileName, contentType, sizeBytes, createdAt }) => ({
+			id,
+			fileName,
+			contentType,
+			sizeBytes,
+			createdAt,
+			downloadUrl: `/api/private-music/${id}`
+		}))
+	};
 
-	const connection = await getConnectionStatus();
+	let connection: Awaited<ReturnType<typeof getConnectionStatus>>;
+	try {
+		connection = await getConnectionStatus();
+	} catch {
+		return { connected: false, sections: null, privateMusic };
+	}
 	if (!connection.connected) {
-		return { connected: false, sections: null };
+		return { connected: false, sections: null, privateMusic };
 	}
 
 	const results = await Promise.all(
@@ -38,6 +76,7 @@ export const load: PageServerLoad = async (event) => {
 	return {
 		connected: true,
 		hasWriteScopes: Boolean(connection.hasWriteScopes),
+		privateMusic,
 		sections: results.map((result) => {
 			if (!result.ok) return { kind: result.kind, ok: false as const };
 			const items = result.page[result.kind];

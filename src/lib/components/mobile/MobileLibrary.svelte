@@ -2,6 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { Disc, ListPlus, Play } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
+	import PrivateMusicShelf from '#lib/components/music/PrivateMusicShelf.svelte';
 	import { player } from '#lib/player/player.svelte.js';
 	import type { MobileLibraryData } from '#lib/tidal/mobile-library';
 	import type { TrackSummary } from '#lib/tidal/models';
@@ -55,6 +56,12 @@
 		headingId="mobile-library-title"
 	/>
 	<nav class="filters" aria-label={m.now_tab_library()}>
+		<a
+			href={`${libraryHref}?tab=private`}
+			aria-current={data.tab === 'private' ? 'page' : undefined}
+		>
+			{m.now_library_private_music()}
+		</a>
 		<a href={`${libraryHref}?tab=saved`} aria-current={data.tab === 'saved' ? 'page' : undefined}>
 			{m.now_library_saved()}
 		</a>
@@ -63,7 +70,9 @@
 		</a>
 	</nav>
 
-	{#if data.status === 'disconnected'}
+	{#if data.tab === 'private'}
+		<PrivateMusicShelf library={data.privateMusic} headingId="mobile-private-music-title" />
+	{:else if data.status === 'disconnected'}
 		<div class="notice" role="status">
 			<p>{m.search_not_connected_description()}</p>
 			<a class="text-action" href={resolve('/app/settings/tidal')}>{m.tidal_settings_title()}</a>
@@ -126,7 +135,7 @@
 		</ul>
 	{/if}
 
-	{#if data.status === 'ready'}
+	{#if data.status === 'ready' && data.tab !== 'private'}
 		<nav class="pagination" aria-label={m.now_tab_library()}>
 			{#if data.previousQuery}
 				<a href={`${libraryHref}?${data.previousQuery}`}>
@@ -141,7 +150,9 @@
 		</nav>
 	{/if}
 	<p role="status" class="feedback">{feedback}</p>
-	<a class="attribution" href="https://tidal.com" rel="noreferrer">{m.tidal_attribution()}</a>
+	{#if data.tab !== 'private'}
+		<a class="attribution" href="https://tidal.com" rel="noreferrer">{m.tidal_attribution()}</a>
+	{/if}
 </section>
 
 <dialog

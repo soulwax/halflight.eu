@@ -10,6 +10,7 @@
 	} from '@lucide/svelte';
 
 	import MediaCard from '#lib/components/music/MediaCard.svelte';
+	import PrivateMusicShelf from '#lib/components/music/PrivateMusicShelf.svelte';
 	import PlaylistImportModal from '#lib/components/music/PlaylistImportModal.svelte';
 	import SongCard from '#lib/components/music/SongCard.svelte';
 	import StateCard from '#lib/components/music/StateCard.svelte';
@@ -55,6 +56,8 @@
 		titleId="library-title"
 		description={m.library_subtitle()}
 	/>
+
+	<PrivateMusicShelf library={data.privateMusic} />
 
 	<!-- Custom Playlists Section -->
 	<section class="custom-pl-block" aria-labelledby="user-playlists-title">
@@ -173,45 +176,48 @@
 			description={m.search_not_connected_description()}
 		/>
 	{:else if data.sections}
-		{#each data.sections as section (section.kind)}
-			<section class="result-group" aria-labelledby="{section.kind}-title">
-				<SectionHeader
-					title={sectionLabel[section.kind]()}
-					titleId="{section.kind}-title"
-					count={section.ok && section.items ? section.items.length : undefined}
-					subtitle={section.ok && section.hasMore ? m.library_has_more() : undefined}
-				/>
+		<section class="tidal-library" aria-labelledby="tidal-library-title">
+			<SectionHeader title={m.library_tidal_title()} titleId="tidal-library-title" />
+			{#each data.sections as section (section.kind)}
+				<section class="result-group" aria-labelledby="{section.kind}-title">
+					<SectionHeader
+						title={sectionLabel[section.kind]()}
+						titleId="{section.kind}-title"
+						count={section.ok && section.items ? section.items.length : undefined}
+						subtitle={section.ok && section.hasMore ? m.library_has_more() : undefined}
+					/>
 
-				{#if !section.ok}
-					<Notice tone="danger">{m.library_section_error()}</Notice>
-				{:else if section.items.length === 0}
-					<p class="group-empty">{m.library_section_empty()}</p>
-				{:else if section.kind === 'tracks'}
-					<div class="song-cards-grid">
-						{#each section.items as track, index (track.id)}
-							<SongCard
-								track={track as unknown as TrackSummary}
-								contextTracks={section.items as unknown as TrackSummary[]}
-								{index}
-							/>
-						{/each}
-					</div>
-				{:else}
-					<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-						{#each section.items as item (item.id)}
-							<MediaCard
-								{item}
-								kind={section.kind === 'albums'
-									? 'album'
-									: section.kind === 'artists'
-										? 'artist'
-										: 'playlist'}
-							/>
-						{/each}
-					</div>
-				{/if}
-			</section>
-		{/each}
+					{#if !section.ok}
+						<Notice tone="danger">{m.library_section_error()}</Notice>
+					{:else if section.items.length === 0}
+						<p class="group-empty">{m.library_section_empty()}</p>
+					{:else if section.kind === 'tracks'}
+						<div class="song-cards-grid">
+							{#each section.items as track, index (track.id)}
+								<SongCard
+									track={track as unknown as TrackSummary}
+									contextTracks={section.items as unknown as TrackSummary[]}
+									{index}
+								/>
+							{/each}
+						</div>
+					{:else}
+						<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+							{#each section.items as item (item.id)}
+								<MediaCard
+									{item}
+									kind={section.kind === 'albums'
+										? 'album'
+										: section.kind === 'artists'
+											? 'artist'
+											: 'playlist'}
+								/>
+							{/each}
+						</div>
+					{/if}
+				</section>
+			{/each}
+		</section>
 	{/if}
 
 	<p class="attribution">

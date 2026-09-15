@@ -1,4 +1,5 @@
 import type { TrackSummary } from './models';
+import type { PrivateMusicLibraryData } from '#lib/private-music';
 
 export interface MobileSavedPlaylist {
 	id: string;
@@ -7,8 +8,9 @@ export interface MobileSavedPlaylist {
 }
 
 export interface MobileLibraryData {
-	tab: 'saved' | 'tracks';
+	tab: 'private' | 'saved' | 'tracks';
 	status: 'ready' | 'disconnected' | 'unavailable';
+	privateMusic: PrivateMusicLibraryData;
 	playlists: MobileSavedPlaylist[];
 	tracks: TrackSummary[];
 	previousQuery: string | null;
