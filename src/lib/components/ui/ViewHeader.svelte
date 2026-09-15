@@ -80,12 +80,17 @@
 		min-width: 0;
 	}
 
+	/* font-family/weight/letter-spacing/transform are deliberately not set
+	   here: this is a real <h1>, so it already inherits the active theme's
+	   heading identity from layout.css's shared h1,h2,h3 rule (--font-heading,
+	   --heading-weight, --heading-tracking, --heading-transform) — Electric's
+	   monospace readout, Light's editorial serif. Redeclaring any of them
+	   here would silently pin every theme to one look on the single most
+	   visible heading in the app. */
 	.view-header-title {
 		margin: 0;
 		font-size: var(--fs-2xl);
-		font-weight: 700;
 		line-height: 1.15;
-		letter-spacing: -0.01em;
 		color: var(--text-primary);
 		text-wrap: balance;
 	}

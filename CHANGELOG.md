@@ -88,6 +88,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `ViewHeader`'s `<h1>` — the one hero line shared by nine top-level routes — hardcoded its own
+  font weight and letter-spacing, so none of it ever showed a theme's heading identity: Electric's
+  uppercase monospace readout, Light's editorial serif, nothing reached the single most visible
+  heading in the app. It now inherits them from `layout.css`'s shared rule like the real `<h1>` it
+  is. Caught by fixing the previous Storybook gap and actually looking at what a theme switch would
+  show; a new test pins it by proving a red run against the old code, not just a passing one now.
 - Storybook rendered every story with no design tokens at all: `layout.css` was never imported
   into its preview, since the real app only loads it through the root layout Storybook doesn't run
   through, so buttons, badges, and every other component showed with unset colours, radii, and

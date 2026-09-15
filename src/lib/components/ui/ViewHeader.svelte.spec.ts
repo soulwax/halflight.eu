@@ -51,4 +51,36 @@ describe('ViewHeader.svelte', () => {
 			document.documentElement.style.removeProperty('--fs-2xl');
 		}
 	});
+
+	it('never shadows the active theme’s heading identity (family, weight, tracking)', async () => {
+		// This is the one heading every theme's "beyond colour" identity most
+		// needs to reach — nine routes share it. layout.css's shared h1,h2,h3
+		// rule sets font-family/weight/letter-spacing from --font-heading/
+		// --heading-weight/--heading-tracking (Electric's monospace readout,
+		// Light's editorial serif); this component must never shadow any of
+		// them with its own hardcoded value, the way it once hardcoded
+		// font-weight: 700 and letter-spacing: -0.01em. The component test
+		// suite doesn't load layout.css (see the token test above, which
+		// works around the same gap), so a rule with the same shape — an
+		// author-level `h1` selector, which is what actually needs to beat
+		// both the browser's own bold-by-default h1 and any local override —
+		// stands in for it here.
+		const themeRule = document.createElement('style');
+		themeRule.textContent =
+			'h1 { font-family: Georgia, serif; font-weight: 500; letter-spacing: 0.04em; }';
+		document.head.appendChild(themeRule);
+
+		try {
+			render(ViewHeader, { title: 'Search TIDAL' });
+			const style = getComputedStyle(page.getByRole('heading', { level: 1 }).element());
+			expect(style.fontFamily).toContain('Georgia');
+			expect(style.fontWeight).toBe('500');
+			// The browser reports this resolved to px, not the authored em value —
+			// 'normal' is what it would read if nothing (the themed rule
+			// included) set it, which is the failure this test exists to catch.
+			expect(style.letterSpacing).not.toBe('normal');
+		} finally {
+			themeRule.remove();
+		}
+	});
 });
