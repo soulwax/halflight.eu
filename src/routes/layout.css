@@ -632,6 +632,66 @@
 	--focus-ring-offset: 3px;
 }
 
+/* Noir: a black-and-white film reel — stark contrast and one blood-red accent. */
+[data-theme='noir'] {
+	color-scheme: dark;
+
+	--paper: #050507;
+	--surface: #101013;
+	--ink: #f5f5f0;
+	--slate: #a8a8a2;
+	--faint: #6b6b66;
+	--line: #2a2a28;
+	--sky: #1c1c1c;
+	--sky-deep: #2e2e2c;
+	--blush: #241417;
+
+	--accent-gold: #c9a227;
+	--accent-gold-deep: #9c7d1c;
+	--accent-jade: #6b7d74;
+	--accent-oxblood: #c81e3a;
+
+	--border-strong: #3d3d3a;
+	--text-secondary: #cfcfc8;
+
+	--action: #c81e3a;
+	--action-contrast: #f5f5f0;
+	--danger: #ff3355;
+	--danger-subtle: #2e1418;
+	--success: #7a9a7a;
+	--success-subtle: #16201a;
+	--warning: #c9a227;
+	--warning-subtle: #2e2610;
+
+	--scrim: rgb(0 0 0 / 0.7);
+	--scrim-ink: #ffffff;
+	--overlay: rgb(0 0 0 / 0.85);
+	--focus-ring: #c81e3a;
+
+	/* Beyond colour: the canvas is already near-black, so a *dark* offset would
+	   vanish into it — depth instead reads as a hard, unblurred rim of key
+	   light struck from one side, like a single spotlight in a noir interior,
+	   layered over a soft black cast for real lift. Tall, uppercase,
+	   wide-tracked serif headings read like an old cinema title card. Motion
+	   is slow and deliberate, closer to a dissolve than a snap. */
+	--radius-xs: 2px;
+	--radius-sm: 4px;
+	--radius-md: 6px;
+	--radius-lg: 8px;
+	--radius-xl: 11px;
+	--shadow-panel: 6px 6px 0 rgb(245 245 240 / 0.16), 0 16px 30px -18px rgb(0 0 0 / 0.8);
+	--shadow-float: 10px 10px 0 rgb(245 245 240 / 0.24), 0 34px 60px -18px rgb(0 0 0 / 0.85);
+	--ease-out: cubic-bezier(0.45, 0, 0.55, 1);
+	--dur-fast: 220ms;
+	--dur-med: 380ms;
+	--dur-slow: 600ms;
+	--font-heading: Didot, 'Bodoni MT', 'Big Caslon Medium', Georgia, serif;
+	--heading-weight: 500;
+	--heading-tracking: 0.12em;
+	--heading-transform: uppercase;
+	--focus-ring-width: 3px;
+}
+
 .font-display {
 	font-family: var(--font-display);
 }

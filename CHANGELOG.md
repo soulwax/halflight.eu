@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Noir, a tenth selectable Halflight theme. A near-black canvas and stark off-white ink carry a
+  single blood-red action colour; a hard, unblurred rim-light shadow stands in for a drop shadow
+  since a dark offset would vanish into the canvas, tight corners, and slow, deliberate motion sit
+  under tall, uppercase, wide-tracked serif headings styled like an old cinema title card. It is
+  available in both Appearance pickers and keeps the mobile browser chrome in the same near-black.
 - Aurora, a ninth selectable Halflight theme. Its deep-navy canvas, teal action colour, and
   two-hue jade-and-violet glow (instead of a drop shadow) evoke a drifting night sky; soft rounded
   geometry, slow patient motion, and thin, wide-tracked headings make the listening room feel

@@ -348,6 +348,8 @@
 	"theme_riso_description": "Warm paper, inky blue, and imperfect coral impressions for a bright, tactile listening room.",
 	"theme_aurora_name": "Aurora",
 	"theme_aurora_description": "A drifting night sky of teal, violet, and green glow — slow, luminous motion for late, contemplative listening.",
+	"theme_noir_name": "Noir",
+	"theme_noir_description": "A black-and-white film reel — stark contrast, one blood-red accent, and hard dramatic shadows behind tall, wide-tracked title-card headings.",
 	"theme_preview_label": "{theme} preview",
 	"search_label": "Search the TIDAL catalogue",
 	"search_placeholder": "Artist, album, track, or playlist",

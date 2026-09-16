@@ -348,6 +348,8 @@
 	"theme_riso_description": "Warmes Papier, tintiges Blau und unperfekte Korallenabdrücke für einen hellen, haptischen Hörraum.",
 	"theme_aurora_name": "Aurora",
 	"theme_aurora_description": "Ein driftender Nachthimmel aus türkisem, violettem und grünem Leuchten – langsame, leuchtende Bewegung für spätes, nachdenkliches Hören.",
+	"theme_noir_name": "Noir",
+	"theme_noir_description": "Eine Schwarzweiß-Filmrolle – starker Kontrast, ein einzelner blutroter Akzent und harte, dramatische Schatten hinter hohen, weit gesperrten Titelkarten-Überschriften.",
 	"theme_preview_label": "{theme}-Vorschau",
 	"search_label": "TIDAL-Katalog durchsuchen",
 	"search_placeholder": "Künstler, Album, Titel oder Playlist",

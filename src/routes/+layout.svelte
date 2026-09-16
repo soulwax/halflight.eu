@@ -23,7 +23,8 @@
 		overcast: '#eef0f2',
 		terrarium: '#0c1713',
 		riso: '#fff5df',
-		aurora: '#0a0e16'
+		aurora: '#0a0e16',
+		noir: '#050507'
 	};
 
 	onMount(() => {
