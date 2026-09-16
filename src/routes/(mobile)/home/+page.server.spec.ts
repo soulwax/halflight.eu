@@ -8,7 +8,8 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('#lib/server/tidal', () => ({
 	getConnectionStatus: mocks.getConnectionStatus,
-	tidalApi: { getMix: mocks.getMix }
+	tidalApi: { getMix: mocks.getMix },
+	filterPlayableTracks: vi.fn(async (tracks: unknown[]) => tracks)
 }));
 vi.mock('#lib/server/tidal/normalise', () => ({
 	normaliseSearchResults: mocks.normaliseSearchResults

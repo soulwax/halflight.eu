@@ -12,6 +12,7 @@ import { type QueueCommand } from './playback-reconciliation.js';
 import {
 	createQueueEntries,
 	createQueueEntry,
+	isQueueEntryId,
 	toDisplayTrack,
 	type QueueEntry
 } from './queue-entry.js';
@@ -47,6 +48,14 @@ const MAX_QUEUE_LENGTH = 100;
 const MAX_HISTORY_LENGTH = 50;
 const PREFS_KEY = 'syn:player:prefs';
 const PLAYBACK_DEVICE_KEY = 'syn:player:device-id';
+/**
+ * Optimistic, instant-paint-only mirror of the server-authoritative queue.
+ * Never the source of truth: `restorePlaybackState` always overwrites it with
+ * the server's snapshot once that arrives, so a stale or cross-device-edited
+ * cache never sticks around longer than the time before that response lands.
+ */
+const QUEUE_CACHE_KEY = 'syn:player:queue-cache';
+const QUEUE_CACHE_VERSION = 1;
 /** Bounded retry for a transient metadata-hydration failure (a dropped
  *  connection, an upstream blip) — a real 404 is never retried. */
 const MAX_METADATA_ATTEMPTS = 3;
@@ -147,6 +156,10 @@ export class PlayerState {
 	private mediaSourceNode: MediaElementAudioSourceNode | null = null;
 	private gainNode: GainNode | null = null;
 	private hasRestoredPlaybackState = false;
+	/** True while `currentTrack`/`queue`/`history` reflect only the optimistic
+	 *  local cache, so the real restore below knows it is safe to overwrite
+	 *  them rather than mistaking the seed for genuine pre-restore user activity. */
+	private hasHydratedFromLocalCache = false;
 	private coordinator: PlaybackSessionCoordinator;
 
 	get playbackStateRevision(): number {
@@ -244,6 +257,7 @@ export class PlayerState {
 		});
 
 		if (isBrowser) {
+			this.loadLocalQueueCache();
 			this.loadPrefs();
 			this.initAudio();
 			this.setupMediaSession();
@@ -387,6 +401,79 @@ export class PlayerState {
 			localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
 		} catch {
 			// Storage may be unavailable (private mode); prefs are a convenience.
+		}
+	}
+
+	/**
+	 * Optimistically paint the last-known queue from localStorage before the
+	 * server-authoritative snapshot arrives. Every field is re-validated with
+	 * the same shape checks the server itself uses (`isTrackSummary`,
+	 * `isQueueEntryId`) — this is untrusted data as far as the app is
+	 * concerned, just like anything else read back out of browser storage.
+	 * `restorePlaybackState` always supersedes whatever this seeds.
+	 */
+	private loadLocalQueueCache(): void {
+		try {
+			const raw = localStorage.getItem(QUEUE_CACHE_KEY);
+			if (!raw) return;
+			const parsed = JSON.parse(raw) as {
+				version?: number;
+				currentTrack?: unknown;
+				queue?: unknown;
+				history?: unknown;
+				currentTime?: unknown;
+			};
+			if (parsed.version !== QUEUE_CACHE_VERSION) return;
+
+			const currentTrack = isTrackSummary(parsed.currentTrack) ? parsed.currentTrack : null;
+			const queue = Array.isArray(parsed.queue)
+				? parsed.queue
+						.filter(
+							(entry): entry is QueueEntry =>
+								isTrackSummary(entry) && isQueueEntryId((entry as QueueEntry).entryId)
+						)
+						.slice(0, MAX_QUEUE_LENGTH)
+				: [];
+			const history = Array.isArray(parsed.history)
+				? parsed.history.filter(isTrackSummary).slice(-MAX_HISTORY_LENGTH)
+				: [];
+			if (!currentTrack && queue.length === 0 && history.length === 0) return;
+
+			this.currentTrack = currentTrack;
+			this.queue = queue;
+			this.history = history;
+			if (typeof parsed.currentTime === 'number' && Number.isFinite(parsed.currentTime)) {
+				this.currentTime = Math.max(0, Math.floor(parsed.currentTime));
+				this.duration = currentTrack?.duration ?? 0;
+			}
+			this.hasHydratedFromLocalCache = true;
+		} catch {
+			// A corrupt or unavailable cache just skips the optimistic paint —
+			// the real server restore still runs normally right after.
+		}
+	}
+
+	/** Mirror the current queue state for the next page load's instant paint. */
+	private writeLocalQueueCache(): void {
+		if (!isBrowser) return;
+		try {
+			if (!this.currentTrack && this.queue.length === 0 && this.history.length === 0) {
+				localStorage.removeItem(QUEUE_CACHE_KEY);
+				return;
+			}
+			localStorage.setItem(
+				QUEUE_CACHE_KEY,
+				JSON.stringify({
+					version: QUEUE_CACHE_VERSION,
+					currentTrack: this.currentTrack,
+					queue: this.queue,
+					history: this.history,
+					currentTime: this.currentTime
+				})
+			);
+		} catch {
+			// Storage may be unavailable (private mode, quota) — this cache is a
+			// convenience for instant paint, never a source of truth.
 		}
 	}
 
@@ -1346,14 +1433,16 @@ export class PlayerState {
 
 	/** Restore a server-saved queue once per browser session without auto-playing it. */
 	restorePlaybackState(state: SavedPlaybackState): void {
-		if (
-			this.hasRestoredPlaybackState ||
-			this.currentTrack ||
-			this.queue.length ||
-			this.history.length
-		)
-			return;
+		// State seeded by `loadLocalQueueCache` is optimistic only, never a
+		// reason to skip the authoritative restore — only genuine pre-restore
+		// user activity (this flag false, and something already playing/queued)
+		// should do that.
+		const hasGenuineLocalActivity =
+			!this.hasHydratedFromLocalCache &&
+			(this.currentTrack !== null || this.queue.length > 0 || this.history.length > 0);
+		if (this.hasRestoredPlaybackState || hasGenuineLocalActivity) return;
 		this.hasRestoredPlaybackState = true;
+		this.hasHydratedFromLocalCache = false;
 		this.currentTrack = state.currentTrack;
 		this.queue = state.queue.slice(0, MAX_QUEUE_LENGTH);
 		this.history = state.history.slice(-MAX_HISTORY_LENGTH);
@@ -1417,6 +1506,7 @@ export class PlayerState {
 	}
 
 	schedulePersistence(): void {
+		this.writeLocalQueueCache();
 		this.coordinator.schedulePersistence();
 	}
 

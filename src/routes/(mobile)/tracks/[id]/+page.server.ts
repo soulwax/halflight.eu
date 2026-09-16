@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { getConnectionStatus, tidalApi } from '#lib/server/tidal';
+import { filterPlayableTracks, getConnectionStatus, tidalApi } from '#lib/server/tidal';
 import { normaliseTrackDetail } from '#lib/server/tidal/normalise';
 import { loadTidalPage, type TidalPageState } from '#lib/server/tidal/load';
 import type { TrackDetail } from '#lib/tidal/models';
@@ -46,7 +46,11 @@ export const load: PageServerLoad = async (event): Promise<MobileTrackData> => {
 			const track = normaliseTrackDetail(document, radioDoc, null);
 			if (!track) return failure('not_found', configured, id);
 
-			return { track, state: null, id };
+			const radioTracks = track.radioTracks
+				? await filterPlayableTracks(track.radioTracks)
+				: undefined;
+
+			return { track: { ...track, radioTracks }, state: null, id };
 		}
 	});
 };

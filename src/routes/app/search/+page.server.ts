@@ -1,5 +1,5 @@
 import { redirect } from '@sveltejs/kit';
-import { getConnectionStatus, tidalApi } from '#lib/server/tidal';
+import { filterPlayableTracks, getConnectionStatus, tidalApi } from '#lib/server/tidal';
 import { normaliseSearchResults } from '#lib/server/tidal/normalise';
 import type { PageServerLoad } from './$types';
 
@@ -30,10 +30,11 @@ export const load: PageServerLoad = async (event) => {
 			},
 			{ fetch: event.fetch, cookies: event.cookies }
 		);
+		const results = normaliseSearchResults(document);
 		return {
 			query,
 			connected: true,
-			results: normaliseSearchResults(document),
+			results: { ...results, tracks: await filterPlayableTracks(results.tracks) },
 			error: null
 		};
 	} catch {

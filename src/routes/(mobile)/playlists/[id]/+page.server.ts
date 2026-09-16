@@ -1,6 +1,6 @@
 import { error } from '@sveltejs/kit';
 import { getUserPlaylists } from '#lib/server/playlists';
-import { getConnectionStatus, tidalApi } from '#lib/server/tidal';
+import { filterPlayableTracks, getConnectionStatus, tidalApi } from '#lib/server/tidal';
 import { normalisePlaylistDetail } from '#lib/server/tidal/normalise';
 import { loadTidalPage, type TidalPageState } from '#lib/server/tidal/load';
 import type { PlaylistDetail } from '#lib/tidal/models';
@@ -38,14 +38,15 @@ export const load: PageServerLoad = async (event): Promise<MobilePlaylistData> =
 				(candidate) => candidate.id === id || candidate.tidalPlaylistId === id
 			);
 			if (local) {
+				const items = await filterPlayableTracks(local.items);
 				return {
 					playlist: {
 						kind: 'playlist',
 						id: local.id,
 						title: local.title,
 						description: local.description ?? undefined,
-						numberOfItems: local.items.length,
-						items: local.items
+						numberOfItems: items.length,
+						items
 					},
 					isLocal: true,
 					state: null,
@@ -64,7 +65,12 @@ export const load: PageServerLoad = async (event): Promise<MobilePlaylistData> =
 			const document = await tidalApi.getFullPlaylist(tidalId, {}, ctx);
 			const playlist = normalisePlaylistDetail(document);
 			if (!playlist) return failure('not_found', configured, tidalId);
-			return { playlist, isLocal: false, state: null, id: tidalId };
+			return {
+				playlist: { ...playlist, items: await filterPlayableTracks(playlist.items) },
+				isLocal: false,
+				state: null,
+				id: tidalId
+			};
 		}
 	});
 };

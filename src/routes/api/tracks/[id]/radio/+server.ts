@@ -1,5 +1,5 @@
 import { error, json, type RequestHandler } from '@sveltejs/kit';
-import { getConnectionStatus, tidalApi } from '#lib/server/tidal';
+import { filterPlayableTracks, getConnectionStatus, tidalApi } from '#lib/server/tidal';
 import { normaliseSearchResults } from '#lib/server/tidal/normalise';
 
 const MAX_TRACK_ID_LENGTH = 160;
@@ -30,7 +30,10 @@ export const GET: RequestHandler = async (event) => {
 			);
 		const tracks = normaliseSearchResults(document).tracks.filter((track) => track.id !== trackId);
 
-		return json({ tracks }, { headers: { 'cache-control': 'private, no-store' } });
+		return json(
+			{ tracks: await filterPlayableTracks(tracks) },
+			{ headers: { 'cache-control': 'private, no-store' } }
+		);
 	} catch {
 		return json({ tracks: [], error: 'radio_unavailable' }, { status: 502 });
 	}

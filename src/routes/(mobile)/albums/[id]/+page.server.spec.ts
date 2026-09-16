@@ -8,7 +8,8 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('#lib/server/tidal', () => ({
 	getConnectionStatus: mocks.getConnectionStatus,
-	tidalApi: { getAlbum: mocks.getAlbum }
+	tidalApi: { getAlbum: mocks.getAlbum },
+	filterPlayableTracks: vi.fn(async (tracks: unknown[]) => tracks)
 }));
 
 import { load } from './+page.server';

@@ -1,4 +1,9 @@
-import { fetchTrackLyrics, getConnectionStatus, tidalApi } from '#lib/server/tidal';
+import {
+	fetchTrackLyrics,
+	filterPlayableTracks,
+	getConnectionStatus,
+	tidalApi
+} from '#lib/server/tidal';
 import { normaliseTrackDetail } from '#lib/server/tidal/normalise';
 import { loadTidalPage, type TidalPageState } from '#lib/server/tidal/load';
 import type { PageServerLoad } from './$types';
@@ -55,6 +60,17 @@ export const load: PageServerLoad = (event) =>
 			const track = normaliseTrackDetail(document, radioDoc, artistTracksDoc);
 			if (!track) return failure('not_found', configured, id);
 
-			return { track, lyrics, state: null, configured, id };
+			const [radioTracks, artistTopTracks] = await Promise.all([
+				track.radioTracks ? filterPlayableTracks(track.radioTracks) : undefined,
+				track.artistTopTracks ? filterPlayableTracks(track.artistTopTracks) : undefined
+			]);
+
+			return {
+				track: { ...track, radioTracks, artistTopTracks },
+				lyrics,
+				state: null,
+				configured,
+				id
+			};
 		}
 	});

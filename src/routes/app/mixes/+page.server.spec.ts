@@ -24,7 +24,8 @@ vi.mock('#lib/server/tidal', () => ({
 	tidalApi: { getMix: mocks.getMix },
 	TidalApiError: mocks.MockTidalApiError,
 	TidalAuthError: mocks.MockTidalAuthError,
-	TidalNotConnectedError: mocks.MockTidalNotConnectedError
+	TidalNotConnectedError: mocks.MockTidalNotConnectedError,
+	filterPlayableTracks: vi.fn(async (tracks: unknown[]) => tracks)
 }));
 
 import { load } from './+page.server';

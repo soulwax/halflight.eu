@@ -1,4 +1,4 @@
-import { tidalApi } from '#lib/server/tidal';
+import { filterPlayableTracks, tidalApi } from '#lib/server/tidal';
 import { normaliseSearchResults } from '#lib/server/tidal/normalise';
 import type { PageServerLoad } from './$types';
 
@@ -12,7 +12,8 @@ export const load: PageServerLoad = async (event) => {
 			{ include: ['artists', 'albums'] },
 			{ fetch: event.fetch, cookies: event.cookies }
 		);
-		return { dailyMix: normaliseSearchResults(document).tracks.slice(0, 6) };
+		const tracks = normaliseSearchResults(document).tracks;
+		return { dailyMix: (await filterPlayableTracks(tracks)).slice(0, 6) };
 	} catch {
 		return { dailyMix: [] };
 	}

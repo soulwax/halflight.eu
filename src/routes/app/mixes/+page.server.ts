@@ -1,5 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import {
+	filterPlayableTracks,
 	getConnectionStatus,
 	tidalApi,
 	TidalAuthError,
@@ -46,16 +47,34 @@ export const load: PageServerLoad = async (event) => {
 			tidalApi.getMix('newRelease', { include: ['items', 'artists', 'albums'] }, ctx)
 		]);
 
-		const dailyMix =
+		const rawDailyMix =
 			dailyRes.status === 'fulfilled' ? normaliseMixDetail(dailyRes.value, 'daily') : null;
-		const discoveryMix =
+		const rawDiscoveryMix =
 			discoveryRes.status === 'fulfilled'
 				? normaliseMixDetail(discoveryRes.value, 'discovery')
 				: null;
-		const newReleaseMix =
+		const rawNewReleaseMix =
 			newReleaseRes.status === 'fulfilled'
 				? normaliseMixDetail(newReleaseRes.value, 'newRelease')
 				: null;
+
+		const [dailyMix, discoveryMix, newReleaseMix] = await Promise.all([
+			rawDailyMix
+				? filterPlayableTracks(rawDailyMix.items).then((items) => ({ ...rawDailyMix, items }))
+				: null,
+			rawDiscoveryMix
+				? filterPlayableTracks(rawDiscoveryMix.items).then((items) => ({
+						...rawDiscoveryMix,
+						items
+					}))
+				: null,
+			rawNewReleaseMix
+				? filterPlayableTracks(rawNewReleaseMix.items).then((items) => ({
+						...rawNewReleaseMix,
+						items
+					}))
+				: null
+		]);
 
 		return {
 			dailyMix,

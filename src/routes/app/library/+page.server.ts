@@ -6,7 +6,7 @@ import {
 	dbPrivateMusicStore
 } from '#lib/server/private-music';
 import { privateMusicBucket } from '#lib/server/private-music-bucket';
-import { getConnectionStatus, tidalApi } from '#lib/server/tidal';
+import { filterPlayableTracks, getConnectionStatus, tidalApi } from '#lib/server/tidal';
 import { normaliseCollectionPage } from '#lib/server/tidal/normalise';
 import type { PageServerLoad } from './$types';
 
@@ -77,15 +77,20 @@ export const load: PageServerLoad = async (event) => {
 		connected: true,
 		hasWriteScopes: Boolean(connection.hasWriteScopes),
 		privateMusic,
-		sections: results.map((result) => {
-			if (!result.ok) return { kind: result.kind, ok: false as const };
-			const items = result.page[result.kind];
-			return {
-				kind: result.kind,
-				ok: true as const,
-				items,
-				hasMore: result.page.hasMore
-			};
-		})
+		sections: await Promise.all(
+			results.map(async (result) => {
+				if (!result.ok) return { kind: result.kind, ok: false as const };
+				const items =
+					result.kind === 'tracks'
+						? await filterPlayableTracks(result.page.tracks)
+						: result.page[result.kind];
+				return {
+					kind: result.kind,
+					ok: true as const,
+					items,
+					hasMore: result.page.hasMore
+				};
+			})
+		)
 	};
 };

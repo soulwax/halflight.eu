@@ -7,7 +7,12 @@ import {
 } from '#lib/server/private-music';
 import { privateMusicBucket } from '#lib/server/private-music-bucket';
 import { getUserPlaylists } from '#lib/server/playlists';
-import { getConnectionStatus, tidalApi } from '#lib/server/tidal';
+import {
+	filterPlayableTracks,
+	getConnectionStatus,
+	getUnplayableTrackIds,
+	tidalApi
+} from '#lib/server/tidal';
 import { normaliseCollectionPage } from '#lib/server/tidal/normalise';
 import type { MobileLibraryData } from '#lib/tidal/mobile-library';
 import type { PageServerLoad } from './$types';
@@ -65,9 +70,16 @@ export const load: PageServerLoad = async (event): Promise<MobileLibraryData> =>
 				Number.isSafeInteger(requestedPage) && requestedPage > 0
 					? Math.min(requestedPage, lastPage)
 					: 1;
-			result.playlists = playlists
+			const pagePlaylists = playlists
 				.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 				.map(({ id, title, items }) => ({ id, title, items }));
+			const unplayable = await getUnplayableTrackIds(
+				pagePlaylists.flatMap((playlist) => playlist.items.map((item) => item.id))
+			);
+			result.playlists = pagePlaylists.map((playlist) => ({
+				...playlist,
+				items: playlist.items.filter((item) => !unplayable.has(item.id))
+			}));
 			result.previousQuery = page > 1 ? `tab=saved&page=${page - 1}` : null;
 			result.nextQuery = page < lastPage ? `tab=saved&page=${page + 1}` : null;
 			return result;
@@ -86,7 +98,7 @@ export const load: PageServerLoad = async (event): Promise<MobileLibraryData> =>
 			{ fetch: event.fetch, cookies: event.cookies }
 		);
 		const collection = normaliseCollectionPage(document);
-		result.tracks = collection.tracks;
+		result.tracks = await filterPlayableTracks(collection.tracks);
 		result.hasMore = collection.hasMore;
 		result.previousQuery = cursor ? 'tab=tracks' : null;
 		// Only forward an opaque cursor to the fixed collection endpoint. Provider

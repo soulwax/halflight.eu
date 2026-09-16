@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { getConnectionStatus, tidalApi } from '#lib/server/tidal';
+import { filterPlayableTracks, getConnectionStatus, tidalApi } from '#lib/server/tidal';
 import { normaliseArtistDetail } from '#lib/server/tidal/normalise';
 import { loadTidalPage, type TidalPageState } from '#lib/server/tidal/load';
 import type { ArtistDetail } from '#lib/tidal/models';
@@ -53,7 +53,12 @@ export const load: PageServerLoad = async (event): Promise<MobileArtistData> => 
 			const artist = normaliseArtistDetail(artistDoc, tracksDoc, albumsDoc, null, radioDoc);
 			if (!artist) return failure('not_found', configured, id);
 
-			return { artist, state: null, id };
+			const [topTracks, radioTracks] = await Promise.all([
+				filterPlayableTracks(artist.topTracks),
+				artist.radioTracks ? filterPlayableTracks(artist.radioTracks) : undefined
+			]);
+
+			return { artist: { ...artist, topTracks, radioTracks }, state: null, id };
 		}
 	});
 };

@@ -13,7 +13,8 @@ vi.mock('#lib/server/tidal', () => ({
 	tidalApi: {
 		getPlaylist: mocks.getPlaylist,
 		getPlaylistItems: mocks.getPlaylistItems
-	}
+	},
+	filterPlayableTracks: vi.fn(async (tracks: unknown[]) => tracks)
 }));
 
 vi.mock('#lib/server/playlists', () => ({

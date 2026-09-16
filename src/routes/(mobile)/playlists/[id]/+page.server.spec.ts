@@ -10,7 +10,8 @@ const mocks = vi.hoisted(() => ({
 vi.mock('#lib/server/playlists', () => ({ getUserPlaylists: mocks.getUserPlaylists }));
 vi.mock('#lib/server/tidal', () => ({
 	getConnectionStatus: mocks.getConnectionStatus,
-	tidalApi: { getFullPlaylist: mocks.getFullPlaylist }
+	tidalApi: { getFullPlaylist: mocks.getFullPlaylist },
+	filterPlayableTracks: vi.fn(async (tracks: unknown[]) => tracks)
 }));
 
 import { load } from './+page.server';

@@ -1,5 +1,5 @@
 import { error, redirect } from '@sveltejs/kit';
-import { getConnectionStatus, tidalApi } from '#lib/server/tidal';
+import { filterPlayableTracks, getConnectionStatus, tidalApi } from '#lib/server/tidal';
 import { normaliseSearchResults } from '#lib/server/tidal/normalise';
 import type { TrackSummary } from '#lib/tidal/models';
 import type { PageServerLoad } from './$types';
@@ -24,7 +24,8 @@ export const load: PageServerLoad = async (event): Promise<{ dailyMix: TrackSumm
 			{ include: ['artists', 'albums'] },
 			{ fetch: event.fetch, cookies: event.cookies }
 		);
-		return { dailyMix: normaliseSearchResults(document).tracks.slice(0, MIX_LENGTH) };
+		const tracks = normaliseSearchResults(document).tracks;
+		return { dailyMix: (await filterPlayableTracks(tracks)).slice(0, MIX_LENGTH) };
 	} catch {
 		return { dailyMix: [] };
 	}

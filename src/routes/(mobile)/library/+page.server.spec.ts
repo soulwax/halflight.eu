@@ -10,7 +10,9 @@ const mocks = vi.hoisted(() => ({
 vi.mock('#lib/server/playlists', () => ({ getUserPlaylists: mocks.getUserPlaylists }));
 vi.mock('#lib/server/tidal', () => ({
 	getConnectionStatus: mocks.getConnectionStatus,
-	tidalApi: { getCollectionPage: mocks.getCollectionPage }
+	tidalApi: { getCollectionPage: mocks.getCollectionPage },
+	filterPlayableTracks: vi.fn(async (tracks: unknown[]) => tracks),
+	getUnplayableTrackIds: vi.fn(async () => new Set())
 }));
 vi.mock('#lib/server/private-music', () => ({
 	MAX_PRIVATE_MUSIC_FILE_BYTES: 128 * 1024 * 1024,

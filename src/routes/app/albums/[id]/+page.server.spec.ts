@@ -16,7 +16,8 @@ vi.mock('#lib/server/tidal', () => ({
 	tidalApi: {
 		getAlbum: mocks.getAlbum,
 		getAlbumRelationship: mocks.getAlbumRelationship
-	}
+	},
+	filterPlayableTracks: vi.fn(async (tracks: unknown[]) => tracks)
 }));
 
 import { load } from './+page.server';

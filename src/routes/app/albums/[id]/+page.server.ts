@@ -1,6 +1,7 @@
 import {
 	fetchAlbumCredits,
 	fetchAlbumReview,
+	filterPlayableTracks,
 	getConnectionStatus,
 	tidalApi
 } from '#lib/server/tidal';
@@ -32,6 +33,13 @@ export const load: PageServerLoad = (event) =>
 			const album = normaliseAlbumDetail(document, similarDoc);
 			if (!album) return failure('not_found', configured, id);
 
-			return { album, review, credits, state: null, configured, id };
+			return {
+				album: { ...album, items: await filterPlayableTracks(album.items) },
+				review,
+				credits,
+				state: null,
+				configured,
+				id
+			};
 		}
 	});

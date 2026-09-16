@@ -325,6 +325,99 @@ describe('PlayerState', () => {
 		expect(player.isPlaying).toBe(false);
 	});
 
+	// Must match the private `QUEUE_CACHE_KEY` in player.svelte.ts.
+	const QUEUE_CACHE_KEY = 'syn:player:queue-cache';
+
+	it('optimistically paints a queue cached from a prior session before any server restore', () => {
+		localStorage.setItem(
+			QUEUE_CACHE_KEY,
+			JSON.stringify({
+				version: 1,
+				currentTrack: sampleTrack1,
+				queue: persistedQueue(sampleTrack2),
+				history: [sampleTrack3],
+				currentTime: 42
+			})
+		);
+
+		const player = new PlayerState();
+
+		expect(player.currentTrack).toEqual(sampleTrack1);
+		expectQueuedTracks(player, [sampleTrack2]);
+		expect(player.history).toEqual([sampleTrack3]);
+		expect(player.currentTime).toBe(42);
+	});
+
+	it('lets the authoritative server restore overwrite an optimistic local-cache seed', () => {
+		localStorage.setItem(
+			QUEUE_CACHE_KEY,
+			JSON.stringify({
+				version: 1,
+				currentTrack: sampleTrack1,
+				queue: [],
+				history: [],
+				currentTime: 10
+			})
+		);
+
+		const player = new PlayerState();
+		expect(player.currentTrack).toEqual(sampleTrack1);
+
+		player.restorePlaybackState({
+			currentTrack: sampleTrack3,
+			queue: persistedQueue(sampleTrack2),
+			history: [],
+			currentTime: 99
+		});
+
+		expect(player.currentTrack).toEqual(sampleTrack3);
+		expectQueuedTracks(player, [sampleTrack2]);
+		expect(player.currentTime).toBe(99);
+	});
+
+	it('ignores a queue cache with an unrecognised version', () => {
+		localStorage.setItem(
+			QUEUE_CACHE_KEY,
+			JSON.stringify({ version: 999, currentTrack: sampleTrack1, queue: [], history: [] })
+		);
+
+		const player = new PlayerState();
+
+		expect(player.currentTrack).toBeNull();
+	});
+
+	it('mirrors the current queue to localStorage so the next load can paint instantly', () => {
+		const player = new PlayerState();
+		player.restorePlaybackState({
+			currentTrack: sampleTrack1,
+			queue: persistedQueue(sampleTrack2),
+			history: [sampleTrack3],
+			currentTime: 12
+		});
+
+		player.schedulePersistence();
+
+		const cached = JSON.parse(localStorage.getItem(QUEUE_CACHE_KEY) ?? 'null');
+		expect(cached.currentTrack).toEqual(sampleTrack1);
+		expect(cached.history).toEqual([sampleTrack3]);
+	});
+
+	it('clears the local queue cache once the player is closed', () => {
+		const player = new PlayerState();
+		player.restorePlaybackState({
+			currentTrack: sampleTrack1,
+			queue: [],
+			history: [],
+			currentTime: 0
+		});
+		player.schedulePersistence();
+		expect(localStorage.getItem(QUEUE_CACHE_KEY)).not.toBeNull();
+
+		player.close();
+
+		expect(localStorage.getItem(QUEUE_CACHE_KEY)).toBeNull();
+	});
+
 	it('keeps a restored remote session passive until this device explicitly takes playback', async () => {
 		const fetchSpy = vi.fn((url: string) => {
 			if (url !== '/api/playback-state/claim') return Promise.reject(new Error('not needed'));

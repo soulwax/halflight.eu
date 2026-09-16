@@ -1,4 +1,4 @@
-import { getConnectionStatus, tidalApi } from '#lib/server/tidal';
+import { filterPlayableTracks, getConnectionStatus, tidalApi } from '#lib/server/tidal';
 import { normalisePlaylistDetail } from '#lib/server/tidal/normalise';
 import { loadTidalPage, type TidalPageState } from '#lib/server/tidal/load';
 import { getUserPlaylists } from '#lib/server/playlists';
@@ -32,14 +32,15 @@ export const load: PageServerLoad = async (event) => {
 					configured: false,
 					hasWriteScopes: false
 				}));
+				const items = await filterPlayableTracks(local.items);
 				return {
 					playlist: {
 						kind: 'playlist' as const,
 						id: local.id,
 						title: local.title,
 						description: local.description ?? undefined,
-						numberOfItems: local.items.length,
-						items: local.items
+						numberOfItems: items.length,
+						items
 					},
 					localPlaylist: local,
 					isLocal: true,
@@ -113,6 +114,7 @@ export const load: PageServerLoad = async (event) => {
 			}
 
 			if (!playlist) return failure('not_found', configured, tidalId);
+			playlist = { ...playlist, items: await filterPlayableTracks(playlist.items) };
 
 			let localPlaylist = null;
 			let syncStatus = null;

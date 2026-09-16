@@ -247,6 +247,26 @@ export const tidalCacheObject = pgTable(
 	(table) => [index('tidal_cache_object_expires_at_idx').on(table.expiresAt)]
 );
 
+/**
+ * TIDAL track IDs confirmed unplayable — the catalogue entry exists but every
+ * quality in `QUALITY_LADDER` failed to resolve a stream (removed recording,
+ * region lock, licensing gap). Checked lazily: a row is written only when the
+ * owner's own player or the stream-resolution route actually hits the
+ * failure, never by a proactive sweep. Absence means "playable or not yet
+ * attempted", not "confirmed playable" — this table only ever grows by
+ * negative results. Track listings filter these out so a broken recording
+ * disappears instead of erroring on play.
+ */
+export const trackPlayability = pgTable(
+	'track_playability',
+	{
+		trackId: text('track_id').primaryKey(),
+		reason: text('reason').notNull(),
+		checkedAt: timestamp('checked_at', { withTimezone: true }).notNull().defaultNow()
+	},
+	(table) => [index('track_playability_checked_at_idx').on(table.checkedAt)]
+);
+
 export const lastfmConnection = pgTable('lastfm_connection', {
 	userId: text('user_id')
 		.primaryKey()

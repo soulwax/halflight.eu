@@ -105,6 +105,12 @@ export {
 	type TidalSegmentCacheConfig
 } from './segment-cache-bucket';
 export { getTrackCoverId, tidalArtworkUrl, resetArtworkCache } from './artwork';
+export {
+	markTrackUnplayable,
+	getUnplayableTrackIds,
+	filterPlayableTracks,
+	__resetTrackPlayabilityCache
+} from './track-playability';
 export { getRequestedStreamQuality, type StreamingSettingsReader } from './playback';
 export {
 	requestDeviceAuthorization,

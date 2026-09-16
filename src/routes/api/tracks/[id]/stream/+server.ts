@@ -4,6 +4,7 @@ import {
 	getConnectionStatus,
 	getRequestedStreamQuality,
 	isTrackUnavailableForPlayback,
+	markTrackUnplayable,
 	resolveTrackStreamCached,
 	TidalApiError,
 	TidalAuthError,
@@ -67,6 +68,9 @@ export const GET: RequestHandler = async (event) => {
 		});
 	} catch (cause) {
 		if (isTrackUnavailableForPlayback(cause)) {
+			// Fire-and-forget: a slow write must never delay the 404 the player is
+			// waiting on to move to the next track.
+			void markTrackUnplayable(trackId, 'asset not ready for playback');
 			return json({ error: 'track_unavailable', requiresFullAuth: false }, { status: 404 });
 		}
 		if (cause instanceof TidalQualityDeniedError) {

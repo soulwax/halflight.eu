@@ -5,6 +5,7 @@ import {
 	headSegmentedAudio,
 	tidalSegmentCache,
 	isTrackUnavailableForPlayback,
+	markTrackUnplayable,
 	resolveTrackStreamCached,
 	streamSegmentedAudio,
 	TidalApiError,
@@ -71,7 +72,10 @@ async function serveAudio(
 			ctx: { fetch: event.fetch, cookies: event.cookies }
 		});
 	} catch (cause) {
-		if (isTrackUnavailableForPlayback(cause)) error(404, 'Track unavailable from TIDAL');
+		if (isTrackUnavailableForPlayback(cause)) {
+			void markTrackUnplayable(trackId, 'asset not ready for playback');
+			error(404, 'Track unavailable from TIDAL');
+		}
 		if (cause instanceof TidalQualityDeniedError) {
 			error(403, 'The requested playback quality is unavailable for this track.');
 		}

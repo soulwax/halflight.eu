@@ -7,7 +7,8 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('#lib/server/tidal', () => ({
 	getConnectionStatus: mocks.getConnectionStatus,
-	tidalApi: { getTrackRelationship: mocks.getTrackRelationship }
+	tidalApi: { getTrackRelationship: mocks.getTrackRelationship },
+	filterPlayableTracks: vi.fn(async (tracks: unknown[]) => tracks)
 }));
 
 import type { Cookies } from '@sveltejs/kit';
