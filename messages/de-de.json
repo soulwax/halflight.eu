@@ -340,6 +340,8 @@
 	"theme_blue_hour_description": "Samtiges Indigo, seegrünes Licht und weiche, weite Bewegungen für die Zeit kurz nach der Dämmerung.",
 	"theme_electric_name": "Electric",
 	"theme_electric_description": "Eine moderne, kontrastreiche Palette in kräftigen Farben.",
+	"theme_terrarium_name": "Terrarium",
+	"theme_terrarium_description": "Ein tiefgrüner botanischer Raum aus Moos, Glas und Kupferlicht für langsam wachsende Hörsessions.",
 	"theme_preview_label": "{theme}-Vorschau",
 	"search_label": "TIDAL-Katalog durchsuchen",
 	"search_placeholder": "Künstler, Album, Titel oder Playlist",

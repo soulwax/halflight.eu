@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Terrarium, a selectable Halflight theme. Its moss-dark canvas, botanical jade action
+  colour, softened glass-like geometry, layered green depth, and old-style serif headings make a
+  listening session feel cultivated rather than manufactured. It is available in both Appearance
+  pickers and keeps mobile browser chrome in the same forest ink.
 - Library is now built around the owner's music, not only the provider collection. Desktop places a
   private “Your music” shelf ahead of custom playlists and a clearly-labelled TIDAL section; the
   mobile Library adds the same independent tab. Both show precise storage usage, accepted formats,

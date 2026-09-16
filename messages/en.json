@@ -340,6 +340,8 @@
 	"theme_blue_hour_description": "Velvet indigo, sea-glass light, and soft, spacious motion for the moment just after dusk.",
 	"theme_electric_name": "Electric",
 	"theme_electric_description": "A modern, vibrant palette with high contrast.",
+	"theme_terrarium_name": "Terrarium",
+	"theme_terrarium_description": "A deep botanical room of moss, glass, and copper light for slow-growing listening sessions.",
 	"theme_preview_label": "{theme} preview",
 	"search_label": "Search the TIDAL catalogue",
 	"search_placeholder": "Artist, album, track, or playlist",

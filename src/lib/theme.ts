@@ -38,7 +38,14 @@ import { m } from '#lib/paraglide/messages.js';
  * duplicate this mapping between them — that duplication is exactly what
  * this module replaced.
  */
-export const THEMES = ['dark', 'light', 'warm-night', 'blue-hour', 'electric'] as const;
+export const THEMES = [
+	'dark',
+	'light',
+	'warm-night',
+	'blue-hour',
+	'electric',
+	'terrarium'
+] as const;
 export type Theme = (typeof THEMES)[number];
 
 export const DEFAULT_THEME: Theme = 'dark';
@@ -50,13 +57,15 @@ export interface ThemeMeta {
 		| 'theme_light_name'
 		| 'theme_warm_night_name'
 		| 'theme_blue_hour_name'
-		| 'theme_electric_name';
+		| 'theme_electric_name'
+		| 'theme_terrarium_name';
 	descriptionKey:
 		| 'theme_dark_description'
 		| 'theme_light_description'
 		| 'theme_warm_night_description'
 		| 'theme_blue_hour_description'
-		| 'theme_electric_description';
+		| 'theme_electric_description'
+		| 'theme_terrarium_description';
 	/** Sets `color-scheme` and decides contrast for UA-styled controls (scrollbars, form fields). */
 	colorScheme: 'dark' | 'light';
 }
@@ -91,6 +100,12 @@ export const THEME_META: Record<Theme, ThemeMeta> = {
 		nameKey: 'theme_electric_name',
 		descriptionKey: 'theme_electric_description',
 		colorScheme: 'dark'
+	},
+	terrarium: {
+		id: 'terrarium',
+		nameKey: 'theme_terrarium_name',
+		descriptionKey: 'theme_terrarium_description',
+		colorScheme: 'dark'
 	}
 };
 
@@ -109,7 +124,8 @@ const THEME_LABEL_MESSAGES: Record<Theme, ThemeLabelMessages> = {
 	light: { name: m.theme_light_name, description: m.theme_light_description },
 	'warm-night': { name: m.theme_warm_night_name, description: m.theme_warm_night_description },
 	'blue-hour': { name: m.theme_blue_hour_name, description: m.theme_blue_hour_description },
-	electric: { name: m.theme_electric_name, description: m.theme_electric_description }
+	electric: { name: m.theme_electric_name, description: m.theme_electric_description },
+	terrarium: { name: m.theme_terrarium_name, description: m.theme_terrarium_description }
 };
 
 export interface ThemeLabel {

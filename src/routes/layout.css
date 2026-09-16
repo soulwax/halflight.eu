@@ -407,6 +407,64 @@
 	--focus-ring-width: 3px;
 }
 
+/* Terrarium: botanical dark mode — moss, copper, and the glow from a room of glass. */
+[data-theme='terrarium'] {
+	color-scheme: dark;
+
+	--paper: #0c1713;
+	--surface: #14251e;
+	--ink: #eef7ee;
+	--slate: #afc1b4;
+	--faint: #6f887a;
+	--line: #294337;
+	--sky: #183a31;
+	--sky-deep: #285747;
+	--blush: #3d2638;
+
+	--accent-gold: #e6b86c;
+	--accent-gold-deep: #be873a;
+	--accent-jade: #8bd8b5;
+	--accent-oxblood: #ef8a9e;
+
+	--border-strong: #426252;
+	--text-secondary: #d1e0d3;
+
+	--action: #7cd9af;
+	--action-contrast: #07140e;
+	--danger: #ff9aae;
+	--danger-subtle: #42222d;
+	--success: #91d3a0;
+	--success-subtle: #193524;
+	--warning: #e6b86c;
+	--warning-subtle: #3f3017;
+
+	--scrim: rgb(2 11 7 / 0.64);
+	--scrim-ink: #ffffff;
+	--overlay: rgb(3 14 9 / 0.78);
+	--focus-ring: #a5f0c9;
+
+	/* Rounded glass and layered, coloured shadows make panels feel cultivated
+	   rather than manufactured. The slightly springy timing lands like a leaf
+	   settling, while an old-style serif gives album titles their own specimen
+	   label without loading a font. */
+	--radius-xs: 7px;
+	--radius-sm: 11px;
+	--radius-md: 16px;
+	--radius-lg: 22px;
+	--radius-xl: 28px;
+	--shadow-panel: 0 1px 1px rgb(1 10 6 / 0.5), 0 16px 32px -18px rgb(47 123 85 / 0.7);
+	--shadow-float: 0 4px 12px rgb(1 10 6 / 0.42), 0 30px 60px -22px rgb(43 109 76 / 0.8);
+	--ease-out: cubic-bezier(0.18, 0.88, 0.28, 1.08);
+	--dur-fast: 140ms;
+	--dur-med: 210ms;
+	--dur-slow: 340ms;
+	--font-heading: 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Palatino, serif;
+	--heading-weight: 600;
+	--heading-tracking: -0.012em;
+	--focus-ring-width: 3px;
+	--focus-ring-offset: 4px;
+}
+
 .font-display {
 	font-family: var(--font-display);
 }
