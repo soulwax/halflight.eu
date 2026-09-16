@@ -42,7 +42,10 @@ beforeEach(() => {
 	player.currentTrack = null;
 });
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+	vi.restoreAllMocks();
+	vi.unstubAllGlobals();
+});
 
 describe('MobileLibrary.svelte', () => {
 	it('shows the three library views and saved-playlist actions', async () => {
@@ -81,6 +84,40 @@ describe('MobileLibrary.svelte', () => {
 			.element(page.getByRole('heading', { name: m.private_music_title() }))
 			.toBeInTheDocument();
 		await expect.element(page.getByText(m.private_music_empty())).toBeInTheDocument();
+	});
+
+	it('confirms and removes a private file without involving the TIDAL player', async () => {
+		const remove = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+		vi.stubGlobal('fetch', remove);
+		render(MobileLibrary, {
+			data: {
+				...savedData,
+				tab: 'private',
+				privateMusic: {
+					...savedData.privateMusic,
+					storage: { ...savedData.privateMusic.storage, fileCount: 1, usedBytes: 42 },
+					files: [
+						{
+							id: 'private-1',
+							fileName: 'night-drive.mp3',
+							contentType: 'audio/mpeg',
+							sizeBytes: 42,
+							createdAt: '2026-09-15T00:00:00.000Z',
+							downloadUrl: '/api/private-music/private-1'
+						}
+					]
+				}
+			}
+		});
+
+		await page
+			.getByRole('button', { name: m.private_music_delete({ file: 'night-drive.mp3' }) })
+			.click();
+		await page.getByRole('button', { name: m.private_music_delete_action() }).click();
+
+		expect(remove).toHaveBeenCalledWith('/api/private-music/private-1', { method: 'DELETE' });
+		await expect.element(page.getByText(m.private_music_empty())).toBeInTheDocument();
+		expect(player.currentTrack).toBeNull();
 	});
 
 	it('puts a favorite on deck and reports it', async () => {

@@ -18,12 +18,10 @@
 		headingId = 'private-music-title'
 	}: { library: PrivateMusicLibraryData; headingId?: string } = $props();
 
-	// The page data is the initial server snapshot. Uploads and deletions update this
-	// local view optimistically, while a navigation supplies a fresh component snapshot.
-	// svelte-ignore state_referenced_locally
-	let files = $state<PrivateMusicFile[]>(library.files);
-	// svelte-ignore state_referenced_locally
-	let storage = $state<PrivateMusicStorage>(library.storage);
+	// Server data stays authoritative. Keep only in-flight client changes locally so
+	// SvelteKit navigation can refresh the shelf without erasing a recent upload.
+	let uploadedFiles = $state<PrivateMusicFile[]>([]);
+	let deletedFileIds = $state<string[]>([]);
 	let isDropTarget = $state(false);
 	let uploadState = $state<UploadState>({ status: 'idle' });
 	let feedback = $state<{ tone: NoticeTone; message: string } | null>(null);
@@ -33,6 +31,25 @@
 
 	const accept = $derived(privateMusicAccept(library.formats));
 	const isUploading = $derived(uploadState.status === 'uploading');
+	const stagedFiles = $derived(
+		uploadedFiles.filter((file) => !library.files.some(({ id }) => id === file.id))
+	);
+	const deletedFiles = $derived(library.files.filter((file) => deletedFileIds.includes(file.id)));
+	const files = $derived([
+		...stagedFiles,
+		...library.files.filter((file) => !deletedFileIds.includes(file.id))
+	]);
+	const storage = $derived.by<PrivateMusicStorage>(() => {
+		const stagedBytes = stagedFiles.reduce((total, file) => total + file.sizeBytes, 0);
+		const deletedBytes = deletedFiles.reduce((total, file) => total + file.sizeBytes, 0);
+		const usedBytes = Math.max(0, library.storage.usedBytes + stagedBytes - deletedBytes);
+		return {
+			...library.storage,
+			fileCount: Math.max(0, library.storage.fileCount + stagedFiles.length - deletedFiles.length),
+			usedBytes,
+			availableBytes: Math.max(0, library.storage.maxTotalBytes - usedBytes)
+		};
+	});
 
 	function formatBytes(bytes: number): string {
 		if (bytes < 1024) return `${bytes} B`;
@@ -112,13 +129,7 @@
 				feedback = { tone: 'danger', message: m.private_music_upload_error() };
 				return;
 			}
-			files = [request.response, ...files];
-			storage = {
-				...storage,
-				fileCount: storage.fileCount + 1,
-				usedBytes: storage.usedBytes + request.response.sizeBytes,
-				availableBytes: Math.max(0, storage.availableBytes - request.response.sizeBytes)
-			};
+			uploadedFiles = [request.response, ...uploadedFiles];
 			feedback = { tone: 'success', message: m.private_music_upload_success() };
 		};
 		const form = new FormData();
@@ -137,13 +148,11 @@
 		try {
 			const response = await fetch(file.downloadUrl, { method: 'DELETE' });
 			if (!response.ok) throw new Error('Private music deletion failed');
-			files = files.filter((candidate) => candidate.id !== file.id);
-			storage = {
-				...storage,
-				fileCount: Math.max(0, storage.fileCount - 1),
-				usedBytes: Math.max(0, storage.usedBytes - file.sizeBytes),
-				availableBytes: Math.min(storage.maxTotalBytes, storage.availableBytes + file.sizeBytes)
-			};
+			if (uploadedFiles.some((candidate) => candidate.id === file.id)) {
+				uploadedFiles = uploadedFiles.filter((candidate) => candidate.id !== file.id);
+			} else {
+				deletedFileIds = [...deletedFileIds, file.id];
+			}
 			feedback = { tone: 'success', message: m.private_music_delete_success() };
 			deleteDialog?.close();
 		} catch {
