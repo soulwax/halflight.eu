@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Riso, a bright print-studio Halflight theme. Warm paper, inky blue, coral offset shadows, and
+  compact corners give the listening room a tactile, imperfectly registered character; its choice
+  is available in both Appearance pickers and uses the same paper tone for mobile browser chrome.
 - Terrarium, a selectable Halflight theme. Its moss-dark canvas, botanical jade action
   colour, softened glass-like geometry, layered green depth, and old-style serif headings make a
   listening session feel cultivated rather than manufactured. It is available in both Appearance
