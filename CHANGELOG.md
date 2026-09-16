@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Aurora, a ninth selectable Halflight theme. Its deep-navy canvas, teal action colour, and
+  two-hue jade-and-violet glow (instead of a drop shadow) evoke a drifting night sky; soft rounded
+  geometry, slow patient motion, and thin, wide-tracked headings make the listening room feel
+  unhurried and luminous. It is available in both Appearance pickers and keeps the mobile browser
+  chrome in the same deep navy.
 - Riso, a bright print-studio Halflight theme. Warm paper, inky blue, coral offset shadows, and
   compact corners give the listening room a tactile, imperfectly registered character; its choice
   is available in both Appearance pickers and uses the same paper tone for mobile browser chrome.

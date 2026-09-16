@@ -407,6 +407,53 @@
 	--focus-ring-width: 3px;
 }
 
+/* Overcast: pale, hushed daylight — soft diffused shadows, a muted denim accent. */
+[data-theme='overcast'] {
+	color-scheme: light;
+	--paper: #eef0f2;
+	--surface: #e2e5ea;
+	--ink: #262a30;
+	--slate: #6b7280;
+	--faint: #9aa0aa;
+	--line: #d0d4da;
+	--sky: #dde3ea;
+	--sky-deep: #c3ccd6;
+	--blush: #e6dfe6;
+	--accent-gold: #c9a86a;
+	--accent-gold-deep: #a3814a;
+	--accent-jade: #6b9c93;
+	--accent-oxblood: #b06478;
+	--border-strong: #b7bcc4;
+	--text-secondary: #4a4f57;
+	--action: #5b7a99;
+	--action-contrast: #f4f6f8;
+	--danger: #b5495a;
+	--danger-subtle: #f3e0e2;
+	--success: #5c8a6e;
+	--success-subtle: #e2ebe4;
+	--warning: #b8823f;
+	--warning-subtle: #f1e6d5;
+	--scrim: rgb(40 44 50 / 0.35);
+	--scrim-ink: #ffffff;
+	--overlay: rgb(60 64 70 / 0.3);
+	--focus-ring: #5b7a99;
+	--radius-xs: 5px;
+	--radius-sm: 8px;
+	--radius-md: 12px;
+	--radius-lg: 16px;
+	--radius-xl: 20px;
+	--shadow-panel: 0 2px 3px rgb(38 42 48 / 0.04), 0 20px 45px -10px rgb(38 42 48 / 0.14);
+	--shadow-float: 0 4px 8px rgb(38 42 48 / 0.05), 0 36px 70px -16px rgb(38 42 48 / 0.16);
+	--ease-out: cubic-bezier(0.33, 1, 0.68, 1);
+	--dur-fast: 170ms;
+	--dur-med: 260ms;
+	--dur-slow: 400ms;
+	--heading-weight: 450;
+	--heading-tracking: 0.01em;
+	--heading-transform: lowercase;
+	--focus-ring-offset: 3px;
+}
+
 /* Terrarium: botanical dark mode — moss, copper, and the glow from a room of glass. */
 [data-theme='terrarium'] {
 	color-scheme: dark;
@@ -518,6 +565,69 @@
 	--font-heading: var(--font-display);
 	--heading-weight: 750;
 	--heading-tracking: 0.012em;
+	--focus-ring-width: 3px;
+	--focus-ring-offset: 3px;
+}
+
+/* Aurora: a drifting night sky — teal, violet, and green glow over deep navy. */
+[data-theme='aurora'] {
+	color-scheme: dark;
+
+	--paper: #0a0e16;
+	--surface: #121a26;
+	--ink: #eef4f2;
+	--slate: #9fb3ac;
+	--faint: #5f7770;
+	--line: #22303a;
+	--sky: #16323a;
+	--sky-deep: #1f4d52;
+	--blush: #2c2148;
+
+	--accent-gold: #d9c66a;
+	--accent-gold-deep: #b3a04a;
+	--accent-jade: #4ee6b0;
+	--accent-oxblood: #b980f0;
+
+	--border-strong: #33454f;
+	--text-secondary: #c3d6d0;
+
+	--action: #48e0c2;
+	--action-contrast: #06110f;
+	--danger: #ff7aa8;
+	--danger-subtle: #33172a;
+	--success: #52e6a0;
+	--success-subtle: #123527;
+	--warning: #e8c15c;
+	--warning-subtle: #362a10;
+
+	--scrim: rgb(4 8 14 / 0.6);
+	--scrim-ink: #ffffff;
+	--overlay: rgb(4 8 14 / 0.76);
+	--focus-ring: #6ff0d0;
+
+	/* Beyond colour: soft, drifting geometry and a two-hue glow instead of a
+	   drop shadow — depth reads as light bending through the sky, not an
+	   object casting a shade. Slow, gentle motion and thin, wide-tracked
+	   headings keep the whole theme unhurried and luminous rather than busy. */
+	--radius-xs: 6px;
+	--radius-sm: 10px;
+	--radius-md: 16px;
+	--radius-lg: 20px;
+	--radius-xl: 26px;
+	--shadow-panel:
+		0 10px 26px -18px rgb(4 8 14 / 0.75),
+		0 20px 46px -24px color-mix(in oklab, var(--accent-jade) 40%, transparent),
+		0 26px 60px -30px color-mix(in oklab, var(--accent-oxblood) 30%, transparent);
+	--shadow-float:
+		0 16px 36px -20px rgb(4 8 14 / 0.82),
+		0 32px 68px -26px color-mix(in oklab, var(--accent-jade) 45%, transparent),
+		0 40px 84px -30px color-mix(in oklab, var(--accent-oxblood) 35%, transparent);
+	--ease-out: cubic-bezier(0.19, 0.85, 0.15, 1);
+	--dur-fast: 200ms;
+	--dur-med: 320ms;
+	--dur-slow: 520ms;
+	--heading-weight: 300;
+	--heading-tracking: 0.04em;
 	--focus-ring-width: 3px;
 	--focus-ring-offset: 3px;
 }

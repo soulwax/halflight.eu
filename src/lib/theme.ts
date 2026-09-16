@@ -44,8 +44,10 @@ export const THEMES = [
 	'warm-night',
 	'blue-hour',
 	'electric',
+	'overcast',
 	'terrarium',
-	'riso'
+	'riso',
+	'aurora'
 ] as const;
 export type Theme = (typeof THEMES)[number];
 
@@ -59,16 +61,20 @@ export interface ThemeMeta {
 		| 'theme_warm_night_name'
 		| 'theme_blue_hour_name'
 		| 'theme_electric_name'
+		| 'theme_overcast_name'
 		| 'theme_terrarium_name'
-		| 'theme_riso_name';
+		| 'theme_riso_name'
+		| 'theme_aurora_name';
 	descriptionKey:
 		| 'theme_dark_description'
 		| 'theme_light_description'
 		| 'theme_warm_night_description'
 		| 'theme_blue_hour_description'
 		| 'theme_electric_description'
+		| 'theme_overcast_description'
 		| 'theme_terrarium_description'
-		| 'theme_riso_description';
+		| 'theme_riso_description'
+		| 'theme_aurora_description';
 	/** Sets `color-scheme` and decides contrast for UA-styled controls (scrollbars, form fields). */
 	colorScheme: 'dark' | 'light';
 }
@@ -104,6 +110,12 @@ export const THEME_META: Record<Theme, ThemeMeta> = {
 		descriptionKey: 'theme_electric_description',
 		colorScheme: 'dark'
 	},
+	overcast: {
+		id: 'overcast',
+		nameKey: 'theme_overcast_name',
+		descriptionKey: 'theme_overcast_description',
+		colorScheme: 'light'
+	},
 	terrarium: {
 		id: 'terrarium',
 		nameKey: 'theme_terrarium_name',
@@ -115,6 +127,12 @@ export const THEME_META: Record<Theme, ThemeMeta> = {
 		nameKey: 'theme_riso_name',
 		descriptionKey: 'theme_riso_description',
 		colorScheme: 'light'
+	},
+	aurora: {
+		id: 'aurora',
+		nameKey: 'theme_aurora_name',
+		descriptionKey: 'theme_aurora_description',
+		colorScheme: 'dark'
 	}
 };
 
@@ -134,8 +152,10 @@ const THEME_LABEL_MESSAGES: Record<Theme, ThemeLabelMessages> = {
 	'warm-night': { name: m.theme_warm_night_name, description: m.theme_warm_night_description },
 	'blue-hour': { name: m.theme_blue_hour_name, description: m.theme_blue_hour_description },
 	electric: { name: m.theme_electric_name, description: m.theme_electric_description },
+	overcast: { name: m.theme_overcast_name, description: m.theme_overcast_description },
 	terrarium: { name: m.theme_terrarium_name, description: m.theme_terrarium_description },
-	riso: { name: m.theme_riso_name, description: m.theme_riso_description }
+	riso: { name: m.theme_riso_name, description: m.theme_riso_description },
+	aurora: { name: m.theme_aurora_name, description: m.theme_aurora_description }
 };
 
 export interface ThemeLabel {

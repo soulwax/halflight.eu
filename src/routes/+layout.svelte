@@ -20,8 +20,10 @@
 		'warm-night': '#1a1512',
 		'blue-hour': '#10182d',
 		electric: '#0f0f1a',
+		overcast: '#eef0f2',
 		terrarium: '#0c1713',
-		riso: '#fff5df'
+		riso: '#fff5df',
+		aurora: '#0a0e16'
 	};
 
 	onMount(() => {
