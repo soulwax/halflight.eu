@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Unplayable TIDAL tracks are now tracked and hidden. A track is checked lazily — only when an
+  actual play attempt fails with "asset not ready for playback" — and the result is cached in a
+  new `track_playability` table, never via a proactive library sweep. Every track listing on both
+  sites (playlists, albums, artists, search, library, mixes, home, and track radio) filters these
+  out server-side, so a broken recording disappears from view instead of erroring mid-play.
+- The player now mirrors its current queue, track, and history to `localStorage` as an
+  instant-paint seed for the next page load. It is never authoritative: the server-restored
+  session always supersedes it as soon as that request resolves, so a stale or cross-device-edited
+  local cache never lingers.
 - Noir, a tenth selectable Halflight theme. A near-black canvas and stark off-white ink carry a
   single blood-red action colour; a hard, unblurred rim-light shadow stands in for a drop shadow
   since a dark offset would vanish into the canvas, tight corners, and slow, deliberate motion sit
