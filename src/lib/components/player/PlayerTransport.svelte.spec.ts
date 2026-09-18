@@ -1,13 +1,28 @@
 import { page } from 'vitest/browser';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import PlayerTransport from './PlayerTransport.svelte';
 import { player } from '#lib/player/player.svelte.js';
 import { m } from '#lib/paraglide/messages.js';
+import type { TrackSummary } from '#lib/tidal/models';
+import { createQueueEntry } from '#lib/player/queue-entry.js';
+
+const track: TrackSummary = {
+	kind: 'track',
+	id: 'transport-track',
+	title: 'Transport Track',
+	artists: [{ id: 'artist-1', name: 'Artist One' }]
+};
 
 afterEach(() => {
 	player.isPlaying = false;
 	player.shuffle = false;
+	player.repeatMode = 'off';
+	player.currentTrack = null;
+	player.currentTime = 0;
+	player.queue = [];
+	player.history = [];
+	vi.restoreAllMocks();
 });
 
 describe('PlayerTransport.svelte', () => {
@@ -26,7 +41,7 @@ describe('PlayerTransport.svelte', () => {
 	it('toggles shuffle state through the player when clicked', async () => {
 		player.shuffle = false;
 		render(PlayerTransport);
-		await page.getByRole('button', { name: m.player_shuffle() }).click();
+		(page.getByRole('button', { name: m.player_shuffle() }).element() as HTMLButtonElement).click();
 		expect(player.shuffle).toBe(true);
 	});
 
@@ -42,5 +57,52 @@ describe('PlayerTransport.svelte', () => {
 		await expect
 			.element(page.getByRole('button', { name: m.player_collapse() }))
 			.not.toBeInTheDocument();
+	});
+
+	it('routes previous, play/pause, and next clicks to the player state', async () => {
+		player.currentTrack = track;
+		player.queue = [createQueueEntry({ ...track, id: 'next-track', title: 'Next Track' })];
+		player.currentTime = 4;
+		const previous = vi.spyOn(player, 'previous').mockReturnValue(track);
+		const togglePlayPause = vi.spyOn(player, 'togglePlayPause').mockImplementation(() => {});
+		const next = vi.spyOn(player, 'next').mockReturnValue(track);
+
+		render(PlayerTransport);
+
+		(
+			page.getByRole('button', { name: m.player_previous() }).element() as HTMLButtonElement
+		).click();
+		(
+			page.getByRole('button', { name: m.player_play_track() }).element() as HTMLButtonElement
+		).click();
+		(page.getByRole('button', { name: m.player_next() }).element() as HTMLButtonElement).click();
+
+		expect(previous).toHaveBeenCalledOnce();
+		expect(togglePlayPause).toHaveBeenCalledOnce();
+		expect(next).toHaveBeenCalledOnce();
+	});
+
+	it('skips to the queued song when Next is pressed', async () => {
+		player.currentTrack = track;
+		player.queue = [createQueueEntry({ ...track, id: 'queued-track', title: 'Queued Track' })];
+
+		render(PlayerTransport);
+		(page.getByRole('button', { name: m.player_next() }).element() as HTMLButtonElement).click();
+
+		expect(player.currentTrack?.id).toBe('queued-track');
+		expect(player.queue).toHaveLength(0);
+		expect(player.history.map((item) => item.id)).toContain(track.id);
+	});
+
+	it('cycles repeat mode through all, one, and off from the transport', async () => {
+		render(PlayerTransport);
+		const repeat = page.getByRole('button', { name: m.player_repeat() });
+
+		(repeat.element() as HTMLButtonElement).click();
+		expect(player.repeatMode).toBe('all');
+		(page.getByRole('button', { name: m.player_repeat() }).element() as HTMLButtonElement).click();
+		expect(player.repeatMode).toBe('one');
+		(page.getByRole('button', { name: m.player_repeat() }).element() as HTMLButtonElement).click();
+		expect(player.repeatMode).toBe('off');
 	});
 });

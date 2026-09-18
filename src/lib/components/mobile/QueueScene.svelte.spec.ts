@@ -20,6 +20,7 @@ const entry = (id: string, title: string) => createQueueEntry(mk(id, title));
 beforeEach(() => {
 	player.queue = [];
 	player.currentTrack = null;
+	player.history = [];
 });
 
 describe('QueueScene.svelte', () => {

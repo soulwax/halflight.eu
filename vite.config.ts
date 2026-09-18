@@ -54,20 +54,11 @@ export default defineConfig({
 			requireAssertions: true
 		},
 		/*
-		 * Two of the three projects (`client` and `storybook`) each drive their own
-		 * headless Chromium pool. Left to the default worker count they open one
-		 * browser per core *each*, and the pair starve one another badly enough
-		 * that interaction tests — a click that waits on a portal to mount, a
-		 * transport button, a queue row — miss the 15s timeout. Which ones lose the
-		 * race varies per run, which is exactly how it reads as flakiness rather
-		 * than as a resource ceiling. Each project alone is green at any width; it
-		 * is only the pair that oversubscribes. Bounding the pool fixes the whole
-		 * class. Vitest does not inherit the root worker ceiling into every
-		 * project, so the browser limits live with their respective project
-		 * definitions below: two Chromium workers for components and one for
-		 * Storybook. The explicit project order prevents those separate pools from
-		 * competing with one another. The root limit still keeps node-only work
-		 * bounded.
+		 * The browser projects drive their own Chromium pools. Browser specs stub
+		 * global APIs such as fetch, Audio and timers, so the client project runs
+		 * serially; that keeps one spec's playback mock from changing another
+		 * spec's metadata requests. Storybook remains separately bounded. The root
+		 * limit keeps node-only work bounded.
 		 */
 		maxWorkers: 3,
 		projects: [
@@ -75,7 +66,10 @@ export default defineConfig({
 				extends: './vite.config.ts',
 				test: {
 					name: 'client',
-					maxWorkers: 2,
+					// Browser specs replace process-wide browser APIs such as fetch,
+					// Audio and timers. Run them in one worker so a playback mock or
+					// fake clock cannot leak into a concurrently executing component.
+					maxWorkers: 1,
 					sequence: { groupOrder: 1 },
 					browser: {
 						enabled: true,

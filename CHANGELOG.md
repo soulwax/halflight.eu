@@ -7,8 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-18
+
 ### Added
 
+- Browser-level coverage now exercises player transport actions, duplicate queue occurrences, queue
+  playback and reordering, and the TIDAL playlist import modal's selection and POST flow.
 - Unplayable TIDAL tracks are now tracked and hidden. A track is checked lazily — only when an
   actual play attempt fails with "asset not ready for playback" — and the result is cached in a
   new `track_playability` table, never via a proactive library sweep. Every track listing on both
@@ -131,6 +135,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Player timeline clocks and volume tracks now use explicit centered geometry. Volume hydration no
+  longer resets a locally chosen level to the server's 100% default, and returning below headroom
+  restores the native audio level after a Web Audio gain graph has been used.
 - Every theme's "beyond colour" identity — radius, shadow, motion, heading typography — silently
   fell back to Dark's values everywhere, regardless of which theme was active. `layout.css` had the
   shared, un-themed defaults declared _after_ the four theme blocks; since `:root` and

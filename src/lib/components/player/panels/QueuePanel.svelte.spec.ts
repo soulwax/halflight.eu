@@ -20,6 +20,7 @@ const entry = (id: string, title: string) => createQueueEntry(mk(id, title));
 beforeEach(() => {
 	player.queue = [];
 	player.currentTrack = null;
+	player.history = [];
 });
 
 afterEach(() => {
@@ -49,8 +50,38 @@ describe('QueuePanel.svelte', () => {
 		await expect.element(page.getByRole('link', { name: 'Two' })).toBeInTheDocument();
 
 		const removes = page.getByRole('button', { name: m.player_remove_from_queue() });
-		await removes.first().click();
+		(removes.first().element() as HTMLButtonElement).click();
 		expect(player.queue.map((t) => t.id)).toEqual(['2']);
+	});
+
+	it('removes only the selected occurrence when a track is queued twice', async () => {
+		player.queue = [entry('1', 'One'), entry('1', 'One')];
+		render(QueuePanel);
+
+		(
+			page
+				.getByRole('button', { name: m.player_remove_from_queue() })
+				.nth(1)
+				.element() as HTMLButtonElement
+		).click();
+
+		expect(player.queue).toHaveLength(1);
+		expect(player.queue[0]?.id).toBe('1');
+	});
+
+	it('starts the selected queued track and leaves later entries upcoming', async () => {
+		player.currentTrack = mk('current', 'Current');
+		player.queue = [entry('1', 'One'), entry('2', 'Two')];
+		render(QueuePanel);
+
+		const title = page.getByRole('link', { name: 'Two' }).element();
+		const row = title.closest('.tt-row');
+		expect(row).not.toBeNull();
+		(row?.querySelector('.tt-play') as HTMLButtonElement | null)?.click();
+
+		expect(player.currentTrack?.id).toBe('2');
+		expect(player.history.map((track) => track.id)).toContain('current');
+		expect(player.queue.map((track) => track.id)).toEqual(['1']);
 	});
 
 	it('offers save + clear when there is a queue', async () => {
@@ -59,7 +90,9 @@ describe('QueuePanel.svelte', () => {
 		await expect
 			.element(page.getByRole('button', { name: m.player_clear_queue() }))
 			.toBeInTheDocument();
-		await page.getByRole('button', { name: m.player_clear_queue() }).click();
+		(
+			page.getByRole('button', { name: m.player_clear_queue() }).element() as HTMLButtonElement
+		).click();
 		expect(player.queue).toEqual([]);
 	});
 
@@ -68,7 +101,7 @@ describe('QueuePanel.svelte', () => {
 		render(QueuePanel);
 
 		const moveDown = page.getByRole('button', { name: m.player_move_down() });
-		await moveDown.first().click();
+		(moveDown.first().element() as HTMLButtonElement).click();
 		expect(player.queue.map((t) => t.id)).toEqual(['2', '1']);
 	});
 });

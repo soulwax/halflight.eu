@@ -155,6 +155,10 @@ export class PlayerState {
 	private audioContext: AudioContext | null = null;
 	private mediaSourceNode: MediaElementAudioSourceNode | null = null;
 	private gainNode: GainNode | null = null;
+	/** Invalidates stream work started for a track that is no longer current. */
+	private streamLoadGeneration = 0;
+	/** A local player adjustment must survive shell data hydration. */
+	private hasLocalVolumePreference = false;
 	private hasRestoredPlaybackState = false;
 	/** True while `currentTrack`/`queue`/`history` reflect only the optimistic
 	 *  local cache, so the real restore below knows it is safe to overwrite
@@ -380,6 +384,7 @@ export class PlayerState {
 				const max = this.isHeadroomEnabled ? 1.25 : 1;
 				this.volume = Math.max(0, Math.min(max, p.volume));
 				this.isMuted = this.volume === 0;
+				this.hasLocalVolumePreference = true;
 			}
 		} catch {
 			// Corrupt prefs are not worth surfacing.
@@ -686,6 +691,7 @@ export class PlayerState {
 	 * position, quality, codecs, lyrics or embed state on screen.
 	 */
 	private switchToTrack(track: TrackSummary): void {
+		this.streamLoadGeneration += 1;
 		// A direct track choice is a deliberate session change, so subsequent
 		// persistence may use its local current-track/history fields again.
 		this.reconciliationBase = null;
@@ -1042,14 +1048,20 @@ export class PlayerState {
 	private applyVolume(): void {
 		if (!this.audio) return;
 
-		// Mobile devices and standard playback use native <audio> volume directly.
+		let effVol = this.volume;
+		if (this.isNormalizationEnabled && this.trackReplayGain != null) {
+			// Convert ReplayGain dB to linear multiplier: 10^(dB/20)
+			const multiplier = Math.pow(10, this.trackReplayGain / 20);
+			effVol = Math.max(0, this.volume * multiplier);
+		}
+
+		// Mobile devices and ordinary playback use native <audio> volume directly.
 		// Connecting Web Audio via createMediaElementSource causes iOS WebKit to
 		// classify playback as ambient Web Audio, which iOS suspends when the screen
-		// locks or apps switch. Keep the audio element 100% native on mobile.
-		const allowWebAudio = !this.isMobilePlayback() && this.isHeadroomEnabled && this.volume > 1.0;
-		if (allowWebAudio) {
-			this.ensureAudioGraph();
-		}
+		// locks or apps switch. Headroom is also needed when ReplayGain pushes the
+		// effective level above the native 0..1 range.
+		const allowWebAudio = !this.isMobilePlayback() && this.isHeadroomEnabled && effVol > 1.0;
+		if (allowWebAudio) this.ensureAudioGraph();
 
 		if (this.isMuted) {
 			if (this.gainNode && this.audioContext) {
@@ -1062,19 +1074,15 @@ export class PlayerState {
 			return;
 		}
 
-		let effVol = this.volume;
-		if (this.isNormalizationEnabled && this.trackReplayGain != null) {
-			// Convert ReplayGain dB to linear multiplier: 10^(dB/20)
-			const multiplier = Math.pow(10, this.trackReplayGain / 20);
-			effVol = Math.max(0, this.volume * multiplier);
-		}
-
 		if (this.gainNode && this.audioContext) {
-			this.audio.volume = 1;
+			// A graph can have been created for a previous >100% value. When the
+			// user comes back below headroom, restore native volume instead of
+			// leaving the element looking (and sounding) fixed at 100%.
+			this.audio.volume = allowWebAudio ? 1 : Math.min(1, effVol);
 			this.audio.muted = false;
 			const time = this.audioContext.currentTime;
 			this.gainNode.gain.cancelScheduledValues(time);
-			this.gainNode.gain.setTargetAtTime(effVol, time, 0.015);
+			this.gainNode.gain.setTargetAtTime(allowWebAudio ? effVol : 1, time, 0.015);
 		} else {
 			this.audio.volume = Math.max(0, Math.min(1, effVol));
 			this.audio.muted = false;
@@ -1082,6 +1090,10 @@ export class PlayerState {
 	}
 
 	private async loadAndPlayStream(trackId: string): Promise<void> {
+		const generation = this.streamLoadGeneration;
+		const isCurrentLoad = () =>
+			generation === this.streamLoadGeneration && this.currentTrack?.id === trackId;
+
 		this.initAudio();
 		this.resumeAudioContext();
 		const startAt = this.currentTime;
@@ -1117,6 +1129,10 @@ export class PlayerState {
 			}
 		}
 
+		// A skip or close may have happened while the stream request was pending.
+		// Never let the old response replace the new track's source or state.
+		if (!isCurrentLoad()) return;
+
 		if (data && this.audio) {
 			// Store metadata
 			this.streamUrl = `/api/tracks/${encodeURIComponent(trackId)}/audio`;
@@ -1142,8 +1158,9 @@ export class PlayerState {
 			}
 			this.applyVolume();
 			await this.audio.play().catch(() => {
-				this.playbackMode = 'embed';
+				if (isCurrentLoad()) this.playbackMode = 'embed';
 			});
+			if (!isCurrentLoad()) return;
 			this.isPlaying = !this.audio.paused;
 			this.isLoading = false;
 
@@ -1154,6 +1171,7 @@ export class PlayerState {
 			return;
 		}
 
+		if (!isCurrentLoad()) return;
 		// Direct playback unavailable — hand off to the TIDAL embed player
 		this.playbackMode = 'embed';
 		this.isPlaying = false;
@@ -1235,6 +1253,7 @@ export class PlayerState {
 		const clamped = Math.max(0, Math.min(vol, max));
 		this.volume = Number(clamped.toFixed(2));
 		this.isMuted = this.volume === 0;
+		this.hasLocalVolumePreference = true;
 		this.applyVolume();
 		this.savePrefs();
 	}
@@ -1252,10 +1271,12 @@ export class PlayerState {
 		this.savePrefs();
 	}
 
-	/** Apply server-persisted listening preferences whenever the app shell loads. */
+	/** Apply server defaults without clobbering a locally adjusted player volume. */
 	applyStreamingSettings(settings: { volume: number; loudnessNormalization: boolean }): void {
-		this.volume = Math.max(0, Math.min(this.maxVolume, settings.volume / 100));
-		this.isMuted = this.volume === 0;
+		if (!this.hasLocalVolumePreference) {
+			this.volume = Math.max(0, Math.min(this.maxVolume, settings.volume / 100));
+			this.isMuted = this.volume === 0;
+		}
 		this.isNormalizationEnabled = settings.loudnessNormalization;
 		this.applyVolume();
 	}
@@ -1409,6 +1430,7 @@ export class PlayerState {
 	}
 
 	close(): void {
+		this.streamLoadGeneration += 1;
 		if (this.audio) {
 			this.audio.pause();
 			this.audio.src = '';

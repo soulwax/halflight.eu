@@ -216,6 +216,12 @@ describe('PlayerState', () => {
 		expect(player.isHeadroomEnabled).toBe(true);
 		expect(player.volume).toBe(1.2);
 		expect(player.volumePercent).toBe(120);
+
+		// Shell hydration also carries the server default. It must not undo the
+		// volume the owner already chose in the player.
+		player.applyStreamingSettings({ volume: 100, loudnessNormalization: false });
+		expect(player.volume).toBe(1.2);
+		expect(player.isNormalizationEnabled).toBe(false);
 	});
 
 	it('toggles mute state independently', () => {
@@ -872,6 +878,9 @@ describe('PlayerState', () => {
 		expect(attempts).toBe(2);
 		await vi.advanceTimersByTimeAsync(3000); // second backoff
 		expect(attempts).toBe(3);
+		// The final timer starts the request; flush its response/body microtasks
+		// before checking the enriched reactive player state.
+		await vi.advanceTimersByTimeAsync(0);
 
 		expect(player.currentTrack?.title).toBe('Bela Lugosi Is Dead');
 	});
@@ -1345,5 +1354,32 @@ describe('PlayerState', () => {
 		player.setVolume(0.8);
 		expect(internal.gainNode).toBeNull();
 		expect(internal.audio.volume).toBe(0.8);
+	});
+
+	it('restores native volume after a desktop headroom graph is no longer needed', () => {
+		const player = new PlayerState();
+		const cancelScheduledValues = vi.fn();
+		const setTargetAtTime = vi.fn();
+		const internal = player as unknown as {
+			audio: HTMLAudioElement;
+			audioContext: AudioContext;
+			gainNode: GainNode;
+		};
+
+		internal.audio = {
+			volume: 1,
+			muted: false,
+			play: vi.fn(),
+			pause: vi.fn()
+		} as unknown as HTMLAudioElement;
+		internal.audioContext = { currentTime: 0 } as AudioContext;
+		internal.gainNode = {
+			gain: { cancelScheduledValues, setTargetAtTime }
+		} as unknown as GainNode;
+
+		player.setVolume(0.5);
+
+		expect(internal.audio.volume).toBe(0.5);
+		expect(setTargetAtTime).toHaveBeenCalledWith(1, 0, 0.015);
 	});
 });
