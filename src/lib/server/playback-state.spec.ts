@@ -79,12 +79,33 @@ describe('playback state', () => {
 	it('rejects a malformed current track but not the whole request', () => {
 		expect(
 			parsePlaybackState({
-				currentTrack: { ...track, artists: [] },
+				currentTrack: { ...track, artists: 'not-an-array' },
 				queue: [],
 				history: [],
 				currentTime: 0
 			})
 		).toBeNull();
+	});
+
+	it('accepts artist-less legacy tracks in a queue replacement', () => {
+		const legacyTrack = { ...track, artists: [] };
+		const intent = parsePlaybackIntent({
+			version: 2,
+			expectedRevision: 4,
+			operationId: 'operation-legacy-playlist',
+			origin: 'listening-room',
+			intent: {
+				type: 'queue.replace',
+				entries: [{ ...legacyTrack, entryId: 'entry-legacy-track' }]
+			}
+		});
+
+		expect(intent).toMatchObject({
+			intent: {
+				type: 'queue.replace',
+				entries: [expect.objectContaining({ id: track.id, artists: [] })]
+			}
+		});
 	});
 
 	it('drops unparseable queue entries and caps oversized lists instead of rejecting', () => {

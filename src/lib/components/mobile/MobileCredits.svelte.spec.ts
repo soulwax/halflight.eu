@@ -1,11 +1,15 @@
 import { page } from 'vitest/browser';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import MobileCredits from './MobileCredits.svelte';
 import { player } from '#lib/player/player.svelte.js';
 import { m } from '#lib/paraglide/messages.js';
 
 afterEach(() => {
+	player.currentTrack = null;
+});
+
+beforeEach(() => {
 	player.currentTrack = null;
 });
 

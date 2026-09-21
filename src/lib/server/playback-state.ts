@@ -196,7 +196,10 @@ export function parsePlaybackTrack(value: unknown): TrackSummary | null {
 		.map(parseArtist)
 		.filter((artist): artist is ArtistReference => Boolean(artist))
 		.slice(0, 20);
-	if (artists.length === 0) return null;
+	// `TrackSummary` deliberately permits an empty artist list. Older imported
+	// playlists can contain otherwise playable tracks without credited artist
+	// metadata, and rejecting one of those entries rejects an entire atomic
+	// queue replacement before it reaches the persistence layer.
 
 	const album = parseAlbum(track.album);
 	const duration = optionalInteger(track.duration, MAX_POSITION_SECONDS);

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-09-21
+
+### Fixed
+
+- Playing a legacy or imported playlist no longer fails to save its queue when a playable track
+  has no credited artist metadata. The queue protocol now accepts the `TrackSummary` form already
+  supported by the player, instead of rejecting the entire playlist replacement.
+
 ## [0.3.0] - 2026-09-21
 
 ### Fixed
