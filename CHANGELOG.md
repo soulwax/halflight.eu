@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-09-21
+
+### Changed
+
+- Mobile navigation now follows a focused priority pattern: a keyboard-accessible hamburger
+  opens the complete navigation sheet, while Search and Library remain immediate Lucide actions
+  in the persistent header. Home, Now Playing, and Settings remain one tap away in the sheet.
+
 ## [0.3.4] - 2026-09-21
 
 ### Changed

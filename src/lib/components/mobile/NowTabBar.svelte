@@ -1,15 +1,13 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { Disc, Home, Library, Search } from '@lucide/svelte';
+	import { Library, Search } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 
 	let { currentPath }: { currentPath: string } = $props();
 
 	const tabs = $derived([
-		{ href: resolve('/(mobile)/home'), label: m.now_tab_home(), icon: Home },
 		{ href: resolve('/(mobile)/search'), label: m.now_tab_search(), icon: Search },
-		{ href: resolve('/(mobile)/library'), label: m.now_tab_library(), icon: Library },
-		{ href: resolve('/(mobile)/now'), label: m.now_tab_now(), icon: Disc }
+		{ href: resolve('/(mobile)/library'), label: m.now_tab_library(), icon: Library }
 	]);
 </script>
 

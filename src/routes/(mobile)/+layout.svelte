@@ -4,11 +4,11 @@
 	import { onNavigate } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { Settings } from '@lucide/svelte';
 	import { SvelteMap } from 'svelte/reactivity';
 	import { player } from '#lib/player/player.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import MiniPlayer from '#lib/components/mobile/MiniPlayer.svelte';
+	import MobileNavigationMenu from '#lib/components/mobile/MobileNavigationMenu.svelte';
 	import NowTabBar from '#lib/components/mobile/NowTabBar.svelte';
 	import {
 		managesMobileScroll,
@@ -88,14 +88,11 @@
 <div class="mobile-shell flex min-h-dvh flex-col bg-(--surface-canvas) text-(--text-primary)">
 	{#if !isFullNowPlaying}
 		<header class="mobile-app-header flex shrink-0 items-center gap-1">
-			<NowTabBar currentPath={page.url.pathname} />
-			<a
-				href={resolve('/(mobile)/settings')}
-				class="mobile-header-action flex h-12 w-12 items-center justify-center text-(--text-muted) hover:text-(--text-primary) focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-(--focus-ring)"
-				aria-label={m.mobile_settings_title()}
-			>
-				<Settings size={20} aria-hidden="true" />
+			<MobileNavigationMenu currentPath={page.url.pathname} />
+			<a class="mobile-brand" href={resolve('/(mobile)/home')} aria-label={m.brand_name()}>
+				<span>{m.brand_name()}</span>
 			</a>
+			<NowTabBar currentPath={page.url.pathname} />
 		</header>
 	{/if}
 	<main
@@ -133,9 +130,21 @@
 		padding-inline: 0.4rem;
 	}
 
-	.mobile-header-action {
+	.mobile-brand {
 		flex: none;
-		border-radius: var(--radius-full);
+		min-width: 0;
+		padding-inline: 0.35rem;
+		color: var(--text-primary);
+		font-size: 1rem;
+		font-weight: 700;
+		letter-spacing: -0.03em;
+		text-decoration: none;
+		text-transform: lowercase;
+	}
+
+	.mobile-brand:focus-visible {
+		outline: 2px solid var(--focus-ring);
+		outline-offset: 2px;
 	}
 
 	.mobile-scroll-region {

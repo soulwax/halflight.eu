@@ -5,35 +5,27 @@ import NowTabBar from './NowTabBar.svelte';
 import { m } from '#lib/paraglide/messages.js';
 
 describe('NowTabBar.svelte', () => {
-	it('exposes Home, Search, Library, and Now Playing destinations', async () => {
+	it('keeps Search and Library as the one-tap mobile destinations', async () => {
 		render(NowTabBar, { currentPath: '/home' });
 
-		const home = page.getByRole('link', { name: m.now_tab_home() });
 		const search = page.getByRole('link', { name: m.now_tab_search() });
 		const library = page.getByRole('link', { name: m.now_tab_library() });
-		const now = page.getByRole('link', { name: m.now_tab_now() });
-		await expect.element(home).toBeInTheDocument();
 		await expect.element(search).toBeInTheDocument();
 		await expect.element(library).toBeInTheDocument();
-		await expect.element(now).toBeInTheDocument();
-		expect(home.element().textContent).toBe('');
 		expect(search.element().textContent).toBe('');
 		expect(library.element().textContent).toBe('');
-		expect(now.element().textContent).toBe('');
-		expect(home.element().getAttribute('href')).toBe('/home');
 		expect(search.element().getAttribute('href')).toBe('/search');
 		expect(library.element().getAttribute('href')).toBe('/library');
-		expect(now.element().getAttribute('href')).toBe('/now');
 	});
 
 	it('marks the active tab with aria-current', async () => {
-		render(NowTabBar, { currentPath: '/now' });
+		render(NowTabBar, { currentPath: '/library' });
 
 		expect(
-			page.getByRole('link', { name: m.now_tab_now() }).element().getAttribute('aria-current')
+			page.getByRole('link', { name: m.now_tab_library() }).element().getAttribute('aria-current')
 		).toBe('page');
 		expect(
-			page.getByRole('link', { name: m.now_tab_home() }).element().getAttribute('aria-current')
+			page.getByRole('link', { name: m.now_tab_search() }).element().getAttribute('aria-current')
 		).toBeNull();
 	});
 });
