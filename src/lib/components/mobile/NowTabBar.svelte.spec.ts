@@ -16,6 +16,10 @@ describe('NowTabBar.svelte', () => {
 		await expect.element(search).toBeInTheDocument();
 		await expect.element(library).toBeInTheDocument();
 		await expect.element(now).toBeInTheDocument();
+		expect(home.element().textContent).toBe('');
+		expect(search.element().textContent).toBe('');
+		expect(library.element().textContent).toBe('');
+		expect(now.element().textContent).toBe('');
 		expect(home.element().getAttribute('href')).toBe('/home');
 		expect(search.element().getAttribute('href')).toBe('/search');
 		expect(library.element().getAttribute('href')).toBe('/library');

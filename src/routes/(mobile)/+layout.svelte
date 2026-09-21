@@ -87,10 +87,8 @@
 
 <div class="mobile-shell flex min-h-dvh flex-col bg-(--surface-canvas) text-(--text-primary)">
 	{#if !isFullNowPlaying}
-		<header class="mobile-app-header flex shrink-0 items-center justify-between">
-			<a class="mobile-brand" href={resolve('/(mobile)/home')} aria-label={m.brand_name()}>
-				<span>{m.brand_name()}</span>
-			</a>
+		<header class="mobile-app-header flex shrink-0 items-center gap-1">
+			<NowTabBar currentPath={page.url.pathname} />
 			<a
 				href={resolve('/(mobile)/settings')}
 				class="mobile-header-action flex h-12 w-12 items-center justify-center text-(--text-muted) hover:text-(--text-primary) focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-(--focus-ring)"
@@ -109,7 +107,6 @@
 	</main>
 	{#if !isFullNowPlaying}
 		<MiniPlayer />
-		<NowTabBar currentPath={page.url.pathname} />
 	{/if}
 </div>
 
@@ -133,24 +130,11 @@
 		background: color-mix(in oklab, var(--surface-raised) 84%, transparent);
 		backdrop-filter: blur(18px) saturate(1.35);
 		-webkit-backdrop-filter: blur(18px) saturate(1.35);
-		padding-right: 0.25rem;
-		padding-left: 1rem;
-	}
-
-	.mobile-brand {
-		display: flex;
-		align-items: center;
-		min-height: 3rem;
-		color: var(--text-primary);
-		font-size: 1rem;
-		font-weight: 700;
-		letter-spacing: -0.03em;
-		text-decoration: none;
-		text-transform: lowercase;
+		padding-inline: 0.4rem;
 	}
 
 	.mobile-header-action {
-		bottom: 0;
+		flex: none;
 		border-radius: var(--radius-full);
 	}
 

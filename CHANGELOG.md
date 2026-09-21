@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-09-21
+
+### Changed
+
+- Mobile primary navigation now lives in the persistent top header and uses compact Lucide icon
+  controls. Accessible names and tooltips preserve the Home, Search, Library, Now Playing, and
+  Settings destinations while leaving the bottom edge clear for the mini player.
+
 ## [0.3.3] - 2026-09-21
 
 ### Fixed
