@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The listening room's phone-width shell (`/app/**` below 64rem) drops the bottom tab bar, whose
+  labels overflowed and clipped ("Sign out" was unreadable). A hamburger in the header opens a
+  slide-in menu with an icon for every destination plus Administration (administrators), Settings,
+  and Sign out; Search and Library stay one tap away as header symbols and flag the current page.
+  This also restores navigation between 48rem and 64rem, where the old bar was hidden while the
+  side rail was not yet shown.
+
+### Fixed
+
+- The docked player keeps clear of the home indicator on notched phones now that the bottom bar
+  that carried the safe-area inset is gone.
+
 ## [0.3.5] - 2026-09-21
 
 ### Changed

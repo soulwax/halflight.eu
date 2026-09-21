@@ -57,7 +57,7 @@ describe('AppShell', () => {
 
 		const footerRegion = page.getByText('Room footer').element().parentElement;
 		expect(footerRegion?.classList.contains('app-shell-footer')).toBe(true);
-		expect(footerRegion?.querySelector('.mobile-listening-room-nav')).not.toBeNull();
+		expect(footerRegion?.querySelector('.mobile-listening-room-nav')).toBeNull();
 	});
 
 	it('does not consume the context column until its aside is explicitly opened', async () => {

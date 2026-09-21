@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import type { Snippet } from 'svelte';
-	import MobileNav from './MobileNav.svelte';
 	import SideNav from './SideNav.svelte';
 	import type { AppNavigationItem } from './navigation.js';
 
@@ -113,7 +112,6 @@
 		{#if player}<div class="app-shell-player">{@render player()}</div>{/if}
 		<div class="app-shell-footer">
 			{#if footer}{@render footer()}{/if}
-			<MobileNav {navigation} {currentPath} {navigationLabel} {signOutAction} {signOutLabel} />
 		</div>
 	</div>
 </div>
@@ -239,6 +237,9 @@
 			min-height: 0;
 			flex-direction: column;
 			background: var(--surface-raised);
+			/* The bottom bar used to carry this inset; with it gone the docked
+			   player would sit under the home indicator (viewport-fit=cover). */
+			padding-bottom: env(safe-area-inset-bottom);
 		}
 	}
 </style>

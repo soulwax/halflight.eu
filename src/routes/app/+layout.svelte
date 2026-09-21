@@ -57,7 +57,16 @@
 </script>
 
 {#snippet appHeader()}
-	<AppHeader user={data.user} showSearch={showHeaderSearch} />
+	<AppHeader
+		user={data.user}
+		showSearch={showHeaderSearch}
+		{navigation}
+		currentPath={page.url.pathname}
+		accountHref={localizeHref(resolve('/app/settings/tidal'))}
+		accountLabel={m.nav_settings()}
+		signOutAction={resolve('/logout')}
+		signOutLabel={m.sign_out()}
+	/>
 {/snippet}
 {#snippet playerRegion()}
 	<Player />
