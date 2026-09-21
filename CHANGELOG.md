@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-09-21
+
+### Fixed
+
+- Restoring a queue that contains recordings no longer exposed by TIDAL now recognises those
+  recordings as unavailable instead of misreporting them as retryable 502 errors and repeatedly
+  requesting their metadata. Initial restoration also bounds metadata lookups, keeping
+  `/app/library` responsive with large legacy queues.
+- Playback-state updates now serialize the active-device lease timestamp correctly inside their
+  conditional database update, fixing the server-side `Date` serialization error that prevented
+  otherwise valid queues from being saved.
+
 ## [0.3.2] - 2026-09-21
 
 ### Fixed

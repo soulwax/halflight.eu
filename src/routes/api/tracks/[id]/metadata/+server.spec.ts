@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { TidalApiError } from '#lib/server/tidal/errors';
 
 const mocks = vi.hoisted(() => ({
 	getConnectionStatus: vi.fn(),
@@ -92,5 +93,27 @@ describe('GET /api/tracks/[id]/metadata', () => {
 		expect(response.status).toBe(503);
 		expect(await response.json()).toEqual({ error: 'not_connected' });
 		expect(mocks.getTrack).not.toHaveBeenCalled();
+	});
+
+	it('marks an upstream missing recording as not found instead of a retryable outage', async () => {
+		mocks.getConnectionStatus.mockResolvedValue({ connected: true });
+		mocks.getTrack.mockRejectedValue(new TidalApiError(404, 'Not Found', null, '/tracks/track-1'));
+
+		const response = await GET(event());
+
+		expect(response.status).toBe(404);
+		expect(await response.json()).toEqual({ error: 'not_found' });
+	});
+
+	it('keeps genuine provider failures safely retryable', async () => {
+		mocks.getConnectionStatus.mockResolvedValue({ connected: true });
+		mocks.getTrack.mockRejectedValue(
+			new TidalApiError(503, 'Unavailable', null, '/tracks/track-1')
+		);
+
+		const response = await GET(event());
+
+		expect(response.status).toBe(502);
+		expect(await response.json()).toEqual({ error: 'metadata_unavailable' });
 	});
 });

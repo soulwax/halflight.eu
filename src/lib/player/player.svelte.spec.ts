@@ -887,6 +887,35 @@ describe('PlayerState', () => {
 		expect(player.history[0]?.artists).toEqual([{ id: 'artist-3', name: 'Joy Division' }]);
 	});
 
+	it('bounds restore-time metadata hydration for a legacy queue', async () => {
+		vi.useFakeTimers();
+		const fetchSpy = vi.fn((url: string) => {
+			if (!String(url).endsWith('/metadata')) return Promise.reject(new Error('offline'));
+			return Promise.resolve(new Response(JSON.stringify({ error: 'not_found' }), { status: 404 }));
+		});
+		vi.stubGlobal('fetch', fetchSpy);
+
+		const unresolved = (id: string): TrackSummary => ({
+			kind: 'track',
+			id,
+			title: id,
+			artists: [{ id: `artist-${id}`, name: `artist-${id}` }]
+		});
+		const player = new PlayerState();
+		player.restorePlaybackState({
+			currentTrack: null,
+			queue: Array.from(
+				{ length: 20 },
+				(_, index) => persistedQueue(unresolved(`track-${index}`))[0]!
+			),
+			history: Array.from({ length: 10 }, (_, index) => unresolved(`history-${index}`)),
+			currentTime: 0
+		});
+
+		await vi.advanceTimersByTimeAsync(0);
+		expect(metadataCallCount(fetchSpy)).toBe(8);
+	});
+
 	it('retries a transient hydration failure (a dropped connection, an upstream blip) and recovers', async () => {
 		vi.useFakeTimers();
 		let attempts = 0;

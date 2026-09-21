@@ -59,6 +59,9 @@ const QUEUE_CACHE_VERSION = 2;
  *  connection, an upstream blip) — a real 404 is never retried. */
 const MAX_METADATA_ATTEMPTS = 3;
 const METADATA_RETRY_BASE_MS = 1500;
+/** Restore only the next handful of unresolved entries; a 100-track legacy
+ * queue must not turn route load into a catalogue-wide metadata sweep. */
+const MAX_INITIAL_METADATA_HYDRATION = 8;
 
 function shuffled<T>(items: T[]): T[] {
 	const copy = [...items];
@@ -272,10 +275,10 @@ export class PlayerState {
 				this.currentTime = Math.max(0, Math.floor(state.currentTime));
 				this.duration = state.currentTrack?.duration ?? 0;
 				if (this.currentTrack) void this.resolveCover(this.currentTrack);
-				this.hydrateTrackMetadata([
-					...(this.currentTrack ? [this.currentTrack] : []),
-					...this.history
-				]);
+				this.hydrateTrackMetadata(
+					[...(this.currentTrack ? [this.currentTrack] : []), ...this.history],
+					MAX_INITIAL_METADATA_HYDRATION
+				);
 			},
 			onStatusChange: (status) => {
 				this.persistenceStatus = status;
@@ -933,7 +936,7 @@ export class PlayerState {
 		].filter((track) => needsTrackMetadata(track) && !this.metadataUnavailable.has(track.id));
 
 		for (const track of candidates) this.metadataAttempts.delete(track.id);
-		this.hydrateTrackMetadata(candidates);
+		this.hydrateTrackMetadata(candidates, Number.POSITIVE_INFINITY);
 	}
 
 	/**
@@ -941,13 +944,16 @@ export class PlayerState {
 	 * their display data in small batches so the queue and history become useful
 	 * without delaying playback or overwhelming the metadata endpoint.
 	 */
-	private hydrateTrackMetadata(tracks: Iterable<TrackSummary>): void {
+	private hydrateTrackMetadata(
+		tracks: Iterable<TrackSummary>,
+		limit = MAX_INITIAL_METADATA_HYDRATION
+	): void {
 		const unresolved = new SvelteMap<string, TrackSummary>();
 		for (const track of tracks) {
 			if (needsTrackMetadata(track)) unresolved.set(track.id, track);
 		}
 
-		const pending = [...unresolved.values()];
+		const pending = [...unresolved.values()].slice(0, limit);
 		void (async () => {
 			for (let start = 0; start < pending.length; start += 4) {
 				await Promise.all(
@@ -1535,11 +1541,10 @@ export class PlayerState {
 		}
 
 		if (this.currentTrack) void this.resolveCover(this.currentTrack);
-		this.hydrateTrackMetadata([
-			...(this.currentTrack ? [this.currentTrack] : []),
-			...this.queue,
-			...this.history
-		]);
+		this.hydrateTrackMetadata(
+			[...(this.currentTrack ? [this.currentTrack] : []), ...this.queue, ...this.history],
+			MAX_INITIAL_METADATA_HYDRATION
+		);
 	}
 
 	/**

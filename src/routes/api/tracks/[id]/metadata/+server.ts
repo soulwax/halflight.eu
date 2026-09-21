@@ -1,5 +1,6 @@
 import { error, json, type RequestHandler } from '@sveltejs/kit';
 import { getConnectionStatus, tidalApi } from '#lib/server/tidal';
+import { TidalApiError } from '#lib/server/tidal/errors';
 import { normaliseTrackDetail } from '#lib/server/tidal/normalise';
 
 /**
@@ -39,7 +40,13 @@ export const GET: RequestHandler = async (event) => {
 			},
 			{ headers: { 'cache-control': 'private, no-store' } }
 		);
-	} catch {
+	} catch (cause) {
+		// Old imported queues can contain recordings that TIDAL no longer exposes.
+		// Surface that durable condition as a 404 so the client marks the entry as
+		// unavailable instead of retrying it on every app-shell restore.
+		if (cause instanceof TidalApiError && cause.status === 404) {
+			return json({ error: 'not_found' }, { status: 404 });
+		}
 		return json({ error: 'metadata_unavailable' }, { status: 502 });
 	}
 };

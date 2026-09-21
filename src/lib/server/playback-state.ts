@@ -539,6 +539,11 @@ export const dbPlaybackStateStore: PlaybackStateStore = {
 	},
 	async write(userId, state, expectedRevision, origin, deviceId) {
 		const leaseExpiresAt = new Date(Date.now() + PLAYBACK_DEVICE_LEASE_MS);
+		// Drizzle can encode a Date assigned to a timestamp column, but this value
+		// is interpolated into a raw SQL CASE expression below. postgres-js then
+		// receives the Date as an untyped parameter and tries to Buffer.from() it.
+		// Pass a PostgreSQL-compatible timestamp literal instead.
+		const leaseExpiresAtSql = leaseExpiresAt.toISOString();
 		const writingDeviceId = deviceId ?? '';
 		const values = {
 			currentTrackJson: state.currentTrack ? JSON.stringify(state.currentTrack) : null,
@@ -567,7 +572,7 @@ export const dbPlaybackStateStore: PlaybackStateStore = {
 					currentTrackJson: sql`case when ${preserveActivePlayback} then ${playbackState.currentTrackJson} else ${values.currentTrackJson} end`,
 					historyJson: sql`case when ${preserveActivePlayback} then ${playbackState.historyJson} else ${values.historyJson} end`,
 					currentTime: sql`case when ${preserveActivePlayback} then ${playbackState.currentTime} else ${values.currentTime} end`,
-					activeDeviceExpiresAt: sql`case when ${playbackState.activeDeviceId} = ${writingDeviceId} then ${leaseExpiresAt} else ${playbackState.activeDeviceExpiresAt} end`,
+					activeDeviceExpiresAt: sql`case when ${playbackState.activeDeviceId} = ${writingDeviceId} then ${leaseExpiresAtSql} else ${playbackState.activeDeviceExpiresAt} end`,
 					revision: sql`${playbackState.revision} + 1`
 				},
 				setWhere: sql`${playbackState.revision} = ${expectedRevision}`
