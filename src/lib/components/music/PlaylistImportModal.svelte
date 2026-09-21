@@ -21,6 +21,7 @@
 	let isImporting = $state(false);
 	let errorMessage = $state<string | null>(null);
 	let successMessage = $state<string | null>(null);
+	let failedPlaylistIds = $state<string[]>([]);
 
 	$effect(() => {
 		if (customPlaylists.isImportOpen) {
@@ -31,6 +32,7 @@
 			selectedIds.clear();
 			errorMessage = null;
 			successMessage = null;
+			failedPlaylistIds = [];
 		}
 	});
 
@@ -79,6 +81,7 @@
 		isImporting = true;
 		errorMessage = null;
 		successMessage = null;
+		failedPlaylistIds = [];
 
 		try {
 			const res = await fetch('/api/playlists/import', {
@@ -98,16 +101,22 @@
 				totalTracksReplaced: number;
 				streamValidation: 'deferred';
 				error?: 'invalid_playlist_selection';
+				imported?: Array<{ tidalPlaylistId: string; status: string }>;
 			};
 			if (data.error === 'invalid_playlist_selection') {
 				errorMessage = m.playlist_import_selection_invalid();
 				return;
 			}
 
-			const importSummary = `${m.playlist_import_done()} (${data.totalImported})`;
-			successMessage = data.totalErrors
-				? `${importSummary} ${m.playlist_import_some_failed({ count: data.totalErrors })}`
-				: `${importSummary} ${m.playlist_import_source_preserved()}`;
+			const failures = (data.imported ?? []).filter((result) => result.status === 'error');
+			failedPlaylistIds = failures.map((result) => result.tidalPlaylistId);
+			const failedTitles = playlists
+				.filter((playlist) => failedPlaylistIds.includes(playlist.id))
+				.map((playlist) => playlist.title);
+
+			successMessage = data.totalImported
+				? `${m.playlist_import_done()} (${data.totalImported}) ${m.playlist_import_source_preserved()}`
+				: null;
 
 			// Refresh client-side custom playlist store
 			await customPlaylists.syncWithServer();
@@ -116,7 +125,9 @@
 			await loadPlaylists();
 			selectedIds.clear();
 			if (data.totalErrors > 0) {
-				errorMessage = m.playlist_import_some_failed({ count: data.totalErrors });
+				errorMessage = failedTitles.length
+					? m.playlist_import_failed_playlists({ titles: failedTitles.join(', ') })
+					: m.playlist_import_some_failed({ count: data.totalErrors });
 				return;
 			}
 

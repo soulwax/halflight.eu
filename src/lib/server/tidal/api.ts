@@ -222,10 +222,10 @@ export function getPlaylistItems(
 ): Promise<Document<Resource[]>> {
 	return tidalJson(
 		`/playlists/${encodeURIComponent(id)}/relationships/items${qs({
-			// This endpoint's primary data is already the playlist's tracks. Its
-			// direct resource includes are therefore rooted at the tracks, unlike
-			// `GET /playlists/:id`, which starts at the playlist document.
-			include: ['items', ...(opts.include ?? [])],
+			// Despite returning track linkage as its primary data, TIDAL requires
+			// related metadata to remain rooted below the playlist's `items`
+			// relationship. A flat `artists,albums` include returns HTTP 400.
+			include: playlistIncludes(opts.include),
 			'page[cursor]': opts.cursor,
 			countryCode: opts.countryCode
 		})}`,

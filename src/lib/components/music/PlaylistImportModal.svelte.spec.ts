@@ -119,4 +119,34 @@ describe('PlaylistImportModal.svelte', () => {
 			.element(page.getByRole('button', { name: `${m.playlist_import()} (0)` }))
 			.toBeDisabled();
 	});
+
+	it('names the playlists that TIDAL could not import', async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(jsonResponse({ playlists }))
+			.mockResolvedValueOnce(
+				jsonResponse({
+					totalImported: 0,
+					totalErrors: 1,
+					totalTracksSkipped: 0,
+					totalTracksReplaced: 0,
+					streamValidation: 'deferred',
+					imported: [{ tidalPlaylistId: 'remote-1', status: 'error' }]
+				})
+			)
+			.mockResolvedValueOnce(jsonResponse({ playlists }));
+		vi.stubGlobal('fetch', fetchMock);
+		vi.spyOn(customPlaylists, 'syncWithServer').mockResolvedValue(undefined);
+
+		render(PlaylistImportModal);
+		await expect.element(page.getByText('Night Drive')).toBeInTheDocument();
+		(page.getByRole('checkbox').nth(0).element() as HTMLInputElement).click();
+		const importButton = page.getByRole('button', { name: `${m.playlist_import()} (1)` });
+		await expect.element(importButton).toBeEnabled();
+		(importButton.element() as HTMLButtonElement).click();
+
+		await expect
+			.element(page.getByText(m.playlist_import_failed_playlists({ titles: 'Night Drive' })))
+			.toBeInTheDocument();
+	});
 });

@@ -8,6 +8,8 @@ import {
 	updatePlaylist as updatePlaylistRemote
 } from '#lib/server/tidal/api';
 import { normalisePlaylistDetail } from '#lib/server/tidal/normalise';
+import { TidalApiError } from '#lib/server/tidal/errors';
+import { log } from '#lib/server/log';
 import type { TokenRowStore } from '#lib/server/tidal/store';
 import type { PlaylistDetail } from '#lib/tidal/models';
 import type { Cookies } from '@sveltejs/kit';
@@ -160,9 +162,14 @@ export async function pullPlaylist(tidalPlaylistId: string, ctx: SyncContext): P
 			result.status = 'created';
 			result.tracksAdded = detail.items.length;
 		}
-	} catch {
+	} catch (cause) {
 		// Provider errors may include request paths or raw response details. Keep
-		// those server-side and give the owner an actionable, stable result.
+		// those server-side, but preserve a safe diagnostic category for support.
+		log.warn('TIDAL playlist import failed', {
+			tidalPlaylistId,
+			cause: cause instanceof Error ? cause.name : 'UnknownError',
+			...(cause instanceof TidalApiError ? { upstreamStatus: cause.status } : {})
+		});
 		result.error = 'Unable to import this playlist from TIDAL. Please try again.';
 	}
 

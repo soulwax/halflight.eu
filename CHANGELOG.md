@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-09-21
+
+### Fixed
+
+- TIDAL playlist imports now request paginated track metadata through TIDAL's required nested
+  include path. This fixes the provider's HTTP 400 response for otherwise valid playlists with
+  more than the initial page of tracks.
+- The import dialog now names playlists that TIDAL could not import, while server diagnostics log
+  a safe failure category and upstream status without exposing provider payloads to the browser.
+
 ## [0.3.1] - 2026-09-21
 
 ### Fixed

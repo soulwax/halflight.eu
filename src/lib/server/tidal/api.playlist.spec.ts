@@ -205,7 +205,7 @@ describe('TIDAL playlist API wrappers', () => {
 		expect(tidalJson).toHaveBeenCalledTimes(3);
 		expect(tidalJson).toHaveBeenNthCalledWith(
 			2,
-			'/playlists/p1/relationships/items?include=items%2Cartists%2Calbums',
+			'/playlists/p1/relationships/items?include=items%2Citems.artists%2Citems.albums',
 			{},
 			undefined
 		);
