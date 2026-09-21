@@ -8,7 +8,7 @@ import {
 	updatePlaybackState,
 	updatePositionState
 } from './media-session.js';
-import { type QueueCommand } from './playback-reconciliation.js';
+import { rebaseQueue, type QueueCommand } from './playback-reconciliation.js';
 import {
 	createQueueEntries,
 	createQueueEntry,
@@ -49,13 +49,12 @@ const MAX_HISTORY_LENGTH = 50;
 const PREFS_KEY = 'syn:player:prefs';
 const PLAYBACK_DEVICE_KEY = 'syn:player:device-id';
 /**
- * Optimistic, instant-paint-only mirror of the server-authoritative queue.
- * Never the source of truth: `restorePlaybackState` always overwrites it with
- * the server's snapshot once that arrives, so a stale or cross-device-edited
- * cache never sticks around longer than the time before that response lands.
+ * Optimistic, instant-paint mirror of the server-authoritative session plus a
+ * durable journal of local queue operations. The snapshot is always replaced
+ * by the server; only unacknowledged operations are rebased onto it.
  */
 const QUEUE_CACHE_KEY = 'syn:player:queue-cache';
-const QUEUE_CACHE_VERSION = 1;
+const QUEUE_CACHE_VERSION = 2;
 /** Bounded retry for a transient metadata-hydration failure (a dropped
  *  connection, an upstream blip) — a real 404 is never retried. */
 const MAX_METADATA_ATTEMPTS = 3;
@@ -80,6 +79,37 @@ function needsTrackMetadata(track: TrackSummary): boolean {
 		track.album.title === track.album.id ||
 		!track.album.releaseDate
 	);
+}
+
+function isCachedQueueEntry(value: unknown): value is QueueEntry {
+	return isTrackSummary(value) && isQueueEntryId((value as QueueEntry).entryId);
+}
+
+/** Validate the locally stored intent journal before it can reach the server. */
+function isCachedQueueCommand(value: unknown): value is QueueCommand {
+	if (!value || typeof value !== 'object') return false;
+	const command = value as Record<string, unknown>;
+	if (command.operationId !== undefined && !isQueueEntryId(command.operationId)) return false;
+
+	switch (command.type) {
+		case 'append':
+		case 'replace':
+			return Array.isArray(command.entries) && command.entries.every(isCachedQueueEntry);
+		case 'prepend':
+			return isCachedQueueEntry(command.entry);
+		case 'remove':
+			return isQueueEntryId(command.entryId);
+		case 'move':
+			return (
+				isQueueEntryId(command.entryId) &&
+				(command.beforeEntryId === undefined || isQueueEntryId(command.beforeEntryId)) &&
+				(command.afterEntryId === undefined || isQueueEntryId(command.afterEntryId))
+			);
+		case 'clear':
+			return true;
+		default:
+			return false;
+	}
 }
 
 export class PlayerState {
@@ -176,7 +206,7 @@ export class PlayerState {
 		return this.coordinator.queueCommands;
 	}
 	set queueCommands(commands: QueueCommand[]) {
-		this.coordinator.queueCommands = commands;
+		this.coordinator.restoreQueueCommands(commands);
 	}
 	get reconciliationBase(): SavedPlaybackState | null {
 		return this.coordinator.reconciliationBase;
@@ -218,6 +248,7 @@ export class PlayerState {
 	/** A confirmed 404 — retrying can only waste a request the track will never satisfy. */
 	private metadataUnavailable = new SvelteSet<string>();
 	private deviceId: string | null = null;
+	private persistenceLifecycleInstalled = false;
 
 	constructor() {
 		this.coordinator = new PlaybackSessionCoordinator({
@@ -233,6 +264,7 @@ export class PlayerState {
 			}),
 			onApplyQueue: (queue) => {
 				this.queue = queue;
+				this.writeLocalQueueCache();
 			},
 			onApplySession: (state) => {
 				this.currentTrack = state.currentTrack;
@@ -254,6 +286,9 @@ export class PlayerState {
 			onHydrateMetadata: (tracks) => {
 				this.hydrateTrackMetadata(tracks);
 			},
+			onQueueCommandsChange: () => {
+				this.writeLocalQueueCache();
+			},
 			canPersist: () => !isBrowser || this.hasRestoredPlaybackState,
 			maxQueueLength: MAX_QUEUE_LENGTH,
 			maxHistoryLength: MAX_HISTORY_LENGTH,
@@ -266,6 +301,16 @@ export class PlayerState {
 			this.initAudio();
 			this.setupMediaSession();
 		}
+	}
+
+	private installPersistenceLifecycle(): void {
+		if (this.persistenceLifecycleInstalled) return;
+		this.persistenceLifecycleInstalled = true;
+		const flush = () => this.flushPersistence();
+		window.addEventListener('pagehide', flush);
+		document.addEventListener('visibilitychange', () => {
+			if (document.visibilityState === 'hidden') flush();
+		});
 	}
 
 	private setupMediaSession(): void {
@@ -415,7 +460,8 @@ export class PlayerState {
 	 * the same shape checks the server itself uses (`isTrackSummary`,
 	 * `isQueueEntryId`) — this is untrusted data as far as the app is
 	 * concerned, just like anything else read back out of browser storage.
-	 * `restorePlaybackState` always supersedes whatever this seeds.
+	 * `restorePlaybackState` supersedes the snapshot, then rebases any durable
+	 * unsent queue operations onto the authoritative queue.
 	 */
 	private loadLocalQueueCache(): void {
 		try {
@@ -427,8 +473,9 @@ export class PlayerState {
 				queue?: unknown;
 				history?: unknown;
 				currentTime?: unknown;
+				queueCommands?: unknown;
 			};
-			if (parsed.version !== QUEUE_CACHE_VERSION) return;
+			if (parsed.version !== 1 && parsed.version !== QUEUE_CACHE_VERSION) return;
 
 			const currentTrack = isTrackSummary(parsed.currentTrack) ? parsed.currentTrack : null;
 			const queue = Array.isArray(parsed.queue)
@@ -442,11 +489,16 @@ export class PlayerState {
 			const history = Array.isArray(parsed.history)
 				? parsed.history.filter(isTrackSummary).slice(-MAX_HISTORY_LENGTH)
 				: [];
-			if (!currentTrack && queue.length === 0 && history.length === 0) return;
+			const queueCommands = Array.isArray(parsed.queueCommands)
+				? parsed.queueCommands.filter(isCachedQueueCommand)
+				: [];
+			if (!currentTrack && queue.length === 0 && history.length === 0 && queueCommands.length === 0)
+				return;
 
 			this.currentTrack = currentTrack;
 			this.queue = queue;
 			this.history = history;
+			this.coordinator.restoreQueueCommands(queueCommands);
 			if (typeof parsed.currentTime === 'number' && Number.isFinite(parsed.currentTime)) {
 				this.currentTime = Math.max(0, Math.floor(parsed.currentTime));
 				this.duration = currentTrack?.duration ?? 0;
@@ -462,7 +514,12 @@ export class PlayerState {
 	private writeLocalQueueCache(): void {
 		if (!isBrowser) return;
 		try {
-			if (!this.currentTrack && this.queue.length === 0 && this.history.length === 0) {
+			if (
+				!this.currentTrack &&
+				this.queue.length === 0 &&
+				this.history.length === 0 &&
+				this.queueCommands.length === 0
+			) {
 				localStorage.removeItem(QUEUE_CACHE_KEY);
 				return;
 			}
@@ -473,7 +530,8 @@ export class PlayerState {
 					currentTrack: this.currentTrack,
 					queue: this.queue,
 					history: this.history,
-					currentTime: this.currentTime
+					currentTime: this.currentTime,
+					queueCommands: this.queueCommands
 				})
 			);
 		} catch {
@@ -1293,27 +1351,24 @@ export class PlayerState {
 	addToQueue(track: TrackSummary, provenance?: string): void {
 		const queuedTrack = createQueueEntry(this.withProvenance(track, provenance));
 		this.queue.push(queuedTrack);
-		this.queueCommands.push({ type: 'append', entries: [queuedTrack] });
+		this.coordinator.recordCommand({ type: 'append', entries: [queuedTrack] });
 		if (this.queue.length === 1) {
 			streamPreloader.preload(queuedTrack.id);
 		}
-		this.schedulePersistence();
 	}
 
 	/** Insert a track directly after the current one without interrupting playback. */
 	playNext(track: TrackSummary, provenance?: string): void {
 		const queuedTrack = createQueueEntry(this.withProvenance(track, provenance));
 		this.queue.unshift(queuedTrack);
-		this.queueCommands.push({ type: 'prepend', entry: queuedTrack });
+		this.coordinator.recordCommand({ type: 'prepend', entry: queuedTrack });
 		streamPreloader.preload(queuedTrack.id);
-		this.schedulePersistence();
 	}
 
 	addMultipleToQueue(tracks: TrackSummary[]): void {
 		const entries = createQueueEntries(tracks);
 		this.queue.push(...entries);
-		this.queueCommands.push({ type: 'append', entries });
-		this.schedulePersistence();
+		this.coordinator.recordCommand({ type: 'append', entries });
 	}
 
 	/** Remove one queue occurrence by its stable entry identity. */
@@ -1321,15 +1376,13 @@ export class PlayerState {
 		const index = this.queue.findIndex((entry) => entry.entryId === entryId);
 		if (index === -1) return;
 		this.queue.splice(index, 1);
-		this.queueCommands.push({ type: 'remove', entryId });
-		this.schedulePersistence();
+		this.coordinator.recordCommand({ type: 'remove', entryId });
 	}
 
 	clearQueue(): void {
 		if (this.queue.length === 0) return;
 		this.queue = [];
-		this.queueCommands.push({ type: 'clear' });
-		this.schedulePersistence();
+		this.coordinator.recordCommand({ type: 'clear' });
 	}
 
 	/** Move one queue occurrence up (`-1`) or down (`1`) by stable identity. */
@@ -1341,7 +1394,7 @@ export class PlayerState {
 		[this.queue[index], this.queue[target]] = [this.queue[target], this.queue[index]];
 		const moved = this.queue[target];
 		if (moved) {
-			this.queueCommands.push({
+			this.coordinator.recordCommand({
 				type: 'move',
 				entryId: moved.entryId,
 				...(direction === -1 && this.queue[target + 1]
@@ -1352,7 +1405,6 @@ export class PlayerState {
 					: {})
 			});
 		}
-		this.schedulePersistence();
 	}
 
 	/**
@@ -1471,11 +1523,16 @@ export class PlayerState {
 		this.currentTime = Math.max(0, Math.floor(state.currentTime));
 		this.playbackStateRevision = Math.max(0, state.revision ?? 0);
 		this.applyActiveDevice(state);
-		this.queueCommands = [];
+		const pendingQueueCommands = this.queueCommands.slice();
 		this.reconciliationBase = null;
 		this.reconciliationAttempts = 0;
 		this.lastPersistedPosition = this.currentTime;
 		this.duration = state.currentTrack?.duration || 0;
+
+		if (pendingQueueCommands.length > 0) {
+			this.queue = rebaseQueue(this.queue, pendingQueueCommands, MAX_QUEUE_LENGTH);
+			this.schedulePersistence();
+		}
 
 		if (this.currentTrack) void this.resolveCover(this.currentTrack);
 		this.hydrateTrackMetadata([
@@ -1498,6 +1555,7 @@ export class PlayerState {
 	/** Start bounded, visibility-aware session refreshes for an app shell. */
 	startSessionSync(): void {
 		if (!isBrowser) return;
+		this.installPersistenceLifecycle();
 		this.coordinator.startSessionSync();
 	}
 
@@ -1530,6 +1588,12 @@ export class PlayerState {
 	schedulePersistence(): void {
 		this.writeLocalQueueCache();
 		this.coordinator.schedulePersistence();
+	}
+
+	/** Persist the current queue intent before a route or document lifecycle boundary. */
+	flushPersistence(): void {
+		this.writeLocalQueueCache();
+		this.coordinator.flushPersistence();
 	}
 
 	private async persistPlaybackState(): Promise<void> {

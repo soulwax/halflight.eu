@@ -27,6 +27,16 @@ describe('rebaseQueue', () => {
 		expect(rebased.map((entry) => entry.id)).toEqual(['b', 'a']);
 	});
 
+	it('does not briefly duplicate an append already accepted before a restart', () => {
+		const rebased = rebaseQueue(
+			[queue[1]!, queue[0]!],
+			[{ type: 'append', entries: [queue[0]!] }],
+			100
+		);
+
+		expect(rebased.map((entry) => entry.entryId)).toEqual(['entry-2', 'entry-1']);
+	});
+
 	it('reapplies remove and anchored move commands to the returned queue', () => {
 		const rebased = rebaseQueue(
 			queue,

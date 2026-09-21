@@ -57,5 +57,13 @@ export default defineConfig(
 			'@typescript-eslint/no-explicit-any': 'off',
 			'@typescript-eslint/consistent-type-imports': 'off'
 		}
+	},
+	{
+		// PM2 loads its process definition through CommonJS, where require is the
+		// native module mechanism rather than a legacy import style.
+		files: ['ecosystem.config.cjs'],
+		rules: {
+			'@typescript-eslint/no-require-imports': 'off'
+		}
 	}
 );

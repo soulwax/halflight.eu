@@ -38,11 +38,15 @@ export function rebaseQueue(
 
 	for (const command of commands) {
 		switch (command.type) {
-			case 'append':
-				queue.push(...command.entries);
+			case 'append': {
+				const entryIds = new Set(queue.map((entry) => entry.entryId));
+				queue.push(...command.entries.filter((entry) => !entryIds.has(entry.entryId)));
 				break;
+			}
 			case 'prepend':
-				queue.unshift(command.entry);
+				if (!queue.some((entry) => entry.entryId === command.entry.entryId)) {
+					queue.unshift(command.entry);
+				}
 				break;
 			case 'remove':
 				removeByEntryId(queue, command.entryId);

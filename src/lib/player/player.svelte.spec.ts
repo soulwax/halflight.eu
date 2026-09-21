@@ -381,6 +381,60 @@ describe('PlayerState', () => {
 		expect(player.currentTime).toBe(99);
 	});
 
+	it('rebases a locally journaled queue edit onto the server state after a restart', () => {
+		const localEntry = { ...sampleTrack2, entryId: 'local-entry' };
+		const remoteEntry = { ...sampleTrack3, entryId: 'remote-entry' };
+		localStorage.setItem(
+			QUEUE_CACHE_KEY,
+			JSON.stringify({
+				version: 2,
+				currentTrack: sampleTrack1,
+				queue: [localEntry],
+				history: [],
+				currentTime: 12,
+				queueCommands: [
+					{
+						type: 'append',
+						entries: [localEntry],
+						operationId: 'operation_restart_append'
+					}
+				]
+			})
+		);
+
+		const player = new PlayerState();
+		player.restorePlaybackState({
+			currentTrack: sampleTrack1,
+			queue: [remoteEntry],
+			history: [],
+			currentTime: 7,
+			revision: 4
+		});
+
+		expect(player.queue.map((entry) => entry.id)).toEqual(['track-3', 'track-2']);
+		expect(player.queueCommands).toEqual([
+			expect.objectContaining({ operationId: 'operation_restart_append' })
+		]);
+	});
+
+	it('retains every valid unsent queue command from the local journal', () => {
+		const commands = Array.from({ length: 101 }, () => ({ type: 'clear' as const }));
+		localStorage.setItem(
+			QUEUE_CACHE_KEY,
+			JSON.stringify({
+				version: 2,
+				currentTrack: null,
+				queue: [],
+				history: [],
+				queueCommands: commands
+			})
+		);
+
+		const player = new PlayerState();
+
+		expect(player.queueCommands).toHaveLength(101);
+	});
+
 	it('ignores a queue cache with an unrecognised version', () => {
 		localStorage.setItem(
 			QUEUE_CACHE_KEY,
@@ -404,11 +458,12 @@ describe('PlayerState', () => {
 		player.schedulePersistence();
 
 		const cached = JSON.parse(localStorage.getItem(QUEUE_CACHE_KEY) ?? 'null');
+		expect(cached.version).toBe(2);
 		expect(cached.currentTrack).toEqual(sampleTrack1);
 		expect(cached.history).toEqual([sampleTrack3]);
 	});
 
-	it('clears the local queue cache once the player is closed', () => {
+	it('keeps a durable clear command in the local queue cache until it is acknowledged', () => {
 		const player = new PlayerState();
 		player.restorePlaybackState({
 			currentTrack: sampleTrack1,
@@ -421,7 +476,8 @@ describe('PlayerState', () => {
 
 		player.close();
 
-		expect(localStorage.getItem(QUEUE_CACHE_KEY)).toBeNull();
+		const cached = JSON.parse(localStorage.getItem(QUEUE_CACHE_KEY) ?? 'null');
+		expect(cached.queueCommands).toEqual([{ type: 'replace', entries: [] }]);
 	});
 
 	it('keeps a restored remote session passive until this device explicitly takes playback', async () => {

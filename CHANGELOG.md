@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-21
+
+### Fixed
+
+- Queue edits are now journaled locally with their idempotent operation IDs before dispatch, so a
+  reload, offline period, page lifecycle boundary, or SPA navigation cannot silently drop an
+  add, remove, move, clear, or reorder. On the next authenticated session restore, the server
+  snapshot remains authoritative and only unacknowledged queue edits are replayed against it.
+  Already accepted entries are recognised by their stable queue-entry IDs and never duplicate.
+- Desktop and mobile SPA shell transitions now flush pending session persistence while leaving the
+  mounted player and active audio intact. Returning from Halflight Now to the Listening Room also
+  restores desktop origin attribution for subsequent session writes.
+
 ## [0.2.0] - 2026-09-18
 
 ### Added

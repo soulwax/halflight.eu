@@ -30,7 +30,10 @@
 		player.restorePlaybackState(data.playbackState);
 	});
 
-	onMount(() => player.startSessionSync());
+	onMount(() => {
+		player.startSessionSync();
+		return () => player.flushPersistence();
+	});
 
 	// "The mini player grows into Now Playing" (MASTERPLAN.md). Scoped to this
 	// layout so it only ever wraps mobile-to-mobile navigations — `/app/**`
@@ -38,6 +41,7 @@
 	// which the shared global CSS rule (layout.css) cannot reach because the
 	// View Transitions API isn't a `transition-duration`.
 	onNavigate((navigation) => {
+		player.flushPersistence();
 		const routeNavigation = {
 			from: navigation.from?.url ?? null,
 			to: navigation.to?.url ?? null,

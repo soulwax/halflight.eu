@@ -6,6 +6,7 @@
 	import QueuePanel from '#lib/components/player/panels/QueuePanel.svelte';
 	import Player from '#lib/components/player/Player.svelte';
 	import { m } from '#lib/paraglide/messages.js';
+	import { onNavigate } from '$app/navigation';
 	import { deLocalizeHref, localizeHref } from '#lib/paraglide/runtime';
 	import { player } from '#lib/player/player.svelte.js';
 	import { resolve } from '$app/paths';
@@ -38,11 +39,21 @@
 	const showHeaderSearch = $derived(deLocalizeHref(page.url.pathname) !== '/app/search');
 
 	$effect(() => {
+		// The player singleton also serves Halflight Now; reset attribution when
+		// SPA navigation returns to the desktop listening room.
+		player.origin = 'listening-room';
 		player.applyStreamingSettings(data.streamingSettings);
 		player.restorePlaybackState(data.playbackState);
 	});
 
-	onMount(() => player.startSessionSync());
+	onMount(() => {
+		player.startSessionSync();
+		return () => player.flushPersistence();
+	});
+
+	// A route can replace this layout tree before the normal debounce expires.
+	// Persisting the journal here keeps navigation transparent to the session.
+	onNavigate(() => player.flushPersistence());
 </script>
 
 {#snippet appHeader()}

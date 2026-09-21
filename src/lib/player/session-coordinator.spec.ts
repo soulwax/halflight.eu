@@ -7,6 +7,7 @@ import {
 } from './session-coordinator.js';
 import type { TrackSummary } from '#lib/tidal/models.js';
 import type { QueueEntry } from './queue-entry.js';
+import type { QueueCommand } from './playback-reconciliation.js';
 
 const sampleTrack1: TrackSummary = {
 	kind: 'track',
@@ -66,7 +67,10 @@ describe('PlaybackSessionCoordinator', () => {
 
 	function createCoordinator(
 		fetchMock: typeof fetch,
-		options: { canPersist?: () => boolean } = {}
+		options: {
+			canPersist?: () => boolean;
+			onQueueCommandsChange?: (commands: readonly QueueCommand[]) => void;
+		} = {}
 	) {
 		return new PlaybackSessionCoordinator({
 			origin: 'listening-room',
@@ -89,6 +93,7 @@ describe('PlaybackSessionCoordinator', () => {
 			onHydrateMetadata: (t) => {
 				hydratedTracks = t;
 			},
+			onQueueCommandsChange: options.onQueueCommandsChange,
 			canPersist: options.canPersist
 		});
 	}
@@ -138,6 +143,65 @@ describe('PlaybackSessionCoordinator', () => {
 		});
 		expect(coordinator.revision).toBe(2);
 		expect(coordinator.queueCommands).toHaveLength(0);
+	});
+
+	it('writes a durable command journal before dispatch and clears it after acknowledgement', async () => {
+		const journals: Array<readonly QueueCommand[]> = [];
+		const fetchMock = vi.fn(async (url: string | URL | Request) => {
+			if (String(url) === '/api/playback-state/intents') {
+				return new Response(
+					JSON.stringify({
+						currentTrack: null,
+						queue: [makeEntry(sampleTrack1, 'entry-1')],
+						history: [],
+						currentTime: 0,
+						revision: 1
+					}),
+					{ status: 200 }
+				);
+			}
+			return new Response(JSON.stringify({ revision: 2 }), { status: 200 });
+		}) as typeof fetch;
+
+		const coordinator = createCoordinator(fetchMock, {
+			onQueueCommandsChange: (commands) =>
+				journals.push(commands.map((command) => ({ ...command })))
+		});
+		coordinator.recordCommand({
+			type: 'append',
+			entries: [makeEntry(sampleTrack1, 'entry-1')]
+		});
+
+		await vi.waitFor(() => expect(coordinator.status).toBe('saved'));
+		expect(journals.some(([command]) => Boolean(command?.operationId))).toBe(true);
+		expect(journals.at(-1)).toEqual([]);
+	});
+
+	it('flushes a debounced queue write immediately at a navigation boundary', async () => {
+		const fetchMock = vi.fn(async (url: string | URL | Request) => {
+			if (String(url) === '/api/playback-state/intents') {
+				return new Response(
+					JSON.stringify({
+						currentTrack: null,
+						queue: [makeEntry(sampleTrack1, 'entry-1')],
+						history: [],
+						currentTime: 0,
+						revision: 1
+					}),
+					{ status: 200 }
+				);
+			}
+			return new Response(JSON.stringify({ revision: 2 }), { status: 200 });
+		});
+		const coordinator = createCoordinator(fetchMock as typeof fetch);
+		coordinator.recordCommand({
+			type: 'append',
+			entries: [makeEntry(sampleTrack1, 'entry-1')]
+		});
+
+		coordinator.flushPersistence();
+		await vi.waitFor(() => expect(coordinator.status).toBe('saved'));
+		expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/playback-state/intents');
 	});
 
 	it('rebases on a single 409 conflict and retries successfully', async () => {

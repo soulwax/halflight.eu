@@ -110,6 +110,7 @@ export interface SessionCoordinatorOptions {
 	onStatusChange?: (status: PlaybackPersistenceStatus) => void;
 	onActiveDeviceChange?: (device: PlaybackDeviceStatus | null) => void;
 	onHydrateMetadata?: (tracks: TrackSummary[]) => void;
+	onQueueCommandsChange?: (commands: readonly QueueCommand[]) => void;
 	canPersist?: () => boolean;
 	maxQueueLength?: number;
 	maxHistoryLength?: number;
@@ -136,6 +137,7 @@ export class PlaybackSessionCoordinator {
 	private readonly onStatusChangeFn?: SessionCoordinatorOptions['onStatusChange'];
 	private readonly onActiveDeviceChangeFn?: SessionCoordinatorOptions['onActiveDeviceChange'];
 	private readonly onHydrateMetadataFn?: SessionCoordinatorOptions['onHydrateMetadata'];
+	private readonly onQueueCommandsChangeFn?: SessionCoordinatorOptions['onQueueCommandsChange'];
 	private readonly canPersistFn?: () => boolean;
 	private readonly maxQueueLength: number;
 	private readonly maxHistoryLength: number;
@@ -164,6 +166,7 @@ export class PlaybackSessionCoordinator {
 	sessionSyncActive = false;
 	sessionSyncFailures = 0;
 	private sessionSyncTimer: ReturnType<typeof setTimeout> | undefined;
+	private sessionRefreshHandler: (() => void) | undefined;
 
 	playbackClaimPending = false;
 
@@ -180,6 +183,7 @@ export class PlaybackSessionCoordinator {
 		this.onStatusChangeFn = options.onStatusChange;
 		this.onActiveDeviceChangeFn = options.onActiveDeviceChange;
 		this.onHydrateMetadataFn = options.onHydrateMetadata;
+		this.onQueueCommandsChangeFn = options.onQueueCommandsChange;
 		this.canPersistFn = options.canPersist;
 		this.maxQueueLength = options.maxQueueLength ?? 100;
 		this.maxHistoryLength = options.maxHistoryLength ?? 50;
@@ -201,14 +205,25 @@ export class PlaybackSessionCoordinator {
 		this.setActiveDevice(state.activeDevice ?? null);
 	}
 
+	restoreQueueCommands(commands: QueueCommand[]): void {
+		this.queueCommands = commands.slice();
+		this.notifyQueueCommandsChanged();
+	}
+
+	private notifyQueueCommandsChanged(): void {
+		this.onQueueCommandsChangeFn?.(this.queueCommands);
+	}
+
 	recordCommand(command: QueueCommand): void {
 		this.queueCommands.push(command);
+		this.notifyQueueCommandsChanged();
 		this.claimPlaybackControlForIntent();
 		this.schedulePersistence();
 	}
 
 	recordQueueReplacement(queue: QueueEntry[]): void {
 		this.queueCommands = [{ type: 'replace', entries: queue.slice(0, this.maxQueueLength) }];
+		this.notifyQueueCommandsChanged();
 		this.claimPlaybackControlForIntent();
 		this.schedulePersistence();
 	}
@@ -228,6 +243,16 @@ export class PlaybackSessionCoordinator {
 			clearTimeout(this.persistenceTimer);
 			this.persistenceTimer = undefined;
 		}
+	}
+
+	/** Start an immediate, best-effort save at navigation and page-lifecycle boundaries. */
+	flushPersistence(): void {
+		if (this.persistenceTimer) {
+			clearTimeout(this.persistenceTimer);
+			this.persistenceTimer = undefined;
+		}
+		if (this.canPersistFn && !this.canPersistFn()) return;
+		void this.persistPlaybackState();
 	}
 
 	snapshotPlaybackState(): PlaybackPersistenceSnapshot {
@@ -251,6 +276,7 @@ export class PlaybackSessionCoordinator {
 					? crypto.randomUUID()
 					: Math.random().toString(36).slice(2);
 			command.operationId = `operation_${uuid}`;
+			this.notifyQueueCommandsChanged();
 		}
 		return command.operationId;
 	}
@@ -345,7 +371,10 @@ export class PlaybackSessionCoordinator {
 				// ground truth, and keep draining the rest of the buffer.
 				this.revision = state.revision;
 				this.applyActiveDevice(state);
-				if (this.queueCommands[0]?.operationId === operationId) this.queueCommands.shift();
+				if (this.queueCommands[0]?.operationId === operationId) {
+					this.queueCommands.shift();
+					this.notifyQueueCommandsChanged();
+				}
 				const rebased = rebaseQueue(state.queue, this.queueCommands, this.maxQueueLength);
 				this.onApplyQueueFn(rebased);
 				this.reconciliationBase = null;
@@ -361,7 +390,10 @@ export class PlaybackSessionCoordinator {
 
 			this.revision = state.revision;
 			this.applyActiveDevice(state);
-			if (this.queueCommands[0]?.operationId === operationId) this.queueCommands.shift();
+			if (this.queueCommands[0]?.operationId === operationId) {
+				this.queueCommands.shift();
+				this.notifyQueueCommandsChanged();
+			}
 			this.reconciliationBase = null;
 			this.reconciliationAttempts = 0;
 		}
@@ -431,6 +463,7 @@ export class PlaybackSessionCoordinator {
 			this.revision = state.revision;
 			this.applyActiveDevice(state);
 			this.queueCommands.splice(0, snapshot.queueCommands.length);
+			this.notifyQueueCommandsChanged();
 			this.reconciliationBase = null;
 			this.reconciliationAttempts = 0;
 			// A dropped command earlier in this cycle still needs to reach the
@@ -585,6 +618,7 @@ export class PlaybackSessionCoordinator {
 			if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
 			void this.syncPlaybackState().finally(() => this.scheduleSessionSync());
 		};
+		this.sessionRefreshHandler = refreshWhenVisible;
 
 		if (typeof document !== 'undefined') {
 			document.addEventListener('visibilitychange', refreshWhenVisible);
@@ -601,6 +635,16 @@ export class PlaybackSessionCoordinator {
 		if (this.sessionSyncTimer) {
 			clearTimeout(this.sessionSyncTimer);
 			this.sessionSyncTimer = undefined;
+		}
+		if (this.sessionRefreshHandler) {
+			if (typeof document !== 'undefined') {
+				document.removeEventListener('visibilitychange', this.sessionRefreshHandler);
+			}
+			if (typeof window !== 'undefined') {
+				window.removeEventListener('focus', this.sessionRefreshHandler);
+				window.removeEventListener('online', this.sessionRefreshHandler);
+			}
+			this.sessionRefreshHandler = undefined;
 		}
 	}
 
