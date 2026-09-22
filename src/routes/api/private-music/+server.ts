@@ -2,6 +2,7 @@ import { error, json, type RequestHandler } from '@sveltejs/kit';
 import { log } from '#lib/server/log';
 import {
 	dbPrivateMusicStore,
+	inspectPrivateMusicUpload,
 	PRIVATE_MUSIC_FORMATS,
 	MAX_PRIVATE_MUSIC_FILE_BYTES,
 	MAX_PRIVATE_MUSIC_TOTAL_BYTES,
@@ -49,25 +50,29 @@ export const POST: RequestHandler = async (event) => {
 	if (!upload.success) error(400, `Invalid private music upload: ${upload.reason}`);
 
 	const totalBytes = await dbPrivateMusicStore.totalBytes(userId);
-	if (totalBytes + upload.file.size > MAX_PRIVATE_MUSIC_TOTAL_BYTES) {
+	if (totalBytes + upload.upload.file.size > MAX_PRIVATE_MUSIC_TOTAL_BYTES) {
 		error(413, 'Private music storage limit reached');
 	}
+	let inspection;
+	try {
+		inspection = await inspectPrivateMusicUpload(upload.upload);
+	} catch (cause) {
+		log.warn('private music inspection failed', { cause });
+		error(503, 'Private music inspection is temporarily unavailable');
+	}
+	if (!inspection.success) error(400, `Invalid private music upload: ${inspection.reason}`);
 
 	const id = crypto.randomUUID();
 	const objectKey = `halflight-private-music/v1/${id}`;
 	try {
-		await privateMusicBucket.put(
-			objectKey,
-			new Uint8Array(await upload.file.arrayBuffer()),
-			upload.contentType
-		);
+		await privateMusicBucket.put(objectKey, inspection.bytes, inspection.contentType);
 		const stored = await dbPrivateMusicStore.create({
 			id,
 			userId,
 			objectKey,
-			fileName: upload.fileName,
-			contentType: upload.contentType,
-			sizeBytes: upload.file.size
+			fileName: upload.upload.fileName,
+			contentType: inspection.contentType,
+			sizeBytes: upload.upload.file.size
 		});
 		return json(
 			{

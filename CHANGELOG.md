@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Private-music uploads now inspect actual audio bytes through the new `syn.js` submodule before
+  storage. Malformed, renamed, and MIME-mislabeled files are rejected before a bucket write, while
+  the detected canonical media type is what Syn persists and serves.
 - The listening room's phone-width shell (`/app/**` below 64rem) drops the bottom tab bar, whose
   labels overflowed and clipped ("Sign out" was unreadable). A hamburger in the header opens a
   slide-in menu with an icon for every destination plus Administration (administrators), Settings,

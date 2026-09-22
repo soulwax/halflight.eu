@@ -45,8 +45,8 @@
 		"@storybook/addon-vitest": "^10.5.10",
 		"@storybook/sveltekit": "^10.5.10",
 		"@sveltejs/adapter-node": "6.0.0-next.10",
-		"@sveltejs/adapter-vercel": "next",
-		"@sveltejs/kit": "next",
+		"@sveltejs/adapter-vercel": "7.0.0-next.8",
+		"@sveltejs/kit": "3.0.0-next.25",
 		"@sveltejs/vite-plugin-svelte": "^7.1.2",
 		"@tailwindcss/forms": "^0.5.11",
 		"@tailwindcss/typography": "^0.5.19",
@@ -91,6 +91,7 @@
 		"bits-ui": "^2.19.0",
 		"nodemailer": "^9.1.1",
 		"redis": "^6.2.1",
+		"syn.js": "file:./syn.js",
 		"svelte-dnd-action": "^0.9.79",
 		"valibot": "^1.4.2",
 		"web-haptics": "^0.0.6"

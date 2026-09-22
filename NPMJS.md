@@ -286,6 +286,15 @@ The submodule is a development and release boundary, not Syn's production depend
 Published Syn builds should consume a pinned npm version and lockfile integrity; they must not
 depend on Git being available during deployment.
 
+### Current prerelease integration
+
+Phase B currently uses the checked `file:./syn.js` submodule dependency so the upload route can be
+verified before the first npm publication. The submodule commits its checked `dist/` output, and the
+root lockfile pins the Gitlink-visible package contents. A fresh checkout must initialize submodules
+before `pnpm install`. Before a production release, publish an immutable package version and replace
+the `file:` specifier with that npm version; do not leave deployment correctness dependent on an
+uninitialized Git submodule.
+
 ### Data ownership
 
 The package returns facts; Syn decides what to retain. A later Syn migration may add bounded,
@@ -352,6 +361,12 @@ parent repository records one submodule commit and `NPMJS.md` matches the implem
 - Add the package as a pinned dependency.
 - Analyze before bucket write, reject malformed/mismatched files, and store the detected MIME.
 - Preserve current quota and cleanup semantics.
+
+**Current status:** Syn now derives its format menu from `syn.js`, reads the upload bytes once after
+the quota check, validates container and audio properties with strict filename/MIME hints, and sends
+only the detected canonical MIME type to bucket and database writes. Generic
+`application/octet-stream` remains a permitted browser hint. Normalized title/artist/album metadata
+is intentionally not persisted yet; that is Phase C's explicit schema migration.
 
 **Gate:** all seven formats have route fixtures; renamed/corrupt files never reach the bucket;
 parser failures return safe 4xx errors while storage failures remain 5xx; no bytes or parser internals
