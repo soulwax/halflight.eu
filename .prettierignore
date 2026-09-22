@@ -9,6 +9,7 @@ bun.lockb
 /static/
 /drizzle/
 /external/
+/syn.js/
 
 # Generated (paraglide / inlang)
 /src/lib/paraglide/

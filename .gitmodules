@@ -1,0 +1,3 @@
+[submodule "syn.js"]
+	path = syn.js
+	url = https://github.com/soulwax/syn.js.git
