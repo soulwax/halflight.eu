@@ -50,8 +50,6 @@ library behavior remain Syn concerns.
 
 ### Later slices
 
-- A streaming/tokenizer entry point that can inspect large object-store uploads without a second
-  full in-memory copy.
 - An optional `syn.js/ffprobe` Node-only adapter that receives an executable path, invokes it with a
   fixed argument array, applies a timeout and output cap, and reports actual host capabilities.
 - Optional bounded loudness or waveform workers only after a concrete Syn product need and a
@@ -382,7 +380,10 @@ deleting a file removes the same owned state as before.
 
 ### Phase D — streaming and runtime capabilities
 
-- Prove a memory problem before adding stream inspection.
+- `syn.js` now exposes `analyzeWebStream` for bounded Web-stream analysis. It requires trusted
+  size metadata, reads until it has a 4 KiB detection prefix, and replays pulled chunks to the
+  parser instead of materializing a second full-file buffer. Wire it into Syn only after an
+  adapter-specific upload-flow memory measurement and cancellation test.
 - Add ffprobe only for a concrete unsupported technical-property or capability requirement.
 
 **Gate:** a 128 MiB upload stays within a measured memory ceiling; subprocess tests cover timeout,
