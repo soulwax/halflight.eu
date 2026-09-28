@@ -4,14 +4,14 @@ import {
 	type PlaybackAssessment as BaseAssessment,
 	type PlaybackAssessmentInput,
 	type PlaybackIssue
-} from 'syn.js/player';
+} from 'bragi-audio/player';
 
 export type {
 	PlaybackAssessmentInput,
 	PlaybackIssue,
 	PlaybackLengthVerdict,
 	PlaybackMode
-} from 'syn.js/player';
+} from 'bragi-audio/player';
 
 export interface PlaybackAssessment extends BaseAssessment {
 	/** Short localised line for the player, or `null` when `ok`. */

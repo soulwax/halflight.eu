@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { decodeAudio, encodeWav } from 'syn.js/audio';
+import { decodeAudio, encodeWav } from 'bragi-audio/audio';
 
-describe('syn.js native browser decoding', () => {
+describe('bragi-audio native browser decoding', () => {
 	it('decodes encoded WAV with the real browser decoder and preserves caller bytes', async () => {
 		const samples = new Float32Array([-1, -0.5, 0, 0.5, 1]);
 		const wav = encodeWav({ sampleRate: 48000, channels: [samples] }, { bitDepth: 24 });

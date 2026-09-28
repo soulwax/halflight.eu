@@ -1,6 +1,6 @@
 import { m } from '#lib/paraglide/messages.js';
 import type { TrackSummary } from '#lib/tidal/models.js';
-import { updateMediaMetadata as publishMetadata } from 'syn.js/player';
+import { updateMediaMetadata as publishMetadata } from 'bragi-audio/player';
 
 export {
 	setupMediaSessionHandlers,
@@ -8,7 +8,7 @@ export {
 	updatePlaybackState,
 	updatePositionState,
 	type MediaSessionHandlers
-} from 'syn.js/player';
+} from 'bragi-audio/player';
 
 /** Publish lock-screen / Now Playing metadata, or clear it with `null`. */
 export function updateMediaMetadata(track: TrackSummary | null): void {

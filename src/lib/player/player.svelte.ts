@@ -1,7 +1,7 @@
 import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 import type { TrackSummary } from '#lib/tidal/models.js';
 import { qualityTier, type QualityTier } from '#lib/format';
-import { AudioEngine, replayGainToLinear } from 'syn.js/player';
+import { AudioEngine, replayGainToLinear } from 'bragi-audio/player';
 import { assessPlayback, type PlaybackAssessment } from './playback-assessment.js';
 import {
 	setupMediaSessionHandlers,

@@ -1,1 +1,1 @@
-export { entityTag, matchesEntityTag, rangeIsUsable } from 'syn.js/delivery';
+export { entityTag, matchesEntityTag, rangeIsUsable } from 'bragi-audio/delivery';

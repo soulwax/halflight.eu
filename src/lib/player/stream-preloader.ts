@@ -1,4 +1,4 @@
-import { StreamLoader, StreamPreloader } from 'syn.js/player';
+import { StreamLoader, StreamPreloader } from 'bragi-audio/player';
 
 /** The client-safe body of `GET /api/tracks/[id]/stream`. */
 export interface PreloadedStreamData {

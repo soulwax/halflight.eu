@@ -19,7 +19,7 @@ Work the signal, not the source. Change the signal to confirm a cause.
 Player.svelte (thin) ─ components/player/*
         │ reads/drives
 player  ─ src/lib/player/player.svelte.ts   ← the $state singleton; its AudioEngine
-        │                                       (syn.js/player) owns the <audio> element
+        │                                       (bragi-audio/player) owns the <audio> element
         │ switchToTrack() resets ~20 fields, then loadAndPlayStream(trackId)
         │
         ├─ METADATA leg ── streamPreloader.consume(id)   ← cache hit SKIPS the fetch
@@ -89,14 +89,15 @@ Watch for the case where **no `/stream` request appears at all**: that is
 
 ## Traps that cost real time
 
-- **The `<audio>` element lives in the `syn.js` submodule, not in `src/`.**
-  `AudioEngine` (`syn.js/src/player/audio-engine.ts`) owns the element, the Web Audio
+- **The `<audio>` element lives in the `bragi-audio` submodule, not in `src/`.**
+  `AudioEngine` (`bragi-audio/src/player/audio-engine.ts`) owns the element, the Web Audio
   headroom stage, and volume application; `player.svelte.ts` only reacts to its events
-  (the `new AudioEngine({...})` field). Syn consumes the **built** `syn.js/dist/`, so an
-  edit under `syn.js/src/` does nothing until `pnpm build` in `syn.js/` and `pnpm install`
-  here. `queue-entry.ts`, `playback-reconciliation.ts`, `playback-assessment.ts`,
+  (the `new AudioEngine({...})` field). Syn consumes the **published** `bragi-audio` npm release.
+  Editing `bragi-audio/src/` affects the source submodule; build and publish a new package version,
+  then update Syn's dependency and lockfile to consume it. `queue-entry.ts`,
+  `playback-reconciliation.ts`, `playback-assessment.ts`,
   `stream-preloader.ts`, and `media-session.ts` are likewise thin Syn-typed wrappers over
-  `syn.js/player`.
+  `bragi-audio/player`.
 - **`streamPreloader` can serve stale metadata.** 5-minute TTL, 5 entries,
   `consume()` deletes on read. A track queued a moment ago may never re-hit `/stream`,
   so a `/stream` fix can look like it did nothing. Reload the page between attempts.

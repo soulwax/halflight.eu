@@ -315,8 +315,8 @@ function streamAndCache(
 	});
 }
 
-export { parseByteRange } from 'syn.js/delivery';
-import { parseByteRange } from 'syn.js/delivery';
+export { parseByteRange } from 'bragi-audio/delivery';
+import { parseByteRange } from 'bragi-audio/delivery';
 
 export interface StreamSegmentedOptions {
 	/** Cache key — track id + delivered quality, so a re-request reuses the buffer. */

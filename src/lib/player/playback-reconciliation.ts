@@ -1,5 +1,8 @@
 import type { TrackSummary } from '#lib/tidal/models.js';
-import { rebaseQueue as rebase, type QueueCommand as GenericQueueCommand } from 'syn.js/player';
+import {
+	rebaseQueue as rebase,
+	type QueueCommand as GenericQueueCommand
+} from 'bragi-audio/player';
 import type { QueueEntry } from './queue-entry.js';
 
 /**

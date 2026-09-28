@@ -17,6 +17,9 @@ importers:
       bits-ui:
         specifier: ^2.19.0
         version: 2.19.0(@internationalized/date@3.12.4)(@sveltejs/kit@3.0.0-next.25(@sveltejs/vite-plugin-svelte@7.3.0(svelte@5.57.0(@typescript-eslint/types@8.68.0))(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)))(svelte@5.57.0(@typescript-eslint/types@8.68.0))(typescript@6.0.3)(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)))(svelte@5.57.0(@typescript-eslint/types@8.68.0))
+      bragi-audio:
+        specifier: 0.2.1
+        version: 0.2.1(supports-color@7.2.0)
       nodemailer:
         specifier: ^9.1.1
         version: 9.1.1
@@ -26,9 +29,6 @@ importers:
       svelte-dnd-action:
         specifier: ^0.9.79
         version: 0.9.79(svelte@5.57.0(@typescript-eslint/types@8.68.0))
-      syn.js:
-        specifier: npm:bragi-audio@0.2.1
-        version: bragi-audio@0.2.1(supports-color@7.2.0)
       valibot:
         specifier: ^1.4.2
         version: 1.4.2(typescript@6.0.3)

@@ -5,17 +5,17 @@ import {
 	toDisplayTrack as stripEntry,
 	type QueueEntry as GenericQueueEntry,
 	type QueueEntryIdFactory
-} from 'syn.js/player';
+} from 'bragi-audio/player';
 
 /**
- * Syn's queue identity, from `syn.js/player`, fixed to the TIDAL display track.
+ * Syn's queue identity, from `bragi-audio/player`, fixed to the TIDAL display track.
  *
  * `id` identifies the TIDAL recording; `entryId` identifies one occurrence, so
  * the same recording can intentionally appear more than once.
  */
 export type QueueEntry = GenericQueueEntry<TrackSummary>;
 export type { QueueEntryIdFactory };
-export { isQueueEntryId, mintQueueEntryId } from 'syn.js/player';
+export { isQueueEntryId, mintQueueEntryId } from 'bragi-audio/player';
 
 export const createQueueEntry: (track: TrackSummary, entryId?: string) => QueueEntry = createEntry;
 
