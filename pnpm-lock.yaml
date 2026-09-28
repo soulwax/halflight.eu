@@ -18,8 +18,8 @@ importers:
         specifier: ^2.19.0
         version: 2.19.0(@internationalized/date@3.12.4)(@sveltejs/kit@3.0.0-next.25(@sveltejs/vite-plugin-svelte@7.3.0(svelte@5.57.0(@typescript-eslint/types@8.68.0))(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)))(svelte@5.57.0(@typescript-eslint/types@8.68.0))(typescript@6.0.3)(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)))(svelte@5.57.0(@typescript-eslint/types@8.68.0))
       bragi-audio:
-        specifier: 0.2.1
-        version: 0.2.1(supports-color@7.2.0)
+        specifier: 0.2.2
+        version: 0.2.2(supports-color@7.2.0)
       nodemailer:
         specifier: ^9.1.1
         version: 9.1.1
@@ -2240,8 +2240,8 @@ packages:
     resolution: {integrity: sha512-ScQ4IuvIEF1TMlP7Zt+vjJ//9zlPb2SDcxWxM3bk8s6t6GGdJ7KO1dCcTidOPJKePW30LE/2cT7wCyPho9/Wxg==}
     engines: {node: 20 || >=22}
 
-  bragi-audio@0.2.1:
-    resolution: {integrity: sha512-mGl5QEzXdZCU5UB5pBOHjjjyI/SZ3Jwh4QL3h8xbBCvpAer2Q1EL6l367f26cOkPwdoIlqK3wsYm0MJrviklpw==}
+  bragi-audio@0.2.2:
+    resolution: {integrity: sha512-ER/A8Onb4344AlmcscZF87vgHJvhFwQwVIsQ6A26m8QT+bm3dHYJA4P1+gYxVi3yhPnAHC1cgtFtpcpPNtxxcA==}
     engines: {node: '>=20.19'}
 
   browserslist@4.28.8:
@@ -5897,7 +5897,7 @@ snapshots:
     dependencies:
       balanced-match: 4.0.4
 
-  bragi-audio@0.2.1(supports-color@7.2.0):
+  bragi-audio@0.2.2(supports-color@7.2.0):
     dependencies:
       music-metadata: 11.15.0(supports-color@7.2.0)
     transitivePeerDependencies:

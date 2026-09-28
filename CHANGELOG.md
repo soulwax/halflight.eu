@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Rebrand the audio package source submodule, imports, configuration, tests, documentation, and
   GitHub links to `bragi-audio`; depend on the package directly.
-- Syn now consumes the published `bragi-audio@0.2.1` package directly,
+- Syn now consumes the published `bragi-audio@0.2.2` package directly,
   pinned in the lockfile instead of depending on a local submodule during deployment.
 - Stream metadata loading and validation now run through `bragi-audio/player` for both direct playback
   and look-ahead preloads. Skipping or closing playback cancels foreground stream requests and

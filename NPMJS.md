@@ -5,7 +5,7 @@
 Extract Syn's audio-file identification and metadata reading into the standalone
 [`soulwax/bragi-audio`](https://github.com/soulwax/bragi-audio) repository, mounted in this repository as the
 `./bragi-audio` Git submodule. The public npm package is
-[`bragi-audio`](https://www.npmjs.com/package/bragi-audio), released as `0.2.1`. Syn imports `bragi-audio` directly from the pinned registry release.
+[`bragi-audio`](https://www.npmjs.com/package/bragi-audio), released as `0.2.2`. Syn imports `bragi-audio` directly from the pinned registry release.
 
 The package must answer two different questions without conflating them:
 
@@ -288,7 +288,7 @@ depend on Git being available during deployment.
 
 ### Current release integration
 
-Syn installs `"bragi-audio": "0.2.1"`; the lockfile records the registry artifact and its
+Syn installs `"bragi-audio": "0.2.2"`; the lockfile records the registry artifact and its
 integrity. `bragi-audio`, `bragi-audio/player`, `bragi-audio/delivery`, and `bragi-audio/audio` imports resolve
 to that release. The source submodule remains available for package development, but deployment
 installation no longer requires its files or Git. Package changes need a new publication and an
@@ -340,7 +340,7 @@ downloadable because their object keys and stored bytes do not change.
 
 ### Implementation status — 2026-09-28
 
-Phases A and B are implemented. `bragi-audio@0.2.1` is published, with 100 passing package tests,
+Phases A and B are implemented. `bragi-audio@0.2.2` is published, with 100 passing package tests,
 strict TypeScript and ESLint checks, ESM/declaration builds, a tarball audit, and clean-consumer
 runtime/type checks. GitHub CI passes on Node 20, 22, and 24. Browser playback, bounded delivery,
 and PCM/WAV codecs are separate public entries. Phases C and D retain their separate migration

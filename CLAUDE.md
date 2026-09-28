@@ -187,7 +187,7 @@ downgrades), and the TIDAL embed fallback. The framework-agnostic parts (`AudioE
 identity and `rebaseQueue`, `assessPlayback`, `StreamPreloader`, Media Session helpers) live in
 the `bragi-audio` submodule's browser entry, `bragi-audio/player`; the matching `#lib/player/*` files are
 thin wrappers that fix the types to `TrackSummary` and supply Syn's copy (Paraglide), TIDAL
-quality ranks, and `/api` URLs. Syn consumes the pinned `bragi-audio@0.2.1` npm release directly.
+quality ranks, and `/api` URLs. Syn consumes the pinned `bragi-audio@0.2.2` npm release directly.
 The submodule is the package development boundary; changing it does not change Syn's installed release until the dependency and lockfile are updated. Persistence is delegated to
 `PlaybackSessionCoordinator` (`session-coordinator.ts`):
 
