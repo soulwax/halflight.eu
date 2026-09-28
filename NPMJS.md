@@ -4,8 +4,9 @@
 
 Extract Syn's audio-file identification and metadata reading into the standalone
 [`soulwax/syn.js`](https://github.com/soulwax/syn.js) repository, mounted in this repository as the
-`./syn.js` Git submodule. The published package name is intended to be `syn.js`; the name is
-currently unclaimed in the npm registry, but publishing remains a separate, explicit release step.
+`./syn.js` Git submodule. The public npm package is
+[`bragi-audio`](https://www.npmjs.com/package/bragi-audio), released as `0.2.1`. Syn keeps its existing
+`syn.js` imports through a pinned npm dependency alias; the GitHub repository name is unchanged.
 
 The package must answer two different questions without conflating them:
 
@@ -14,15 +15,16 @@ The package must answer two different questions without conflating them:
 2. **Can this deployment process it?** Report the formats handled by the built-in parser and, in a
    later optional Node adapter, the capabilities of a configured `ffprobe`/FFmpeg installation.
 
-The first release implements the first question. It does not decode, remux, transcode, upload,
-store, fetch, or play audio.
+The root metadata entry implements the first question. Version 0.2.1 adds independent browser
+playback, Web Fetch streaming/downloads, and explicit PCM/WAV encoding/decoding entries. Provider
+authentication, DRM, manifest resolution, remuxing and compressed audio encoding remain outside
+the package.
 
 ## Why this is a package boundary
 
-Syn currently keeps one format registry in `src/lib/server/private-music.ts`, but upload validation
-uses only browser MIME metadata and the filename suffix. The route then buffers the whole file,
-stores its declared canonical MIME type, and persists only filename, type, size, and creation time.
-This creates three avoidable problems:
+Before extraction, Syn kept its format registry in `src/lib/server/private-music.ts`, and upload
+validation trusted browser MIME metadata and filename suffixes. The route buffered the file and
+stored the declared MIME type. That created three problems the shared package boundary addresses:
 
 - renamed or malformed files can pass validation;
 - useful owner-owned tags such as title, artist, album, track number, duration, and codec are lost;
@@ -59,11 +61,12 @@ library behavior remain Syn concerns.
 
 ### Non-goals
 
-- No audio decoding, transcoding, remuxing, DRM handling, or codec implementation. Browser playback
-  is limited to driving a native `<audio>` element (see _Browser playback entry_ below).
+- No compressed audio encoding, remuxing or DRM handling. The separate `syn.js/audio` entry provides
+  bounded PCM/WAV codecs and delegates complete-file decoding to a supplied browser audio context.
 - No automatic subprocess discovery or bundled FFmpeg binary.
-- No network access, URL parser, remote artwork lookup, or metadata enrichment.
-- No S3, database, HTTP, UI, authentication, TIDAL, or Syn-specific object identifiers.
+- No network access from the metadata root; explicit Web Fetch streaming/download APIs live in
+  `syn.js/delivery`. No remote artwork lookup or metadata enrichment.
+- No S3, database, UI, authentication, TIDAL, or Syn-specific object identifiers.
 - No raw `music-metadata` response in the public contract.
 - No claim that metadata parsing means a browser or server decoder can play the file.
 - No mutation or rewriting of source files or tags in the first major version.
@@ -274,10 +277,9 @@ sizes, long strings, and unknown tags.
   an npm token in either repository.
 - Publish public access, include `LICENSE`, `README.md`, `CHANGELOG.md`, and `SECURITY.md`, and set
   `files` so only `dist`, declarations, and documentation enter the tarball.
-- Start with a `0.1.0` prerelease/canary after Syn integration tests pass. Promote the identical
-  commit to `0.1.0`; do not publish straight from an unreviewed workstation state.
-- Before first publish, recheck package-name ownership. If `syn.js` is unavailable or ambiguous,
-  use an owner-controlled npm scope without changing the GitHub repository or API design.
+- Release the exact checked tarball after Syn integration tests pass and a clean consumer verifies
+  its runtime exports and TypeScript declarations.
+- The owner selected the unscoped `bragi-audio` npm name. Recheck ownership before any future rename.
 
 ## Syn integration
 
@@ -285,14 +287,13 @@ The submodule is a development and release boundary, not Syn's production depend
 Published Syn builds should consume a pinned npm version and lockfile integrity; they must not
 depend on Git being available during deployment.
 
-### Current prerelease integration
+### Current release integration
 
-Phase B currently uses the checked `file:./syn.js` submodule dependency so the upload route can be
-verified before the first npm publication. The submodule commits its checked `dist/` output, and the
-root lockfile pins the Gitlink-visible package contents. A fresh checkout must initialize submodules
-before `pnpm install`. Before a production release, publish an immutable package version and replace
-the `file:` specifier with that npm version; do not leave deployment correctness dependent on an
-uninitialized Git submodule.
+Syn installs `"syn.js": "npm:bragi-audio@0.2.1"`; the lockfile records the registry artifact and its
+integrity. Existing `syn.js`, `syn.js/player`, `syn.js/delivery`, and `syn.js/audio` imports resolve
+to that release. The source submodule remains available for package development, but deployment
+installation no longer requires its files or Git. Package changes need a new publication and an
+explicit dependency/lockfile update before Syn consumes them.
 
 ### Data ownership
 
@@ -338,13 +339,13 @@ downloadable because their object keys and stored bytes do not change.
 
 ## Delivery phases and gates
 
-### Implementation status — 2026-09-22
+### Implementation status — 2026-09-28
 
-Phase A is implemented in the `./syn.js` submodule and pushed to the package repository's `main`
-branch. The package currently has 22 passing tests, passes strict TypeScript and ESLint checks,
-builds declarations and ESM output, passes a dry-run package audit, and imports successfully from
-its packed tarball in a clean consumer. It has not been published to npm. Phases B through D remain
-planned work and must retain their separate migration and release gates.
+Phases A and B are implemented. `bragi-audio@0.2.1` is published, with 100 passing package tests,
+strict TypeScript and ESLint checks, ESM/declaration builds, a tarball audit, and clean-consumer
+runtime/type checks. GitHub CI passes on Node 20, 22, and 24. Browser playback, bounded delivery,
+and PCM/WAV codecs are separate public entries. Phases C and D retain their separate migration
+and release gates.
 
 ### Phase A — bootstrap `syn.js`
 
@@ -412,16 +413,26 @@ out of browser bundles and DOM code out of server bundles; a package test fails 
 | `PlayerState` (runes, prefs, Last.fm, lyrics, embed fallback) and `PlaybackSessionCoordinator`          | **Stay in Syn.** The coordinator is Syn's own `/api/playback-state` protocol; export it only when a second consumer exists.                                        |
 | TIDAL stream resolution, quality ladder, sealed manifest cache, S3 segment cache, tokens                | **Never exported.**                                                                                                                                                |
 
-### Remaining slice — `syn.js/delivery`
+### Delivery entry — 2026-09-28
 
-A Web-Fetch-only server entry for the generic half of `/api/tracks/[id]/audio`: `parseByteRange`,
-the `http-range.ts` validators, `withTransientRetry`, the DASH `SegmentTemplate` parser, and an
+Version 0.2.1 includes original Web Fetch streaming/download helpers, generic byte ranges,
+conditional HTTP helpers and transient retries. Every media request is explicit, injectable, bounded
+and cancellable. It needs no Syn state, framework, filesystem, credentials, or environment variables.
+
+### Remaining slice — DASH assembly
+
+A future Web-Fetch-only server entry for the remaining generic half of `/api/tracks/[id]/audio`: the
+DASH `SegmentTemplate` parser and an
 instance-scoped `createSegmentAssembler({ maxEntries, maxBytes, ttlMs, concurrency,
 persistentCache })` replacing `segmented.ts`'s module-level LRU. It must throw package-owned errors
 (Syn maps them to `TidalError`) and contain nothing TIDAL-named.
 
-**Gate before publishing it:** check the licences of `oskvr37/tiddl` and `Dniel97/OrpheusDL-TIDAL`,
-which `stream.ts` and `segmented.ts` were ported from, before re-releasing derived code under MIT.
+**Gate before publishing derived DASH code:** check the licences of `oskvr37/tiddl` and `Dniel97/OrpheusDL-TIDAL`,
+which the application references, before re-releasing derived code under MIT. tiddl's Apache-2.0
+license was verified from its upstream repository on 2026-09-28; the referenced OrpheusDL-TIDAL
+repository/license could not be retrieved. Its parser and the existing segment assembly remain in
+Syn and are excluded from the npm release. Sources: [tiddl license](https://github.com/oskvr37/tiddl/blob/main/LICENSE),
+[referenced OrpheusDL repository](https://github.com/Dniel97/OrpheusDL-TIDAL).
 
 ## Phase A acceptance checklist
 
@@ -433,6 +444,7 @@ which `stream.ts` and `segmented.ts` were ported from, before re-releasing deriv
 - [x] Inputs, strings, arrays, and artwork are bounded.
 - [x] Errors and warnings use stable codes.
 - [x] Synthetic fixture tests cover success, mismatch, truncation, and limits.
-- [x] The package has no framework, storage, network, database, or TIDAL dependency.
+- [x] The metadata root has no framework, storage, network, database, or TIDAL dependency.
+- [x] Delivery uses only explicit Web Fetch APIs; browser entries have no runtime dependencies.
 - [x] Build output and packed contents are reproducible and minimal.
-- [x] No npm publication occurs until the separate release gate is approved.
+- [x] Owner explicitly authorized npm publication; checks and clean-consumer validation are required.

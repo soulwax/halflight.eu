@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Syn now consumes the published `bragi-audio@0.2.1` package through its `syn.js` dependency alias,
+  pinned in the lockfile instead of depending on a local submodule during deployment.
+- Stream metadata loading and validation now run through `syn.js/player` for both direct playback
+  and look-ahead preloads. Skipping or closing playback cancels foreground stream requests and
+  stale responses cannot replace the current track's state.
+- HTTP range and retry helpers now come from `syn.js/delivery`. The package also provides bounded
+  streaming/download APIs and a separate PCM/WAV codec entry; TIDAL playback still proxies source
+  bytes through Syn's native streaming path.
+
 - The player's audio engine now lives in the `syn.js` submodule's new browser entry,
   `syn.js/player`: `AudioEngine` (the `<audio>` element and headroom gain stage), queue identity and
   conflict rebasing, the playback self-check, the next-track preloader, and Media Session wiring.

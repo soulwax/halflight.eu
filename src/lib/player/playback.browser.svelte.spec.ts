@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PlayerState } from './player.svelte.js';
-import { streamPreloader } from './stream-preloader.js';
+import { streamLoader, streamPreloader } from './stream-preloader.js';
 import type { TrackSummary } from '#lib/tidal/models';
 
 class FakeAudio {
@@ -66,6 +66,29 @@ afterEach(() => {
 });
 
 describe('PlayerState browser playback', () => {
+	it('cancels the old stream load and ignores its late authentication failure', async () => {
+		let finish: (result: Awaited<ReturnType<typeof streamLoader.load>>) => void = () => {};
+		const pending = new Promise<Awaited<ReturnType<typeof streamLoader.load>>>((resolve) => {
+			finish = resolve;
+		});
+		const load = vi
+			.spyOn(streamLoader, 'load')
+			.mockReturnValueOnce(pending)
+			.mockResolvedValueOnce({ ok: true, data: { audioQuality: 'HIGH' } });
+		const player = new PlayerState();
+		player.play(track('one'));
+		await vi.waitFor(() => expect(load).toHaveBeenCalledTimes(1));
+		const signal = load.mock.calls[0][1];
+		player.play(track('two'));
+		await vi.waitFor(() => expect(player.streamUrl).toBe('/api/tracks/two/audio'));
+		finish({ ok: false, status: 403, reason: 'not_linked', requiresAuth: true });
+		await pending;
+
+		expect(signal?.aborted).toBe(true);
+		expect(player.requiresFullAuth).toBe(false);
+		expect(player.playbackReason).toBeNull();
+		expect(player.currentTrack?.id).toBe('two');
+	});
 	it('skips to the next queue item when the audio element ends', async () => {
 		vi.stubGlobal(
 			'fetch',

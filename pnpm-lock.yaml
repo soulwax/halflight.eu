@@ -27,8 +27,8 @@ importers:
         specifier: ^0.9.79
         version: 0.9.79(svelte@5.57.0(@typescript-eslint/types@8.68.0))
       syn.js:
-        specifier: file:./syn.js
-        version: file:syn.js(supports-color@7.2.0)
+        specifier: npm:bragi-audio@0.2.1
+        version: bragi-audio@0.2.1(supports-color@7.2.0)
       valibot:
         specifier: ^1.4.2
         version: 1.4.2(typescript@6.0.3)
@@ -2240,6 +2240,10 @@ packages:
     resolution: {integrity: sha512-ScQ4IuvIEF1TMlP7Zt+vjJ//9zlPb2SDcxWxM3bk8s6t6GGdJ7KO1dCcTidOPJKePW30LE/2cT7wCyPho9/Wxg==}
     engines: {node: 20 || >=22}
 
+  bragi-audio@0.2.1:
+    resolution: {integrity: sha512-mGl5QEzXdZCU5UB5pBOHjjjyI/SZ3Jwh4QL3h8xbBCvpAer2Q1EL6l367f26cOkPwdoIlqK3wsYm0MJrviklpw==}
+    engines: {node: '>=20.19'}
+
   browserslist@4.28.8:
     resolution: {integrity: sha512-V2NpofLblG64mfOtSgDhOJESZEGogzDMBv/q+W6oc4LXWP/q75eOXoOaaOu1EOadB9U4Bwx/e0yzbvwKH8zalA==}
     engines: {node: ^6 || ^7 || ^8 || ^9 || ^10 || ^11 || ^12 || >=13.7}
@@ -3598,10 +3602,6 @@ packages:
   svelte@5.57.0:
     resolution: {integrity: sha512-NdbDn7fl4be1ViUG0oq/lvG6OZy3oENolV2ONjiqqsfVoeAfzaQAKUcEX3MrQod/Bebv1PgwET9rfXhgn9s4Kg==}
     engines: {node: '>=18'}
-
-  syn.js@file:syn.js:
-    resolution: {directory: syn.js, type: directory}
-    engines: {node: '>=20'}
 
   tabbable@6.5.0:
     resolution: {integrity: sha512-wieBHXygIm7OyQOu5hQlkk62/WyCFYGlWg7L6/ZCUZwx0o398Zkn4pVmMyfYhfMG8kGrj/Krt8eIk6UKC6VzwA==}
@@ -5897,6 +5897,12 @@ snapshots:
     dependencies:
       balanced-match: 4.0.4
 
+  bragi-audio@0.2.1(supports-color@7.2.0):
+    dependencies:
+      music-metadata: 11.15.0(supports-color@7.2.0)
+    transitivePeerDependencies:
+      - supports-color
+
   browserslist@4.28.8:
     dependencies:
       baseline-browser-mapping: 2.11.20
@@ -7099,12 +7105,6 @@ snapshots:
       zimmerframe: 1.1.4
     transitivePeerDependencies:
       - '@typescript-eslint/types'
-
-  syn.js@file:syn.js(supports-color@7.2.0):
-    dependencies:
-      music-metadata: 11.15.0(supports-color@7.2.0)
-    transitivePeerDependencies:
-      - supports-color
 
   tabbable@6.5.0: {}
 

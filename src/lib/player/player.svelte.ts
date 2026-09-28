@@ -17,7 +17,7 @@ import {
 	toDisplayTrack,
 	type QueueEntry
 } from './queue-entry.js';
-import { streamPreloader, type PreloadedStreamData } from './stream-preloader.js';
+import { streamLoader, streamPreloader, type PreloadedStreamData } from './stream-preloader.js';
 import {
 	PlaybackSessionCoordinator,
 	isTrackSummary,
@@ -232,6 +232,7 @@ export class PlayerState {
 	});
 	/** Invalidates stream work started for a track that is no longer current. */
 	private streamLoadGeneration = 0;
+	private streamLoadAbort: AbortController | null = null;
 	/** A local player adjustment must survive shell data hydration. */
 	private hasLocalVolumePreference = false;
 	private hasRestoredPlaybackState = false;
@@ -677,6 +678,7 @@ export class PlayerState {
 	 */
 	private switchToTrack(track: TrackSummary): void {
 		this.streamLoadGeneration += 1;
+		this.streamLoadAbort?.abort();
 		// A direct track choice is a deliberate session change, so subsequent
 		// persistence may use its local current-track/history fields again.
 		this.reconciliationBase = null;
@@ -1048,9 +1050,14 @@ export class PlayerState {
 	}
 
 	private async loadAndPlayStream(trackId: string): Promise<void> {
+		this.streamLoadAbort?.abort();
+		const abort = new AbortController();
+		this.streamLoadAbort = abort;
 		const generation = this.streamLoadGeneration;
 		const isCurrentLoad = () =>
-			generation === this.streamLoadGeneration && this.currentTrack?.id === trackId;
+			generation === this.streamLoadGeneration &&
+			this.currentTrack?.id === trackId &&
+			!abort.signal.aborted;
 
 		this.engine.init();
 		this.engine.resume();
@@ -1066,23 +1073,14 @@ export class PlayerState {
 			// Do not pause the audio before we have the next source, to preserve the
 			// iOS WebKit background continuation token during queue handover.
 			data = await streamPreloader.getOrAwait(trackId);
+			if (!isCurrentLoad()) return;
 			if (!data) {
-				try {
-					const res = await fetch(`/api/tracks/${encodeURIComponent(trackId)}/stream`).catch(
-						() => null
-					);
-					if (res && res.ok) {
-						data = (await res.json().catch(() => null)) as PreloadedStreamData | null;
-					} else if (res) {
-						const errData = (await res.json().catch(() => ({}))) as {
-							requiresFullAuth?: boolean;
-							reason?: string;
-						};
-						this.requiresFullAuth = errData.requiresFullAuth ?? res.status === 403;
-						this.playbackReason = errData.reason ?? `http_${res.status}`;
-					}
-				} catch {
-					this.playbackReason = 'network_error';
+				const result = await streamLoader.load(trackId, abort.signal);
+				if (!isCurrentLoad()) return;
+				if (result.ok) data = result.data;
+				else {
+					this.requiresFullAuth = result.requiresAuth;
+					this.playbackReason = result.reason;
 				}
 			}
 		}
@@ -1374,6 +1372,7 @@ export class PlayerState {
 
 	close(): void {
 		this.streamLoadGeneration += 1;
+		this.streamLoadAbort?.abort();
 		this.engine.unload();
 		this.currentTrack = null;
 		this.queue = [];
