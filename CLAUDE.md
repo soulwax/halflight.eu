@@ -179,9 +179,14 @@ private music).
 ### Playback session (server-authoritative)
 
 `src/lib/player/player.svelte.ts` is the `$state` engine (`export const player`) driving the
-`<audio>` element (`audio-engine.ts`), Media Session, next-track preloading, the automatic
+`<audio>` element through `AudioEngine`, Media Session, next-track preloading, the automatic
 length/quality self-check (`playback-assessment.ts` — catches previews and silent
-downgrades), and the TIDAL embed fallback. Persistence is delegated to
+downgrades), and the TIDAL embed fallback. The framework-agnostic parts (`AudioEngine`, queue
+identity and `rebaseQueue`, `assessPlayback`, `StreamPreloader`, Media Session helpers) live in
+the `syn.js` submodule's browser entry, `syn.js/player`; the matching `#lib/player/*` files are
+thin wrappers that fix the types to `TrackSummary` and supply Syn's copy (Paraglide), TIDAL
+quality ranks, and `/api` URLs. Syn consumes the submodule's committed `dist/`, so rebuild it
+(`pnpm build` in `syn.js/`) and re-run `pnpm install` after editing the package. Persistence is delegated to
 `PlaybackSessionCoordinator` (`session-coordinator.ts`):
 
 - `GET`/`PUT /api/playback-state` — snapshot with a `revision`; writes are conditional and a

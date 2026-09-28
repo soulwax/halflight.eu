@@ -1,52 +1,45 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { StreamPreloader } from './stream-preloader.js';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { loadStreamData, streamPreloader } from './stream-preloader.js';
 
-describe('StreamPreloader', () => {
-	let preloader: StreamPreloader;
+afterEach(() => {
+	streamPreloader.clear();
+	vi.unstubAllGlobals();
+});
 
-	beforeEach(() => {
-		preloader = new StreamPreloader();
+describe('loadStreamData', () => {
+	it('reads stream metadata from the encoded /stream endpoint', async () => {
+		const body = { audioQuality: 'LOSSLESS', codecs: 'flac', bitDepth: 16, sampleRate: 44100 };
+		const fetchMock = vi.fn(() => Promise.resolve(new Response(JSON.stringify(body))));
+		vi.stubGlobal('fetch', fetchMock);
+
+		await expect(loadStreamData('a/b')).resolves.toEqual(body);
+		expect(fetchMock).toHaveBeenCalledWith('/api/tracks/a%2Fb/stream');
 	});
 
-	afterEach(() => {
-		preloader.clear();
-		vi.unstubAllGlobals();
-	});
-
-	it('returns null when no metadata has been preloaded', () => {
-		expect(preloader.consume('track-nonexistent')).toBeNull();
-	});
-
-	it('preloads and caches metadata from the stream endpoint', async () => {
-		const mockData = {
-			audioQuality: 'LOSSLESS',
-			codecs: 'flac',
-			bitDepth: 16,
-			sampleRate: 44100
-		};
+	it('treats an error status or an unreadable body as not directly playable', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(() => Promise.resolve(new Response('{}', { status: 403 })))
+		);
+		await expect(loadStreamData('t1')).resolves.toBeNull();
 
 		vi.stubGlobal(
 			'fetch',
-			vi.fn((url: string) => {
-				if (String(url).includes('/stream')) {
-					return Promise.resolve(new Response(JSON.stringify(mockData), { status: 200 }));
-				}
-				return Promise.reject(new Error('not found'));
-			})
+			vi.fn(() => Promise.resolve(new Response('not json')))
+		);
+		await expect(loadStreamData('t1')).resolves.toBeNull();
+	});
+});
+
+describe('streamPreloader', () => {
+	it('preloads through the /stream loader and hands the entry out once', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(() => Promise.resolve(new Response(JSON.stringify({ audioQuality: 'HIGH' }))))
 		);
 
-		preloader.preload('track-123');
-
-		// Wait for inflight fetch
-		const data = await preloader.getOrAwait('track-123');
-		expect(data).toMatchObject({
-			audioQuality: 'LOSSLESS',
-			codecs: 'flac',
-			bitDepth: 16,
-			sampleRate: 44100
-		});
-
-		// Subsequent consume is null because it was consumed
-		expect(preloader.consume('track-123')).toBeNull();
+		streamPreloader.preload('t1');
+		await expect(streamPreloader.getOrAwait('t1')).resolves.toEqual({ audioQuality: 'HIGH' });
+		expect(streamPreloader.consume('t1')).toBeNull();
 	});
 });

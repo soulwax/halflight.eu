@@ -1,4 +1,4 @@
-# `syn.js` audio metadata package plan
+# `syn.js` audio package plan
 
 ## Decision
 
@@ -59,7 +59,8 @@ library behavior remain Syn concerns.
 
 ### Non-goals
 
-- No audio decoding, playback, transcoding, remuxing, DRM handling, or codec implementation.
+- No audio decoding, transcoding, remuxing, DRM handling, or codec implementation. Browser playback
+  is limited to driving a native `<audio>` element (see _Browser playback entry_ below).
 - No automatic subprocess discovery or bundled FFmpeg binary.
 - No network access, URL parser, remote artwork lookup, or metadata enrichment.
 - No S3, database, HTTP, UI, authentication, TIDAL, or Syn-specific object identifiers.
@@ -389,6 +390,38 @@ deleting a file removes the same owned state as before.
 **Gate:** a 128 MiB upload stays within a measured memory ceiling; subprocess tests cover timeout,
 abort, output overflow, missing executable, malformed JSON, and hostile hint values without invoking
 a shell.
+
+## Browser playback entry (`syn.js/player`)
+
+### Decision — 2026-09-28
+
+Export the framework-agnostic half of Syn's audio engine as a second, dependency-free entry point,
+`syn.js/player`, next to the unchanged server-side root. Separate entry points keep `music-metadata`
+out of browser bundles and DOM code out of server bundles; a package test fails if any
+`src/player/` module imports anything but its siblings.
+
+### What moved, and what stays in Syn
+
+| Layer                                                                                                   | Where                                                                                                                                                              |
+| ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `AudioEngine`: one `<audio>` element, event forwarding, buffered %, de-clicked Web Audio headroom stage | `syn.js/player`. Mobile keeps `allowWebAudio` false (iOS suspends Web Audio on lock).                                                                              |
+| Queue identity, `QueueCommand`, `rebaseQueue`                                                           | `syn.js/player`, generic over `{ id: string }`; `#lib/player/queue-entry.ts` / `playback-reconciliation.ts` fix it to `TrackSummary`.                              |
+| `assessPlayback`                                                                                        | `syn.js/player` returns issue codes and ranks tiers only when given `qualityRank`; `#lib/player/playback-assessment.ts` supplies TIDAL's ranks and Paraglide text. |
+| `StreamPreloader`                                                                                       | `syn.js/player` with an injected `load`; `#lib/player/stream-preloader.ts` supplies the `/api/tracks/[id]/stream` loader.                                          |
+| Media Session helpers                                                                                   | `syn.js/player`; Syn supplies the localised unknown-artist fallback.                                                                                               |
+| `PlayerState` (runes, prefs, Last.fm, lyrics, embed fallback) and `PlaybackSessionCoordinator`          | **Stay in Syn.** The coordinator is Syn's own `/api/playback-state` protocol; export it only when a second consumer exists.                                        |
+| TIDAL stream resolution, quality ladder, sealed manifest cache, S3 segment cache, tokens                | **Never exported.**                                                                                                                                                |
+
+### Remaining slice — `syn.js/delivery`
+
+A Web-Fetch-only server entry for the generic half of `/api/tracks/[id]/audio`: `parseByteRange`,
+the `http-range.ts` validators, `withTransientRetry`, the DASH `SegmentTemplate` parser, and an
+instance-scoped `createSegmentAssembler({ maxEntries, maxBytes, ttlMs, concurrency,
+persistentCache })` replacing `segmented.ts`'s module-level LRU. It must throw package-owned errors
+(Syn maps them to `TidalError`) and contain nothing TIDAL-named.
+
+**Gate before publishing it:** check the licences of `oskvr37/tiddl` and `Dniel97/OrpheusDL-TIDAL`,
+which `stream.ts` and `segmented.ts` were ported from, before re-releasing derived code under MIT.
 
 ## Phase A acceptance checklist
 

@@ -1,6 +1,7 @@
 import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 import type { TrackSummary } from '#lib/tidal/models.js';
 import { qualityTier, type QualityTier } from '#lib/format';
+import { AudioEngine, replayGainToLinear } from 'syn.js/player';
 import { assessPlayback, type PlaybackAssessment } from './playback-assessment.js';
 import {
 	setupMediaSessionHandlers,
@@ -184,10 +185,51 @@ export class PlayerState {
 	isLyricsLoading = $state(false);
 	isLyricsOpen = $derived(this.isExpanded && this.panel === 'lyrics');
 
-	private audio: HTMLAudioElement | null = null;
-	private audioContext: AudioContext | null = null;
-	private mediaSourceNode: MediaElementAudioSourceNode | null = null;
-	private gainNode: GainNode | null = null;
+	private readonly engine = new AudioEngine({
+		onTimeUpdate: (currentTime) => this.onTimeUpdate(currentTime),
+		onDuration: (duration) => {
+			this.duration = duration;
+			this.hasMediaMetadata = true;
+			this.updateBuffer();
+		},
+		onProgress: () => this.updateBuffer(),
+		onWaiting: () => {
+			this.isBuffering = true;
+		},
+		onPlaying: () => {
+			this.isBuffering = false;
+			this.isPlaying = true;
+			updatePlaybackState(true);
+		},
+		onPlay: () => {
+			this.isPlaying = true;
+			updatePlaybackState(true);
+			this.reportNowPlaying();
+		},
+		onPause: () => {
+			this.isPlaying = false;
+			updatePlaybackState(false);
+		},
+		onEnded: () => {
+			this.next(true);
+		},
+		onError: () => {
+			// Fall back to embed if direct stream encounters an error
+			this.playbackMode = 'embed';
+			this.isPlaying = false;
+			this.isLoading = false;
+			this.isBuffering = false;
+			updatePlaybackState(false);
+		},
+		onWake: () => {
+			// Re-sync the lock-screen controls the OS may have dropped while hidden.
+			if (this.currentTrack) {
+				updateMediaMetadata(this.currentTrack);
+				updatePlaybackState(this.isPlaying);
+				updatePositionState({ duration: this.duration, position: this.currentTime });
+			}
+		}
+	});
 	/** Invalidates stream work started for a track that is no longer current. */
 	private streamLoadGeneration = 0;
 	/** A local player adjustment must survive shell data hydration. */
@@ -263,7 +305,7 @@ export class PlayerState {
 				history: this.history,
 				currentTime: this.currentTime,
 				isPlaying: this.isPlaying,
-				hasLocalMedia: Boolean(this.streamUrl || this.audio?.currentSrc)
+				hasLocalMedia: Boolean(this.streamUrl || this.engine.currentSrc)
 			}),
 			onApplyQueue: (queue) => {
 				this.queue = queue;
@@ -301,7 +343,7 @@ export class PlayerState {
 		if (isBrowser) {
 			this.loadLocalQueueCache();
 			this.loadPrefs();
-			this.initAudio();
+			this.engine.init();
 			this.setupMediaSession();
 		}
 	}
@@ -327,35 +369,6 @@ export class PlayerState {
 			onSeekTo: (sec) => this.seek(sec),
 			onStop: () => this.close()
 		});
-	}
-
-	private ensureAudioGraph(): void {
-		if (!isBrowser || !this.audio || this.gainNode) return;
-		try {
-			const AudioCtx =
-				window.AudioContext ||
-				(window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-			if (!AudioCtx) return;
-			if (!this.audioContext) {
-				this.audioContext = new AudioCtx();
-			}
-			if (!this.mediaSourceNode) {
-				this.mediaSourceNode = this.audioContext.createMediaElementSource(this.audio);
-			}
-			if (!this.gainNode) {
-				this.gainNode = this.audioContext.createGain();
-				this.mediaSourceNode.connect(this.gainNode);
-				this.gainNode.connect(this.audioContext.destination);
-			}
-		} catch {
-			// Web Audio API initialization is best-effort fallback to standard audio.volume
-		}
-	}
-
-	private resumeAudioContext(): void {
-		if (this.audioContext && this.audioContext.state === 'suspended') {
-			void this.audioContext.resume().catch(() => {});
-		}
 	}
 
 	private getDeviceId(): string | null {
@@ -543,97 +556,9 @@ export class PlayerState {
 		}
 	}
 
-	private initAudio(): void {
-		if (!isBrowser || typeof Audio === 'undefined') return;
-		if (this.audio) return;
-
-		this.audio = new Audio();
-		this.audio.preload = 'auto';
-		this.audio.setAttribute('playsinline', 'true');
-		this.audio.setAttribute('webkit-playsinline', 'true');
-
-		this.audio.addEventListener('timeupdate', () => this.onTimeUpdate());
-
-		const onMeta = () => {
-			if (this.audio && !isNaN(this.audio.duration) && this.audio.duration > 0) {
-				this.duration = this.audio.duration;
-				this.hasMediaMetadata = true;
-				this.updateBuffer();
-			}
-		};
-		this.audio.addEventListener('durationchange', onMeta);
-		this.audio.addEventListener('loadedmetadata', onMeta);
-		this.audio.addEventListener('progress', () => this.updateBuffer());
-
-		this.audio.addEventListener('waiting', () => {
-			this.isBuffering = true;
-		});
-
-		this.audio.addEventListener('playing', () => {
-			this.isBuffering = false;
-			this.isPlaying = true;
-			updatePlaybackState(true);
-		});
-
-		this.audio.addEventListener('play', () => {
-			this.isPlaying = true;
-			updatePlaybackState(true);
-			this.reportNowPlaying();
-		});
-
-		this.audio.addEventListener('pause', () => {
-			this.isPlaying = false;
-			updatePlaybackState(false);
-		});
-
-		this.audio.addEventListener('ended', () => {
-			this.next(true);
-		});
-
-		this.audio.addEventListener('error', () => {
-			// Fall back to embed if direct stream encounters an error
-			this.playbackMode = 'embed';
-			this.isPlaying = false;
-			this.isLoading = false;
-			this.isBuffering = false;
-			updatePlaybackState(false);
-		});
-
-		// Auto-reconnect audio context and re-sync media session on tab wake or connection restore
-		document.addEventListener('visibilitychange', () => {
-			if (document.visibilityState === 'visible') {
-				this.resumeAudioContext();
-				if (this.currentTrack) {
-					updateMediaMetadata(this.currentTrack);
-					updatePlaybackState(this.isPlaying);
-					updatePositionState({ duration: this.duration, position: this.currentTime });
-				}
-			}
-		});
-		window.addEventListener('online', () => {
-			this.resumeAudioContext();
-		});
-	}
-
 	private updateBuffer(): void {
-		if (!this.audio || !this.audio.duration || Number.isNaN(this.audio.duration)) return;
-		const buffered = this.audio.buffered;
-		if (buffered.length === 0) {
-			this.bufferedPercent = 0;
-			return;
-		}
-		const current = this.audio.currentTime;
-		for (let i = 0; i < buffered.length; i++) {
-			if (buffered.start(i) <= current && current <= buffered.end(i)) {
-				this.bufferedPercent = Math.min(
-					100,
-					Math.max(0, (buffered.end(i) / this.audio.duration) * 100)
-				);
-				return;
-			}
-		}
-		const lastEnd = buffered.end(buffered.length - 1);
-		this.bufferedPercent = Math.min(100, Math.max(0, (lastEnd / this.audio.duration) * 100));
+		const percent = this.engine.bufferedPercent();
+		if (percent !== null) this.bufferedPercent = percent;
 	}
 
 	/**
@@ -642,11 +567,10 @@ export class PlayerState {
 	 * the async metadata fetch, and letting it write `currentTime` makes the next
 	 * track inherit the old progress.
 	 */
-	private onTimeUpdate(): void {
+	private onTimeUpdate(currentTime = this.engine.currentTime): void {
 		if (this.isLoading) return;
-		const audio = this.audio;
-		if (!audio || Number.isNaN(audio.currentTime)) return;
-		this.currentTime = audio.currentTime;
+		if (Number.isNaN(currentTime)) return;
+		this.currentTime = currentTime;
 		this.updateBuffer();
 		updatePositionState({ duration: this.duration, position: this.currentTime });
 
@@ -1110,47 +1034,17 @@ export class PlayerState {
 	}
 
 	private applyVolume(): void {
-		if (!this.audio) return;
-
-		let effVol = this.volume;
+		let level = this.volume;
 		if (this.isNormalizationEnabled && this.trackReplayGain != null) {
-			// Convert ReplayGain dB to linear multiplier: 10^(dB/20)
-			const multiplier = Math.pow(10, this.trackReplayGain / 20);
-			effVol = Math.max(0, this.volume * multiplier);
+			level = Math.max(0, this.volume * replayGainToLinear(this.trackReplayGain));
 		}
-
-		// Mobile devices and ordinary playback use native <audio> volume directly.
-		// Connecting Web Audio via createMediaElementSource causes iOS WebKit to
-		// classify playback as ambient Web Audio, which iOS suspends when the screen
-		// locks or apps switch. Headroom is also needed when ReplayGain pushes the
-		// effective level above the native 0..1 range.
-		const allowWebAudio = !this.isMobilePlayback() && this.isHeadroomEnabled && effVol > 1.0;
-		if (allowWebAudio) this.ensureAudioGraph();
-
-		if (this.isMuted) {
-			if (this.gainNode && this.audioContext) {
-				const time = this.audioContext.currentTime;
-				this.gainNode.gain.cancelScheduledValues(time);
-				this.gainNode.gain.setTargetAtTime(0, time, 0.015);
-			}
-			this.audio.volume = 0;
-			this.audio.muted = true;
-			return;
-		}
-
-		if (this.gainNode && this.audioContext) {
-			// A graph can have been created for a previous >100% value. When the
-			// user comes back below headroom, restore native volume instead of
-			// leaving the element looking (and sounding) fixed at 100%.
-			this.audio.volume = allowWebAudio ? 1 : Math.min(1, effVol);
-			this.audio.muted = false;
-			const time = this.audioContext.currentTime;
-			this.gainNode.gain.cancelScheduledValues(time);
-			this.gainNode.gain.setTargetAtTime(allowWebAudio ? effVol : 1, time, 0.015);
-		} else {
-			this.audio.volume = Math.max(0, Math.min(1, effVol));
-			this.audio.muted = false;
-		}
+		// Mobile keeps native <audio> volume: Web Audio gets suspended by iOS on
+		// screen lock. Elsewhere the gain stage only carries headroom above 100%.
+		this.engine.applyVolume({
+			level,
+			muted: this.isMuted,
+			allowWebAudio: !this.isMobilePlayback() && this.isHeadroomEnabled && level > 1
+		});
 	}
 
 	private async loadAndPlayStream(trackId: string): Promise<void> {
@@ -1158,8 +1052,8 @@ export class PlayerState {
 		const isCurrentLoad = () =>
 			generation === this.streamLoadGeneration && this.currentTrack?.id === trackId;
 
-		this.initAudio();
-		this.resumeAudioContext();
+		this.engine.init();
+		this.engine.resume();
 		const startAt = this.currentTime;
 		this.isLoading = true;
 
@@ -1197,7 +1091,7 @@ export class PlayerState {
 		// Never let the old response replace the new track's source or state.
 		if (!isCurrentLoad()) return;
 
-		if (data && this.audio) {
+		if (data && this.engine.hasElement) {
 			// Store metadata
 			this.streamUrl = `/api/tracks/${encodeURIComponent(trackId)}/audio`;
 			this.audioQuality = data.audioQuality || data.audioMode || 'HIGH';
@@ -1212,20 +1106,12 @@ export class PlayerState {
 
 			// Syn proxies the authenticated CDN response so the browser never sees a
 			// provider URL or bearer credential.
-			this.audio.src = this.streamUrl;
-			if (startAt > 0) {
-				try {
-					this.audio.currentTime = startAt;
-				} catch {
-					// The stream may not be seekable until metadata arrives.
-				}
-			}
+			this.engine.load(this.streamUrl, startAt);
 			this.applyVolume();
-			await this.audio.play().catch(() => {
-				if (isCurrentLoad()) this.playbackMode = 'embed';
-			});
+			const started = await this.engine.play();
 			if (!isCurrentLoad()) return;
-			this.isPlaying = !this.audio.paused;
+			if (!started) this.playbackMode = 'embed';
+			this.isPlaying = !this.engine.paused;
 			this.isLoading = false;
 
 			// Immediately preload the next track in queue
@@ -1244,8 +1130,8 @@ export class PlayerState {
 	}
 
 	togglePlayPause(): void {
-		this.initAudio();
-		this.resumeAudioContext();
+		this.engine.init();
+		this.engine.resume();
 
 		if (this.playbackMode === 'embed') {
 			// The TIDAL embed iframe owns its own transport; just make sure it is
@@ -1257,11 +1143,12 @@ export class PlayerState {
 
 		if (this.currentTrack && !this.streamUrl) {
 			void this.loadAndPlayStream(this.currentTrack.id);
-		} else if (this.audio && this.streamUrl) {
+		} else if (this.engine.hasElement && this.streamUrl) {
 			if (this.isPlaying) {
-				this.audio.pause();
+				this.engine.pause();
 			} else {
-				this.audio.play().catch(() => {
+				void this.engine.play().then((started) => {
+					if (started) return;
 					this.playbackMode = 'embed';
 					this.isExpanded = true;
 				});
@@ -1301,9 +1188,7 @@ export class PlayerState {
 	seek(seconds: number): void {
 		const target = this.clampToTrack(seconds);
 		this.currentTime = target;
-		if (this.audio && !isNaN(target)) {
-			this.audio.currentTime = target;
-		}
+		this.engine.seek(target);
 		this.lastPersistedPosition = target;
 		this.schedulePersistence();
 	}
@@ -1489,10 +1374,7 @@ export class PlayerState {
 
 	close(): void {
 		this.streamLoadGeneration += 1;
-		if (this.audio) {
-			this.audio.pause();
-			this.audio.src = '';
-		}
+		this.engine.unload();
 		this.currentTrack = null;
 		this.queue = [];
 		this.history = [];

@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The player's audio engine now lives in the `syn.js` submodule's new browser entry,
+  `syn.js/player`: `AudioEngine` (the `<audio>` element and headroom gain stage), queue identity and
+  conflict rebasing, the playback self-check, the next-track preloader, and Media Session wiring.
+  `#lib/player/*` keeps thin wrappers for Syn's types, copy, and endpoints. The unused duplicate
+  `audio-engine.ts` is gone; `player.svelte.ts` now drives the one engine instead of an inline
+  copy.
+- The player's length/quality warning ("Preview only — …", "Quality: asked …") and the lock-screen
+  "Unknown Artist" fallback are translated instead of always English.
+
 - Private-music uploads now inspect actual audio bytes through the new `syn.js` submodule before
   storage. Malformed, renamed, and MIME-mislabeled files are rejected before a bucket write, while
   the detected canonical media type is what Syn persists and serves.

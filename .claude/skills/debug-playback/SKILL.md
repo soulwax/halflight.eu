@@ -18,13 +18,14 @@ Work the signal, not the source. Change the signal to confirm a cause.
 ```
 Player.svelte (thin) ─ components/player/*
         │ reads/drives
-player  ─ src/lib/player/player.svelte.ts   ← the $state singleton, owns the <audio> element
+player  ─ src/lib/player/player.svelte.ts   ← the $state singleton; its AudioEngine
+        │                                       (syn.js/player) owns the <audio> element
         │ switchToTrack() resets ~20 fields, then loadAndPlayStream(trackId)
         │
         ├─ METADATA leg ── streamPreloader.consume(id)   ← cache hit SKIPS the fetch
         │                  else GET /api/tracks/[id]/stream   → JSON, no bytes
         │
-        └─ BYTE leg ────── audio.src = /api/tracks/[id]/audio
+        └─ BYTE leg ────── engine.load('/api/tracks/[id]/audio')
                                   │
                            resolveTrackStream()  src/lib/server/tidal/stream.ts
                                   │   walks QUALITY_LADDER down past subStatus 5003
@@ -43,14 +44,14 @@ tier being requested. Both gate on `locals.user && locals.isAdministrator`.
 This inventory is the whole point. There is **no `console.*` anywhere in
 `src/lib/player/`**, and server logging is three call sites deep in one route.
 
-| Signal                            | Where                                     | What it proves                                                                                                                                                                                                   |
-| --------------------------------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/stream` body `error` field      | DevTools Network tab                      | **The real discriminator.** `not_connected`, `playback_unauthorized`, `track_unavailable`, `plan_no_streaming`, `stream_unavailable`.                                                                            |
-| `player.playbackReason`           | `$state`, `player.svelte.ts:116`          | Set only by the metadata leg, but **write-only** (no reader outside `player.svelte.ts`) and usually just `http_403`. See below.                                                                                  |
-| `player.playbackMode === 'embed'` | `:103`                                    | Catch-all failure. Set from four places: the `<audio>` `error` event (`:287`), `play()` rejection after a good load (`:748`), no metadata at all (`:761`), and `play()` rejection in `togglePlayPause` (`:785`). |
-| `player.requiresFullAuth`         | `:116` area                               | Device (playback) token missing or rejected.                                                                                                                                                                     |
-| `player.assessment`               | `$derived`, `:385`                        | `assessPlayback` verdict — short stream, preview, downgraded tier. Drives the badge.                                                                                                                             |
-| `log.error('audio proxy: …')`     | `routes/api/tracks/[id]/audio/+server.ts` | The only server-side playback logging that exists: segmented fetch failed, CDN fetch threw, CDN returned an error.                                                                                               |
+| Signal                            | Where                                     | What it proves                                                                                                                                                                                             |
+| --------------------------------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/stream` body `error` field      | DevTools Network tab                      | **The real discriminator.** `not_connected`, `playback_unauthorized`, `track_unavailable`, `plan_no_streaming`, `stream_unavailable`.                                                                      |
+| `player.playbackReason`           | `$state`, `player.svelte.ts:180`          | Set only by the metadata leg, but **write-only** (no reader outside `player.svelte.ts`) and usually just `http_403`. See below.                                                                            |
+| `player.playbackMode === 'embed'` | `:167`                                    | Catch-all failure. Set from four places: the engine's `onError` (`:216`), `play()` refusal after a good load (`:1113`), no metadata at all (`:1126`), and `play()` refusal in `togglePlayPause` (`:1152`). |
+| `player.requiresFullAuth`         | `:176`                                    | Device (playback) token missing or rejected.                                                                                                                                                               |
+| `player.assessment`               | `$derived`, `:620`                        | `assessPlayback` verdict — short stream, preview, downgraded tier. Drives the badge.                                                                                                                       |
+| `log.error('audio proxy: …')`     | `routes/api/tracks/[id]/audio/+server.ts` | The only server-side playback logging that exists: segmented fetch failed, CDN fetch threw, CDN returned an error.                                                                                         |
 
 ### The asymmetry that decides your first move
 
@@ -88,11 +89,14 @@ Watch for the case where **no `/stream` request appears at all**: that is
 
 ## Traps that cost real time
 
-- **`src/lib/player/audio-engine.ts` is dead code.** Nothing imports `AudioEngine`. The
-  live element wiring is inlined in `player.svelte.ts` (`initAudio`, ~`:200`–`:300`).
-  Editing `audio-engine.ts` changes nothing at runtime and every test still passes.
-  Confirm with `grep -rn AudioEngine src/ | grep -v player/audio-engine.ts` before
-  touching it — if that prints nothing, you are in the wrong file.
+- **The `<audio>` element lives in the `syn.js` submodule, not in `src/`.**
+  `AudioEngine` (`syn.js/src/player/audio-engine.ts`) owns the element, the Web Audio
+  headroom stage, and volume application; `player.svelte.ts` only reacts to its events
+  (the `new AudioEngine({...})` field). Syn consumes the **built** `syn.js/dist/`, so an
+  edit under `syn.js/src/` does nothing until `pnpm build` in `syn.js/` and `pnpm install`
+  here. `queue-entry.ts`, `playback-reconciliation.ts`, `playback-assessment.ts`,
+  `stream-preloader.ts`, and `media-session.ts` are likewise thin Syn-typed wrappers over
+  `syn.js/player`.
 - **`streamPreloader` can serve stale metadata.** 5-minute TTL, 5 entries,
   `consume()` deletes on read. A track queued a moment ago may never re-hit `/stream`,
   so a `/stream` fix can look like it did nothing. Reload the page between attempts.
@@ -169,16 +173,11 @@ Useful probes:
 // player.svelte.ts, in loadAndPlayStream — which leg, and what did it say
 console.debug('[syn] stream leg', { trackId, status: res?.status, reason: this.playbackReason });
 
-// player.svelte.ts, in initAudio — the byte leg's only real error detail
-this.audio.addEventListener('error', () => {
-	const e = this.audio?.error;
-	console.debug('[syn] audio error', {
-		code: e?.code,
-		message: e?.message,
-		networkState: this.audio?.networkState,
-		readyState: this.audio?.readyState
-	});
-});
+// player.svelte.ts, the engine's onError — the byte leg's only real error detail
+onError: (error) => {
+	console.debug('[syn] audio error', { code: error?.code, message: error?.message });
+	// …existing embed fallback…
+},
 ```
 
 `MediaError.code`: `1` aborted · `2` network · `3` decode · `4` src not supported.

@@ -80,7 +80,7 @@ describe('PlayerState browser playback', () => {
 		player.addToQueue(track('two'));
 
 		await vi.waitFor(() => expect(player.streamUrl).toBe('/api/tracks/one/audio'));
-		const audio = (player as unknown as { audio: FakeAudio }).audio;
+		const [audio] = FakeAudio.instances;
 		audio.dispatch('ended');
 
 		expect(player.currentTrack?.id).toBe('two');

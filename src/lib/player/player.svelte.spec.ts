@@ -1416,55 +1416,55 @@ describe('PlayerState', () => {
 		expect(player.floatingPos).toEqual({ x: 560, y: 800 - 460 - 8 });
 	});
 
-	it('bypasses Web Audio gain node creation when acting as Halflight Now on mobile', () => {
+	it('keeps mobile playback on native volume even above 100%', () => {
 		const player = new PlayerState();
 		player.origin = 'halflight-now';
-
 		const internal = player as unknown as {
-			audio: HTMLAudioElement;
-			gainNode: unknown;
+			engine: { applyVolume: (request: unknown) => void };
 			isMobilePlayback(): boolean;
-			applyVolume(): void;
 		};
+		const applyVolume = vi.spyOn(internal.engine, 'applyVolume');
 
 		expect(internal.isMobilePlayback()).toBe(true);
+		player.setVolume(1.2);
 
-		internal.audio = {
-			volume: 0,
+		expect(applyVolume).toHaveBeenLastCalledWith({
+			level: 1.2,
 			muted: false,
-			play: vi.fn(),
-			pause: vi.fn()
-		} as unknown as HTMLAudioElement;
-
-		player.setVolume(0.8);
-		expect(internal.gainNode).toBeNull();
-		expect(internal.audio.volume).toBe(0.8);
+			allowWebAudio: false
+		});
 	});
 
-	it('restores native volume after a desktop headroom graph is no longer needed', () => {
+	it('allows the desktop gain stage only for headroom above 100%', () => {
 		const player = new PlayerState();
-		const cancelScheduledValues = vi.fn();
-		const setTargetAtTime = vi.fn();
 		const internal = player as unknown as {
-			audio: HTMLAudioElement;
-			audioContext: AudioContext;
-			gainNode: GainNode;
+			engine: { applyVolume: (request: unknown) => void };
+			isMobilePlayback(): boolean;
 		};
-
-		internal.audio = {
-			volume: 1,
-			muted: false,
-			play: vi.fn(),
-			pause: vi.fn()
-		} as unknown as HTMLAudioElement;
-		internal.audioContext = { currentTime: 0 } as AudioContext;
-		internal.gainNode = {
-			gain: { cancelScheduledValues, setTargetAtTime }
-		} as unknown as GainNode;
+		vi.spyOn(internal, 'isMobilePlayback').mockReturnValue(false);
+		const applyVolume = vi.spyOn(internal.engine, 'applyVolume');
 
 		player.setVolume(0.5);
+		expect(applyVolume).toHaveBeenLastCalledWith({
+			level: 0.5,
+			muted: false,
+			allowWebAudio: false
+		});
 
-		expect(internal.audio.volume).toBe(0.5);
-		expect(setTargetAtTime).toHaveBeenCalledWith(1, 0, 0.015);
+		player.setVolume(1.2);
+		expect(applyVolume).toHaveBeenLastCalledWith({ level: 1.2, muted: false, allowWebAudio: true });
+	});
+
+	it('folds ReplayGain into the level when normalisation is on', () => {
+		const player = new PlayerState();
+		const internal = player as unknown as {
+			engine: { applyVolume: (request: unknown) => void };
+		};
+		const applyVolume = vi.spyOn(internal.engine, 'applyVolume');
+		player.trackReplayGain = -6;
+
+		player.setVolume(1);
+		const request = applyVolume.mock.lastCall?.[0] as { level: number };
+		expect(request.level).toBeCloseTo(0.501, 3);
 	});
 });
