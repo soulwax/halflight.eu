@@ -1,5 +1,8 @@
 # Bragi CLI implementation plan
 
+Implementation: the first standalone release now lives in this directory. See [README.md](README.md)
+for implemented commands and limitations. Native mpv/FFmpeg adapters remain future work.
+
 Status: proposed implementation; this directory currently contains the plan only.
 Reviewed against `bragi-audio@0.2.2` on 2026-09-29.
 
@@ -60,16 +63,16 @@ dependencies and build/check scripts during scaffolding:
 
 ```json
 {
-	"name": "bragi-cli",
-	"version": "0.1.0",
-	"type": "module",
-	"engines": { "node": ">=22.13" },
-	"bin": {
-		"bragi": "./dist/cli.js",
-		"bragi-cli": "./dist/cli.js"
-	},
-	"files": ["dist", "README.md", "CHANGELOG.md", "LICENSE"],
-	"dependencies": { "bragi-audio": "0.2.2" }
+  "name": "bragi-cli",
+  "version": "0.1.0",
+  "type": "module",
+  "engines": { "node": ">=22.13" },
+  "bin": {
+    "bragi": "./dist/cli.js",
+    "bragi-cli": "./dist/cli.js"
+  },
+  "files": ["dist", "README.md", "CHANGELOG.md", "LICENSE"],
+  "dependencies": { "bragi-audio": "0.2.2" }
 }
 ```
 

@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The standalone `bragi-cli` package in `bragi/`, with npm executables, setup, bounded inspection and
+  downloads, WAV/raw PCM tools, saved queues, and a bundled browser playback/conversion companion.
+  It has independent package checks and generated-fixture browser and HTTP integration tests.
 - An implementation plan for the standalone `bragi-cli` package in `bragi/PLAN.md`, covering the
   setup wizard, terminal commands, browser playback companion, library API coverage, and release gates.
 

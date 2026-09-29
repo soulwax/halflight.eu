@@ -1,0 +1,6 @@
+packages:
+  - .
+allowBuilds:
+  esbuild: true
+minimumReleaseAgeExclude:
+  - bragi-audio@0.2.2
