@@ -17,5 +17,5 @@ bun.lockb
 /project.inlang/README.md
 /project.inlang/cache/
 
-# Standalone CLI with its own tooling
+# Standalone CLI submodule with its own tooling
 /bragi/
