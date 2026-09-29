@@ -9,7 +9,8 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
     "allowJs": true,
-    "types": ["node"]
+    "types": ["node"],
+    "newLine": "lf"
   },
   "include": ["src/**/*.ts", "test/**/*.ts", "*.ts", "eslint.config.js"]
 }
