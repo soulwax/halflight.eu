@@ -161,11 +161,10 @@ Exit codes: **0** success, **1** invalid/unsupported input or limits, **2** comm
 
 ## Development
 
-This directory is an independent pnpm package. Its runtime dependency is the published
-`bragi-audio@0.2.2`, not the neighboring source checkout.
+This repository is an independent pnpm package. Its runtime dependency is the published
+`bragi-audio@0.2.2`.
 
 ```sh
-cd bragi
 pnpm install --frozen-lockfile
 pnpm exec playwright install chromium
 pnpm check
@@ -174,4 +173,4 @@ pnpm pack
 
 The build includes the executable entry, metadata worker, browser JavaScript and HTML. Tests use
 tiny generated PCM/WAV fixtures and local HTTP servers. CI checks Linux, macOS and Windows on
-Node 24, plus the Node 22.13 minimum runtime. The source checkout includes `bragi/PLAN.md` with the design and future adapters.
+Node 24, plus the Node 22.13 minimum runtime. See [PLAN.md](PLAN.md) for the design and future adapters.

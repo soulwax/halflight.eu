@@ -1,18 +1,18 @@
 # Bragi CLI implementation plan
 
-Implementation: the first standalone release now lives in this directory. See [README.md](README.md)
-for implemented commands and limitations. Native mpv/FFmpeg adapters remain future work.
+Implementation and the first public release are complete as `bragi-cli@0.1.0`. Source and release
+notes are published at [github.com/soulwax/bragi-cli](https://github.com/soulwax/bragi-cli); install
+and usage details are in [README.md](README.md). The acceptance gates below record the completed
+first release. Native mpv/FFmpeg adapters remain future work.
 
-Status: proposed implementation; this directory currently contains the plan only.
 Reviewed against `bragi-audio@0.2.2` on 2026-09-29.
 
 ## Product and naming
 
 Build a friendly audio toolbox with the npm package name **`bragi-cli`**, the primary command
 **`bragi`**, and an additional **`bragi-cli`** binary pointing to the same entry point. Keep its
-source in **`./bragi`**. `bragi` is already an unrelated npm package; an exact registry lookup for
-`bragi-cli` returned 404 on the review date. Recheck availability and npm's name-similarity policy
-before release; availability is not a reservation. The command name can differ from the package
+source at the root of the **`soulwax/bragi-cli`** repository. The npm package name was checked when
+version 0.1.0 was published; package name availability is not a reservation. The command name can differ from the package
 name, and the second binary gives users an alternative if `bragi` already exists on their PATH.
 
 The main jobs are inspecting audio, downloading permitted sources, streaming bytes, converting
@@ -26,12 +26,11 @@ files belong on the user's machine.
 
 ## Runtime and package boundary
 
-Use TypeScript strict mode, ESM, and a proposed Node floor of **22.13**. Recommend Node 24 for
-development; validate the exact dependency versions against the proposed floor before fixing
-`engines`. Node 22 and 24 are maintained LTS lines on the review date.
+Use TypeScript strict mode, ESM, and Node **22.13 or later**. Develop on Node 24; the package’s
+minimum Node version is checked in CI.
 [Node release schedule](https://nodejs.org/en/about/previous-releases).
 
-Start with these dependencies and pin tested versions during scaffolding:
+The tested runtime dependencies are:
 
 | Dependency          | Responsibility                                                  |
 | ------------------- | --------------------------------------------------------------- |
@@ -42,8 +41,7 @@ Start with these dependencies and pin tested versions during scaffolding:
 | `open`              | Open the local playback companion in the user's browser         |
 
 Commander supports strict argument handling and configurable output/exit handling. Clack provides
-the prompt and cancellation primitives needed by the wizard. Keep those libraries in the terminal
-layer, and lazy-load prompts so ordinary scripts do not initialize an interactive UI.
+the prompt and cancellation primitives needed by the wizard. Keep prompt rendering in the terminal layer so ordinary scripts get clean output.
 [Commander documentation](https://github.com/tj/commander.js),
 [Clack documentation](https://github.com/bombshell-dev/clack/blob/main/packages/prompts/README.md).
 
@@ -52,21 +50,23 @@ Use `open` for browser launching, with a printed local URL as a fallback.
 [env-paths documentation](https://github.com/sindresorhus/env-paths),
 [open documentation](https://github.com/sindresorhus/open).
 
-The future package declares an independent `pnpm-workspace.yaml`, like `bragi-audio`, so running
-pnpm inside `./bragi` cannot install or modify the parent application's dependencies. Depend on the
-published library, not `../bragi-audio` or a Git submodule path. Build plain Node ESM with `tsc`; use
-esbuild as a development dependency to bundle the small browser companion. Publish only `dist`,
-the companion assets, declarations where useful, and release/license documentation.
+The standalone repository declares its own `pnpm-workspace.yaml`. It depends on the published
+library, not a neighboring checkout or Git submodule path. It builds plain Node ESM with `tsc` and
+uses esbuild to bundle the browser companion. The npm package includes `dist` and release/license
+documentation.
 
-The package identity and executable mapping should start like this; add the tested runtime
-dependencies and build/check scripts during scaffolding:
+The published package identity and executable mapping are:
 
 ```json
 {
   "name": "bragi-cli",
   "version": "0.1.0",
   "type": "module",
-  "engines": { "node": ">=22.13" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/soulwax/bragi-cli.git"
+  },
+  "engines": { "node": ">=22.13.0" },
   "bin": {
     "bragi": "./dist/cli.js",
     "bragi-cli": "./dist/cli.js"
@@ -76,13 +76,13 @@ dependencies and build/check scripts during scaffolding:
 }
 ```
 
-The entry begins with `#!/usr/bin/env node`; the packed executable must retain its shebang and
-executable permissions. Keep the initial package inside this repository, with no new submodule or
-separate GitHub repository required to implement the first slice.
+The entry has `#!/usr/bin/env node`; the packed executable retains its shebang and executable
+permissions. The first implementation was developed in Syn’s `bragi/` directory, then published as
+its own repository so the public source contains only the standalone CLI.
 
 ## Command experience
 
-Proposed commands and examples:
+Implemented commands and examples:
 
 ```sh
 pnpm add -g bragi-cli                 # after the first public release
@@ -334,31 +334,29 @@ and companion asset URLs resolve relative to the installed entry, never the curr
 
 ## Delivery milestones and acceptance gates
 
-1. **Scaffold and first useful slice.** Create the independent package, bins, strict build,
+1. **Scaffold and first useful slice — complete.** Create the independent package, bins, strict build,
    `--help`/`--version`, `formats`, local `inspect`, structured results and cancellation. Confirm
    the runtime floor and dependency versions. Gate: an installed tarball inspects a generated WAV
    from a directory outside the checkout and prints clean JSON without Syn configuration.
-2. **Setup and diagnosis.** Add the wizard, versioned preferences, doctor and interactive action menu.
+2. **Setup and diagnosis — complete.** Add the wizard, versioned preferences, doctor and interactive action menu.
    Gate: fresh setup, rerun, cancellation at every step, invalid paths, non-TTY invocation and
    configuration write failure behave deterministically with no half-written preferences.
-3. **Delivery and WAV tools.** Add bounded downloads/streaming, no-clobber output, validated resume,
+3. **Delivery and WAV tools — complete.** Add bounded downloads/streaming, no-clobber output, validated resume,
    artwork export and WAV conversion/raw PCM operations. Gate: unknown lengths, truncated bodies,
    changed validators, ignored ranges, quota limits, aborts and disk failures leave valid outcomes;
    round-trips preserve sample rate/channels and respect the documented encoding tolerance.
-4. **Playback companion.** Add the loopback media bridge, queue/controller, native browser playback,
+4. **Playback companion — complete.** Add the loopback media bridge, queue/controller, native browser playback,
    Media Session, metadata preloading and terminal controls. Gate: real Chromium tests cover a WAV,
    range-based seeking, duplicate queue entries, next/previous, cancellation of obsolete requests,
-   source rejection and cleanup. Default playback must not require mpv or FFmpeg.
-5. **Browser conversion and usability pass.** Add explicit browser decode/export; finish actionable
+   source rejection and cleanup. Default playback does not require mpv or FFmpeg.
+5. **Browser conversion and usability pass — complete.** Add explicit browser decode/export; finish actionable
    errors, narrow-terminal/plain-text behavior and examples. Gate: a new user can install, finish
    setup, inspect a file, download a permitted test fixture and play a queue without reading source.
    Native decoding capabilities are reported from observed results, not metadata format labels.
-6. **First public release.** Audit runtime dependencies and tarball contents, run clean-install tests
-   for both binary names, and test supported Node releases on Linux/macOS/Windows. Gate: executable
-   permissions/shebang, worker paths, bundled companion assets, Unicode/space-containing paths,
-   non-TTY pipelines and Ctrl+C all work from the registry-style artifact. Recheck the npm name,
-   write release notes, then perform an explicitly authorized real release; do not publish a
-   placeholder simply to claim the name.
+6. **First public release — complete.** The runtime dependency audit and tarball checks passed.
+   Both binaries work from a clean install on Node 22.13 and 24; CI passed on Linux, macOS and
+   Windows. The package was published as [bragi-cli@0.1.0](https://www.npmjs.com/package/bragi-cli).
+   Its source and release are published at [github.com/soulwax/bragi-cli](https://github.com/soulwax/bragi-cli).
 
 After the first usable release, implement mpv only if terminal-only/headless playback is wanted.
 General compressed transcoding needs a separately scoped FFmpeg adapter or future library API.

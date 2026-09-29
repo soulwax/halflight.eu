@@ -3,6 +3,13 @@
 All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- Publish the standalone source, CI workflow and release at `github.com/soulwax/bragi-cli`.
+- Update npm package links to the standalone repository.
+
 ## [0.1.0] - 2026-09-29
 
 ### Added

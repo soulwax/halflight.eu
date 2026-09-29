@@ -7,10 +7,9 @@
   "author": "soulwax",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/soulwax/Syn.git",
-    "directory": "bragi"
+    "url": "git+https://github.com/soulwax/bragi-cli.git"
   },
-  "homepage": "https://www.npmjs.com/package/bragi-cli",
+  "homepage": "https://github.com/soulwax/bragi-cli#readme",
   "engines": {
     "node": ">=22.13.0"
   },
@@ -54,5 +53,8 @@
     "typescript": "6.0.3",
     "typescript-eslint": "8.60.1",
     "vitest": "4.1.8"
+  },
+  "bugs": {
+    "url": "https://github.com/soulwax/bragi-cli/issues"
   }
 }
