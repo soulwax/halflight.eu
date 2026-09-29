@@ -126,6 +126,13 @@
 			</div>
 		{:else if player.persistenceStatus === 'offline'}
 			<p class="player-sync-status" role="status">{m.player_sync_offline()}</p>
+		{:else if player.persistenceStatus === 'server_error'}
+			<div class="player-sync-status" role="status">
+				<span>{m.player_sync_server_error()}</span>
+				<button class="player-sync-action" type="button" onclick={() => player.retryPersistence()}>
+					{m.player_sync_retry()}
+				</button>
+			</div>
 		{:else if player.persistenceStatus === 'rejected'}
 			<p class="player-sync-status" role="status">{m.player_sync_rejected()}</p>
 		{:else if player.persistenceStatus === 'unauthenticated'}

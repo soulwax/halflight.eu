@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Distinguish playback-session service failures from network outages, keep pending edits, and offer
+  a translated retry action in the player.
 - Rebrand the audio package source submodule, imports, configuration, tests, documentation, and
   GitHub links to `bragi-audio`; depend on the package directly.
 - Syn now consumes the published `bragi-audio@0.2.2` package directly,

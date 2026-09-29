@@ -30,7 +30,7 @@ export interface PlaybackPersistenceSnapshot extends PlaybackStateWrite {
 }
 
 export type PlaybackPersistenceStatus =
-	'saved' | 'saving' | 'offline' | 'conflict' | 'rejected' | 'unauthenticated';
+	'saved' | 'saving' | 'offline' | 'server_error' | 'conflict' | 'rejected' | 'unauthenticated';
 
 export function isTrackSummary(value: unknown): value is TrackSummary {
 	if (!value || typeof value !== 'object') return false;
@@ -157,6 +157,7 @@ export class PlaybackSessionCoordinator {
 	 * one truthful signal that an edit was discarded would never reach the UI.
 	 */
 	private queueCommandWasRejected = false;
+	private serverErrorRetry: 'persist' | 'refresh' | 'sync' = 'persist';
 
 	persistenceInFlight = false;
 	persistenceQueued = false;
@@ -194,6 +195,18 @@ export class PlaybackSessionCoordinator {
 		if (this.status === newStatus) return;
 		this.status = newStatus;
 		this.onStatusChangeFn?.(newStatus);
+	}
+
+	retryAfterServerError(): void {
+		if (this.status !== 'server_error') return;
+		if (this.serverErrorRetry === 'refresh') {
+			this.setStatus('conflict');
+			void this.refreshQueueFromServer();
+		} else if (this.serverErrorRetry === 'sync') {
+			void this.syncPlaybackState();
+		} else {
+			this.flushPersistence();
+		}
 	}
 
 	setActiveDevice(device: PlaybackDeviceStatus | null): void {
@@ -328,7 +341,6 @@ export class PlaybackSessionCoordinator {
 				}),
 				keepalive: true
 			});
-			const state = (await response.json().catch(() => null)) as SavedPlaybackState | null;
 			// Checked before the body is interpreted as a `SavedPlaybackState`: a
 			// 401's body never is one, so without this it fell into the next branch
 			// and was reported identically to a network drop — "check your
@@ -337,6 +349,12 @@ export class PlaybackSessionCoordinator {
 				this.setStatus('unauthenticated');
 				return false;
 			}
+			if (response.status >= 500) {
+				this.serverErrorRetry = 'persist';
+				this.setStatus('server_error');
+				return false;
+			}
+			const state = (await response.json().catch(() => null)) as SavedPlaybackState | null;
 			if (
 				!state ||
 				!Array.isArray(state.queue) ||
@@ -421,11 +439,16 @@ export class PlaybackSessionCoordinator {
 				}),
 				keepalive: true
 			});
-			const state = (await response.json().catch(() => null)) as SavedPlaybackState | null;
 			if (response.status === 401) {
 				this.setStatus('unauthenticated');
 				return;
 			}
+			if (response.status >= 500) {
+				this.serverErrorRetry = 'persist';
+				this.setStatus('server_error');
+				return;
+			}
+			const state = (await response.json().catch(() => null)) as SavedPlaybackState | null;
 			if (response.status === 409) {
 				if (
 					!state ||
@@ -494,6 +517,11 @@ export class PlaybackSessionCoordinator {
 				},
 				cache: 'no-store'
 			});
+			if (response.status >= 500) {
+				this.serverErrorRetry = 'refresh';
+				this.setStatus('server_error');
+				return;
+			}
 			const state = (await response.json().catch(() => null)) as SavedPlaybackState | null;
 			if (response.status === 401) {
 				this.setStatus('unauthenticated');
@@ -544,6 +572,12 @@ export class PlaybackSessionCoordinator {
 				},
 				cache: 'no-store'
 			});
+			if (response.status >= 500) {
+				this.sessionSyncFailures += 1;
+				this.serverErrorRetry = 'sync';
+				this.setStatus('server_error');
+				return;
+			}
 			const state = (await response.json().catch(() => null)) as unknown;
 			// The background poll's failure path previously changed nothing the UI
 			// could see — a 401 here (the session has ended, in this tab or another)
@@ -580,7 +614,9 @@ export class PlaybackSessionCoordinator {
 			if (state.revision === this.revision) {
 				if (
 					!this.persistenceInFlight &&
-					(this.status === 'offline' || this.status === 'unauthenticated')
+					(this.status === 'offline' ||
+						this.status === 'server_error' ||
+						this.status === 'unauthenticated')
 				) {
 					this.setStatus('saved');
 				}
@@ -599,7 +635,9 @@ export class PlaybackSessionCoordinator {
 
 			if (
 				!this.persistenceInFlight &&
-				(this.status === 'offline' || this.status === 'unauthenticated')
+				(this.status === 'offline' ||
+					this.status === 'server_error' ||
+					this.status === 'unauthenticated')
 			) {
 				this.setStatus('saved');
 			}

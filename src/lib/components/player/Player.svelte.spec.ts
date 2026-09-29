@@ -9,6 +9,7 @@ afterEach(() => {
 	player.currentTrack = null;
 	player.activeDevice = null;
 	player.playbackClaimPending = false;
+	player.persistenceStatus = 'saved';
 	vi.restoreAllMocks();
 });
 
@@ -32,5 +33,22 @@ describe('Player.svelte', () => {
 		await expect.element(page.getByText(m.now_playing_elsewhere())).toBeInTheDocument();
 		await page.getByRole('button', { name: m.now_play_here() }).click();
 		expect(playHere).toHaveBeenCalledOnce();
+	});
+
+	it('explains a service save failure and offers an explicit retry', async () => {
+		player.currentTrack = {
+			kind: 'track',
+			id: 'track-1',
+			title: 'Track One',
+			artists: [{ id: 'artist-1', name: 'Artist One' }]
+		};
+		player.persistenceStatus = 'server_error';
+		const retry = vi.spyOn(player, 'retryPersistence');
+
+		render(Player);
+
+		await expect.element(page.getByText(m.player_sync_server_error())).toBeInTheDocument();
+		await page.getByRole('button', { name: m.player_sync_retry() }).click();
+		expect(retry).toHaveBeenCalledOnce();
 	});
 });

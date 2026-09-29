@@ -1482,6 +1482,10 @@ export class PlayerState {
 		this.coordinator.flushPersistence();
 	}
 
+	retryPersistence(): void {
+		this.coordinator.retryAfterServerError();
+	}
+
 	private async persistPlaybackState(): Promise<void> {
 		return this.coordinator.persistPlaybackState();
 	}

@@ -453,6 +453,108 @@ describe('PlaybackSessionCoordinator', () => {
 		expect(coordinator.queueCommands).toHaveLength(1);
 	});
 
+	it('reports a service failure and preserves a queue command until retry succeeds', async () => {
+		let serviceUnavailable = true;
+		const fetchMock = vi.fn(async (url: string | URL | Request) => {
+			if (String(url) === '/api/playback-state/intents') {
+				if (serviceUnavailable) return new Response('temporarily unavailable', { status: 503 });
+				return new Response(
+					JSON.stringify({
+						currentTrack: null,
+						queue: [makeEntry(sampleTrack1, 'entry-local')],
+						history: [],
+						currentTime: 0,
+						revision: 1
+					}),
+					{ status: 200 }
+				);
+			}
+			return new Response(JSON.stringify({ revision: 2 }), { status: 200 });
+		}) as typeof fetch;
+
+		const coordinator = createCoordinator(fetchMock);
+		coordinator.recordCommand({
+			type: 'append',
+			entries: [makeEntry(sampleTrack1, 'entry-local')]
+		});
+
+		await vi.waitFor(() => expect(coordinator.status).toBe('server_error'));
+		expect(coordinator.queueCommands).toHaveLength(1);
+
+		serviceUnavailable = false;
+		coordinator.retryAfterServerError();
+		await vi.waitFor(() => expect(coordinator.status).toBe('saved'));
+		expect(coordinator.queueCommands).toHaveLength(0);
+	});
+
+	it('reports a service failure while saving a snapshot and allows a retry', async () => {
+		let serviceUnavailable = true;
+		const fetchMock = vi.fn(async () => {
+			if (serviceUnavailable) return new Response('internal error', { status: 500 });
+			return new Response(JSON.stringify({ revision: 1 }), { status: 200 });
+		}) as typeof fetch;
+
+		const coordinator = createCoordinator(fetchMock);
+		coordinator.schedulePersistence();
+		await vi.waitFor(() => expect(coordinator.status).toBe('server_error'));
+
+		serviceUnavailable = false;
+		coordinator.retryAfterServerError();
+		await vi.waitFor(() => expect(coordinator.status).toBe('saved'));
+	});
+
+	it('retries a failed conflict refresh through the same recovery path', async () => {
+		let serviceUnavailable = true;
+		const fetchMock = vi.fn(async () => {
+			if (serviceUnavailable) return new Response('internal error', { status: 500 });
+			return new Response(
+				JSON.stringify({
+					currentTrack: null,
+					queue: [makeEntry(sampleTrack2, 'entry-remote')],
+					history: [],
+					currentTime: 0,
+					revision: 4
+				}),
+				{ status: 200 }
+			);
+		}) as typeof fetch;
+
+		const coordinator = createCoordinator(fetchMock);
+		coordinator.status = 'conflict';
+		await coordinator.refreshQueueFromServer();
+		expect(coordinator.status).toBe('server_error');
+
+		serviceUnavailable = false;
+		coordinator.retryAfterServerError();
+		await vi.waitFor(() => expect(coordinator.status).toBe('saved'));
+		expect(appliedQueue.map((entry) => entry.entryId)).toEqual(['entry-remote']);
+	});
+
+	it('surfaces and then clears a service error from background session sync', async () => {
+		let serviceUnavailable = true;
+		const fetchMock = vi.fn(async () => {
+			if (serviceUnavailable) return new Response('internal error', { status: 500 });
+			return new Response(
+				JSON.stringify({
+					currentTrack: null,
+					queue: [],
+					history: [],
+					currentTime: 0,
+					revision: 0
+				}),
+				{ status: 200 }
+			);
+		}) as typeof fetch;
+
+		const coordinator = createCoordinator(fetchMock);
+		await coordinator.syncPlaybackState();
+		expect(coordinator.status).toBe('server_error');
+
+		serviceUnavailable = false;
+		coordinator.retryAfterServerError();
+		await vi.waitFor(() => expect(coordinator.status).toBe('saved'));
+	});
+
 	it('distinguishes an ended session from a network drop when sending a queue command', async () => {
 		// A 401's body never parses as a SavedPlaybackState, so without checking
 		// the status first this fell into the same branch as a malformed response

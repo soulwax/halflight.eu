@@ -465,6 +465,8 @@
 	"player_sync_conflict": "Your queue changed elsewhere and has not been saved here.",
 	"player_sync_refresh": "Refresh queue",
 	"player_sync_offline": "Your queue has not been saved. Check your connection and try again.",
+	"player_sync_server_error": "The service could not save your queue. Your changes are still here.",
+	"player_sync_retry": "Try again",
 	"player_sync_rejected": "One of your queue changes couldn't be applied and was dropped. The rest of your queue is unaffected.",
 	"player_sync_unauthenticated": "Your session has ended. Sign in again to keep your queue in sync.",
 	"player_remove_from_queue": "Remove",
