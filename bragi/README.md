@@ -174,4 +174,4 @@ pnpm pack
 
 The build includes the executable entry, metadata worker, browser JavaScript and HTML. Tests use
 tiny generated PCM/WAV fixtures and local HTTP servers. CI checks Linux, macOS and Windows on
-Node 24, plus the Node 22.13 minimum runtime. See [PLAN.md](https://github.com/soulwax/Syn/blob/extend-syn-audio-pipeline/bragi/PLAN.md) for design and future adapters.
+Node 24, plus the Node 22.13 minimum runtime. The source checkout includes `bragi/PLAN.md` with the design and future adapters.

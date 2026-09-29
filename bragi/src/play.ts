@@ -36,6 +36,7 @@ export async function play(
     complete = resolve;
   });
   let conversionOutput: string | undefined;
+  let interrupted = false;
   const boundedContext = options.convert
     ? {
         ...ctx,
@@ -60,8 +61,11 @@ export async function play(
   ctx.signal.addEventListener("abort", abort, { once: true });
   const keyboard = (data: Buffer) => {
     const key = data.toString().toLowerCase();
-    if (key === "q" || key === "\u0003") complete();
-    else if (key === " ") companion.control("toggle");
+    if (key === "q") complete();
+    else if (key === "\u0003") {
+      interrupted = true;
+      complete();
+    } else if (key === " ") companion.control("toggle");
     else if (key === "n") companion.control("next");
     else if (key === "p") companion.control("previous");
     else if (key === "\u001b[C") companion.control("seek", 10);
@@ -120,6 +124,6 @@ export async function play(
     }
     await companion.close();
   }
-  if (ctx.signal.aborted)
+  if (ctx.signal.aborted || interrupted)
     throw new CliError("aborted", "Session interrupted.", 130);
 }

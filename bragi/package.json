@@ -10,10 +10,7 @@
     "url": "git+https://github.com/soulwax/Syn.git",
     "directory": "bragi"
   },
-  "homepage": "https://github.com/soulwax/Syn/tree/extend-syn-audio-pipeline/bragi#readme",
-  "bugs": {
-    "url": "https://github.com/soulwax/Syn/issues"
-  },
+  "homepage": "https://www.npmjs.com/package/bragi-cli",
   "engines": {
     "node": ">=22.13.0"
   },
