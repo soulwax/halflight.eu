@@ -1,5 +1,5 @@
 import { page } from 'vitest/browser';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import QueueScene from './QueueScene.svelte';
 import { player } from '#lib/player/player.svelte.js';
@@ -21,7 +21,10 @@ beforeEach(() => {
 	player.queue = [];
 	player.currentTrack = null;
 	player.history = [];
+	player.persistenceStatus = 'saved';
 });
+
+afterEach(() => vi.restoreAllMocks());
 
 describe('QueueScene.svelte', () => {
 	it('shows the empty-queue message and a way back to Now Playing', async () => {
@@ -44,7 +47,18 @@ describe('QueueScene.svelte', () => {
 		expect(player.currentTrack?.id).toBe('2');
 	});
 
+	it('shows the current track separately from the upcoming queue', async () => {
+		player.currentTrack = mk('current', 'Now playing');
+		player.queue = [entry('next', 'Up next')];
+		await render(QueueScene);
+
+		await expect.element(page.getByText('Now playing', { exact: true })).toBeInTheDocument();
+		await expect.element(page.getByText('Up next', { exact: true })).toBeInTheDocument();
+		expect(player.currentTrack?.id).toBe('current');
+	});
+
 	it('reorders and removes queued tracks', async () => {
+		player.currentTrack = mk('current', 'Now playing');
 		player.queue = [entry('1', 'One'), entry('2', 'Two')];
 		await render(QueueScene);
 
@@ -53,6 +67,52 @@ describe('QueueScene.svelte', () => {
 
 		await page.getByRole('button', { name: m.player_remove_from_queue() }).first().click();
 		expect(player.queue.map((t) => t.id)).toEqual(['1']);
+		expect(player.currentTrack?.id).toBe('current');
+	});
+
+	it('removes one duplicate by queue-entry identity without changing the current track', async () => {
+		player.currentTrack = mk('current', 'Now playing');
+		player.queue = [entry('same', 'Duplicate'), entry('same', 'Duplicate')];
+		const secondEntryId = player.queue[1].entryId;
+		await render(QueueScene);
+
+		await page.getByRole('button', { name: m.player_remove_from_queue() }).first().click();
+		expect(player.queue).toHaveLength(1);
+		expect(player.queue[0].entryId).toBe(secondEntryId);
+		expect(player.currentTrack?.id).toBe('current');
+	});
+
+	it('shows pending queue saves', async () => {
+		player.persistenceStatus = 'saving';
+		await render(QueueScene);
+
+		await expect
+			.element(page.getByText(m.player_sync_saving(), { exact: true }))
+			.toBeInTheDocument();
+	});
+
+	it('offers conflict refresh while keeping the current track playing', async () => {
+		player.currentTrack = mk('current', 'Now playing');
+		player.persistenceStatus = 'conflict';
+		const refresh = vi.spyOn(player, 'refreshQueueFromServer').mockResolvedValue();
+		await render(QueueScene);
+
+		await expect.element(page.getByText(m.player_sync_conflict())).toBeInTheDocument();
+		await page.getByRole('button', { name: m.player_sync_refresh() }).click();
+		expect(refresh).toHaveBeenCalledOnce();
+		expect(player.currentTrack?.id).toBe('current');
+	});
+
+	it('offers retry after a save error without changing the current track', async () => {
+		player.currentTrack = mk('current', 'Now playing');
+		player.persistenceStatus = 'server_error';
+		const retry = vi.spyOn(player, 'retryPersistence').mockImplementation(() => {});
+		await render(QueueScene);
+
+		await expect.element(page.getByText(m.player_sync_server_error())).toBeInTheDocument();
+		await page.getByRole('button', { name: m.player_sync_retry() }).click();
+		expect(retry).toHaveBeenCalledOnce();
+		expect(player.currentTrack?.id).toBe('current');
 	});
 
 	it('offers clear queue only when there is one', async () => {

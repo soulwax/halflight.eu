@@ -2382,10 +2382,11 @@ afterthought.
       artwork, transport, seek) and a minimal `/home` (resume card) exist behind the `(mobile)`
       route group, sharing the `player` singleton, `/api/playback-state`, and design tokens with
       zero desktop-component imports; writes now correctly send `origin: 'halflight-now'` (see
-      `player.svelte.ts`'s `origin` field, previously dead code). Library, lyrics, credits, and
-      queue editing on mobile are still open. Mobile Search now has a dedicated `/search` route,
-      cancellation-safe grouped live results, and track-level play, play-next, queue, and radio
-      actions. Mobile Library now presents saved playlists and paginated favorite tracks with
+      `player.svelte.ts`'s `origin` field, previously dead code). Queue editing now uses stable
+      entry IDs, accessible reorder/remove/clear controls, and visible persistence recovery states.
+      Library, lyrics, and credits on mobile are still open. Mobile Search now has a dedicated
+      `/search` route, cancellation-safe grouped live results, and track-level play, play-next,
+      queue, and radio actions. Mobile Library now presents saved playlists and paginated favorite tracks with
       play, next, queue, retry, connection, and reviewed replacement states; Now Playing includes
       provenance, actual quality, focused lyrics, and contributor credits. Detail sheets and
       physical-device acceptance remain open. Mobile Settings now offers the
@@ -2601,26 +2602,31 @@ separate status messages. A server failure now offers an explicit retry in the p
 and German copy. Coordinator and player tests cover conflict recovery, retained edits, retry, and
 background-sync recovery.
 
+## Completed vertical slice: queue control in Halflight Now
+
+The mobile queue shows the current track and upcoming entries and supports play, reorder, remove,
+clear, and save through the existing session commands. Stable queue-entry IDs keep duplicate tracks
+distinct. Reorder announcements and controls remain keyboard accessible. Mobile now exposes saving,
+offline, conflict, server-error retry, rejected-command, and expired-session states in English and
+German; refreshing or retrying queue persistence leaves the current track intact. Browser coverage
+checks duplicate removal, reordering, clear, current-track continuity, and the conflict/retry actions.
+Existing player tests cover durable queue intent and server conflict recovery.
+
 ## Recommended next vertical slice
 
-**Basic queue control in Halflight Now.** The mobile site already has Home, Search, Library, and Now
-Playing, but the session is less useful away from the desktop until the upcoming tracks are visible
-and manageable. Build one simple queue view against the existing playback-state protocol.
+**Mobile interruption and reconnect recovery.** Before expanding mobile discovery, verify the daily
+listening path under ordinary interruptions using the existing coordinator and statuses.
 
-1. Show the current track and upcoming entries in order; distinguish duplicate tracks by queue-entry
-   identity.
-2. Support play-next, remove, move up/down, and clear using the existing player commands. Keep
-   playback and position untouched when the queue changes.
-3. Make every action keyboard accessible, announce reorder results, and provide clear empty, saving,
-   conflict, and retry states in English and German.
-4. Cover the view with browser tests for duplicate entries, reorder/remove/clear, a save conflict,
-   and continued playback. Do not add new recommendation, generation, or device-coordination
-   behaviour to this slice.
+1. Cover a queue edit made offline, reconnect, and confirm the pending intent reconciles before a
+   stale snapshot can overwrite the accepted queue.
+2. Verify an expired session and a transient service failure each provide the right recovery action
+   while the current audio and in-memory queue remain available.
+3. Add a focused browser journey for Now Playing → queue edit → interrupted request → recovery; keep
+   device takeover explicit and do not add background playback or offline audio.
 
-**Accepted when:** the owner can inspect and edit the next tracks on a phone, edits survive reload,
-conflicts do not interrupt the current audio, and all controls work with keyboard and touch. The
-desktop player remains the source of the shared session; active-device fencing is a prerequisite
-before mobile position writes, not for queue-only edits.
+**Accepted when:** reconnect saves the deliberate queue edit once, reload restores accepted state,
+and no interruption or recovery action restarts or claims playback. Position writes remain gated on
+active-device ownership.
 
 ## Success measures
 

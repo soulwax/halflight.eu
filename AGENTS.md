@@ -40,8 +40,9 @@ pnpm check
 pnpm lint
 pnpm lint:types
 pnpm format
-pnpm test:unit -- --run
-pnpm test:unit -- --run --project server
+pnpm test:unit
+pnpm test:server
+pnpm test:storybook
 pnpm test:e2e
 pnpm build
 pnpm build:node
@@ -54,7 +55,7 @@ pnpm auth:schema             # after editing Better Auth configuration
 Before reporting any code change complete, run and report the actual result of:
 
 ```sh
-pnpm check && pnpm lint && pnpm test:unit -- --run
+pnpm check && pnpm lint && pnpm test:unit && pnpm test:storybook
 ```
 
 Run `pnpm format` after edits. Run `pnpm lint:types` before completing token or async
