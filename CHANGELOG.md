@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- An implementation plan for the standalone `bragi-cli` package in `bragi/PLAN.md`, covering the
+  setup wizard, terminal commands, browser playback companion, library API coverage, and release gates.
+
 ### Changed
 
 - Rebrand the audio package source submodule, imports, configuration, tests, documentation, and
