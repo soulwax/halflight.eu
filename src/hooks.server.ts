@@ -1,6 +1,6 @@
 import { getTextDirection } from '#lib/paraglide/runtime';
 import { paraglideMiddleware } from '#lib/paraglide/server';
-import { getUserStatus, isAdministrator, isFirstAdministrator } from '#lib/server/admin';
+import { getRequestAccess } from '#lib/server/request-access';
 import { auth } from '#lib/server/auth';
 import { DEFAULT_THEME, getThemeSettings, isTheme } from '#lib/server/theme-settings';
 import { building } from '$app/env';
@@ -38,8 +38,8 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
 	const session = await auth.api.getSession({ headers: event.request.headers });
 
 	if (session) {
-		const status = await getUserStatus(session.user.id);
-		if (status !== 'active') {
+		const access = await getRequestAccess(session.user);
+		if (!access.active) {
 			event.locals.session = undefined;
 			event.locals.user = undefined;
 			event.locals.isAdministrator = false;
@@ -47,8 +47,8 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
 		} else {
 			event.locals.session = session.session;
 			event.locals.user = session.user;
-			event.locals.isAdministrator = await isAdministrator(session.user.id);
-			event.locals.isFirstAdministrator = await isFirstAdministrator(session.user);
+			event.locals.isAdministrator = access.isAdministrator;
+			event.locals.isFirstAdministrator = access.isFirstAdministrator;
 		}
 	}
 

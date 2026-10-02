@@ -104,7 +104,7 @@ export {
 	type TidalSegmentCache,
 	type TidalSegmentCacheConfig
 } from './segment-cache-bucket';
-export { getTrackCoverId, tidalArtworkUrl, resetArtworkCache } from './artwork';
+export { getTrackCoverId, getAlbumCoverId, tidalArtworkUrl, resetArtworkCache } from './artwork';
 export {
 	markTrackUnplayable,
 	getUnplayableTrackIds,

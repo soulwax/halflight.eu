@@ -1,21 +1,50 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ getPlaybackToken: vi.fn() }));
+const mocks = vi.hoisted(() => ({ getPlaybackTokenDetails: vi.fn() }));
 
 vi.mock('./client', async (importOriginal) => {
 	const actual = (await importOriginal()) as object;
-	return { ...actual, getPlaybackToken: mocks.getPlaybackToken };
+	return { ...actual, getPlaybackTokenDetails: mocks.getPlaybackTokenDetails };
 });
 
-import { getTrackCoverId, resetArtworkCache, tidalArtworkUrl } from './artwork';
+import { getTrackCoverId, getAlbumCoverId, resetArtworkCache, tidalArtworkUrl } from './artwork';
 import { TidalApiError } from './errors';
 
 const COVER_ID = 'a0b1c2d3-e4f5-6789-abcd-ef0123456789';
 
 describe('TIDAL artwork metadata', () => {
 	beforeEach(() => {
-		mocks.getPlaybackToken.mockReset();
+		mocks.getPlaybackTokenDetails.mockReset();
 		resetArtworkCache();
+	});
+	it('shares album cover lookups without colliding with a track using the same identifier', async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(new Response(JSON.stringify({ cover: COVER_ID })))
+			.mockResolvedValueOnce(new Response(JSON.stringify({ album: { cover: null } })));
+		const options = { accessToken: 'test-token', ctx: { fetch: fetchMock } };
+		expect(
+			await Promise.all([getAlbumCoverId('123', options), getAlbumCoverId('123', options)])
+		).toEqual([COVER_ID, COVER_ID]);
+		expect(await getTrackCoverId('123', options)).toBeNull();
+		expect(await getAlbumCoverId('123', options)).toBe(COVER_ID);
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+		expect(fetchMock.mock.calls[0]?.[0]).toContain('/v1/albums/123?');
+	});
+	it('resolves the playback token and stored market with one authentication lookup', async () => {
+		mocks.getPlaybackTokenDetails.mockResolvedValue({
+			accessToken: 'test-token',
+			countryCode: 'NL'
+		});
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValue(new Response(JSON.stringify({ album: { cover: COVER_ID } })));
+		await expect(getTrackCoverId('321', { ctx: { fetch: fetchMock } })).resolves.toBe(COVER_ID);
+		expect(mocks.getPlaybackTokenDetails).toHaveBeenCalledOnce();
+		expect(fetchMock).toHaveBeenCalledWith(
+			'https://api.tidal.com/v1/tracks/321?countryCode=NL',
+			expect.anything()
+		);
 	});
 
 	it('resolves and caches a legacy album cover identifier', async () => {

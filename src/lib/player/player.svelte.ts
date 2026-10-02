@@ -1,5 +1,6 @@
 import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 import type { TrackSummary } from '#lib/tidal/models.js';
+import { trackArtworkUrl } from '#lib/tidal/artwork';
 import { qualityTier, type QualityTier } from '#lib/format';
 import { AudioEngine, replayGainToLinear } from 'bragi-audio/player';
 import { assessPlayback, type PlaybackAssessment } from './playback-assessment.js';
@@ -80,8 +81,7 @@ function needsTrackMetadata(track: TrackSummary): boolean {
 		track.artists.length === 0 ||
 		track.artists.some((artist) => Boolean(artist.id) && artist.name === artist.id) ||
 		!track.album ||
-		track.album.title === track.album.id ||
-		!track.album.releaseDate
+		track.album.title === track.album.id
 	);
 }
 
@@ -936,7 +936,8 @@ export class PlayerState {
 	 */
 	private resolveCover(track: TrackSummary): void {
 		if (!isBrowser || track.imageUrl || track.album?.imageUrl || !/^\d+$/.test(track.id)) return;
-		const url = `/api/tracks/${track.id}/artwork`;
+		const url = trackArtworkUrl(track);
+		if (!url) return;
 
 		const patched = (t: TrackSummary): TrackSummary =>
 			t.id === track.id && !t.imageUrl ? { ...t, imageUrl: url } : t;

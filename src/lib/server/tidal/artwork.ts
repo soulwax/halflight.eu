@@ -1,4 +1,4 @@
-import { getPlaybackCountryCode, getPlaybackToken, type TidalRequestContext } from './client';
+import { getPlaybackTokenDetails, type TidalRequestContext } from './client';
 import { TidalApiError } from './errors';
 
 const COVER_ID_PATTERN = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
@@ -8,6 +8,7 @@ const DEFAULT_COUNTRY_CODE = 'DE';
 
 interface LegacyTrackMetadata {
 	album?: { cover?: unknown };
+	cover?: unknown;
 }
 
 interface CoverCacheEntry {
@@ -44,32 +45,49 @@ export async function getTrackCoverId(
 	trackId: string | number,
 	options: CoverLookupOptions = {}
 ): Promise<string | null> {
-	const id = String(trackId);
+	return getCoverId('tracks', String(trackId), options);
+}
+
+/** Album tracks share this identifier lookup and the browser's image cache. */
+export async function getAlbumCoverId(
+	albumId: string | number,
+	options: CoverLookupOptions = {}
+): Promise<string | null> {
+	return getCoverId('albums', String(albumId), options);
+}
+
+async function getCoverId(
+	resource: 'tracks' | 'albums',
+	id: string,
+	options: CoverLookupOptions
+): Promise<string | null> {
 	if (!/^\d+$/.test(id)) return null;
+	const key = `${resource}:${id}`;
 	const now = options.now ?? Date.now();
-	const cached = coverCache.get(id);
+	const cached = coverCache.get(key);
 	if (cached && cached.expiresAt > now) return cached.coverId;
-	const existing = inFlight.get(id);
+	const existing = inFlight.get(key);
 	if (existing) return existing;
-	const request = fetchTrackCoverId(id, options, now).finally(() => inFlight.delete(id));
-	inFlight.set(id, request);
+	const request = fetchCoverId(resource, id, options, now).finally(() => inFlight.delete(key));
+	inFlight.set(key, request);
 	return request;
 }
 
-async function fetchTrackCoverId(
+async function fetchCoverId(
+	resource: 'tracks' | 'albums',
 	id: string,
 	options: CoverLookupOptions,
 	now: number
 ): Promise<string | null> {
-	const token = options.accessToken ?? (await getPlaybackToken(options.ctx));
+	const authentication = options.accessToken
+		? { accessToken: options.accessToken, countryCode: undefined }
+		: await getPlaybackTokenDetails(options.ctx);
+	const token = authentication.accessToken;
 	const fetchImpl = options.ctx?.fetch ?? fetch;
 	// The legacy endpoint requires a market. New device authorization records it;
 	// DE bridges device tokens created before that field was retained.
-	const countryCode =
-		options.countryCode ??
-		(options.accessToken ? undefined : await getPlaybackCountryCode(options.ctx)) ??
-		DEFAULT_COUNTRY_CODE;
-	const url = `https://api.tidal.com/v1/tracks/${encodeURIComponent(id)}?countryCode=${encodeURIComponent(countryCode)}`;
+	const countryCode = options.countryCode ?? authentication.countryCode ?? DEFAULT_COUNTRY_CODE;
+	const url = `https://api.tidal.com/v1/${resource}/${encodeURIComponent(id)}?countryCode=${encodeURIComponent(countryCode)}`;
 	const response = await fetchImpl(url, {
 		headers: {
 			authorization: `Bearer ${token}`,
@@ -88,13 +106,13 @@ async function fetchTrackCoverId(
 	}
 
 	const metadata = (await response.json()) as LegacyTrackMetadata;
-	const rawCoverId = metadata.album?.cover;
+	const rawCoverId = resource === 'albums' ? metadata.cover : metadata.album?.cover;
 	const coverId = validCoverId(rawCoverId) ? rawCoverId : null;
 	const oldestCachedTrack = coverCache.keys().next().value;
 	if (coverCache.size >= MAX_COVER_CACHE_ENTRIES && oldestCachedTrack) {
 		coverCache.delete(oldestCachedTrack);
 	}
-	coverCache.set(id, { coverId, expiresAt: now + COVER_CACHE_TTL_MS });
+	coverCache.set(`${resource}:${id}`, { coverId, expiresAt: now + COVER_CACHE_TTL_MS });
 	return coverId;
 }
 

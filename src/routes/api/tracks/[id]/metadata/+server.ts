@@ -1,7 +1,8 @@
 import { error, json, type RequestHandler } from '@sveltejs/kit';
-import { getConnectionStatus, tidalApi } from '#lib/server/tidal';
-import { TidalApiError } from '#lib/server/tidal/errors';
+import { tidalApi } from '#lib/server/tidal';
+import { TidalApiError, TidalNotConnectedError } from '#lib/server/tidal/errors';
 import { normaliseTrackDetail } from '#lib/server/tidal/normalise';
+import { trackArtworkUrl } from '#lib/tidal/artwork';
 
 /**
  * Resolve the display data for an already selected playback track. Session
@@ -14,9 +15,6 @@ export const GET: RequestHandler = async (event) => {
 
 	const trackId = event.params.id;
 	if (!trackId) error(400, 'Track ID required');
-	if (!(await getConnectionStatus()).connected) {
-		return json({ error: 'not_connected' }, { status: 503 });
-	}
 
 	try {
 		const document = await tidalApi.getTrack(
@@ -29,7 +27,11 @@ export const GET: RequestHandler = async (event) => {
 
 		// Keep provider artwork addresses server-side. The player can still use its
 		// existing same-origin artwork proxy and handles a missing cover gracefully.
-		const artworkUrl = `/api/tracks/${encodeURIComponent(track.id)}/artwork`;
+		const artworkUrl =
+			trackArtworkUrl({
+				id: track.id,
+				album: track.album ? { ...track.album, imageUrl: undefined } : undefined
+			}) ?? `/api/tracks/${encodeURIComponent(track.id)}/artwork`;
 		return json(
 			{
 				track: {
@@ -41,6 +43,8 @@ export const GET: RequestHandler = async (event) => {
 			{ headers: { 'cache-control': 'private, no-store' } }
 		);
 	} catch (cause) {
+		if (cause instanceof TidalNotConnectedError)
+			return json({ error: 'not_connected' }, { status: 503 });
 		// Old imported queues can contain recordings that TIDAL no longer exposes.
 		// Surface that durable condition as a 404 so the client marks the entry as
 		// unavailable instead of retrying it on every app-shell restore.

@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Reduce artwork and metadata latency by resolving request permissions in one fresh database query,
+  sharing album artwork requests, reading playback token and market together, and avoiding metadata
+  refreshes for optional missing release dates. Retry the desktop cover after a prior image fails.
 - Verify TIDAL playback before reporting playlist imports successful; exclude confirmed defective
   recordings from playlist JSON and editing views, pace validation, and stop safely on throttling.
   Keep long import and pull responses active through production proxy timeouts.

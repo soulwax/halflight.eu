@@ -6,6 +6,19 @@ describe('display artwork URLs', () => {
 		expect(trackArtworkUrl({ id: '123' }, 80)).toBe('/api/tracks/123/artwork?size=80');
 		expect(trackArtworkUrl({ id: '123' })).toBe('/api/tracks/123/artwork');
 	});
+	it('uses one thumbnail URL for different tracks on the same album', () => {
+		const album = { id: '456', title: 'Album' };
+		expect(trackArtworkUrl({ id: '123', album }, 80)).toBe('/api/albums/456/artwork?size=80');
+		expect(trackArtworkUrl({ id: '124', album }, 80)).toBe(
+			trackArtworkUrl({ id: '123', album }, 80)
+		);
+		expect(artworkUrlForSize('/api/albums/456/artwork?size=80', 640)).toBe(
+			'/api/albums/456/artwork'
+		);
+		expect(trackArtworkUrl({ id: '123', album, imageUrl: '/api/tracks/123/artwork' }, 80)).toBe(
+			'/api/albums/456/artwork?size=80'
+		);
+	});
 	it('does not send private or unresolved identifiers to TIDAL', () => {
 		expect(trackArtworkUrl({ id: 'private-file' })).toBeNull();
 		expect(trackArtworkUrl(null)).toBeNull();

@@ -2671,6 +2671,9 @@ from playlist JSON and editing views while owned source snapshots remain intact;
 validation stops on account, transport or throttling failures instead of labelling them defective.
 Import and pull responses send JSON whitespace while checking, keeping production proxy connections
 active without reporting success before the checks finish.
+Authenticated requests resolve current account permissions in one database query, with no cached
+revocations. Album tracks share an artwork endpoint and browser image cache; artwork resolves token
+and market together, and metadata hydration no longer fetches merely for an absent release date.
 Physical-device playback and broader library browse coverage remain the next acceptance work.
 
 ## Recommended next vertical slice

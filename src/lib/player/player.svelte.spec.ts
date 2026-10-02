@@ -800,6 +800,28 @@ describe('PlayerState', () => {
 		expect(fetchSpy.mock.calls.some(([url]) => String(url).endsWith('/cover'))).toBe(false);
 	});
 
+	it('does not fetch metadata for known tracks solely because their release date is absent', async () => {
+		vi.useFakeTimers();
+		const fetchSpy = vi.fn(() => Promise.reject(new Error('offline')));
+		vi.stubGlobal('fetch', fetchSpy);
+		const player = new PlayerState();
+		const track = {
+			...sampleTrack1,
+			id: 'known-without-release-date',
+			album: { id: 'album-1', title: 'Known album' }
+		};
+		player.restorePlaybackState({
+			currentTrack: track,
+			queue: persistedQueue(track),
+			history: [track],
+			currentTime: 0
+		});
+		player.retryUnresolvedMetadata();
+		await vi.advanceTimersByTimeAsync(10_000);
+		expect(fetchSpy).not.toHaveBeenCalledWith('/api/tracks/known-without-release-date/metadata');
+		expect(player.currentTrack?.title).toBe(track.title);
+	});
+
 	it('hydrates an identifier-only resumed track with live display metadata', async () => {
 		vi.stubGlobal(
 			'fetch',
