@@ -3,12 +3,14 @@
 	import { Disc, Loader2, Pause, Play } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { player } from '#lib/player/player.svelte.js';
+	import { trackArtworkUrl } from '#lib/tidal/artwork';
 	import MobileScreenHeader from './MobileScreenHeader.svelte';
 	import PlaybackStatus from '#lib/components/player/PlaybackStatus.svelte';
 	import SessionSaveStatus from '#lib/components/player/SessionSaveStatus.svelte';
 
 	const track = $derived(player.currentTrack);
-	const cover = $derived(track ? (track.imageUrl ?? track.album?.imageUrl ?? null) : null);
+	const cover = $derived(trackArtworkUrl(track, 320));
+	let failedCover = $state<string | null>(null);
 	const artistLine = $derived(track ? track.artists.map((artist) => artist.name).join(', ') : '');
 </script>
 
@@ -22,8 +24,13 @@
 			</p>
 			<div class="resume-feature">
 				<span class="resume-art">
-					{#if cover}
-						<img src={cover} alt="" class="h-full w-full object-cover" />
+					{#if cover && cover !== failedCover}
+						<img
+							src={cover}
+							alt=""
+							class="h-full w-full object-cover"
+							onerror={() => (failedCover = cover)}
+						/>
 					{:else}
 						<Disc size={30} strokeWidth={1.5} aria-hidden="true" />
 					{/if}

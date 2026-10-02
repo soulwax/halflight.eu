@@ -4,10 +4,12 @@
 	import { m } from '#lib/paraglide/messages.js';
 	import { player } from '#lib/player/player.svelte.js';
 	import { haptics } from '#lib/player/haptics.js';
+	import { trackArtworkUrl } from '#lib/tidal/artwork';
 
 	let { safeArea = false }: { safeArea?: boolean } = $props();
 	const track = $derived(player.currentTrack);
-	const cover = $derived(track ? (track.imageUrl ?? track.album?.imageUrl ?? null) : null);
+	const cover = $derived(trackArtworkUrl(track, 80));
+	let failedCover = $state<string | null>(null);
 	const artistLine = $derived(track ? track.artists.map((artist) => artist.name).join(', ') : '');
 	const progress = $derived(
 		player.duration > 0
@@ -51,8 +53,14 @@
 				class="mobile-mini-art flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden border border-(--border-subtle) bg-(--surface-selected)"
 				style:view-transition-name="syn-now-art"
 			>
-				{#if cover}
-					<img src={cover} alt="" class="h-full w-full object-cover" />
+				{#if cover && cover !== failedCover}
+					<img
+						src={cover}
+						alt=""
+						class="h-full w-full object-cover"
+						decoding="async"
+						onerror={() => (failedCover = cover)}
+					/>
 				{:else}
 					<Disc size={16} class="text-(--text-muted)" />
 				{/if}

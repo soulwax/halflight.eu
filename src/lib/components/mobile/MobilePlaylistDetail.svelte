@@ -33,7 +33,7 @@
 	}
 
 	function queueAll(): void {
-		for (const track of items) player.addToQueue(track, provenance);
+		player.addMultipleToQueue(items, provenance);
 	}
 </script>
 

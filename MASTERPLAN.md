@@ -2663,6 +2663,9 @@ the process cache, allowing repaired or relicensed recordings another attempt.
 
 Favorites retain their list context when tapped; replacing an active queue requires the shared
 accessible confirmation dialog. Saved-playlist actions have 48px targets and narrow rows wrap.
+Album and playlist additions use one durable append operation rather than a save per track.
+Missing artwork loads directly through the image route, with lazy thumbnails, bounded sizes and
+shared concurrent metadata resolution; queue scrolling no longer immediately starts a touch drag.
 Physical-device playback and broader library browse coverage remain the next acceptance work.
 
 ## Recommended next vertical slice

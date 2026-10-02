@@ -4,6 +4,7 @@
 	import { BadgeInfo, ChevronDown, Disc, ListMusic, ScrollText } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { formatReleaseDate } from '#lib/format';
+	import { trackArtworkUrl } from '#lib/tidal/artwork';
 	import { player } from '#lib/player/player.svelte.js';
 	import PlayerTransport from '#lib/components/player/PlayerTransport.svelte';
 	import PlayerSeekBar from '#lib/components/player/PlayerSeekBar.svelte';
@@ -13,7 +14,7 @@
 	import { MOBILE_PLAYER_NAVIGATION, type MobilePlayerNavigation } from '#lib/mobile/navigation';
 	const navigation = getContext<MobilePlayerNavigation | undefined>(MOBILE_PLAYER_NAVIGATION);
 	const track = $derived(player.currentTrack);
-	const cover = $derived(track?.imageUrl ?? track?.album?.imageUrl ?? null);
+	const cover = $derived(trackArtworkUrl(track));
 	const releaseYear = $derived(formatReleaseDate(track?.album?.releaseDate));
 	let erroredTrackId = $state<string | null>(null);
 </script>
@@ -35,6 +36,7 @@
 				{#if cover && erroredTrackId !== track.id}
 					<img
 						src={cover}
+						fetchpriority="high"
 						alt={m.player_cover_alt({ title: track.title })}
 						onerror={() => (erroredTrackId = track?.id ?? null)}
 					/>

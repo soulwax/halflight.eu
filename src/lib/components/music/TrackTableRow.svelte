@@ -5,6 +5,7 @@
 	import { m } from '#lib/paraglide/messages.js';
 	import { formatDuration, formatReleaseDate } from '#lib/format';
 	import type { TrackSummary } from '#lib/tidal/models';
+	import { trackArtworkUrl } from '#lib/tidal/artwork';
 	import type { TrackColumn } from './TrackTable.svelte';
 
 	let {
@@ -21,16 +22,14 @@
 		actions?: Snippet;
 	} = $props();
 
-	let imageError = $state(false);
-	let resolvedCover = $state<string | null>(null);
-	let coverLookupAttempted = $state(false);
+	let failedCover = $state<string | null>(null);
 
 	const cols = $derived({
 		album: columns.includes('album'),
 		date: columns.includes('date'),
 		duration: columns.includes('duration')
 	});
-	const cover = $derived(track.imageUrl ?? track.album?.imageUrl ?? resolvedCover);
+	const cover = $derived(trackArtworkUrl(track, 80));
 	const releaseYear = $derived(formatReleaseDate(track.album?.releaseDate));
 	const title = $derived(track.title === track.id ? m.track_unavailable_title() : track.title);
 	const artistLine = $derived(
@@ -39,30 +38,18 @@
 	const albumTitle = $derived(
 		track.album && track.album.title !== track.album.id ? track.album.title : null
 	);
-
-	$effect(() => {
-		if ((cover && !imageError) || coverLookupAttempted) return;
-		coverLookupAttempted = true;
-
-		void fetch(`/api/tracks/${encodeURIComponent(track.id)}/cover`)
-			.then(async (response) => {
-				if (!response.ok) return null;
-				return (await response.json()) as { imageUrl?: string | null };
-			})
-			.then((result) => {
-				resolvedCover = result?.imageUrl ?? null;
-				if (resolvedCover) imageError = false;
-			})
-			.catch(() => {
-				// The placeholder remains when artwork cannot be resolved.
-			});
-	});
 </script>
 
 <div class:tt-row-playing={isPlaying} class="tt-row" role="row">
 	<span class="tt-art" role="cell">
-		{#if cover && !imageError}
-			<img src={cover} alt="" loading="lazy" onerror={() => (imageError = true)} />
+		{#if cover && cover !== failedCover}
+			<img
+				src={cover}
+				alt=""
+				loading="lazy"
+				decoding="async"
+				onerror={() => (failedCover = cover)}
+			/>
 		{:else}
 			<span class="tt-art-fallback" aria-hidden="true"><Disc size={16} /></span>
 		{/if}

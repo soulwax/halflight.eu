@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Batch album/playlist queue additions into one durable operation, let off-screen artwork remain
+  lazy, request appropriately sized thumbnails, and prevent touch scrolling from starting a drag.
 - Center the desktop seek thumb vertically on the progress line in Chromium and WebKit.
 - Confirm track unavailability across quality tiers before excluding a recording, expire negative
   playability records after 24 hours, and preserve the requested quality limit during fallback.

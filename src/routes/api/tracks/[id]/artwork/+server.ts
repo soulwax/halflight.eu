@@ -14,6 +14,8 @@ export const GET: RequestHandler = async (event) => {
 	if (!event.locals.user || !event.locals.isAdministrator) error(401, 'Unauthorized');
 	const trackId = event.params.id;
 	if (!trackId) error(400, 'Track ID required');
+	const requestedSize = event.url.searchParams.get('size') ?? '640';
+	if (!['80', '160', '320', '640'].includes(requestedSize)) error(400, 'Invalid artwork size');
 
 	let coverId: string | null;
 	try {
@@ -29,7 +31,7 @@ export const GET: RequestHandler = async (event) => {
 	try {
 		// The CDN rejects SvelteKit's request-context wrapper. Use global fetch,
 		// as the audio proxy does, and never forward browser cookies or headers.
-		upstream = await fetch(tidalArtworkUrl(coverId), {
+		upstream = await fetch(tidalArtworkUrl(coverId, `${requestedSize}x${requestedSize}`), {
 			headers: IMAGE_HEADERS,
 			redirect: 'follow'
 		});

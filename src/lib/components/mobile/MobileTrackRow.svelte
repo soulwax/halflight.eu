@@ -3,6 +3,7 @@
 	import { Disc } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import type { TrackSummary } from '#lib/tidal/models';
+	import { trackArtworkUrl } from '#lib/tidal/artwork';
 	import TrackActionMenu from '#lib/components/music/TrackActionMenu.svelte';
 
 	let {
@@ -23,7 +24,8 @@
 		actions?: Snippet;
 	} = $props();
 
-	const cover = $derived(track.imageUrl ?? track.album?.imageUrl ?? null);
+	const cover = $derived(trackArtworkUrl(track, 80));
+	let failedCover = $state<string | null>(null);
 	const title = $derived(track.title === track.id ? m.track_unavailable_title() : track.title);
 	const artistLine = $derived(
 		track.artists
@@ -36,8 +38,16 @@
 <div class="mobile-track-row" class:with-actions={Boolean(actions)}>
 	<button type="button" class="mobile-track-primary" onclick={onActivate}>
 		<span class="mobile-track-art">
-			{#if cover}
-				<img src={cover} alt="" loading="lazy" width="44" height="44" />
+			{#if cover && cover !== failedCover}
+				<img
+					src={cover}
+					alt=""
+					loading="lazy"
+					decoding="async"
+					width="44"
+					height="44"
+					onerror={() => (failedCover = cover)}
+				/>
 			{:else}
 				<Disc size={16} aria-hidden="true" />
 			{/if}

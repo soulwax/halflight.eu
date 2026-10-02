@@ -654,6 +654,29 @@ describe('PlayerState', () => {
 		player.moveQueueItem(second, -1); // no-op at the top edge
 		expectQueuedTracks(player, [sampleTrack3, sampleTrack2]);
 	});
+	it('appends a whole playlist with one durable command and one local-cache write', () => {
+		const player = new PlayerState();
+		const tracks = Array.from({ length: 100 }, (_, index) => ({
+			...sampleTrack1,
+			id: `playlist-${index}`,
+			...(index === 0 ? { provenance: 'Track-specific source' } : {})
+		}));
+		const write = vi.spyOn(Storage.prototype, 'setItem');
+		try {
+			player.addMultipleToQueue(tracks, 'Saved playlist');
+			expect(player.queue).toHaveLength(100);
+			expect(new Set(player.queue.map((entry) => entry.entryId)).size).toBe(100);
+			expect(player.queue[0].provenance).toBe('Track-specific source');
+			expect(player.queue[99].provenance).toBe('Saved playlist');
+			expect(player.queueCommands).toEqual([{ type: 'append', entries: player.queue }]);
+			expect(write.mock.calls.filter(([key]) => key === 'syn:player:queue-cache')).toHaveLength(1);
+			const cached = JSON.parse(localStorage.getItem('syn:player:queue-cache') ?? 'null');
+			expect(cached.queue).toHaveLength(100);
+			expect(cached.queueCommands).toHaveLength(1);
+		} finally {
+			write.mockRestore();
+		}
+	});
 
 	it('reorders queued tracks with reorderQueue and queues replacement command', () => {
 		const player = new PlayerState();
@@ -768,25 +791,13 @@ describe('PlayerState', () => {
 		expect(player.currentTime).toBe(10);
 	});
 
-	it('backfills missing artwork through the cover endpoint', async () => {
-		vi.stubGlobal(
-			'fetch',
-			vi.fn((url: string) => {
-				if (String(url).endsWith('/cover')) {
-					return Promise.resolve(
-						new Response(JSON.stringify({ imageUrl: 'https://img.test/c.jpg', album: null }), {
-							status: 200
-						})
-					);
-				}
-				return Promise.reject(new Error('offline'));
-			})
-		);
-
+	it('supplies missing artwork immediately without a preliminary cover lookup', () => {
+		const fetchSpy = vi.fn((_url: string) => Promise.reject(new Error('offline')));
+		vi.stubGlobal('fetch', fetchSpy);
 		const player = new PlayerState();
-		player.play({ ...sampleTrack1, imageUrl: undefined });
-
-		await vi.waitFor(() => expect(player.currentTrack?.imageUrl).toBe('https://img.test/c.jpg'));
+		player.play({ ...sampleTrack1, id: '123', imageUrl: undefined });
+		expect(player.currentTrack?.imageUrl).toBe('/api/tracks/123/artwork');
+		expect(fetchSpy.mock.calls.some(([url]) => String(url).endsWith('/cover'))).toBe(false);
 	});
 
 	it('hydrates an identifier-only resumed track with live display metadata', async () => {
@@ -970,7 +981,7 @@ describe('PlayerState', () => {
 		expect(player.currentTrack?.title).toBe('Bela Lugosi Is Dead');
 	});
 
-	/** `restorePlaybackState` also fires a `/cover` lookup; isolate the metadata calls from it. */
+	/** Count metadata hydration independently of other background playback requests. */
 	function metadataCallCount(fetchSpy: ReturnType<typeof vi.fn>): number {
 		return fetchSpy.mock.calls.filter(([url]) => String(url).endsWith('/metadata')).length;
 	}

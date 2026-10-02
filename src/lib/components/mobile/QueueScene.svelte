@@ -79,7 +79,7 @@
 	{:else}
 		<div
 			class="flex-1 divide-y divide-(--border-subtle) overflow-y-auto"
-			use:queueDndZone={{ items, flipDurationMs: 150, dropTargetStyle: {} }}
+			use:queueDndZone={{ items, flipDurationMs: 150, dropTargetStyle: {}, delayTouchStart: true }}
 			onconsider={handleConsider}
 			onfinalize={handleFinalize}
 		>

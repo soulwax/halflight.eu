@@ -801,8 +801,6 @@ export class PlayerState {
 		});
 	}
 
-	private coverCache = new SvelteMap<string, string>();
-
 	/**
 	 * Restore current-track identity from TIDAL when a resumable session only
 	 * contains legacy or unresolved identifiers. This is deliberately one track
@@ -936,22 +934,9 @@ export class PlayerState {
 	 * (search results, the resumed queue). Patches every copy of the track in
 	 * player state so the mini-bar, large cover and queue row all update.
 	 */
-	private async resolveCover(track: TrackSummary): Promise<void> {
-		if (!isBrowser || track.imageUrl) return;
-		let url = this.coverCache.get(track.id) ?? null;
-		if (!url) {
-			try {
-				const res = await fetch(`/api/tracks/${encodeURIComponent(track.id)}/cover`);
-				const data = res.ok
-					? ((await res.json().catch(() => null)) as { imageUrl?: string | null } | null)
-					: null;
-				url = data?.imageUrl ?? null;
-			} catch {
-				url = null;
-			}
-		}
-		if (!url) return;
-		this.coverCache.set(track.id, url);
+	private resolveCover(track: TrackSummary): void {
+		if (!isBrowser || track.imageUrl || track.album?.imageUrl || !/^\d+$/.test(track.id)) return;
+		const url = `/api/tracks/${track.id}/artwork`;
 
 		const patched = (t: TrackSummary): TrackSummary =>
 			t.id === track.id && !t.imageUrl ? { ...t, imageUrl: url } : t;
@@ -1311,10 +1296,15 @@ export class PlayerState {
 		streamPreloader.preload(queuedTrack.id);
 	}
 
-	addMultipleToQueue(tracks: TrackSummary[]): void {
-		const entries = createQueueEntries(tracks);
+	addMultipleToQueue(tracks: TrackSummary[], provenance?: string): void {
+		if (!tracks.length) return;
+		const wasEmpty = this.queue.length === 0;
+		const entries = createQueueEntries(
+			tracks.map((track) => this.withProvenance(track, provenance))
+		);
 		this.queue.push(...entries);
 		this.coordinator.recordCommand({ type: 'append', entries });
+		if (wasEmpty) streamPreloader.preload(entries[0].id);
 	}
 
 	/** Remove one queue occurrence by its stable entry identity. */

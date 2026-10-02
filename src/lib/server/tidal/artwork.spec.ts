@@ -62,6 +62,28 @@ describe('TIDAL artwork metadata', () => {
 		);
 		expect(() => tidalArtworkUrl('not-a-cover')).toThrow('Invalid TIDAL artwork identifier.');
 	});
+	it('shares one metadata lookup across simultaneous artwork sizes', async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValue(new Response(JSON.stringify({ album: { cover: COVER_ID } })));
+		const options = { accessToken: 'test-playback-token', ctx: { fetch: fetchMock } };
+		const covers = await Promise.all([
+			getTrackCoverId('123', options),
+			getTrackCoverId('123', options)
+		]);
+		expect(covers).toEqual([COVER_ID, COVER_ID]);
+		expect(fetchMock).toHaveBeenCalledOnce();
+	});
+	it('releases a failed lookup so a later image request can retry', async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(new Response('{}', { status: 502 }))
+			.mockResolvedValueOnce(new Response(JSON.stringify({ album: { cover: COVER_ID } })));
+		const options = { accessToken: 'test-playback-token', ctx: { fetch: fetchMock } };
+		await expect(getTrackCoverId('123', options)).rejects.toBeInstanceOf(TidalApiError);
+		await expect(getTrackCoverId('123', options)).resolves.toBe(COVER_ID);
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+	});
 
 	it('uses the stored market supplied by the caller', async () => {
 		const fetchMock = vi

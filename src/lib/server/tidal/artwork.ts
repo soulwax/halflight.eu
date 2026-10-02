@@ -16,6 +16,14 @@ interface CoverCacheEntry {
 }
 
 const coverCache = new Map<string, CoverCacheEntry>();
+const inFlight = new Map<string, Promise<string | null>>();
+
+interface CoverLookupOptions {
+	ctx?: TidalRequestContext;
+	accessToken?: string;
+	countryCode?: string;
+	now?: number;
+}
 
 function validCoverId(value: unknown): value is string {
 	return typeof value === 'string' && COVER_ID_PATTERN.test(value);
@@ -34,19 +42,25 @@ export function tidalArtworkUrl(coverId: string, size = '640x640'): string {
  */
 export async function getTrackCoverId(
 	trackId: string | number,
-	options: {
-		ctx?: TidalRequestContext;
-		accessToken?: string;
-		countryCode?: string;
-		now?: number;
-	} = {}
+	options: CoverLookupOptions = {}
 ): Promise<string | null> {
 	const id = String(trackId);
 	if (!/^\d+$/.test(id)) return null;
 	const now = options.now ?? Date.now();
 	const cached = coverCache.get(id);
 	if (cached && cached.expiresAt > now) return cached.coverId;
+	const existing = inFlight.get(id);
+	if (existing) return existing;
+	const request = fetchTrackCoverId(id, options, now).finally(() => inFlight.delete(id));
+	inFlight.set(id, request);
+	return request;
+}
 
+async function fetchTrackCoverId(
+	id: string,
+	options: CoverLookupOptions,
+	now: number
+): Promise<string | null> {
 	const token = options.accessToken ?? (await getPlaybackToken(options.ctx));
 	const fetchImpl = options.ctx?.fetch ?? fetch;
 	// The legacy endpoint requires a market. New device authorization records it;
@@ -87,4 +101,5 @@ export async function getTrackCoverId(
 /** Test-only reset for the process-local, non-durable artwork cache. */
 export function resetArtworkCache(): void {
 	coverCache.clear();
+	inFlight.clear();
 }

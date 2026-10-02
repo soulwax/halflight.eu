@@ -24,6 +24,7 @@ export interface QueueDndOptions<T> {
 	flipDurationMs?: number;
 	dropTargetStyle?: Record<string, string>;
 	dragDisabled?: boolean;
+	delayTouchStart?: boolean | number;
 }
 
 export interface QueueDndAttributes<T> {

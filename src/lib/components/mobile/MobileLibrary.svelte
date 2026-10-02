@@ -9,6 +9,7 @@
 	import { player } from '#lib/player/player.svelte.js';
 	import type { MobileLibraryData } from '#lib/tidal/mobile-library';
 	import type { TrackSummary } from '#lib/tidal/models';
+	import { trackArtworkUrl } from '#lib/tidal/artwork';
 	import MobileScreenHeader from './MobileScreenHeader.svelte';
 	import MobileTrackRow from './MobileTrackRow.svelte';
 
@@ -18,6 +19,7 @@
 	let searching = $state(false);
 	let pending = $state<{ title: string; tracks: TrackSummary[]; start: TrackSummary } | null>(null);
 	let feedback = $state('');
+	let failedArtwork = $state<Record<string, boolean>>({});
 	const libraryHref = resolve('/(mobile)/library');
 
 	function play(title: string, tracks: TrackSummary[], start = tracks[0]): void {
@@ -39,7 +41,7 @@
 	}
 
 	function enqueue(title: string, tracks: TrackSummary[]): void {
-		for (const track of tracks) player.addToQueue(track, title);
+		player.addMultipleToQueue(tracks, title);
 		feedback = m.now_library_added({ title });
 	}
 	async function retryLibrary(): Promise<void> {
@@ -76,10 +78,18 @@
 </script>
 
 {#snippet artwork(track?: TrackSummary)}
-	{@const cover = track?.imageUrl ?? track?.album?.imageUrl}
+	{@const cover = trackArtworkUrl(track, 160)}
 	<span class="artwork">
-		{#if cover}
-			<img src={cover} alt="" loading="lazy" width="64" height="64" />
+		{#if cover && !failedArtwork[cover]}
+			<img
+				src={cover}
+				alt=""
+				loading="lazy"
+				decoding="async"
+				width="64"
+				height="64"
+				onerror={() => cover && (failedArtwork[cover] = true)}
+			/>
 		{:else}
 			<Disc size={28} aria-hidden="true" />
 		{/if}

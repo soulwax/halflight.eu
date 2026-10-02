@@ -101,7 +101,12 @@
 		<div
 			class="tt-body"
 			role="rowgroup"
-			use:queueDndZone={{ items: tracks, flipDurationMs: 150, dropTargetStyle: {} }}
+			use:queueDndZone={{
+				items: tracks,
+				flipDurationMs: 150,
+				dropTargetStyle: {},
+				delayTouchStart: true
+			}}
 			{onconsider}
 			{onfinalize}
 		>
