@@ -93,6 +93,8 @@ describe('QueuePanel.svelte', () => {
 		(
 			page.getByRole('button', { name: m.player_clear_queue() }).element() as HTMLButtonElement
 		).click();
+		expect(player.queue).toHaveLength(1);
+		await page.getByRole('dialog').getByRole('button', { name: m.player_clear_queue() }).click();
 		expect(player.queue).toEqual([]);
 	});
 

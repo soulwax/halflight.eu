@@ -2,7 +2,8 @@
 	import { onDestroy } from 'svelte';
 	import { Check, FolderPlus, ListPlus, Music, Plus } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
-	import { customPlaylists } from '#lib/player/customPlaylists.svelte.js';
+	import type { TrackSummary } from '#lib/tidal/models';
+	import { customPlaylists, type CustomPlaylist } from '#lib/player/customPlaylists.svelte.js';
 	import Dialog from '#lib/components/ui/Dialog.svelte';
 
 	interface Props {
@@ -17,6 +18,10 @@
 	let closeTimer = $state<ReturnType<typeof setTimeout> | null>(null);
 
 	const isOpen = $derived(track !== null);
+	let pending = $state(false);
+	let failed = $state(false);
+	let createId = '';
+	let request: AbortController | null = null;
 
 	function clearCloseTimer() {
 		if (closeTimer) {
@@ -28,6 +33,9 @@
 	function handleOpenChange(open: boolean) {
 		if (!open) {
 			clearCloseTimer();
+			request?.abort();
+			createId = '';
+			failed = false;
 			customPlaylists.closeAddToPlaylist();
 			addedPlaylistId = null;
 			newPlaylistTitle = '';
@@ -43,28 +51,71 @@
 		}, closeDelayMs);
 	}
 
-	function handleCreateAndAdd() {
-		if (!track || !newPlaylistTitle.trim()) return;
-		const created = customPlaylists.createPlaylist(newPlaylistTitle.trim(), undefined, [track]);
-		addedPlaylistId = created.id;
-		newPlaylistTitle = '';
-		scheduleClose();
+	async function persist(
+		url: string,
+		method: 'POST' | 'PATCH',
+		items: TrackSummary[],
+		title?: string
+	) {
+		if (pending) return;
+		const controller = new AbortController();
+		request = controller;
+		pending = true;
+		failed = false;
+		try {
+			const response = await fetch(url, {
+				method,
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify(
+					method === 'POST' ? { id: createId, title, items, syncTidal: false } : { items }
+				),
+				signal: controller.signal
+			});
+			if (!response.ok) throw new Error('save_failed');
+			const { playlist } = (await response.json()) as { playlist: CustomPlaylist };
+			if (controller.signal.aborted) return;
+			if (!playlist?.id) throw new Error('save_failed');
+			customPlaylists.createPlaylist(
+				playlist.title,
+				playlist.description,
+				playlist.items,
+				playlist
+			);
+			addedPlaylistId = playlist.id;
+			newPlaylistTitle = '';
+			scheduleClose();
+		} catch {
+			if (!controller.signal.aborted) failed = true;
+		} finally {
+			pending = false;
+		}
 	}
-
+	function handleCreateAndAdd() {
+		if (!track || !newPlaylistTitle.trim() || pending) return;
+		createId ||= crypto.randomUUID();
+		void persist('/api/playlists', 'POST', [track], newPlaylistTitle.trim());
+	}
 	function handleAddToExisting(playlistId: string) {
-		if (!track) return;
-		customPlaylists.addTrack(playlistId, track);
-		addedPlaylistId = playlistId;
-		scheduleClose();
+		if (!track || pending) return;
+		const playlist = customPlaylists.playlists.find((item) => item.id === playlistId);
+		if (!playlist || playlist.items.some((item) => item.id === track!.id)) return;
+		void persist('/api/playlists/' + encodeURIComponent(playlistId), 'PATCH', [
+			...playlist.items,
+			track
+		]);
 	}
 
 	$effect(() => {
 		if (!isOpen) {
+			request?.abort();
+			createId = '';
+			failed = false;
 			clearCloseTimer();
 		}
 	});
 
 	onDestroy(() => {
+		request?.abort();
 		clearCloseTimer();
 	});
 </script>
@@ -91,11 +142,13 @@
 			{/if}
 			<div class="preview-info">
 				<strong>{track.title}</strong>
-				<span>{track.artists.map((a) => a.name).join(', ') || 'Unknown Artist'}</span>
+				<span>{track.artists.map((a) => a.name).join(', ') || m.player_unknown_artist()}</span>
 			</div>
 		</div>
 
 		<div class="playlist-dialog-body">
+			{#if failed}<p role="alert">{m.player_queue_save_error()}</p>{/if}
+			{#if pending}<p role="status">{m.player_queue_save_pending()}</p>{/if}
 			{#if customPlaylists.playlists.length > 0}
 				<div class="playlists-list-section">
 					<p class="section-label">{m.playlist_dialog_existing()}</p>
@@ -108,14 +161,14 @@
 									<strong class="truncate">{playlist.title}</strong>
 									<span class="font-mono text-xs text-(--text-muted)">
 										{playlist.items.length}
-										{playlist.items.length === 1 ? 'track' : 'tracks'}
+										{m.playlist_track_count()}
 									</span>
 								</div>
 								<button
 									type="button"
 									class="add-btn"
 									class:btn-added={isAdded || alreadyIn}
-									disabled={isAdded || alreadyIn}
+									disabled={pending || isAdded || alreadyIn}
 									onclick={() => handleAddToExisting(playlist.id)}
 								>
 									{#if isAdded}
@@ -147,10 +200,15 @@
 						placeholder={m.playlist_dialog_create_placeholder()}
 						maxlength="60"
 						class="playlist-name-input"
+						disabled={pending}
 					/>
-					<button type="submit" class="create-submit-btn" disabled={!newPlaylistTitle.trim()}>
+					<button
+						type="submit"
+						class="create-submit-btn"
+						disabled={pending || !newPlaylistTitle.trim()}
+					>
 						<FolderPlus size={14} />
-						{m.playlist_dialog_create_action()}
+						{pending ? m.player_queue_save_pending() : m.playlist_dialog_create_action()}
 					</button>
 				</form>
 			</div>
@@ -346,5 +404,17 @@
 	.create-submit-btn:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
+	}
+	.add-btn,
+	.create-submit-btn,
+	.playlist-name-input {
+		min-height: 48px;
+	}
+	button:focus-visible {
+		outline: 2px solid var(--focus-ring);
+		outline-offset: 3px;
+	}
+	p[role='alert'] {
+		color: var(--danger);
 	}
 </style>

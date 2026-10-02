@@ -1,6 +1,7 @@
 # Overall Halflight UX/UI plan
 
-Status: proposed. Reviewed against the product architecture and existing shell, Home, player,
+Status: core playback, navigation, setup and saving implementation delivered; acceptance and broader
+screen polish remain open. Reviewed against the product architecture and existing shell, Home, player,
 navigation, and shared component code on 2026-10-02. This is a delivery plan, not a completed audit
 of every screen on physical devices.
 
@@ -205,3 +206,18 @@ before moving to the next slice. Deployment changes are separate from this docum
 
 Success is fewer ambiguous actions and dead ends, one deliberate action to resume, predictable
 navigation, and the same understandable session on both sites. Visual polish serves those tasks.
+
+## First implementation delivery — 2026-10-02
+
+The shared desktop/mobile player now has consistent transport availability, deliberate resume,
+fallback/retry and queue-save recovery. Mobile receives labelled primary navigation, contextual
+Close, adaptive Now layout, persistent mini transport on supporting screens and a track-action
+sheet. Queue and playlist-dialog saves wait for durable server confirmation; TIDAL publication
+requires explicit intent. Settings exposes mobile full-playback setup and keeps token inspection
+under Advanced. English and German labels were added together.
+
+See the [mobile implementation record](mobile-player-ux-plan.md#implementation-record--2026-10-02)
+for the delivered scope and acceptance limits. Existing desktop composition and search/library
+logic are retained. Further detail/library density and contextual-return polish, a full desktop
+viewport/contrast review, and physical-device keyboard/PWA/playback acceptance remain follow-up
+work in this plan; optional gestures and smart features are deferred.

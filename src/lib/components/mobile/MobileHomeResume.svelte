@@ -1,9 +1,11 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { ArrowUpRight, Disc, Play } from '@lucide/svelte';
+	import { Disc, Loader2, Pause, Play } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { player } from '#lib/player/player.svelte.js';
 	import MobileScreenHeader from './MobileScreenHeader.svelte';
+	import PlaybackStatus from '#lib/components/player/PlaybackStatus.svelte';
+	import SessionSaveStatus from '#lib/components/player/SessionSaveStatus.svelte';
 
 	const track = $derived(player.currentTrack);
 	const cover = $derived(track ? (track.imageUrl ?? track.album?.imageUrl ?? null) : null);
@@ -18,11 +20,7 @@
 			<p id="continue-listening-heading" class="section-label">
 				{m.now_home_continue_heading()}
 			</p>
-			<a
-				href={resolve('/(mobile)/now')}
-				aria-label={m.now_home_resume_cta()}
-				class="resume-feature"
-			>
+			<div class="resume-feature">
 				<span class="resume-art">
 					{#if cover}
 						<img src={cover} alt="" class="h-full w-full object-cover" />
@@ -35,22 +33,36 @@
 					{#if artistLine}
 						<span class="resume-artist">{artistLine}</span>
 					{/if}
-					<span class="resume-action">
-						{m.now_home_resume_cta()}
-						<span class="resume-action-icon" aria-hidden="true">
-							<Play size={13} fill="currentColor" />
-						</span>
-					</span>
+					{#if !player.isPlaybackActiveElsewhere}
+						<button
+							type="button"
+							class="resume-action"
+							disabled={player.isLoading}
+							aria-busy={player.isLoading}
+							onclick={() =>
+								player.playbackMode === 'embed' ? player.retryPlayback() : player.togglePlayPause()}
+						>
+							{#if player.isLoading}<Loader2
+									size={18}
+									class="animate-spin"
+									aria-hidden="true"
+								/>{m.player_loading()}
+							{:else if player.playbackMode === 'embed'}{m.track_retry()}
+							{:else if player.isPlaying}<Pause size={18} aria-hidden="true" />{m.player_pause()}
+							{:else}<Play size={18} aria-hidden="true" />{m.now_home_resume_cta()}{/if}
+						</button>
+					{/if}
+					<a class="resume-open" href={resolve('/(mobile)/now')}>{m.now_open_full_player()}</a>
 				</span>
-				<span class="resume-arrow" aria-hidden="true"
-					><ArrowUpRight size={18} strokeWidth={1.6} /></span
-				>
-			</a>
+			</div>
+			<div class="resume-status"><PlaybackStatus mobile /><SessionSaveStatus /></div>
 		</section>
 	{:else}
 		<section class="empty-state" aria-label={m.now_home_continue_heading()}>
 			<span class="empty-disc" aria-hidden="true"><Disc size={26} strokeWidth={1.4} /></span>
 			<p>{m.now_home_empty()}</p>
+			<a href={resolve('/(mobile)/search')} class="resume-open">{m.now_idle_search()}</a>
+			<a href={resolve('/(mobile)/library')} class="resume-open">{m.now_tab_library()}</a>
 		</section>
 	{/if}
 </section>
@@ -77,7 +89,7 @@
 
 	.resume-feature {
 		display: grid;
-		grid-template-columns: minmax(5.85rem, 29vw) minmax(0, 1fr) auto;
+		grid-template-columns: minmax(5.85rem, 29vw) minmax(0, 1fr);
 		gap: clamp(0.85rem, 4vw, 1.25rem);
 		align-items: center;
 		min-height: 9rem;
@@ -165,27 +177,32 @@
 		display: inline-flex;
 		gap: 0.4rem;
 		align-items: center;
-		margin-top: 1rem;
-		color: var(--text-primary);
+		margin-top: 0.65rem;
+		min-height: 48px;
+		padding: 0.5rem 0.85rem;
+		border: 0;
+		border-radius: var(--radius-full);
+		background: var(--action);
+		color: var(--action-contrast);
 		font-size: var(--fs-xs);
 		font-weight: 700;
 		line-height: 1;
 	}
-
-	.resume-action-icon {
-		display: grid;
-		width: 1.45rem;
-		height: 1.45rem;
-		place-items: center;
-		color: var(--action-contrast);
-		border-radius: var(--radius-full);
-		background: var(--action);
+	.resume-open {
+		display: flex;
+		align-items: center;
+		min-height: 48px;
+		color: var(--action);
+		font-size: var(--fs-sm);
+		text-decoration: none;
 	}
-
-	.resume-arrow {
-		align-self: start;
-		margin-top: 0.2rem;
-		color: var(--text-muted);
+	.resume-action:focus-visible,
+	.resume-open:focus-visible {
+		outline: 2px solid var(--focus-ring);
+		outline-offset: 3px;
+	}
+	.resume-status {
+		margin-top: 0.75rem;
 	}
 
 	.empty-state {
@@ -220,7 +237,7 @@
 
 	@media (min-width: 30rem) {
 		.resume-feature {
-			grid-template-columns: 7.5rem minmax(0, 1fr) auto;
+			grid-template-columns: 7.5rem minmax(0, 1fr);
 			min-height: 10rem;
 			padding: 0.75rem;
 		}

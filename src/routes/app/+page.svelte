@@ -8,6 +8,8 @@
 	import SectionHeader from '#lib/components/ui/SectionHeader.svelte';
 	import ViewHeader from '#lib/components/ui/ViewHeader.svelte';
 	import SongCard from '#lib/components/music/SongCard.svelte';
+	import PlaybackStatus from '#lib/components/player/PlaybackStatus.svelte';
+	import SessionSaveStatus from '#lib/components/player/SessionSaveStatus.svelte';
 	import StateCard from '#lib/components/music/StateCard.svelte';
 	import type { PageData } from './$types';
 
@@ -68,8 +70,16 @@
 
 			<div class="continuation-action">
 				{#if player.currentTrack}
-					<Button variant="primary" size="lg" onclick={() => player.togglePlayPause()}>
-						{#if player.isPlaying}
+					<Button
+						variant="primary"
+						size="lg"
+						disabled={player.isLoading ||
+							player.isPlaybackActiveElsewhere ||
+							player.playbackMode === 'embed'}
+						onclick={() => player.togglePlayPause()}
+					>
+						{#if player.isLoading}{m.player_loading()}
+						{:else if player.isPlaying}
 							<Pause size={17} fill="currentColor" />
 							{m.home_pause_action()}
 						{:else}
@@ -94,6 +104,8 @@
 				{/if}
 			</div>
 		</section>
+
+		{#if player.currentTrack}<PlaybackStatus /><SessionSaveStatus />{/if}
 
 		{#if !resumeIsGenerateInvitation}
 			<section class="generation" aria-labelledby="generation-title">

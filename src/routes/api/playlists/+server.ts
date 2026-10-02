@@ -47,9 +47,16 @@ export const POST: RequestHandler = async (event) => {
 	const items = Array.isArray(body.items) ? body.items : [];
 
 	try {
-		// 1. Attempt optional TIDAL export if requested/connected
+		// A retried local save uses the same ID, including after a lost response.
+		if (body.id && body.syncTidal !== true) {
+			const existing = (await getUserPlaylists(event.locals.user.id)).find(
+				(playlist) => playlist.id === body.id
+			);
+			if (existing) return json({ playlist: existing }, { status: 200 });
+		}
+		// 1. Attempt optional TIDAL export only on an explicit reviewed request
 		let tidalPlaylistId: string | undefined;
-		if (body.syncTidal !== false && items.length > 0) {
+		if (body.syncTidal === true && items.length > 0) {
 			const trackIds = items.map((t) => t.id).filter(Boolean);
 			const syncedUuid = await attemptTidalPlaylistSync(title, description, trackIds, {
 				fetch: event.fetch,

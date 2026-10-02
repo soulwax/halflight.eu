@@ -1,6 +1,6 @@
 # Mobile player controls and overall UX/UI plan
 
-Status: proposed implementation plan. Reviewed against the current code on 2026-10-02.
+Status: core implementation delivered; physical-device acceptance remains open. Updated 2026-10-02.
 
 The parent [Overall Halflight UX/UI plan](overall-ux-ui-plan.md) covers the complete desktop and
 mobile product, setup, information architecture, and shared visual/interaction system. This
@@ -245,3 +245,34 @@ in the Bragi package boundary and update Syn's pinned release before relying on 
 Done means the owner can find music, start it, adjust playback, edit the queue, and return to the
 same browsing context with one hand, while always understanding what is playing and what can be
 retried. The plan itself makes no claim that these implementation gates have already passed.
+
+## Implementation record — 2026-10-02
+
+The initial delivery implements the core listening path and shared supporting actions:
+
+- Home Resume issues a deliberate playback command; viewing Home or Now still does not start audio.
+  Pending starts reject repeated taps. OS Play and Pause are separate, idempotent commands.
+- Home, Search, Library and Now have visible bottom-navigation labels. The constrained shell
+  reserves space for navigation and mini transport; queue, lyrics and credits retain mini transport.
+  Close remembers the actual mobile browse route, query and existing scroll-restoration key.
+- Now shares desktop transport and seek logic, with 48px surrounding controls, a 64px main control,
+  current repeat-mode labels, elapsed/remaining time, track-bound scrub cancellation and disabled
+  unknown-duration or fallback seeking. Artwork adapts to short and landscape screens.
+- Recovery and queue-persistence status are shared across the player, Home and queue. Fallback
+  has a deliberate retry, connection setup or a public TIDAL destination.
+- Mobile track actions use a sheet with queue-add announcements. Both queue views confirm Clear
+  and save a named snapshot with pending, error and confirmed success. Retry retains the save ID.
+  Playlist-dialog creation and additions also wait for server confirmation.
+- Mobile Settings leads with connection and full-playback readiness. Device authorization polling
+  is sequential, expires and cancels on dismissal/unmount. Browse OAuth returns only to an
+  allowlisted settings destination. Owner token inspection is collapsed under Advanced.
+- The existing semantic theme system remains in use. Enlarged text no longer doubles the body's
+  minimum width. Dialogs support reduced motion and larger close controls.
+
+Focused browser coverage exercises narrow transport, German labels, enlarged text and landscape;
+playback tests cover duplicate-start protection, retry preserving position/queue and explicit pause.
+Server tests cover local-save defaults, retry identity and OAuth return boundaries.
+
+Still open: physical iOS/Android sound, browser/PWA safe areas and keyboards, lock-screen commands,
+and a complete contrast/screen-reader/theme review. Swipe gestures and optional effects remain
+outside the initial delivery. The broader screen-by-screen polish is tracked in the parent plan.

@@ -123,7 +123,7 @@ describe('MobileSearch.svelte', () => {
 			const screen = render(MobileSearch);
 			await page.getByRole('searchbox').fill('radio');
 			await page.getByRole('button', { name: m.track_action_menu() }).click();
-			await page.getByRole('menuitem', { name: m.track_action_start_radio() }).click();
+			await page.getByRole('button', { name: m.track_action_start_radio() }).click();
 			await expect.element(page.getByText(m.player_starting_radio())).toBeInTheDocument();
 			if (action === 'cancel')
 				await page.getByRole('button', { name: m.playlist_cancel() }).click();
@@ -187,7 +187,7 @@ describe('MobileSearch.svelte', () => {
 		await expect.element(page.getByText('First result')).not.toBeInTheDocument();
 	});
 
-	it('keeps one primary track action and moves the queue verbs into a menu', async () => {
+	it('keeps one primary track action and moves the queue verbs into an action sheet', async () => {
 		const play = vi.spyOn(player, 'play').mockImplementation(() => {});
 		vi.stubGlobal(
 			'fetch',
@@ -221,19 +221,19 @@ describe('MobileSearch.svelte', () => {
 		await expect.element(menu).toBeInTheDocument();
 		await menu.click();
 		await expect
-			.element(page.getByRole('menuitem', { name: m.track_action_play_now(), exact: true }))
+			.element(page.getByRole('button', { name: m.track_action_play_now(), exact: true }))
 			.toBeInTheDocument();
 		await expect
-			.element(page.getByRole('menuitem', { name: m.track_action_play_next(), exact: true }))
+			.element(page.getByRole('button', { name: m.track_action_play_next(), exact: true }))
 			.toBeInTheDocument();
 		await expect
-			.element(page.getByRole('menuitem', { name: m.track_action_add_to_queue(), exact: true }))
+			.element(page.getByRole('button', { name: m.track_action_add_to_queue(), exact: true }))
 			.toBeInTheDocument();
 		await expect
-			.element(page.getByRole('menuitem', { name: m.track_action_start_radio(), exact: true }))
+			.element(page.getByRole('button', { name: m.track_action_start_radio(), exact: true }))
 			.toBeInTheDocument();
 
-		await page.getByRole('menuitem', { name: m.track_action_play_now() }).click();
+		await page.getByRole('button', { name: m.track_action_play_now() }).click();
 		expect(play).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'track-1' }),
 			expect.arrayContaining([expect.objectContaining({ id: 'track-1' })]),

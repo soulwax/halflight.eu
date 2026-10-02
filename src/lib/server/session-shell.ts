@@ -4,7 +4,7 @@ import { getPlaybackState, type PlaybackState } from '#lib/server/playback-state
 import { getStreamingSettings, type StreamingSettings } from '#lib/server/streaming-settings';
 
 export interface SessionShellData {
-	connection: { connected: boolean; configured: boolean };
+	connection: { connected: boolean; configured: boolean; hasPlayback?: boolean };
 	streamingSettings: StreamingSettings;
 	playbackState: PlaybackState;
 }
@@ -29,7 +29,8 @@ export async function loadSessionShellData(event: RequestEvent): Promise<Session
 	return {
 		connection: {
 			connected: connection.connected,
-			configured: connection.configured
+			configured: connection.configured,
+			hasPlayback: connection.hasPlayback
 		},
 		streamingSettings,
 		playbackState

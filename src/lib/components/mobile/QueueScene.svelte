@@ -4,7 +4,8 @@
 	import { ArrowDown, ArrowUp, Trash2 } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { player } from '#lib/player/player.svelte.js';
-	import { customPlaylists } from '#lib/player/customPlaylists.svelte.js';
+	import QueueActions from '#lib/components/player/QueueActions.svelte';
+	import SessionSaveStatus from '#lib/components/player/SessionSaveStatus.svelte';
 	import { describeQueueMove } from '#lib/player/queue-announce.js';
 	import { queueDndZone, type DndEvent } from '#lib/player/queue-dnd.js';
 	import type { QueueEntry } from '#lib/player/queue-entry.js';
@@ -57,16 +58,6 @@
 		const sibling = direction === -1 ? button.nextElementSibling : button.previousElementSibling;
 		if (sibling instanceof HTMLButtonElement && !sibling.disabled) sibling.focus();
 	}
-
-	function saveQueue() {
-		const tracks = player.currentTrack ? [player.currentTrack, ...player.queue] : [...player.queue];
-		if (!tracks.length) return;
-		customPlaylists.createPlaylist(
-			`${m.player_queue()} — ${new Date().toLocaleDateString()}`,
-			m.player_save_queue(),
-			tracks
-		);
-	}
 </script>
 
 <div class="flex h-full flex-col px-4 py-4">
@@ -79,59 +70,9 @@
 
 	<div class="flex items-center justify-between border-b border-(--border-subtle) pb-2">
 		<span class="text-xs tracking-wide text-(--text-muted) uppercase">{m.player_next_up()}</span>
-		<div class="flex items-center gap-1">
-			{#if player.queueCount || player.currentTrack}
-				<button type="button" class="min-h-12 px-2 text-sm text-(--action)" onclick={saveQueue}>
-					{m.player_save_queue()}
-				</button>
-			{/if}
-			{#if player.queueCount}
-				<button
-					type="button"
-					class="min-h-12 px-2 text-sm text-(--text-muted)"
-					onclick={() => player.clearQueue()}
-				>
-					{m.player_clear_queue()}
-				</button>
-			{/if}
-		</div>
+		<QueueActions />
 	</div>
-	{#if player.persistenceStatus === 'saving'}
-		<p class="py-3 text-sm text-(--text-muted)" role="status">{m.player_sync_saving()}</p>
-	{:else if player.persistenceStatus === 'conflict'}
-		<div class="flex items-center justify-between gap-3 py-3 text-sm" role="status">
-			<span>{m.player_sync_conflict()}</span>
-			<button
-				type="button"
-				class="min-h-12 shrink-0 px-2 text-(--action)"
-				onclick={() => player.refreshQueueFromServer()}
-			>
-				{m.player_sync_refresh()}
-			</button>
-		</div>
-	{:else if player.persistenceStatus === 'offline'}
-		<p class="py-3 text-sm text-(--text-muted)" role="status">{m.player_sync_offline()}</p>
-	{:else if player.persistenceStatus === 'server_error'}
-		<div class="flex items-center justify-between gap-3 py-3 text-sm" role="status">
-			<span>{m.player_sync_server_error()}</span>
-			<button
-				type="button"
-				class="min-h-12 shrink-0 px-2 text-(--action)"
-				onclick={() => player.retryPersistence()}
-			>
-				{m.player_sync_retry()}
-			</button>
-		</div>
-	{:else if player.persistenceStatus === 'rejected'}
-		<p class="py-3 text-sm text-(--text-muted)" role="status">{m.player_sync_rejected()}</p>
-	{:else if player.persistenceStatus === 'unauthenticated'}
-		<div class="flex items-center justify-between gap-3 py-3 text-sm" role="status">
-			<span>{m.player_sync_unauthenticated()}</span>
-			<a class="min-h-12 shrink-0 px-2 py-3 text-(--action)" href={resolve('/sign-in')}>
-				{m.sign_in_button()}
-			</a>
-		</div>
-	{/if}
+	<SessionSaveStatus />
 
 	{#if items.length === 0}
 		<p class="pt-6 text-center text-(--text-muted)">{m.player_queue_empty()}</p>

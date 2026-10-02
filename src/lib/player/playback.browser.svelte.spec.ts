@@ -164,3 +164,48 @@ describe('PlayerState browser playback', () => {
 		expect(player.isPlaying).toBe(false);
 	});
 });
+
+describe('deliberate resume and retry', () => {
+	it('starts the restored position once, keeps the queue and ignores duplicate taps', async () => {
+		const load = vi
+			.spyOn(streamLoader, 'load')
+			.mockResolvedValue({ ok: true, data: { audioQuality: 'HIGH' } });
+		const player = new PlayerState();
+		player.currentTrack = track('saved');
+		player.currentTime = 42;
+		player.addToQueue(track('next'));
+		expect(FakeAudio.instances.every((audio) => audio.paused)).toBe(true);
+		expect(load.mock.calls.filter(([id]) => id === 'saved')).toHaveLength(0);
+		player.resumePlayback();
+		player.resumePlayback();
+		await vi.waitFor(() => expect(player.isLoading).toBe(false));
+		expect(load.mock.calls.filter(([id]) => id === 'saved')).toHaveLength(1);
+		expect(player.currentTrack?.id).toBe('saved');
+		expect(player.currentTime).toBe(42);
+		expect(player.queue[0]?.id).toBe('next');
+		expect(FakeAudio.instances[0]?.paused).toBe(false);
+		player.pausePlayback();
+		player.resumePlayback();
+		await vi.waitFor(() => expect(player.isLoading).toBe(false));
+		expect(load.mock.calls.filter(([id]) => id === 'saved')).toHaveLength(1);
+		expect(player.isPlaying).toBe(true);
+		expect(player.currentTime).toBe(42);
+		player.close();
+	});
+	it('retries fallback at the accepted position without replacing the session', async () => {
+		vi.spyOn(streamLoader, 'load').mockResolvedValue({ ok: true, data: { audioQuality: 'HIGH' } });
+		const player = new PlayerState();
+		player.currentTrack = track('saved');
+		player.currentTime = 42;
+		player.playbackMode = 'embed';
+		player.addToQueue(track('next'));
+		const queueId = player.queue[0].entryId;
+		player.retryPlayback();
+		await vi.waitFor(() => expect(player.isLoading).toBe(false));
+		expect(player.playbackMode).toBe('direct');
+		expect(player.currentTime).toBe(42);
+		expect(player.queue[0].entryId).toBe(queueId);
+		expect(FakeAudio.instances[0]?.paused).toBe(false);
+		player.close();
+	});
+});

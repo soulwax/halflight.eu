@@ -27,7 +27,8 @@ planned work; the product sections describe the intended finished experience.
 
 UX/UI delivery: [Overall Halflight UX/UI](docs/overall-ux-ui-plan.md) covers both sites and complete
 listening workflows; [mobile player controls](docs/mobile-player-ux-plan.md) specifies the first
-playback workstream. Both documents describe proposed work, not completed implementation.
+playback workstream. Their implementation records distinguish delivered core flows from remaining
+screen polish and physical-device acceptance.
 
 Mobile planning: [website](#the-mobile-site-halflight-now), [PWA](#the-installed-pwa),
 [later Tauri client](#later-tauri-native-client), and [release gates](#mobile-pwa-and-native-release-gates).
@@ -2632,18 +2633,31 @@ current track, position, and playing state survive both network and authenticati
 playback claim; prior tests cover explicit retry after a transient service failure. The default suite
 keeps the high-value client and server tests together and runs Storybook checks separately.
 
+## Core listening UX delivery — 2026-10-02
+
+Home now resumes deliberately. Shared transport exposes pending, availability, fallback and
+recovery states; mobile Now has adaptive controls and contextual return navigation. The shell
+reserves bottom navigation and mini-player rows, including transport on Now subroutes. Queue
+clear is confirmed, and named queue and playlist-dialog saves report server-confirmed results
+without implicit TIDAL publication. Mobile Settings supports browse and full-playback setup with
+bounded polling; token inspection lives under Advanced. See the implementation records in the
+[mobile](docs/mobile-player-ux-plan.md) and [overall](docs/overall-ux-ui-plan.md) UX plans.
+
+Automated coverage includes transport boundaries, unavailable/late seeks, duplicate-start
+protection, fallback retry, failed-save recovery, OAuth return boundaries, narrow viewports, German
+labels and enlarged text. Physical-device acceptance remains open.
+
 ## Recommended next vertical slice
 
-**Halflight Now cold-open and resume.** Finish the core mobile listening path before adding more
-discovery surfaces: restore the accepted session without surprise playback and make deliberate
-resume work from the mobile Home and Now screens.
+**Halflight Now physical-device acceptance and browse polish.** Verify the implemented core mobile
+listening path before adding discovery surfaces.
 
 1. Verify server restore wins over the optimistic local queue cache while pending queue commands are
    rebased and kept durable.
-2. Make the resume action show a clear loading/ready/failure state and require one deliberate tap to
-   start audio; page load and restored playback state must not invoke autoplay.
-3. Cover the journey from authenticated mobile Home to Now Playing and audible-start intent at a
-   narrow viewport, including an unavailable-session recovery path.
+2. Verify resume, fallback and recovery on physical iOS and Android, including browser/PWA safe
+   areas, keyboard interaction and lock-screen controls.
+3. Complete the broader search/detail/library navigation and density review against the overall UX
+   plan, retaining the session, browse query, filters, scroll and shared action meanings.
 
 **Accepted when:** a cold open restores the same current track, position, queue, and history without
 starting audio; one explicit resume action starts playback and navigation preserves the session.

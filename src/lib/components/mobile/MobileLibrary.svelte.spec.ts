@@ -126,7 +126,7 @@ describe('MobileLibrary.svelte', () => {
 		});
 
 		await page.getByRole('button', { name: m.track_action_menu() }).click();
-		await page.getByRole('menuitem', { name: m.track_action_play_next() }).click();
+		await page.getByRole('button', { name: m.track_action_play_next() }).click();
 		expect(player.queue).toEqual([
 			expect.objectContaining({ id: track.id, provenance: m.now_library_favorites() })
 		]);

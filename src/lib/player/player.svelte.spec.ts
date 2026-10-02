@@ -1557,3 +1557,62 @@ describe('PlayerState', () => {
 		expect(request.level).toBeCloseTo(0.501, 3);
 	});
 });
+
+describe('transport availability and deliberate commands', () => {
+	it('matches previous at the exact restart threshold and manual next with repeat-one', () => {
+		const state = new PlayerState();
+		state.currentTrack = sampleTrack1;
+		state.currentTime = 3;
+		expect(state.canGoPrevious).toBe(false);
+		state.currentTime = 3.01;
+		expect(state.canGoPrevious).toBe(true);
+		state.repeatMode = 'one';
+		expect(state.canGoNext).toBe(false);
+		state.repeatMode = 'all';
+		expect(state.canGoNext).toBe(true);
+		state.activeDevice = {
+			origin: 'halflight-now',
+			expiresAt: new Date(Date.now() + 45000).toISOString(),
+			isCurrent: false
+		};
+		expect(state.canGoNext).toBe(false);
+		expect(state.canGoPrevious).toBe(false);
+		state.duration = 200;
+		expect(state.canSeek).toBe(false);
+	});
+	it('ignores repeat Play while loading or already playing', () => {
+		const state = new PlayerState();
+		state.currentTrack = sampleTrack1;
+		state.isLoading = true;
+		const internal = state as unknown as { engine: { init(): void; pause(): void } };
+		const init = vi.spyOn(internal.engine, 'init').mockImplementation(() => {});
+		state.resumePlayback();
+		state.togglePlayPause();
+		expect(init).not.toHaveBeenCalled();
+		state.isLoading = false;
+		state.isPlaying = true;
+		state.resumePlayback();
+		expect(state.isPlaying).toBe(true);
+		expect(init).not.toHaveBeenCalled();
+		init.mockRestore();
+	});
+	it('an explicit OS pause cancels an in-flight start and stays paused', () => {
+		const state = new PlayerState();
+		state.currentTrack = sampleTrack1;
+		state.isLoading = true;
+		const controller = new AbortController();
+		const internal = state as unknown as {
+			streamLoadAbort: AbortController;
+			streamLoadGeneration: number;
+			engine: { pause(): void };
+		};
+		internal.streamLoadAbort = controller;
+		const generation = internal.streamLoadGeneration;
+		state.pausePlayback();
+		expect(controller.signal.aborted).toBe(true);
+		expect(internal.streamLoadGeneration).toBe(generation + 1);
+		expect(state.isPlaying).toBe(false);
+		expect(state.isLoading).toBe(false);
+		expect(state.currentTrack).toEqual(sampleTrack1);
+	});
+});

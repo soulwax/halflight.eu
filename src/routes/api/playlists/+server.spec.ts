@@ -44,7 +44,7 @@ function makeEvent(
 
 describe('API /api/playlists', () => {
 	beforeEach(() => {
-		mocks.getUserPlaylists.mockReset();
+		mocks.getUserPlaylists.mockReset().mockResolvedValue([]);
 		mocks.createUserPlaylist.mockReset();
 		mocks.attemptTidalPlaylistSync.mockReset();
 		mocks.updateUserPlaylist.mockReset();
@@ -90,6 +90,25 @@ describe('API /api/playlists', () => {
 	});
 
 	describe('POST /api/playlists', () => {
+		it('saves locally without publishing to TIDAL by default', async () => {
+			mocks.createUserPlaylist.mockResolvedValue({ id: 'saved', title: 'Mix' });
+			const response = await POST(
+				makeEvent('POST', {}, { title: 'Mix', items: [{ id: 'track' }] })
+			);
+			expect(response.status).toBe(201);
+			expect(mocks.attemptTidalPlaylistSync).not.toHaveBeenCalled();
+		});
+		it('returns an already saved owner playlist after a lost response without creating a duplicate', async () => {
+			const playlist = { id: 'request-id', title: 'Mix', items: [] };
+			mocks.getUserPlaylists.mockResolvedValue([playlist]);
+			const response = await POST(
+				makeEvent('POST', {}, { id: 'request-id', title: 'Mix', syncTidal: false })
+			);
+			expect(await response.json()).toEqual({ playlist });
+			expect(mocks.getUserPlaylists).toHaveBeenCalledWith('u1');
+			expect(mocks.createUserPlaylist).not.toHaveBeenCalled();
+			expect(mocks.attemptTidalPlaylistSync).not.toHaveBeenCalled();
+		});
 		it('rejects unauthenticated requests with 401', async () => {
 			await expect(POST(makeEvent('POST', {}, {}, null))).rejects.toMatchObject({
 				status: 401

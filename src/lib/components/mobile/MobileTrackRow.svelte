@@ -33,7 +33,7 @@
 	);
 </script>
 
-<div class="mobile-track-row">
+<div class="mobile-track-row" class:with-actions={Boolean(actions)}>
 	<button type="button" class="mobile-track-primary" onclick={onActivate}>
 		<span class="mobile-track-art">
 			{#if cover}
@@ -56,6 +56,7 @@
 	{:else}
 		<div class="mobile-track-actions">
 			<TrackActionMenu
+				mobile
 				{track}
 				{contextTracks}
 				{provenance}
@@ -160,5 +161,16 @@
 	:global(.mobile-action-btn) {
 		min-width: 2.75rem;
 		min-height: 2.75rem;
+	}
+	@media (max-width: 24rem) {
+		.with-actions {
+			flex-wrap: wrap;
+		}
+		.with-actions .mobile-track-primary {
+			flex-basis: 100%;
+		}
+		.with-actions .mobile-track-actions {
+			margin-left: auto;
+		}
 	}
 </style>

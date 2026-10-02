@@ -1,10 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import { exchangeCode, writeRecord, TidalError } from '#lib/server/tidal';
-import { clearOAuthCookie, readOAuthCookie } from '../oauth-cookie';
+import { clearOAuthCookie, readOAuthCookie, tidalReturnTo } from '../oauth-cookie';
 import type { RequestHandler } from './$types';
-
-const fail = (reason: string) =>
-	redirect(303, `/app/settings/tidal?error=${encodeURIComponent(reason)}`);
 
 export const GET: RequestHandler = async (event) => {
 	if (!event.locals.user || !event.locals.isAdministrator) redirect(302, '/sign-in');
@@ -12,9 +9,12 @@ export const GET: RequestHandler = async (event) => {
 	const params = event.url.searchParams;
 	const saved = readOAuthCookie(event.cookies);
 	clearOAuthCookie(event.cookies);
+	const returnTo = tidalReturnTo(saved?.returnTo);
+	const fail = (reason: string): never =>
+		redirect(303, `${returnTo}?error=${encodeURIComponent(reason)}`);
 
 	const denied = params.get('error');
-	if (denied) fail(params.get('error_description') || denied);
+	if (denied) fail('authorization_denied');
 
 	const code = params.get('code');
 	const state = params.get('state');
@@ -27,9 +27,9 @@ export const GET: RequestHandler = async (event) => {
 		const record = await exchangeCode({ code: code!, verifier: saved!.verifier }, event.fetch);
 		await writeRecord(record);
 	} catch (err) {
-		if (err instanceof TidalError) fail(err.message);
+		if (err instanceof TidalError) fail('connection_failed');
 		throw err;
 	}
 
-	redirect(303, '/app/settings/tidal?connected=1');
+	redirect(303, `${returnTo}?connected=1`);
 };

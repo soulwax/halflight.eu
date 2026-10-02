@@ -1,354 +1,240 @@
 <script lang="ts">
+	import { getContext } from 'svelte';
 	import { resolve } from '$app/paths';
-	import { fade } from 'svelte/transition';
-	import {
-		BadgeInfo,
-		ChevronDown,
-		Disc,
-		ListMusic,
-		Loader2,
-		Pause,
-		Play,
-		Repeat,
-		Repeat1,
-		ScrollText,
-		Shuffle,
-		SkipBack,
-		SkipForward
-	} from '@lucide/svelte';
+	import { BadgeInfo, ChevronDown, Disc, ListMusic, ScrollText } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
-	import { formatClock, formatReleaseDate } from '#lib/format';
+	import { formatReleaseDate } from '#lib/format';
 	import { player } from '#lib/player/player.svelte.js';
-	import { haptics } from '#lib/player/haptics.js';
-
+	import PlayerTransport from '#lib/components/player/PlayerTransport.svelte';
+	import PlayerSeekBar from '#lib/components/player/PlayerSeekBar.svelte';
+	import PlaybackStatus from '#lib/components/player/PlaybackStatus.svelte';
+	import SessionSaveStatus from '#lib/components/player/SessionSaveStatus.svelte';
+	import TrackActionMenu from '#lib/components/music/TrackActionMenu.svelte';
+	import { MOBILE_PLAYER_NAVIGATION, type MobilePlayerNavigation } from '#lib/mobile/navigation';
+	const navigation = getContext<MobilePlayerNavigation | undefined>(MOBILE_PLAYER_NAVIGATION);
 	const track = $derived(player.currentTrack);
-	const RepeatIcon = $derived(player.repeatMode === 'one' ? Repeat1 : Repeat);
-	const cover = $derived(track ? (track.imageUrl ?? track.album?.imageUrl ?? null) : null);
-	const artistLine = $derived(track ? track.artists.map((artist) => artist.name).join(', ') : '');
+	const cover = $derived(track?.imageUrl ?? track?.album?.imageUrl ?? null);
 	const releaseYear = $derived(formatReleaseDate(track?.album?.releaseDate));
-	const albumLine = $derived(
-		track?.album ? `${track.album.title}${releaseYear ? ` · ${releaseYear}` : ''}` : ''
-	);
-	let scrubTime = $state<number | null>(null);
-	const displayedTime = $derived(scrubTime ?? player.currentTime);
-
-	// A scrub preview belongs to the track being touched. If playback advances
-	// before the pointer is released, discard the stale preview rather than
-	// rendering or committing its position against the next track.
-	const trackId = $derived(track?.id);
-	$effect(() => {
-		void trackId;
-		scrubTime = null;
-	});
-
-	function previewSeek(event: Event): void {
-		const next = Number((event.currentTarget as HTMLInputElement).value);
-		if (Number.isFinite(next)) scrubTime = next;
-	}
-
-	function commitSeek(event: Event): void {
-		const next = Number((event.currentTarget as HTMLInputElement).value);
-		scrubTime = null;
-		if (!Number.isFinite(next)) return;
-		haptics.tick();
-		player.seek(next);
-	}
-
-	// Tied to the track id rather than reset on every change, so a broken image
-	// on one track can't keep hiding artwork once playback moves to the next.
 	let erroredTrackId = $state<string | null>(null);
-	const showFallback = $derived(!cover || erroredTrackId === track?.id);
-
-	// The View Transitions API isn't reachable through layout.css's
-	// `transition-duration` reduced-motion rule, so this settle-in fade needs
-	// its own guard. One-time, SSR-safe read — matches the `isBrowser` idiom
-	// used throughout player.svelte.ts.
-	const prefersReducedMotion =
-		typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 </script>
 
-<div class="flex h-full flex-col px-6 py-6">
-	<h1 class="sr-only">{m.now_playing_heading()}</h1>
-
+<section class="now-screen" aria-labelledby="now-title">
+	<h1 id="now-title" class="sr-only">{m.now_playing_heading()}</h1>
+	<header class="now-header">
+		<a
+			href={navigation?.returnTo ?? resolve('/(mobile)/home')}
+			class="now-icon"
+			aria-label={m.now_close_player()}><ChevronDown size={24} aria-hidden="true" /></a
+		>
+		<p class="now-context">{track?.provenance ?? m.now_playing_heading()}</p>
+		{#if track}<TrackActionMenu {track} mobile />{/if}
+	</header>
 	{#if track}
-		<div class="flex items-center justify-between gap-2">
-			<a
-				href={resolve('/(mobile)/home')}
-				class="flex h-12 w-12 items-center justify-center text-(--text-primary)"
-				aria-label={m.now_close_player()}
-			>
-				<ChevronDown size={24} aria-hidden="true" />
-			</a>
-			<div class="flex gap-2">
-				<a
-					href={resolve('/(mobile)/now/lyrics')}
-					class="flex h-12 w-12 items-center justify-center text-(--text-primary)"
-					aria-label={m.now_lyrics_open()}
-				>
-					<ScrollText size={20} />
-				</a>
-				<a
-					href={resolve('/(mobile)/now/credits')}
-					class="flex h-12 w-12 items-center justify-center text-(--text-primary)"
-					aria-label={m.now_credits_open()}><BadgeInfo size={20} /></a
-				>
-				<a
-					href={resolve('/(mobile)/now/queue')}
-					class="relative flex h-12 w-12 items-center justify-center text-(--text-primary)"
-					aria-label={m.now_queue_open()}
-				>
-					<ListMusic size={20} />
-					{#if player.queueCount > 0}
-						<span
-							class="absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-(--action) px-1 text-[0.6rem] leading-none text-(--action-contrast)"
-						>
-							{player.queueCount}
-						</span>
-					{/if}
-				</a>
+		<div class="now-content">
+			<div class="now-artwork" style:view-transition-name="syn-now-art">
+				{#if cover && erroredTrackId !== track.id}
+					<img
+						src={cover}
+						alt={m.player_cover_alt({ title: track.title })}
+						onerror={() => (erroredTrackId = track?.id ?? null)}
+					/>
+				{:else}<Disc size={64} aria-hidden="true" />{/if}
 			</div>
-		</div>
-
-		<div class="flex flex-1 flex-col items-center justify-center gap-6">
-			{#key track.id}
-				<div
-					class="now-artwork aspect-square w-full max-w-sm overflow-hidden border border-(--border-subtle) bg-(--surface-selected)"
-					style:view-transition-name="syn-now-art"
-					transition:fade={{ duration: prefersReducedMotion ? 0 : 200 }}
-				>
-					{#if !showFallback}
-						<img
-							src={cover}
-							alt={`Cover for ${track.title}`}
-							data-track-id={track.id}
-							class="h-full w-full object-cover"
-							onerror={(event) => {
-								const trackId = (event.currentTarget as HTMLImageElement).dataset.trackId;
-								if (trackId && player.currentTrack?.id === trackId) erroredTrackId = trackId;
-							}}
-						/>
-					{:else}
-						<div class="flex h-full w-full items-center justify-center text-(--text-muted)">
-							<Disc size={64} />
-						</div>
-					{/if}
-				</div>
-			{/key}
-
-			<div class="w-full max-w-sm text-center">
-				<p class="truncate text-xl font-semibold text-(--text-primary)">{track.title}</p>
-				{#if artistLine}
-					<p class="truncate text-sm text-(--text-muted)">{artistLine}</p>
-				{/if}
-				{#if albumLine}
-					<p class="truncate text-sm text-(--text-muted)">{albumLine}</p>
-				{/if}
-				{#if track.provenance || player.qualityLabel}
-					<p class="mt-2 text-xs text-(--text-muted)">
-						{[track.provenance, player.qualityLabel].filter(Boolean).join(' · ')}
-					</p>
-				{/if}
+			<div class="now-identity">
+				<p class="now-track-title">{track.title}</p>
+				<p class="now-artists">
+					{#each track.artists as artist, index (`${artist.id}-${index}`)}
+						{#if index > 0}<span aria-hidden="true"> · </span>{/if}
+						<a href={resolve('/(mobile)/artists/[id]', { id: artist.id })}>{artist.name}</a>
+					{/each}
+				</p>
+				{#if track.album}<a
+						class="now-album"
+						href={resolve('/(mobile)/albums/[id]', { id: track.album.id })}
+						>{track.album.title}{releaseYear ? ` · ${releaseYear}` : ''}</a
+					>{/if}
+				{#if player.qualityLabel}<p class="now-quality">{player.qualityLabel}</p>{/if}
 			</div>
-
-			{#if player.isPlaybackActiveElsewhere}
-				<div
-					class="flex w-full max-w-sm items-center justify-between gap-3 rounded-(--radius-md) border border-(--border-subtle) bg-(--surface-raised) px-3 py-2 text-left"
-				>
-					<span class="text-xs text-(--text-muted)">{m.now_playing_elsewhere()}</span>
-					<button
-						type="button"
-						class="min-h-12 shrink-0 rounded-(--radius-sm) bg-(--action) px-4 text-sm font-semibold text-(--action-contrast) disabled:opacity-60"
-						disabled={player.playbackClaimPending}
-						onclick={() => {
-							haptics.tick();
-							player.playHere();
-						}}
+			<div class="now-controls">
+				<PlaybackStatus mobile />
+				<PlayerSeekBar mobile />
+				<PlayerTransport mobile />
+				<nav class="now-secondary" aria-label={m.player_now_playing()}>
+					<a href={resolve('/(mobile)/now/queue')} aria-label={m.now_queue_open()}
+						><ListMusic size={20} aria-hidden="true" /><span
+							>{m.player_queue()}{player.queueCount ? ` · ${player.queueCount}` : ''}</span
+						></a
 					>
-						{m.now_play_here()}
-					</button>
-				</div>
-			{/if}
-
-			<div class="flex w-full max-w-sm items-center gap-2">
-				<span class="w-10 text-right text-xs text-(--text-muted)">{formatClock(displayedTime)}</span
-				>
-				<input
-					type="range"
-					min="0"
-					max={player.duration || 100}
-					step="0.5"
-					value={displayedTime}
-					oninput={previewSeek}
-					onchange={commitSeek}
-					onpointercancel={() => (scrubTime = null)}
-					aria-label={m.player_seek()}
-					aria-valuetext={formatClock(displayedTime)}
-					class="h-8 flex-1 accent-(--action)"
-				/>
-				<span class="w-10 text-xs text-(--text-muted)">{formatClock(player.duration)}</span>
-			</div>
-
-			<div class="flex items-center justify-center gap-4">
-				<button
-					type="button"
-					class="now-toggle flex h-11 w-11 items-center justify-center"
-					class:on={player.shuffle}
-					aria-pressed={player.shuffle}
-					onclick={() => {
-						haptics.tick();
-						player.toggleShuffle();
-					}}
-					aria-label={m.player_shuffle()}
-				>
-					<Shuffle size={20} />
-				</button>
-				<button
-					type="button"
-					class="flex h-12 w-12 items-center justify-center text-(--text-primary) disabled:opacity-40"
-					disabled={!player.hasPrevious && player.currentTime < 3}
-					onclick={() => {
-						haptics.tick();
-						player.previous();
-					}}
-					aria-label={m.player_previous()}
-				>
-					<SkipBack size={26} />
-				</button>
-				<button
-					type="button"
-					class="now-primary-control flex h-16 w-16 items-center justify-center rounded-full bg-(--action) text-(--action-contrast)"
-					onclick={() => {
-						haptics.tick();
-						player.togglePlayPause();
-					}}
-					aria-label={player.isPlaying ? m.player_pause() : m.player_play_track()}
-				>
-					{#if player.isLoading}
-						<Loader2 size={26} class="animate-spin" />
-					{:else if player.isPlaying}
-						<Pause size={26} fill="currentColor" />
-					{:else}
-						<Play size={26} fill="currentColor" />
-					{/if}
-				</button>
-				<button
-					type="button"
-					class="flex h-12 w-12 items-center justify-center text-(--text-primary) disabled:opacity-40"
-					disabled={!player.hasNext && player.repeatMode === 'off'}
-					onclick={() => {
-						haptics.tick();
-						player.next();
-					}}
-					aria-label={m.player_next()}
-				>
-					<SkipForward size={26} />
-				</button>
-				<button
-					type="button"
-					class="now-toggle flex h-11 w-11 items-center justify-center"
-					class:on={player.repeatMode !== 'off'}
-					aria-pressed={player.repeatMode !== 'off'}
-					onclick={() => {
-						haptics.tick();
-						player.cycleRepeat();
-					}}
-					aria-label={m.player_repeat()}
-				>
-					<RepeatIcon size={20} />
-				</button>
+					<a href={resolve('/(mobile)/now/lyrics')} aria-label={m.now_lyrics_open()}
+						><ScrollText size={20} aria-hidden="true" /><span>{m.player_lyrics()}</span></a
+					>
+					<a href={resolve('/(mobile)/now/credits')} aria-label={m.now_credits_title()}
+						><BadgeInfo size={20} aria-hidden="true" /><span>{m.now_credits_title()}</span></a
+					>
+				</nav>
+				<SessionSaveStatus />
 			</div>
 		</div>
 	{:else}
-		<div class="flex flex-1 flex-col items-center justify-center px-2 text-center">
-			<div class="now-idle-disc" aria-hidden="true"><Disc size={42} strokeWidth={1.4} /></div>
-			<p class="mt-6 text-xl font-semibold tracking-tight text-(--text-primary)">
-				{m.now_idle_message()}
-			</p>
-			<p class="mt-2 max-w-70 text-sm leading-6 text-(--text-muted)">
-				{m.now_idle_description()}
-			</p>
-			<div class="mt-7 flex w-full max-w-70 flex-col gap-3">
-				<a href={resolve('/(mobile)/search')} class="now-idle-primary">{m.now_idle_search()}</a>
-				<a href={resolve('/(mobile)/home')} class="now-idle-secondary">{m.now_idle_cta()}</a>
-			</div>
+		<div class="now-idle">
+			<Disc size={48} aria-hidden="true" />
+			<p class="now-track-title">{m.now_idle_message()}</p>
+			<p>{m.now_idle_description()}</p>
+			<a href={resolve('/(mobile)/search')}>{m.now_idle_search()}</a><a
+				href={resolve('/(mobile)/home')}>{m.now_idle_cta()}</a
+			>
 		</div>
 	{/if}
-</div>
+</section>
 
 <style>
-	.now-artwork {
-		border-radius: var(--radius-xl);
-		box-shadow: 0 24px 42px -26px rgb(0 0 0 / 78%);
+	.now-screen {
+		min-height: 100%;
+		padding: calc(0.5rem + env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
+			calc(1rem + env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
 	}
-
-	.now-idle-disc {
+	.now-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.5rem;
+		max-width: 36rem;
+		margin: 0 auto 1rem;
+	}
+	.now-icon {
 		display: grid;
-		width: 6.5rem;
-		aspect-ratio: 1;
+		flex: none;
+		width: 48px;
+		height: 48px;
 		place-items: center;
-		border: 1px solid var(--border-subtle);
+		color: var(--text-primary);
 		border-radius: var(--radius-full);
-		background:
-			radial-gradient(circle at 50% 50%, var(--surface-raised) 0 13%, transparent 14%),
-			repeating-radial-gradient(
-				circle at 50% 50%,
-				color-mix(in oklab, var(--text-muted) 18%, transparent) 0 1px,
-				transparent 2px 7px
-			),
-			var(--surface-selected);
+	}
+	.now-context {
+		min-width: 0;
+		text-align: center;
+		font-size: var(--fs-xs);
 		color: var(--text-secondary);
+		overflow-wrap: anywhere;
+	}
+	.now-content {
+		display: grid;
+		gap: clamp(0.85rem, 2vh, 1.5rem);
+		width: min(100%, 26rem);
+		margin: 0 auto;
+	}
+	.now-artwork {
+		display: grid;
+		place-items: center;
+		width: min(100%, 38dvh);
+		min-width: 0;
+		aspect-ratio: 1;
+		justify-self: center;
+		overflow: hidden;
+		border-radius: var(--radius-xl);
+		color: var(--text-secondary);
+		background: var(--surface-selected);
+		border: 1px solid var(--border-subtle);
 		box-shadow: var(--shadow-panel);
 	}
-
-	.now-idle-primary,
-	.now-idle-secondary {
-		display: flex;
-		min-height: 3rem;
-		align-items: center;
-		justify-content: center;
-		border-radius: var(--radius-full);
-		font-size: var(--fs-sm);
-		font-weight: 650;
+	.now-artwork img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+	.now-track-title {
+		margin: 0;
+		font-size: var(--fs-xl);
+		font-weight: 700;
+		line-height: 1.2;
+		overflow-wrap: anywhere;
+	}
+	.now-artists {
+		margin: 0.45rem 0;
+		font-size: var(--fs-base);
+		color: var(--text-secondary);
+		overflow-wrap: anywhere;
+	}
+	.now-artists a,
+	.now-album {
+		color: inherit;
 		text-decoration: none;
 	}
-
-	.now-idle-primary {
-		background: var(--action);
+	.now-album {
+		display: inline-block;
+		font-size: var(--fs-sm);
+		color: var(--text-secondary);
+	}
+	.now-quality {
+		margin: 0.5rem 0 0;
+		color: var(--text-secondary);
+		font-size: var(--fs-xs);
+	}
+	.now-controls {
+		display: grid;
+		gap: 0.65rem;
+		min-width: 0;
+	}
+	.now-secondary {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 0.25rem;
+		margin-top: 0.75rem;
+	}
+	.now-secondary a {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 0.35rem;
+		min-height: 48px;
+		padding: 0.5rem 0;
+		color: var(--text-secondary);
+		text-decoration: none;
+		font-size: var(--fs-xs);
+		border-radius: var(--radius-md);
+		text-align: center;
+		overflow-wrap: anywhere;
+	}
+	a:focus-visible {
+		outline: 2px solid var(--focus-ring);
+		outline-offset: 2px;
+	}
+	.now-idle {
+		display: flex;
+		min-height: 60dvh;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 1rem;
+		text-align: center;
+		color: var(--text-secondary);
+	}
+	.now-idle a {
+		display: grid;
+		min-height: 48px;
+		padding: 0.5rem 1rem;
+		place-items: center;
 		color: var(--action-contrast);
-		box-shadow: 0 12px 28px -16px color-mix(in oklab, var(--action) 70%, transparent);
-	}
-
-	.now-idle-secondary {
-		border: 1px solid var(--border-strong);
-		color: var(--text-primary);
-	}
-
-	.now-toggle {
-		color: var(--text-muted);
+		background: var(--action);
 		border-radius: var(--radius-full);
-		transition: color var(--dur-fast) var(--ease-out);
+		text-decoration: none;
 	}
-
-	.now-toggle.on {
-		color: var(--action);
-	}
-
-	.now-primary-control {
-		box-shadow: 0 10px 22px -12px color-mix(in oklab, var(--action) 62%, transparent);
-		transition:
-			transform var(--dur-fast) var(--ease-out),
-			box-shadow var(--dur-fast) var(--ease-out);
-	}
-
-	.now-primary-control:hover {
-		transform: scale(1.04);
-		box-shadow: 0 13px 27px -12px color-mix(in oklab, var(--action) 68%, transparent);
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.now-primary-control,
-		.now-toggle {
-			transition: none;
+	@media (min-width: 40rem) and (max-height: 34rem) {
+		.now-content {
+			width: min(100%, 52rem);
+			grid-template-columns: minmax(10rem, 0.8fr) minmax(18rem, 1fr);
+			align-items: center;
+			column-gap: 1.5rem;
+		}
+		.now-artwork {
+			grid-column: 1;
+			grid-row: 1 / 3;
+			width: min(100%, 65dvh);
+		}
+		.now-identity,
+		.now-controls {
+			grid-column: 2;
 		}
 	}
 </style>

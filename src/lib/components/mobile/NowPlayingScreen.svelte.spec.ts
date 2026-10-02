@@ -1,5 +1,5 @@
 import { page } from 'vitest/browser';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import NowPlayingScreen from './NowPlayingScreen.svelte';
 import { player } from '#lib/player/player.svelte.js';
@@ -16,10 +16,16 @@ const track: TrackSummary = {
 		id: 'al1',
 		title: 'Press the Eject',
 		releaseDate: '1982-01-01',
-		imageUrl: 'https://img.test/cover.jpg'
+		imageUrl:
+			'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect width="100" height="100" fill="slateblue"/%3E%3C/svg%3E'
 	}
 };
 
+beforeEach(() => {
+	player.isLoading = false;
+	player.playbackMode = 'direct';
+	player.activeDevice = null;
+});
 afterEach(() => {
 	player.currentTrack = null;
 	player.queue = [];
@@ -27,6 +33,9 @@ afterEach(() => {
 	player.currentTime = 0;
 	player.duration = 0;
 	player.isPlaying = false;
+	player.isLoading = false;
+	player.playbackMode = 'direct';
+	player.persistenceStatus = 'saved';
 	player.shuffle = false;
 	player.repeatMode = 'off';
 	player.activeDevice = null;
@@ -115,12 +124,14 @@ describe('NowPlayingScreen.svelte', () => {
 		expect(player.shuffle).toBe(true);
 		await expect.element(shuffle).toHaveAttribute('aria-pressed', 'true');
 
-		const repeat = page.getByRole('button', { name: m.player_repeat() });
+		const repeat = page.getByRole('button', { name: m.player_repeat_off() });
 		await repeat.click();
 		expect(player.repeatMode).toBe('all');
-		await repeat.click();
+		await page.getByRole('button', { name: m.player_repeat_all() }).click();
 		expect(player.repeatMode).toBe('one');
-		await expect.element(repeat).toHaveAttribute('aria-pressed', 'true');
+		await expect
+			.element(page.getByRole('button', { name: m.player_repeat_one() }))
+			.toHaveAttribute('aria-pressed', 'true');
 	});
 
 	it('previews a scrub before committing one deliberate seek', async () => {
@@ -157,5 +168,45 @@ describe('NowPlayingScreen.svelte', () => {
 
 		await expect.element(slider).toHaveValue('8');
 		await expect.element(page.getByText('0:08')).toBeInTheDocument();
+	});
+});
+
+describe('mobile Now layout and recovery', () => {
+	it('keeps five transport targets within a 320px viewport', async () => {
+		await page.viewport(320, 640);
+		player.currentTrack = {
+			...track,
+			title: 'A very long track title that should wrap without pushing the controls out of view'
+		};
+		await render(NowPlayingScreen);
+		const play = page.getByRole('button', { name: m.player_play_track() });
+		await expect.element(play).toBeInTheDocument();
+		for (const name of [
+			m.player_shuffle(),
+			m.player_previous(),
+			m.player_play_track(),
+			m.player_next(),
+			m.player_repeat_off()
+		]) {
+			const rect = page.getByRole('button', { name }).element().getBoundingClientRect();
+			expect(rect.width).toBeGreaterThanOrEqual(name === m.player_play_track() ? 64 : 48);
+			expect(rect.height).toBeGreaterThanOrEqual(48);
+			expect(rect.left).toBeGreaterThanOrEqual(0);
+			expect(rect.right).toBeLessThanOrEqual(320);
+		}
+		await page.viewport(1280, 900);
+	});
+	it('shows a safe TIDAL destination with direct seek and play unavailable in fallback', async () => {
+		player.currentTrack = track;
+		player.playbackMode = 'embed';
+		player.duration = 200;
+		player.requiresFullAuth = false;
+		await render(NowPlayingScreen);
+		await expect.element(page.getByRole('button', { name: m.player_play_track() })).toBeDisabled();
+		await expect.element(page.getByRole('slider', { name: m.player_seek() })).toBeDisabled();
+		await expect
+			.element(page.getByRole('link', { name: m.action_open_in_tidal() }))
+			.toHaveAttribute('href', 'https://tidal.com/browse/track/9');
+		expect(player.currentTrack?.id).toBe('9');
 	});
 });

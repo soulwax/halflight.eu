@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { Disc, Loader2, Pause, Play } from '@lucide/svelte';
+	import { Disc, Loader2, Pause, Play, SkipForward } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { player } from '#lib/player/player.svelte.js';
 	import { haptics } from '#lib/player/haptics.js';
 
+	let { safeArea = false }: { safeArea?: boolean } = $props();
 	const track = $derived(player.currentTrack);
 	const cover = $derived(track ? (track.imageUrl ?? track.album?.imageUrl ?? null) : null);
 	const artistLine = $derived(track ? track.artists.map((artist) => artist.name).join(', ') : '');
@@ -16,13 +17,27 @@
 
 	function togglePlayback() {
 		haptics.tick();
-		player.togglePlayPause();
+		if (player.isPlaybackActiveElsewhere) player.playHere();
+		else if (player.playbackMode === 'embed') player.retryPlayback();
+		else player.togglePlayPause();
 	}
+	const playLabel = $derived(
+		player.isLoading
+			? m.player_loading()
+			: player.isPlaybackActiveElsewhere
+				? m.now_play_here()
+				: player.playbackMode === 'embed'
+					? m.track_retry()
+					: player.isPlaying
+						? m.player_pause()
+						: m.player_play_track()
+	);
 </script>
 
 {#if track}
 	<div
-		class="mobile-mini-player relative flex h-15 shrink-0 items-center gap-3 border-t border-(--border-subtle) bg-(--surface-raised) px-3"
+		class:with-safe-area={safeArea}
+		class="mobile-mini-player relative flex shrink-0 items-center gap-3 border-t border-(--border-subtle) bg-(--surface-raised) px-3"
 	>
 		<div class="mini-progress" aria-hidden="true">
 			<div class="mini-progress-fill" style:width="{progress}%"></div>
@@ -47,13 +62,24 @@
 				{#if artistLine}
 					<span class="block truncate text-xs text-(--text-muted)">{artistLine}</span>
 				{/if}
+				{#if player.isPlaybackActiveElsewhere}<span class="mini-status"
+						>{m.now_playing_elsewhere()}</span
+					>
+				{:else if player.playbackMode === 'embed'}<span class="mini-status"
+						>{m.player_fallback()}</span
+					>
+				{:else if player.persistenceStatus === 'server_error'}<span class="mini-status"
+						>{m.player_sync_server_error()}</span
+					>{/if}
 			</span>
 		</a>
 		<button
 			type="button"
-			class="flex h-10 w-10 shrink-0 items-center justify-center text-(--text-primary)"
+			class="flex h-12 w-12 shrink-0 items-center justify-center text-(--text-primary)"
+			disabled={player.isLoading || player.playbackClaimPending}
+			aria-busy={player.isLoading}
 			onclick={togglePlayback}
-			aria-label={player.isPlaying ? m.player_pause() : m.player_play_track()}
+			aria-label={playLabel}
 		>
 			{#if player.isLoading}
 				<Loader2 size={18} class="animate-spin" />
@@ -63,15 +89,40 @@
 				<Play size={18} fill="currentColor" />
 			{/if}
 		</button>
+		<button
+			type="button"
+			class="flex h-12 w-12 shrink-0 items-center justify-center text-(--text-primary) disabled:opacity-40"
+			disabled={!player.canGoNext}
+			onclick={() => player.next()}
+			aria-label={m.player_next()}><SkipForward size={20} aria-hidden="true" /></button
+		>
 	</div>
 {/if}
 
 <style>
 	.mobile-mini-player {
 		min-height: 3.75rem;
+		padding-block: 0.375rem;
 		background: color-mix(in oklab, var(--surface-raised) 88%, transparent);
 		backdrop-filter: blur(18px) saturate(1.3);
 		-webkit-backdrop-filter: blur(18px) saturate(1.3);
+	}
+	.mini-status {
+		display: block;
+		max-width: 100%;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		color: var(--text-secondary);
+		font-size: var(--fs-xs);
+	}
+	.mobile-mini-player a {
+		min-height: 48px;
+	}
+	.mobile-mini-player button:focus-visible {
+		outline: 2px solid var(--focus-ring);
+		outline-offset: -2px;
+		border-radius: var(--radius-full);
 	}
 
 	.mobile-mini-art {
@@ -97,5 +148,8 @@
 			backdrop-filter: none;
 			-webkit-backdrop-filter: none;
 		}
+	}
+	.with-safe-area {
+		padding-bottom: calc(0.375rem + env(safe-area-inset-bottom));
 	}
 </style>

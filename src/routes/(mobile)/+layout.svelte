@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { onMount } from 'svelte';
+	import { onMount, setContext } from 'svelte';
 	import { onNavigate } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
@@ -10,16 +10,23 @@
 	import MiniPlayer from '#lib/components/mobile/MiniPlayer.svelte';
 	import MobileNavigationMenu from '#lib/components/mobile/MobileNavigationMenu.svelte';
 	import NowTabBar from '#lib/components/mobile/NowTabBar.svelte';
+	import PlaylistDialog from '#lib/components/music/PlaylistDialog.svelte';
 	import {
 		managesMobileScroll,
 		mobileScrollKey,
-		shouldFocusMobileDestination
+		shouldFocusMobileDestination,
+		MOBILE_PLAYER_NAVIGATION,
+		mobilePlayerReturnTarget,
+		isNowRoute,
+		type MobilePlayerNavigation
 	} from '#lib/mobile/navigation';
 	import type { LayoutData } from './$types';
 
 	let { data, children }: { data: LayoutData; children: Snippet } = $props();
 	let mainElement: HTMLElement;
 	const scrollPositions = new SvelteMap<string, number>();
+	const playerNavigation = $state<MobilePlayerNavigation>({ returnTo: resolve('/(mobile)/home') });
+	setContext(MOBILE_PLAYER_NAVIGATION, playerNavigation);
 
 	// Halflight Now writes are attributed separately from the desktop Listening
 	// Room (see player.svelte.ts's `origin` field / MASTERPLAN's session
@@ -48,6 +55,8 @@
 			shallow: navigation.shallow
 		};
 		const managesScroll = managesMobileScroll(routeNavigation);
+		const returnTarget = mobilePlayerReturnTarget(routeNavigation.from, routeNavigation.to);
+		if (returnTarget) playerNavigation.returnTo = returnTarget;
 		if (managesScroll && routeNavigation.from) {
 			scrollPositions.set(mobileScrollKey(routeNavigation.from), mainElement.scrollTop);
 		}
@@ -78,21 +87,20 @@
 		});
 	});
 
-	const nowRoot = resolve('/(mobile)/now');
-	const isOnNowRoute = $derived(
-		page.url.pathname === nowRoot || page.url.pathname.startsWith(`${nowRoot}/`)
+	const isOnNowRoute = $derived(isNowRoute(page.url.pathname));
+	const isFullNowPlaying = $derived(
+		page.route.id === '/(mobile)/now' && Boolean(player.currentTrack)
 	);
-	const isFullNowPlaying = $derived(isOnNowRoute && Boolean(player.currentTrack));
+	const showChrome = $derived(!isOnNowRoute || !player.currentTrack);
 </script>
 
 <div class="mobile-shell flex min-h-dvh flex-col bg-(--surface-canvas) text-(--text-primary)">
-	{#if !isFullNowPlaying}
+	{#if showChrome}
 		<header class="mobile-app-header flex shrink-0 items-center gap-1">
 			<MobileNavigationMenu currentPath={page.url.pathname} />
 			<a class="mobile-brand" href={resolve('/(mobile)/home')} aria-label={m.brand_name()}>
 				<span>{m.brand_name()}</span>
 			</a>
-			<NowTabBar currentPath={page.url.pathname} />
 		</header>
 	{/if}
 	<main
@@ -103,12 +111,18 @@
 		{@render children()}
 	</main>
 	{#if !isFullNowPlaying}
-		<MiniPlayer />
+		<MiniPlayer safeArea={!showChrome} />
 	{/if}
+	{#if showChrome}<NowTabBar currentPath={page.url.pathname} />{/if}
 </div>
+
+<PlaylistDialog />
 
 <style>
 	.mobile-shell {
+		height: 100vh;
+		height: 100dvh;
+		overflow: hidden;
 		min-height: 100dvh;
 		background:
 			radial-gradient(
@@ -148,6 +162,7 @@
 	}
 
 	.mobile-scroll-region {
+		padding-bottom: env(safe-area-inset-bottom);
 		overscroll-behavior-y: contain;
 		-webkit-overflow-scrolling: touch;
 		scrollbar-width: none;

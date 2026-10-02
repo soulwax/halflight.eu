@@ -1,4 +1,30 @@
-import { isMobileRoute } from './routes';
+import { isMobileRoute, isPublicMobileRoute } from './routes';
+import { deLocalizeUrl } from '#lib/paraglide/runtime';
+
+export const MOBILE_PLAYER_NAVIGATION = Symbol('mobile-player-navigation');
+export interface MobilePlayerNavigation {
+	returnTo: string;
+}
+
+export function isNowRoute(pathname: string): boolean {
+	const path = deLocalizeUrl(pathname).pathname;
+	return path === '/now' || path.startsWith('/now/');
+}
+
+/** Remember only the actual same-origin scene that opened Now, never an external Back target. */
+export function mobilePlayerReturnTarget(from: URL | null, to: URL | null): string | null {
+	if (
+		!from ||
+		!to ||
+		from.origin !== to.origin ||
+		!isNowRoute(to.pathname) ||
+		!isMobileRoute(from.pathname) ||
+		isNowRoute(from.pathname) ||
+		isPublicMobileRoute(from.pathname)
+	)
+		return null;
+	return `${from.pathname}${from.search}`;
+}
 
 /**
  * A location's scroll state belongs to its page path and URL-backed controls.

@@ -1,14 +1,17 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
 	import { CircleCheck, Download, Palette, SlidersHorizontal } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import MobileSubScreenHeader from '#lib/components/mobile/MobileSubScreenHeader.svelte';
+	import TidalPlaybackSetup from '#lib/components/tidal/TidalPlaybackSetup.svelte';
 	import TidalDebugTokens from '#lib/components/tidal/TidalDebugTokens.svelte';
 	import { getThemeLabel, type Theme } from '#lib/theme.js';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form?: ActionData } = $props();
 
+	let advancedOpen = $state(false);
 	const selectedTheme = $derived<Theme>(form?.theme ?? data.theme);
 
 	function previewTheme(theme: Theme): void {
@@ -87,12 +90,40 @@
 		headingId="mobile-settings-title"
 	/>
 
+	<section class="card connection" aria-labelledby="mobile-settings-connection-title">
+		<h2 id="mobile-settings-connection-title">{m.mobile_settings_connection_title()}</h2>
+		{#if page.url.searchParams.has('error')}<p class="notice error" role="alert">
+				{m.tidal_settings_connection_failed()}
+			</p>
+		{:else if page.url.searchParams.has('connected')}<p class="notice success" role="status">
+				{m.tidal_settings_connected_notice()}
+			</p>
+		{:else if page.url.searchParams.has('disconnected')}<p class="notice" role="status">
+				{m.tidal_settings_disconnected_notice()}
+			</p>{/if}
+		{#if !data.connection.configured}
+			<p>{m.tidal_not_configured()}</p>
+		{:else if data.connection.connected}
+			<p>{m.mobile_settings_connected()}</p>
+			<a class="button" href={resolve('/tidal/connect?returnTo=/settings')}>{m.tidal_reconnect()}</a
+			>
+		{:else}
+			<p>{m.mobile_settings_disconnected()}</p>
+			<a class="button" href={resolve('/tidal/connect?returnTo=/settings')}>{m.tidal_connect()}</a>
+		{/if}
+	</section>
+
+	<TidalPlaybackSetup
+		configured={data.connection.configured}
+		hasPlayback={data.connection.hasPlayback}
+	/>
 	<section class="card" aria-labelledby="mobile-settings-streaming-title">
 		<div class="card-heading">
 			<SlidersHorizontal size={20} aria-hidden="true" />
 			<div>
 				<h2 id="mobile-settings-streaming-title">{m.streaming_settings_title()}</h2>
 				<p>{m.streaming_settings_description()}</p>
+				<p>{m.streaming_settings_next_track()}</p>
 			</div>
 		</div>
 
@@ -176,7 +207,9 @@
 		</form>
 	</section>
 
-	<TidalDebugTokens />
+	<details class="card" bind:open={advancedOpen}>
+		<summary>{m.settings_advanced()}</summary>{#if advancedOpen}<TidalDebugTokens />{/if}
+	</details>
 
 	<section class="card" aria-labelledby="mobile-settings-appearance-title">
 		<div class="card-heading">
@@ -225,19 +258,6 @@
 
 			<button type="submit">{m.appearance_save()}</button>
 		</form>
-	</section>
-
-	<section class="card connection" aria-labelledby="mobile-settings-connection-title">
-		<h2 id="mobile-settings-connection-title">{m.mobile_settings_connection_title()}</h2>
-		{#if !data.connection.configured}
-			<p>{m.tidal_not_configured()}</p>
-		{:else if data.connection.connected}
-			<p>{m.mobile_settings_connected()}</p>
-			<a class="button" href={resolve('/tidal/connect')}>{m.tidal_reconnect()}</a>
-		{:else}
-			<p>{m.mobile_settings_disconnected()}</p>
-			<a class="button" href={resolve('/tidal/connect')}>{m.tidal_connect()}</a>
-		{/if}
 	</section>
 
 	<section class="card" aria-labelledby="mobile-install-title">

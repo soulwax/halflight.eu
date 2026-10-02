@@ -3,7 +3,7 @@
 	import { ArrowDown, ArrowUp, Trash2 } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { player } from '#lib/player/player.svelte.js';
-	import { customPlaylists } from '#lib/player/customPlaylists.svelte.js';
+	import QueueActions from '../QueueActions.svelte';
 	import { describeQueueMove } from '#lib/player/queue-announce.js';
 	import type { DndEvent } from '#lib/player/queue-dnd.js';
 	import type { QueueEntry } from '#lib/player/queue-entry.js';
@@ -62,28 +62,11 @@
 		const sibling = direction === -1 ? button.nextElementSibling : button.previousElementSibling;
 		if (sibling instanceof HTMLButtonElement && !sibling.disabled) sibling.focus();
 	}
-
-	function saveQueue() {
-		const tracks = player.currentTrack ? [player.currentTrack, ...player.queue] : [...player.queue];
-		if (!tracks.length) return;
-		customPlaylists.createPlaylist(
-			`${m.player_queue()} — ${new Date().toLocaleDateString()}`,
-			m.player_save_queue(),
-			tracks
-		);
-	}
 </script>
 
 <div class="queue-toolbar">
 	<span class="q-label">{m.player_next_up()}</span>
-	<div class="q-tools">
-		{#if player.queueCount || player.currentTrack}
-			<button type="button" onclick={saveQueue}>{m.player_save_queue()}</button>
-		{/if}
-		{#if player.queueCount}
-			<button type="button" onclick={() => player.clearQueue()}>{m.player_clear_queue()}</button>
-		{/if}
-	</div>
+	<QueueActions />
 </div>
 
 {#if items.length === 0}
@@ -149,27 +132,6 @@
 		letter-spacing: 0.18em;
 		text-transform: uppercase;
 		color: var(--text-muted);
-	}
-	.q-tools {
-		display: flex;
-		gap: 0.4rem;
-	}
-	.q-tools button {
-		border: 1px solid var(--border-subtle);
-		background: transparent;
-		padding: 0.25rem 0.6rem;
-		color: var(--text-muted);
-		font-size: 0.6rem;
-		font-weight: 700;
-		letter-spacing: 0.1em;
-		text-transform: uppercase;
-		cursor: pointer;
-	}
-	.q-tools button:hover,
-	.q-tools button:focus-visible {
-		border-color: var(--accent-gold-deep);
-		color: var(--accent-gold);
-		outline: none;
 	}
 	.queue-empty {
 		padding: 1.5rem 1rem;

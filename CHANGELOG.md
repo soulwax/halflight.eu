@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Labelled mobile Home/Search/Library/Now navigation, adaptive Now Playing controls, contextual
+  Close, transport on supporting screens, and a track-action sheet with queue feedback.
+- Shared playback and queue-save recovery notices, confirmed queue clearing, and named queue saving
+  with pending/error/success states and safe retries after a lost response.
+- Mobile full-playback setup with bounded polling, cancellation, and allowlisted OAuth return to
+  mobile Settings; owner token inspection is collapsed under Advanced.
 - Overall product UX/UI and mobile playback-controls implementation plans, covering desktop and
   mobile navigation, setup, transport, seeking, recovery, music actions, accessibility, and delivery.
 - TIDAL settings can explicitly reveal and copy the signed-in owner's browse and playback OAuth
@@ -23,6 +29,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Make Home resume deliberate, reject duplicate pending starts, use explicit OS Play/Pause actions,
+  and align previous/next/seek availability with actual playback commands and mode.
+- Confirm playlist-dialog saves on the server before reporting success, and require explicit intent
+  for TIDAL publication when creating an owned playlist.
+- Preserve narrow layouts with enlarged text, enlarge dialog close targets, and respect reduced
+  motion for dialogs.
 - Distinguish playback-session service failures from network outages, keep pending edits, and offer
   a translated retry action in the player.
 - Rebrand the audio package source submodule, imports, configuration, tests, documentation, and

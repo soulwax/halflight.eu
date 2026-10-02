@@ -361,8 +361,8 @@ export class PlayerState {
 
 	private setupMediaSession(): void {
 		setupMediaSessionHandlers({
-			onPlay: () => this.togglePlayPause(),
-			onPause: () => this.togglePlayPause(),
+			onPlay: () => this.resumePlayback(),
+			onPause: () => this.pausePlayback(),
 			onPrevious: () => this.previous(),
 			onNext: () => this.next(),
 			onSeekBackward: (sec) => this.seekBy(-sec),
@@ -411,8 +411,14 @@ export class PlayerState {
 
 	/** Start the current track locally while deliberately taking shared control. */
 	playHere(): void {
+		if (!this.currentTrack || this.isLoading || this.playbackClaimPending) return;
 		void this.takePlaybackControl();
-		this.togglePlayPause();
+		if (this.playbackMode === 'embed') {
+			this.playbackMode = 'direct';
+			this.streamUrl = null;
+			this.playbackReason = null;
+		}
+		this.resumePlayback();
 	}
 
 	private claimPlaybackControlForIntent(): void {
@@ -592,6 +598,24 @@ export class PlayerState {
 
 	hasNext = $derived(this.queue.length > 0);
 	hasPrevious = $derived(this.history.length > 0);
+	canGoPrevious = $derived(
+		Boolean(this.currentTrack) &&
+			!this.isPlaybackActiveElsewhere &&
+			(this.hasPrevious || this.currentTime > 3)
+	);
+	canGoNext = $derived(
+		!this.isPlaybackActiveElsewhere &&
+			(this.hasNext ||
+				(this.repeatMode === 'all' && Boolean(this.currentTrack || this.history.length)))
+	);
+	canSeek = $derived(
+		Boolean(this.currentTrack) &&
+			this.playbackMode === 'direct' &&
+			!this.isLoading &&
+			!this.isPlaybackActiveElsewhere &&
+			Number.isFinite(this.duration) &&
+			this.duration > 0
+	);
 	queueCount = $derived(this.queue.length);
 	qualityLabel = $derived.by(() => {
 		if (!this.audioQuality) return null;
@@ -1128,6 +1152,14 @@ export class PlayerState {
 	}
 
 	togglePlayPause(): void {
+		if (!this.currentTrack || this.isLoading) return;
+		if (this.isPlaying) this.pausePlayback();
+		else this.resumePlayback();
+	}
+
+	/** Idempotent start for Resume and OS Play; never turns a delayed Play into Pause. */
+	resumePlayback(): void {
+		if (!this.currentTrack || this.isLoading || this.isPlaying) return;
 		this.engine.init();
 		this.engine.resume();
 
@@ -1137,23 +1169,48 @@ export class PlayerState {
 			this.isExpanded = true;
 			return;
 		}
-		if (!this.isPlaying) this.claimPlaybackControlForIntent();
+		this.claimPlaybackControlForIntent();
 
 		if (this.currentTrack && !this.streamUrl) {
 			void this.loadAndPlayStream(this.currentTrack.id);
 		} else if (this.engine.hasElement && this.streamUrl) {
-			if (this.isPlaying) {
-				this.engine.pause();
-			} else {
-				void this.engine.play().then((started) => {
-					if (started) return;
-					this.playbackMode = 'embed';
-					this.isExpanded = true;
-				});
-			}
+			this.isLoading = true;
+			const generation = this.streamLoadGeneration;
+			void this.engine.play().then((started) => {
+				if (generation !== this.streamLoadGeneration) return;
+				this.isLoading = false;
+				if (started) {
+					this.isPlaying = !this.engine.paused;
+					return;
+				}
+				this.playbackMode = 'embed';
+				this.isExpanded = true;
+			});
 		} else {
-			this.isPlaying = !this.isPlaying;
+			this.playbackMode = 'embed';
+			this.isPlaying = false;
+			this.isExpanded = true;
 		}
+	}
+
+	/** OS Pause and UI Pause are explicit actions, never a toggle. */
+	pausePlayback(): void {
+		if (this.playbackMode !== 'direct') return;
+		this.streamLoadAbort?.abort();
+		this.streamLoadGeneration += 1;
+		this.isLoading = false;
+		this.engine.pause();
+		this.isPlaying = false;
+		updatePlaybackState(false);
+	}
+
+	/** A deliberate retry keeps the selected track, position, history and queue. */
+	retryPlayback(): void {
+		if (!this.currentTrack || this.isLoading || this.isPlaybackActiveElsewhere) return;
+		this.playbackMode = 'direct';
+		this.playbackReason = null;
+		this.claimPlaybackControlForIntent();
+		void this.loadAndPlayStream(this.currentTrack.id);
 	}
 
 	private clampToTrack(seconds: number): number {
@@ -1381,6 +1438,8 @@ export class PlayerState {
 		this.recordQueueReplacement();
 		this.isExpanded = false;
 		this.isPlaying = false;
+		this.isLoading = false;
+		this.scrubPosition = null;
 		this.currentTime = 0;
 		this.duration = 0;
 		this.bufferedPercent = 0;

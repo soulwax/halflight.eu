@@ -13,10 +13,16 @@ export function oauthCookieOptions(url: URL) {
 	};
 }
 
+/** Only the two owned settings routes are valid OAuth destinations. */
+export function tidalReturnTo(value: unknown): '/settings' | '/app/settings/tidal' {
+	return value === '/settings' ? '/settings' : '/app/settings/tidal';
+}
+
 export interface OAuthCookiePayload {
 	state: string;
 	verifier: string;
 	userId: string;
+	returnTo?: string;
 }
 
 export function readOAuthCookie(cookies: Cookies): OAuthCookiePayload | null {

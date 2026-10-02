@@ -123,6 +123,8 @@ describe('QueueScene.svelte', () => {
 
 		player.queue = [entry('1', 'One')];
 		await page.getByRole('button', { name: m.player_clear_queue() }).click();
+		expect(player.queue).toHaveLength(1);
+		await page.getByRole('dialog').getByRole('button', { name: m.player_clear_queue() }).click();
 		expect(player.queue).toEqual([]);
 	});
 

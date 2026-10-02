@@ -5,15 +5,15 @@ import NowTabBar from './NowTabBar.svelte';
 import { m } from '#lib/paraglide/messages.js';
 
 describe('NowTabBar.svelte', () => {
-	it('keeps Search and Library as the one-tap mobile destinations', async () => {
+	it('keeps Search and Library as the labelled mobile destinations', async () => {
 		render(NowTabBar, { currentPath: '/home' });
 
 		const search = page.getByRole('link', { name: m.now_tab_search() });
 		const library = page.getByRole('link', { name: m.now_tab_library() });
 		await expect.element(search).toBeInTheDocument();
 		await expect.element(library).toBeInTheDocument();
-		expect(search.element().textContent).toBe('');
-		expect(library.element().textContent).toBe('');
+		expect(search.element().textContent?.trim()).toBe(m.now_tab_search());
+		expect(library.element().textContent?.trim()).toBe(m.now_tab_library());
 		expect(search.element().getAttribute('href')).toBe('/search');
 		expect(library.element().getAttribute('href')).toBe('/library');
 	});
