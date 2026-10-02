@@ -34,9 +34,9 @@ export function __resetTrackPlayabilityCache(): void {
 
 /**
  * Record that `trackId` failed to resolve a playable stream at every quality
- * TIDAL offered. Called from the stream-resolution routes' failure path —
- * never proactively — so a row only ever reflects an actual attempted, failed
- * play. Idempotent: a track already marked unplayable just gets a fresh
+ * TIDAL offered. Called after actual stream resolution fails, either during
+ * playback or import validation; catalogue metadata alone never flags a track.
+ * Idempotent: a track already marked unplayable just gets a fresh
  * `checkedAt`.
  */
 export async function markTrackUnplayable(trackId: string, reason: string): Promise<void> {

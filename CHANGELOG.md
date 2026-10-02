@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Verify TIDAL playback before reporting playlist imports successful; exclude confirmed defective
+  recordings from playlist JSON and editing views, pace validation, and stop safely on throttling.
+  Keep long import and pull responses active through production proxy timeouts.
+- Keep typed lint's extra file extensions consistent so checking mixed TypeScript and Svelte files
+  does not repeatedly reload the entire project.
 - Batch album/playlist queue additions into one durable operation, let off-screen artwork remain
   lazy, request appropriately sized thumbnails, and prevent touch scrolling from starting a drag.
 - Center the desktop seek thumb vertically on the progress line in Chromium and WebKit.

@@ -15,6 +15,8 @@ import type { PlaylistDetail } from '#lib/tidal/models';
 import type { Cookies } from '@sveltejs/kit';
 import type { SavedPlaylist } from './index';
 import { createUserPlaylist, getUserPlaylists, updateUserPlaylist } from './index';
+import { validatePlaylistPlayback } from './playback-validation';
+import { getStreamingSettings } from '#lib/server/streaming-settings';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -32,12 +34,12 @@ export interface SyncResult {
 	status: 'synced' | 'created' | 'conflict' | 'error' | 'skipped';
 	tracksAdded: number;
 	tracksRemoved: number;
-	/** Always zero: imports preserve the source playlist rather than rewriting it. */
+	/** Confirmed defective entries excluded from the playable imported view. */
 	tracksSkipped: number;
 	/** Always zero: imports never substitute a different TIDAL recording. */
 	tracksReplaced: number;
-	/** Imports deliberately defer playback checks until the owner plays a track. */
-	streamValidation: 'deferred';
+	/** A pull is successful only after all source tracks have been checked. */
+	streamValidation: 'verified' | 'deferred';
 	error?: string;
 }
 
@@ -102,9 +104,8 @@ export async function pullPlaylist(tidalPlaylistId: string, ctx: SyncContext): P
 	};
 
 	try {
-		// Capture one complete, ordered source playlist. Import is intentionally
-		// separate from playback: checking every signed stream serially made large
-		// imports slow and replaced/omitted the owner's actual choices.
+		// Retain the source snapshot, but validate the playable view before saving.
+		// Probes are paced and cached; no alternate recording is substituted.
 		const document = await tidalApi.getFullPlaylist(
 			tidalPlaylistId,
 			{ include: ['artists', 'albums'] },
@@ -116,6 +117,15 @@ export async function pullPlaylist(tidalPlaylistId: string, ctx: SyncContext): P
 			result.error = 'Failed to normalise TIDAL playlist';
 			return result;
 		}
+		const settings = await getStreamingSettings(ctx.userId);
+		const playable = await validatePlaylistPlayback(
+			detail.items,
+			ctx.userId,
+			tidalCtx,
+			settings.preferredQuality
+		);
+		result.tracksSkipped = detail.items.length - playable.length;
+		result.streamValidation = 'verified';
 
 		// Find existing local record
 		const localPlaylists = await getUserPlaylists(ctx.userId);

@@ -7,6 +7,7 @@ import {
 } from '#lib/server/playlists/sync';
 import { getUserPlaylists } from '#lib/server/playlists';
 import { getConnectionStatus } from '#lib/server/tidal';
+import { playlistWorkResponse } from '#lib/server/playlists/response';
 
 /**
  * POST /api/playlists/sync
@@ -51,8 +52,7 @@ export const POST: RequestHandler = async (event) => {
 			if (!body.tidalPlaylistId) {
 				error(400, 'tidalPlaylistId required for pull');
 			}
-			const result = await pullPlaylist(body.tidalPlaylistId, ctx);
-			return json(result);
+			return playlistWorkResponse(() => pullPlaylist(body.tidalPlaylistId!, ctx));
 		}
 
 		case 'push': {
@@ -69,8 +69,7 @@ export const POST: RequestHandler = async (event) => {
 		}
 
 		case 'pull_all': {
-			const result = await pullAllPlaylists(ctx);
-			return json(result);
+			return playlistWorkResponse(() => pullAllPlaylists(ctx));
 		}
 
 		case 'push_all': {

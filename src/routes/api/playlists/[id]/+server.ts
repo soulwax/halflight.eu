@@ -3,6 +3,7 @@ import { updateUserPlaylist, deleteUserPlaylist } from '#lib/server/playlists';
 import { log } from '#lib/server/log';
 import type { TrackSummary } from '#lib/tidal/models';
 import type { RequestHandler } from './$types';
+import { filterPlayableTracks } from '#lib/server/tidal/track-playability';
 
 interface UpdatePlaylistPayload {
 	title?: string;
@@ -40,7 +41,9 @@ export const PATCH: RequestHandler = async (event) => {
 			error(404, 'Playlist not found');
 		}
 
-		return json({ playlist: updated });
+		return json({
+			playlist: { ...updated, items: await filterPlayableTracks(updated.items ?? []) }
+		});
 	} catch (err) {
 		log.error('failed to update playlist', { playlistId, cause: err });
 		return json({ error: 'failed_to_update_playlist' }, { status: 500 });

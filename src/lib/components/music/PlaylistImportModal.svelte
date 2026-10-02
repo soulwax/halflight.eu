@@ -99,7 +99,7 @@
 				totalErrors: number;
 				totalTracksSkipped: number;
 				totalTracksReplaced: number;
-				streamValidation: 'deferred';
+				streamValidation: 'verified' | 'deferred';
 				error?: 'invalid_playlist_selection';
 				imported?: Array<{ tidalPlaylistId: string; status: string }>;
 			};
@@ -115,7 +115,7 @@
 				.map((playlist) => playlist.title);
 
 			successMessage = data.totalImported
-				? `${m.playlist_import_done()} (${data.totalImported}) ${m.playlist_import_source_preserved()}`
+				? `${m.playlist_import_done()} (${data.totalImported}) ${m.playlist_import_source_preserved()} ${m.playlist_import_playback_checked({ count: data.totalTracksSkipped })}`
 				: null;
 
 			// Refresh client-side custom playlist store

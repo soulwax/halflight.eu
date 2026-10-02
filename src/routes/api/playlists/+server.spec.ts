@@ -10,6 +10,9 @@ const mocks = vi.hoisted(() => {
 	};
 });
 
+const playback = vi.hoisted(() => ({ filter: vi.fn() }));
+vi.mock('#lib/server/tidal/track-playability', () => ({ filterPlayableTracks: playback.filter }));
+
 vi.mock('#lib/server/playlists', () => ({
 	getUserPlaylists: mocks.getUserPlaylists,
 	createUserPlaylist: mocks.createUserPlaylist,
@@ -44,6 +47,7 @@ function makeEvent(
 
 describe('API /api/playlists', () => {
 	beforeEach(() => {
+		playback.filter.mockReset().mockImplementation(async (tracks) => tracks);
 		mocks.getUserPlaylists.mockReset().mockResolvedValue([]);
 		mocks.createUserPlaylist.mockReset();
 		mocks.attemptTidalPlaylistSync.mockReset();
@@ -53,6 +57,17 @@ describe('API /api/playlists', () => {
 	});
 
 	describe('GET /api/playlists', () => {
+		it('excludes confirmed defects from JSON without rewriting the stored playlist', async () => {
+			const items = [{ id: 'good' }, { id: 'bad' }, { id: 'good' }];
+			mocks.getUserPlaylists.mockResolvedValue([{ id: 'p', items }]);
+			playback.filter.mockImplementation(async (tracks) =>
+				tracks.filter((track: { id: string }) => track.id !== 'bad')
+			);
+			const response = await GET(makeEvent('GET'));
+			expect((await response.json()).playlists[0].items).toEqual([{ id: 'good' }, { id: 'good' }]);
+			expect(items).toHaveLength(3);
+			expect(mocks.updateUserPlaylist).not.toHaveBeenCalled();
+		});
 		it('rejects unauthenticated requests with 401', async () => {
 			await expect(GET(makeEvent('GET', {}, undefined, null))).rejects.toMatchObject({
 				status: 401

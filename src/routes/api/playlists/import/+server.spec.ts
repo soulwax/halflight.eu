@@ -114,7 +114,7 @@ describe('API /api/playlists/import', () => {
 				tracksRemoved: 0,
 				tracksSkipped: 1,
 				tracksReplaced: 2,
-				streamValidation: 'deferred'
+				streamValidation: 'verified'
 			});
 
 			const res = await POST(makeEvent({ tidalPlaylistIds: ['pl-1'] }));
@@ -124,7 +124,7 @@ describe('API /api/playlists/import', () => {
 			expect(json.totalErrors).toBe(0);
 			expect(json.totalTracksSkipped).toBe(1);
 			expect(json.totalTracksReplaced).toBe(2);
-			expect(json.streamValidation).toBe('deferred');
+			expect(json.streamValidation).toBe('verified');
 			expect(mocks.pullPlaylist).toHaveBeenCalledWith(
 				'pl-1',
 				expect.not.objectContaining({ validateStreams: expect.anything() })

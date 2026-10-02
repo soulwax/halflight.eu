@@ -2666,6 +2666,11 @@ accessible confirmation dialog. Saved-playlist actions have 48px targets and nar
 Album and playlist additions use one durable append operation rather than a save per track.
 Missing artwork loads directly through the image route, with lazy thumbnails, bounded sizes and
 shared concurrent metadata resolution; queue scrolling no longer immediately starts a touch drag.
+Imports now verify stream resolution before reporting success. Confirmed asset failures are omitted
+from playlist JSON and editing views while owned source snapshots remain intact; paced, cached
+validation stops on account, transport or throttling failures instead of labelling them defective.
+Import and pull responses send JSON whitespace while checking, keeping production proxy connections
+active without reporting success before the checks finish.
 Physical-device playback and broader library browse coverage remain the next acceptance work.
 
 ## Recommended next vertical slice

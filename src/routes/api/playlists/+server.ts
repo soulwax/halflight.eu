@@ -7,6 +7,7 @@ import {
 import { log } from '#lib/server/log';
 import type { TrackSummary } from '#lib/tidal/models';
 import type { RequestHandler } from './$types';
+import { filterPlayableTracks } from '#lib/server/tidal/track-playability';
 
 interface CreatePlaylistPayload {
 	id?: string;
@@ -23,7 +24,14 @@ export const GET: RequestHandler = async (event) => {
 
 	try {
 		const playlists = await getUserPlaylists(event.locals.user.id);
-		return json({ playlists });
+		const playable = await filterPlayableTracks(playlists.flatMap((playlist) => playlist.items));
+		const ids = new Set(playable.map((track) => track.id));
+		return json({
+			playlists: playlists.map((playlist) => ({
+				...playlist,
+				items: playlist.items.filter((track) => ids.has(track.id))
+			}))
+		});
 	} catch (err) {
 		log.error('failed to load user playlists', { cause: err });
 		return json({ error: 'failed_to_load_playlists', playlists: [] }, { status: 500 });
@@ -52,7 +60,11 @@ export const POST: RequestHandler = async (event) => {
 			const existing = (await getUserPlaylists(event.locals.user.id)).find(
 				(playlist) => playlist.id === body.id
 			);
-			if (existing) return json({ playlist: existing }, { status: 200 });
+			if (existing)
+				return json(
+					{ playlist: { ...existing, items: await filterPlayableTracks(existing.items) } },
+					{ status: 200 }
+				);
 		}
 		// 1. Attempt optional TIDAL export only on an explicit reviewed request
 		let tidalPlaylistId: string | undefined;
@@ -77,7 +89,10 @@ export const POST: RequestHandler = async (event) => {
 			tidalPlaylistId
 		});
 
-		return json({ playlist: saved }, { status: 201 });
+		return json(
+			{ playlist: { ...saved, items: await filterPlayableTracks(saved.items ?? []) } },
+			{ status: 201 }
+		);
 	} catch (err) {
 		log.error('failed to create user playlist', { cause: err });
 		return json({ error: 'failed_to_create_playlist' }, { status: 500 });
