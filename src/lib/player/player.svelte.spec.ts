@@ -1281,6 +1281,95 @@ describe('PlayerState', () => {
 		});
 	});
 
+	it('recovers an offline mobile queue edit on reconnect without claiming or replacing playback', async () => {
+		let online = false;
+		const intentBodies: Array<Record<string, unknown>> = [];
+		let claimCalls = 0;
+		const fetchSpy = vi.fn((url: string, init?: RequestInit) => {
+			if (url === '/api/playback-state/claim') {
+				claimCalls += 1;
+				return Promise.resolve(new Response(null, { status: 409 }));
+			}
+			if (url === '/api/playback-state/intents') {
+				intentBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+				if (!online) return Promise.reject(new Error('network down'));
+				return Promise.resolve(
+					new Response(
+						JSON.stringify({
+							currentTrack: sampleTrack3,
+							queue: persistedQueue(sampleTrack2),
+							history: [],
+							currentTime: 30,
+							revision: 1,
+							activeDevice
+						}),
+						{ status: 200 }
+					)
+				);
+			}
+			if (url === '/api/playback-state' && init?.method === 'PUT') {
+				return Promise.resolve(new Response(JSON.stringify({ revision: 2 }), { status: 200 }));
+			}
+			if (url === '/api/playback-state') {
+				if (!online) return Promise.reject(new Error('network down'));
+				return Promise.resolve(
+					new Response(
+						JSON.stringify({
+							currentTrack: sampleTrack3,
+							queue: [],
+							history: [],
+							currentTime: 30,
+							revision: 0,
+							activeDevice
+						}),
+						{ status: 200 }
+					)
+				);
+			}
+			return Promise.resolve(new Response(null, { status: 404 }));
+		});
+		vi.stubGlobal('fetch', fetchSpy);
+
+		const activeDevice = {
+			origin: 'halflight-now' as const,
+			expiresAt: new Date(Date.now() + 60_000).toISOString(),
+			isCurrent: true
+		};
+		const player = new PlayerState();
+		player.origin = 'halflight-now';
+		player.restorePlaybackState({
+			currentTrack: sampleTrack1,
+			queue: [],
+			history: [],
+			currentTime: 42,
+			revision: 0,
+			activeDevice
+		});
+		player.isPlaying = true;
+		player.addToQueue(sampleTrack2);
+
+		await vi.waitFor(() => expect(player.persistenceStatus).toBe('offline'));
+		expect(player.queueCommands).toHaveLength(1);
+		expect(player.currentTrack?.id).toBe('track-1');
+
+		online = true;
+		await player.syncPlaybackState();
+		await vi.waitFor(() => expect(player.persistenceStatus).toBe('saved'), { timeout: 2000 });
+
+		expect(intentBodies).toHaveLength(2);
+		expect(intentBodies[1]).toMatchObject({
+			origin: 'halflight-now',
+			expectedRevision: 0,
+			operationId: intentBodies[0]?.operationId
+		});
+		expect(player.queueCommands).toHaveLength(0);
+		expectQueuedTracks(player, [sampleTrack2]);
+		expect(player.currentTrack?.id).toBe('track-1');
+		expect(player.currentTime).toBe(42);
+		expect(player.isPlaying).toBe(true);
+		expect(claimCalls).toBe(0);
+	});
+
 	it('refreshes a repeatedly conflicted queue without changing the audible track', async () => {
 		let intentWrites = 0;
 		const fetchSpy = vi.fn((url: string, init?: RequestInit) => {

@@ -5,6 +5,7 @@
 	import Button from '#lib/components/ui/Button.svelte';
 	import ViewHeader from '#lib/components/ui/ViewHeader.svelte';
 	import Notice from '#lib/components/ui/Notice.svelte';
+	import TidalDebugTokens from '#lib/components/tidal/TidalDebugTokens.svelte';
 
 	import type { ActionData, PageData } from './$types';
 
@@ -152,6 +153,10 @@
 			<p>{m.tidal_settings_connect_description()}</p>
 			<Button variant="primary" href={resolve('/tidal/connect')}>{m.tidal_connect()}</Button>
 		</section>
+	{/if}
+
+	{#if status.connected}
+		<TidalDebugTokens />
 	{/if}
 
 	<!-- Full Song Playback (TIDAL Link) Card -->

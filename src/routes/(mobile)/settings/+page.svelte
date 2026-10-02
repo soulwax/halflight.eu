@@ -3,6 +3,7 @@
 	import { CircleCheck, Download, Palette, SlidersHorizontal } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import MobileSubScreenHeader from '#lib/components/mobile/MobileSubScreenHeader.svelte';
+	import TidalDebugTokens from '#lib/components/tidal/TidalDebugTokens.svelte';
 	import { getThemeLabel, type Theme } from '#lib/theme.js';
 	import type { ActionData, PageData } from './$types';
 
@@ -174,6 +175,8 @@
 			<button type="submit">{m.streaming_settings_save()}</button>
 		</form>
 	</section>
+
+	<TidalDebugTokens />
 
 	<section class="card" aria-labelledby="mobile-settings-appearance-title">
 		<div class="card-heading">

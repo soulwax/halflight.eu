@@ -18,7 +18,7 @@ the full **Listening Room** on desktop and the focused **Halflight Now** mobile 
 progresses from a complete mobile website to an installable PWA, then a later Tauri native client;
 all three use the same server-owned listening session.
 
-Last reviewed: 2026-09-29. Package documentation was checked on this date; proposed dependencies
+Last reviewed: 2026-10-02. Package documentation was checked on this date; proposed dependencies
 still need compatibility verification against the lockfile when their feature is implemented.
 
 Implementation guide: start with **Current state**, **Third-party packages and reuse decisions**,
@@ -2612,21 +2612,32 @@ German; refreshing or retrying queue persistence leaves the current track intact
 checks duplicate removal, reordering, clear, current-track continuity, and the conflict/retry actions.
 Existing player tests cover durable queue intent and server conflict recovery.
 
+## Completed vertical slice: mobile interruption and reconnect recovery
+
+When an offline queue command is still pending and a successful background poll reports the same
+server revision, the coordinator now resumes that durable command instead of leaving it unsaved.
+If a poll briefly sees an older replica revision, the client retains its newer base and uses the
+conditional intent write to reconcile safely. The operation ID is reused, so retry remains
+idempotent. A 401 that later recovers follows the same path. Player and coordinator tests verify the
+current track, position, and playing state survive both network and authentication recovery, with no
+playback claim; prior tests cover explicit retry after a transient service failure. The default suite
+keeps the high-value client and server tests together and runs Storybook checks separately.
+
 ## Recommended next vertical slice
 
-**Mobile interruption and reconnect recovery.** Before expanding mobile discovery, verify the daily
-listening path under ordinary interruptions using the existing coordinator and statuses.
+**Halflight Now cold-open and resume.** Finish the core mobile listening path before adding more
+discovery surfaces: restore the accepted session without surprise playback and make deliberate
+resume work from the mobile Home and Now screens.
 
-1. Cover a queue edit made offline, reconnect, and confirm the pending intent reconciles before a
-   stale snapshot can overwrite the accepted queue.
-2. Verify an expired session and a transient service failure each provide the right recovery action
-   while the current audio and in-memory queue remain available.
-3. Add a focused browser journey for Now Playing → queue edit → interrupted request → recovery; keep
-   device takeover explicit and do not add background playback or offline audio.
+1. Verify server restore wins over the optimistic local queue cache while pending queue commands are
+   rebased and kept durable.
+2. Make the resume action show a clear loading/ready/failure state and require one deliberate tap to
+   start audio; page load and restored playback state must not invoke autoplay.
+3. Cover the journey from authenticated mobile Home to Now Playing and audible-start intent at a
+   narrow viewport, including an unavailable-session recovery path.
 
-**Accepted when:** reconnect saves the deliberate queue edit once, reload restores accepted state,
-and no interruption or recovery action restarts or claims playback. Position writes remain gated on
-active-device ownership.
+**Accepted when:** a cold open restores the same current track, position, queue, and history without
+starting audio; one explicit resume action starts playback and navigation preserves the session.
 
 ## Success measures
 

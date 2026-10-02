@@ -453,6 +453,137 @@ describe('PlaybackSessionCoordinator', () => {
 		expect(coordinator.queueCommands).toHaveLength(1);
 	});
 
+	it('replays a pending queue edit after reconnect when the server revision is unchanged', async () => {
+		let online = false;
+		const intentBodies: Array<Record<string, unknown>> = [];
+		const fetchMock = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+			const path = String(url);
+			if (path === '/api/playback-state/intents') {
+				intentBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+				if (!online) throw new Error('network down');
+				return new Response(
+					JSON.stringify({
+						currentTrack: sampleTrack2,
+						queue: [makeEntry(sampleTrack1, 'entry-local')],
+						history: [],
+						currentTime: 14,
+						revision: 1
+					}),
+					{ status: 200 }
+				);
+			}
+			if (path === '/api/playback-state' && init?.method === 'PUT') {
+				return new Response(JSON.stringify({ revision: 2 }), { status: 200 });
+			}
+			if (path === '/api/playback-state') {
+				if (!online) throw new Error('network down');
+				return new Response(
+					JSON.stringify({
+						currentTrack: sampleTrack2,
+						queue: [],
+						history: [],
+						currentTime: 14,
+						revision: 0
+					}),
+					{ status: 200 }
+				);
+			}
+			return new Response(null, { status: 404 });
+		}) as typeof fetch;
+
+		currentState.currentTrack = sampleTrack3;
+		currentState.currentTime = 42;
+		currentState.isPlaying = true;
+		currentState.hasLocalMedia = true;
+		const coordinator = createCoordinator(fetchMock);
+		coordinator.recordCommand({
+			type: 'append',
+			entries: [makeEntry(sampleTrack1, 'entry-local')]
+		});
+
+		await vi.waitFor(() => expect(coordinator.status).toBe('offline'));
+		expect(coordinator.queueCommands).toHaveLength(1);
+		const firstOperationId = intentBodies[0]?.operationId;
+
+		online = true;
+		await coordinator.syncPlaybackState();
+		await vi.waitFor(() => expect(coordinator.status).toBe('saved'));
+
+		expect(intentBodies).toHaveLength(2);
+		expect(intentBodies[1]).toMatchObject({
+			expectedRevision: 0,
+			operationId: firstOperationId,
+			intent: { type: 'queue.append' }
+		});
+		expect(coordinator.queueCommands).toHaveLength(0);
+		expect(appliedSession).toBeNull();
+		expect(currentState.currentTrack?.id).toBe('track-3');
+		expect(currentState.currentTime).toBe(42);
+	});
+
+	it('replays a pending queue edit after authentication returns', async () => {
+		let authenticated = false;
+		const intentBodies: Array<Record<string, unknown>> = [];
+		const fetchMock = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+			const path = String(url);
+			if (path === '/api/playback-state/intents') {
+				intentBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+				if (!authenticated) {
+					return new Response(JSON.stringify({ message: 'Unauthorized' }), { status: 401 });
+				}
+				return new Response(
+					JSON.stringify({
+						currentTrack: sampleTrack2,
+						queue: [makeEntry(sampleTrack1, 'entry-local')],
+						history: [],
+						currentTime: 14,
+						revision: 1
+					}),
+					{ status: 200 }
+				);
+			}
+			if (path === '/api/playback-state' && init?.method === 'PUT') {
+				return new Response(JSON.stringify({ revision: 2 }), { status: 200 });
+			}
+			if (path === '/api/playback-state') {
+				if (!authenticated) {
+					return new Response(JSON.stringify({ message: 'Unauthorized' }), { status: 401 });
+				}
+				return new Response(
+					JSON.stringify({
+						currentTrack: sampleTrack2,
+						queue: [],
+						history: [],
+						currentTime: 14,
+						revision: 0
+					}),
+					{ status: 200 }
+				);
+			}
+			return new Response(null, { status: 404 });
+		}) as typeof fetch;
+
+		const coordinator = createCoordinator(fetchMock);
+		coordinator.recordCommand({
+			type: 'append',
+			entries: [makeEntry(sampleTrack1, 'entry-local')]
+		});
+		await vi.waitFor(() => expect(coordinator.status).toBe('unauthenticated'));
+		expect(coordinator.queueCommands).toHaveLength(1);
+
+		authenticated = true;
+		await coordinator.syncPlaybackState();
+		await vi.waitFor(() => expect(coordinator.status).toBe('saved'));
+
+		expect(intentBodies).toHaveLength(2);
+		expect(intentBodies[1]).toMatchObject({
+			expectedRevision: 0,
+			operationId: intentBodies[0]?.operationId
+		});
+		expect(coordinator.queueCommands).toHaveLength(0);
+		expect(appliedSession).toBeNull();
+	});
+
 	it('reports a service failure and preserves a queue command until retry succeeds', async () => {
 		let serviceUnavailable = true;
 		const fetchMock = vi.fn(async (url: string | URL | Request) => {

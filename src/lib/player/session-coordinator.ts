@@ -597,17 +597,34 @@ export class PlaybackSessionCoordinator {
 
 			this.sessionSyncFailures = 0;
 			this.applyActiveDevice(state);
-			if (state.revision < this.revision) return;
+			const shouldResumePendingQueueWrites =
+				this.status === 'offline' ||
+				this.status === 'unauthenticated' ||
+				(this.status === 'server_error' && this.serverErrorRetry === 'sync');
+			if (state.revision < this.revision) {
+				// A read can briefly come from a stale replica. Keep our newer base and
+				// let the conditional intent write detect/reconcile that revision; it
+				// cannot replace the remote queue with this older snapshot.
+				if (this.queueCommands.length > 0 && shouldResumePendingQueueWrites) {
+					this.schedulePersistence();
+				}
+				return;
+			}
 
 			if (this.queueCommands.length > 0) {
-				if (state.revision === this.revision) return;
+				if (state.revision === this.revision) {
+					// An offline edit or a recovered session may still be waiting in the
+					// durable journal even though the server snapshot itself did not move.
+					if (shouldResumePendingQueueWrites) this.schedulePersistence();
+					return;
+				}
 				this.reconciliationBase = state;
 				this.revision = state.revision;
 				const rebased = rebaseQueue(state.queue, this.queueCommands, this.maxQueueLength);
 				this.onApplyQueueFn(rebased);
 				this.reconciliationAttempts = 0;
 				this.onHydrateMetadataFn?.(rebased);
-				this.schedulePersistence();
+				if (shouldResumePendingQueueWrites) this.schedulePersistence();
 				return;
 			}
 
