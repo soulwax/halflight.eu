@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Normalize SvelteKit manifest path records before filtering service-worker precache assets,
+  preventing a production registration failure while preserving public-only cache routing.
+
 ### Added
 
 - Labelled mobile Home/Search/Library/Now navigation, adaptive Now Playing controls, contextual
