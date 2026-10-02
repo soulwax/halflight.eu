@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Overall product UX/UI and mobile playback-controls implementation plans, covering desktop and
+  mobile navigation, setup, transport, seeking, recovery, music actions, accessibility, and delivery.
 - TIDAL settings can explicitly reveal and copy the signed-in owner's browse and playback OAuth
   values, with authenticated no-store delivery and matching desktop and mobile controls.
 - Track the standalone `bragi-cli` source as the public `bragi/` submodule; its GitHub repository

@@ -25,6 +25,10 @@ Implementation guide: start with **Current state**, **Third-party packages and r
 and **Implementation contracts and delivery gates**. These distinguish existing foundations from
 planned work; the product sections describe the intended finished experience.
 
+UX/UI delivery: [Overall Halflight UX/UI](docs/overall-ux-ui-plan.md) covers both sites and complete
+listening workflows; [mobile player controls](docs/mobile-player-ux-plan.md) specifies the first
+playback workstream. Both documents describe proposed work, not completed implementation.
+
 Mobile planning: [website](#the-mobile-site-halflight-now), [PWA](#the-installed-pwa),
 [later Tauri client](#later-tauri-native-client), and [release gates](#mobile-pwa-and-native-release-gates).
 Server coordination: [local Redis](#local-redis-cache-and-coordination) complements Postgres and
@@ -949,6 +953,11 @@ Desktop (>= 90rem — context panel available)     Laptop / desktop (64-90rem)
    while `main` scrolls.
 
 ## The mobile site: Halflight Now
+
+The concrete delivery plan for familiar player controls and consistent mobile/desktop UX lives in
+[Mobile player controls and overall UX/UI](docs/mobile-player-ux-plan.md). It starts with reliable
+cold-open/resume and truthful playback states, then shell navigation, transport/seek, and consistent
+browse-to-listen actions. Its proposed changes are not yet implementation-complete.
 
 Halflight Now is a different site because mobile listening is a different activity. It is designed
 from the full-screen player outward, not from the desktop route tree inward. Its job is to make the
