@@ -767,5 +767,11 @@
 	"track_action_play_next": "Play next",
 	"track_action_add_to_queue": "Add to queue",
 	"track_action_start_radio": "Start track radio",
-	"track_action_add_to_playlist": "Add to playlist"
+	"track_action_add_to_playlist": "Add to playlist",
+	"now_library_search_label": "Search your saved playlists",
+	"now_library_search_placeholder": "Playlist, track, album, or artist",
+	"now_library_clear_search": "Clear search",
+	"now_library_no_matches": "No saved playlists match “{query}”. Try another search.",
+	"now_library_unplayable_skipped": "{count} currently unavailable tracks are excluded from playback. Your saved playlists are unchanged.",
+	"now_library_available_count": "{count} available to play"
 }

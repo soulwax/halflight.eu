@@ -2647,6 +2647,24 @@ Automated coverage includes transport boundaries, unavailable/late seeks, duplic
 protection, fallback retry, failed-save recovery, OAuth return boundaries, narrow viewports, German
 labels and enlarged text. Physical-device acceptance remains open.
 
+## Library and playability stability — 2026-10-02
+
+Halflight Now can search the owner's saved playlists by title or saved track/album/artist metadata
+without catalogue crawling. Search queries survive pagination and Now return navigation. Saved
+counts remain distinct from playable entries; filtering never rewrites the owner's playlist.
+Library retry refreshes server data without reloading or stopping the permanent player. Private
+upload storage is queried only for its own tab and has a retryable failure boundary.
+
+Asset failures now try lower quality tiers before excluding a recording. If every requested tier
+fails, higher-tier metadata is checked only to establish whether the recording is unavailable;
+audio never exceeds the requested quality. Authentication and transport failures never become
+negative playability records. Confirmed negatives expire after 24 hours in Postgres lookups and
+the process cache, allowing repaired or relicensed recordings another attempt.
+
+Favorites retain their list context when tapped; replacing an active queue requires the shared
+accessible confirmation dialog. Saved-playlist actions have 48px targets and narrow rows wrap.
+Physical-device playback and broader library browse coverage remain the next acceptance work.
+
 ## Recommended next vertical slice
 
 **Halflight Now physical-device acceptance and browse polish.** Verify the implemented core mobile

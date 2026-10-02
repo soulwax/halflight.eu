@@ -9,11 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Center the desktop seek thumb vertically on the progress line in Chromium and WebKit.
+- Confirm track unavailability across quality tiers before excluding a recording, expire negative
+  playability records after 24 hours, and preserve the requested quality limit during fallback.
+- Refresh mobile library failures without reloading the player; isolate private-upload storage
+  failures from saved playlists and retain favorite-list context when starting a track.
 - Normalize SvelteKit manifest path records before filtering service-worker precache assets,
   preventing a production registration failure while preserving public-only cache routing.
 
 ### Added
 
+- Mobile saved-playlist search by playlist, track, album, or artist with URL-preserved pagination,
+  honest saved/available track counts, and clear feedback when unavailable tracks are skipped.
 - Labelled mobile Home/Search/Library/Now navigation, adaptive Now Playing controls, contextual
   Close, transport on supporting screens, and a track-action sheet with queue feedback.
 - Shared playback and queue-save recovery notices, confirmed queue clearing, and named queue saving

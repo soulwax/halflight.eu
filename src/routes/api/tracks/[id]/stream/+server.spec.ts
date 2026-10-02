@@ -5,7 +5,8 @@ const mocks = vi.hoisted(() => ({
 	resolveTrackStreamCached: vi.fn(),
 	getStreamingSettings: vi.fn(),
 	getRequestedStreamQuality: vi.fn(),
-	describePlaybackDelivery: vi.fn()
+	describePlaybackDelivery: vi.fn(),
+	markTrackUnplayable: vi.fn()
 }));
 
 vi.mock('#lib/server/streaming-settings', () => ({
@@ -17,7 +18,8 @@ vi.mock('#lib/server/tidal', async (importOriginal) => ({
 	getConnectionStatus: mocks.getConnectionStatus,
 	resolveTrackStreamCached: mocks.resolveTrackStreamCached,
 	getRequestedStreamQuality: mocks.getRequestedStreamQuality,
-	describePlaybackDelivery: mocks.describePlaybackDelivery
+	describePlaybackDelivery: mocks.describePlaybackDelivery,
+	markTrackUnplayable: mocks.markTrackUnplayable
 }));
 
 import type { Cookies } from '@sveltejs/kit';
@@ -45,6 +47,7 @@ describe('GET /api/tracks/[id]/stream', () => {
 		mocks.getStreamingSettings.mockReset();
 		mocks.getRequestedStreamQuality.mockReset();
 		mocks.describePlaybackDelivery.mockReset();
+		mocks.markTrackUnplayable.mockReset().mockResolvedValue(undefined);
 		mocks.getConnectionStatus.mockResolvedValue({ configured: true, hasPlayback: true });
 		mocks.getStreamingSettings.mockResolvedValue({ preferredQuality: 'LOSSLESS' });
 		mocks.getRequestedStreamQuality.mockResolvedValue('LOSSLESS');
@@ -103,5 +106,15 @@ describe('GET /api/tracks/[id]/stream', () => {
 
 		expect(response.status).toBe(404);
 		expect(await response.json()).toEqual({ error: 'track_unavailable', requiresFullAuth: false });
+		expect(mocks.markTrackUnplayable).toHaveBeenCalledWith('123', 'asset not ready for playback');
+	});
+	it('does not exclude a track for an account or upstream failure', async () => {
+		for (const status of [401, 502]) {
+			mocks.resolveTrackStreamCached.mockRejectedValueOnce(
+				new TidalApiError(status, 'Request failed', null, '/playback')
+			);
+			await GET(event());
+		}
+		expect(mocks.markTrackUnplayable).not.toHaveBeenCalled();
 	});
 });

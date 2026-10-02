@@ -374,22 +374,39 @@ export async function resolveTrackStream(
 	trackId: string | number,
 	options: { quality?: TrackAudioQuality; ctx?: TidalRequestContext } = {}
 ): Promise<ResolvedStreamInfo> {
-	const ladder = options.quality
-		? [options.quality, ...QUALITY_LADDER.filter((q) => q !== options.quality)]
-		: QUALITY_LADDER;
+	const requestedIndex = options.quality ? QUALITY_LADDER.indexOf(options.quality) : 0;
+	const ladder = [
+		...QUALITY_LADDER.slice(requestedIndex),
+		...QUALITY_LADDER.slice(0, requestedIndex)
+	];
 
 	const tried: TrackAudioQuality[] = [];
 	let lastError: unknown;
+	let unavailableError: unknown;
 	for (const quality of ladder) {
 		tried.push(quality);
 		try {
-			return await fetchTrackStream(trackId, { quality, ctx: options.ctx });
+			const stream = await fetchTrackStream(trackId, { quality, ctx: options.ctx });
+			// Higher tiers are metadata-only checks after all requested/lower tiers
+			// fail. A valid higher tier proves this is a quality restriction, not a
+			// broken recording; never stream it against the owner's data preference.
+			if (QUALITY_LADDER.indexOf(quality) < requestedIndex) {
+				throw new TidalError('No stream is available at the requested quality or below.');
+			}
+			return stream;
 		} catch (err) {
 			lastError = err;
 			if (subStatusOf(err) === SUBSTATUS_QUALITY_NOT_ALLOWED) continue;
+			if (isTrackUnavailableForPlayback(err)) {
+				unavailableError = err;
+				continue;
+			}
 			throw err;
 		}
 	}
+	// Only call the recording unavailable after every entitled quality fails.
+	// Authentication, transport and service failures still stop immediately.
+	if (unavailableError) throw unavailableError;
 	if (subStatusOf(lastError) === SUBSTATUS_QUALITY_NOT_ALLOWED) {
 		throw new TidalQualityDeniedError(tried);
 	}

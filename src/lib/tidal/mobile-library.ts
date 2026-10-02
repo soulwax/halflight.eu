@@ -5,6 +5,7 @@ export interface MobileSavedPlaylist {
 	id: string;
 	title: string;
 	items: TrackSummary[];
+	totalTrackCount?: number;
 }
 
 export interface MobileLibraryData {
@@ -16,4 +17,6 @@ export interface MobileLibraryData {
 	previousQuery: string | null;
 	nextQuery: string | null;
 	hasMore: boolean;
+	query?: string;
+	hiddenTrackCount?: number;
 }

@@ -767,5 +767,11 @@
 	"track_action_play_next": "Als Nächstes spielen",
 	"track_action_add_to_queue": "In die Warteschlange",
 	"track_action_start_radio": "Titel-Radio starten",
-	"track_action_add_to_playlist": "Zu Playlist hinzufügen"
+	"track_action_add_to_playlist": "Zu Playlist hinzufügen",
+	"now_library_search_label": "Gespeicherte Playlists durchsuchen",
+	"now_library_search_placeholder": "Playlist, Titel, Album oder Künstler",
+	"now_library_clear_search": "Suche zurücksetzen",
+	"now_library_no_matches": "Keine gespeicherten Playlists passen zu „{query}“. Versuche eine andere Suche.",
+	"now_library_unplayable_skipped": "{count} derzeit nicht verfügbare Titel werden bei der Wiedergabe übersprungen. Deine gespeicherten Playlists bleiben unverändert.",
+	"now_library_available_count": "{count} Titel abspielbar"
 }

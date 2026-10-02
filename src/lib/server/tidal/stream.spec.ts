@@ -409,6 +409,11 @@ describe('fetchTrackStream', () => {
 });
 
 describe('resolveTrackStream quality ladder', () => {
+	const assetUnavailable = () => ({
+		ok: false,
+		status: 401,
+		json: async () => ({ userMessage: 'Asset is not ready for playback' })
+	});
 	async function storeWithPlayback() {
 		const store = memoryStore();
 		await writePlaybackRecord(
@@ -449,6 +454,75 @@ describe('resolveTrackStream quality ladder', () => {
 			resolveTrackStream('1', { ctx: { fetch: fetchMock as never, store } })
 		).rejects.toBeInstanceOf(TidalQualityDeniedError);
 		expect(fetchMock).toHaveBeenCalledTimes(4); // HI_RES_LOSSLESS, LOSSLESS, HIGH, LOW
+	});
+	it('tries a lower quality before treating an asset as unavailable', async () => {
+		const store = await storeWithPlayback();
+		const fetchMock = vi.fn(async (url: string) =>
+			url.includes('audioquality=HI_RES_LOSSLESS') ? assetUnavailable() : btsResponse('LOSSLESS')
+		);
+		const stream = await resolveTrackStream('1', { ctx: { fetch: fetchMock as never, store } });
+		expect(stream.audioQuality).toBe('LOSSLESS');
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+	});
+	it('never raises the requested quality during fallback', async () => {
+		const store = await storeWithPlayback();
+		const fetchMock = vi.fn(async (url: string) =>
+			url.includes('audioquality=HIGH') ? assetUnavailable() : btsResponse('LOW')
+		);
+		const stream = await resolveTrackStream('1', {
+			quality: 'HIGH',
+			ctx: { fetch: fetchMock as never, store }
+		});
+		expect(stream.audioQuality).toBe('LOW');
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+		expect(fetchMock.mock.calls.every(([url]) => !url.includes('LOSSLESS'))).toBe(true);
+	});
+	it('does not exclude a track that is only available above the requested quality', async () => {
+		const store = await storeWithPlayback();
+		const fetchMock = vi.fn(async (url: string) =>
+			url.includes('audioquality=HI_RES_LOSSLESS')
+				? btsResponse('HI_RES_LOSSLESS')
+				: assetUnavailable()
+		);
+		await expect(
+			resolveTrackStream('1', { quality: 'HIGH', ctx: { fetch: fetchMock as never, store } })
+		).rejects.toMatchObject({
+			message: 'No stream is available at the requested quality or below.'
+		});
+		expect(fetchMock).toHaveBeenCalledTimes(3);
+	});
+	it('confirms unavailable only after every quality has been attempted', async () => {
+		const store = await storeWithPlayback();
+		const fetchMock = vi.fn(async () => assetUnavailable());
+		await expect(
+			resolveTrackStream('1', { ctx: { fetch: fetchMock as never, store } })
+		).rejects.toMatchObject({ status: 401, statusText: 'Asset is not ready for playback' });
+		expect(fetchMock).toHaveBeenCalledTimes(4);
+	});
+	it('keeps an entitled asset failure distinct from denied subscription qualities', async () => {
+		const store = await storeWithPlayback();
+		const fetchMock = vi.fn(async (url: string) =>
+			url.includes('audioquality=HIGH') ? assetUnavailable() : qualityDenied
+		);
+		await expect(
+			resolveTrackStream('1', { ctx: { fetch: fetchMock as never, store } })
+		).rejects.toMatchObject({ statusText: 'Asset is not ready for playback' });
+		expect(fetchMock).toHaveBeenCalledTimes(4);
+	});
+	it('does not turn an authentication failure after an asset failure into an exclusion', async () => {
+		const store = await storeWithPlayback();
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(assetUnavailable())
+			.mockResolvedValue({
+				ok: false,
+				status: 401,
+				json: async () => ({ userMessage: 'Token expired' })
+			});
+		await expect(
+			resolveTrackStream('1', { ctx: { fetch: fetchMock as never, store } })
+		).rejects.toMatchObject({ statusText: 'Token expired' });
+		expect(fetchMock).toHaveBeenCalledTimes(2);
 	});
 
 	it('surfaces a non-quality auth error immediately without walking the ladder', async () => {

@@ -255,7 +255,8 @@ export const tidalCacheObject = pgTable(
  * failure, never by a proactive sweep. Absence means "playable or not yet
  * attempted", not "confirmed playable" — this table only ever grows by
  * negative results. Track listings filter these out so a broken recording
- * disappears instead of erroring on play.
+ * disappears instead of erroring on play. Negative results expire after 24
+ * hours so changed licensing or a repaired asset gets another chance.
  */
 export const trackPlayability = pgTable(
 	'track_playability',

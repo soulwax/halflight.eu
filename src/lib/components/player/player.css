@@ -170,6 +170,8 @@
 	appearance: none;
 	width: 11px;
 	height: 11px;
+	/* Chromium/WebKit align the thumb's top with the 3px track by default. */
+	margin-top: -4px;
 	border-radius: 999px;
 	background: var(--action);
 	border: 0;
