@@ -34,6 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Rebuild the Halflight portrait icon from an editable SVG with high-contrast pale artwork,
+  a cyan music note, and a consistent dark surface; use a dedicated maskable icon and Apple touch size.
 - Make Home resume deliberate, reject duplicate pending starts, use explicit OS Play/Pause actions,
   and align previous/next/seek availability with actual playback commands and mode.
 - Confirm playlist-dialog saves on the server before reporting success, and require explicit intent

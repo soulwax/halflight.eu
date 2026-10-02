@@ -65,7 +65,7 @@
 		<meta name="apple-mobile-web-app-capable" content="yes" />
 		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 		<meta name="apple-mobile-web-app-title" content="Halflight" />
-		<link rel="apple-touch-icon" sizes="192x192" href="/icons/halflight-192.png" />
+		<link rel="apple-touch-icon" sizes="180x180" href="/icons/halflight-180.png" />
 	{/if}
 </svelte:head>
 {#if isMobile || isListeningRoom}
