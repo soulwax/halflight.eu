@@ -662,7 +662,12 @@ export class PlayerState {
 		return 0;
 	});
 
-	play(track: TrackSummary, contextTracks?: TrackSummary[], provenance?: string): void {
+	play(
+		track: TrackSummary,
+		contextTracks?: TrackSummary[],
+		provenance?: string,
+		contextIndex?: number
+	): void {
 		this.claimPlaybackControlForIntent();
 		const selectedTrack = this.withProvenance(track, provenance);
 		const contextualTracks = contextTracks?.map((candidate) =>
@@ -674,12 +679,22 @@ export class PlayerState {
 		}
 
 		if (contextualTracks && contextualTracks.length > 0) {
+			// A playlist can contain the same recording more than once. Use the
+			// tapped row's position, then object identity, before falling back to ID.
+			const referenceIndex = contextTracks?.indexOf(track) ?? -1;
+			const at =
+				contextIndex !== undefined &&
+				Number.isInteger(contextIndex) &&
+				contextualTracks[contextIndex]?.id === track.id
+					? contextIndex
+					: referenceIndex >= 0
+						? referenceIndex
+						: contextualTracks.findIndex((candidate) => candidate.id === track.id);
 			if (this.shuffle) {
 				this.queue = createQueueEntries(
-					shuffled(contextualTracks.filter((candidate) => candidate.id !== track.id))
+					shuffled(contextualTracks.filter((_, index) => index !== at))
 				);
 			} else {
-				const at = contextualTracks.findIndex((candidate) => candidate.id === track.id);
 				this.queue = createQueueEntries(
 					at === -1 ? [...contextualTracks] : contextualTracks.slice(at + 1)
 				);

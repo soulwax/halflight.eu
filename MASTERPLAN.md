@@ -2676,6 +2676,16 @@ revocations. Album tracks share an artwork endpoint and browser image cache; art
 and market together, and metadata hydration no longer fetches merely for an absent release date.
 Physical-device playback and broader library browse coverage remain the next acceptance work.
 
+### Mobile browse stability — 2026-10-03
+
+Album, playlist, artist and track retries invalidate server data inside the permanent mobile shell;
+they no longer reload the document or interrupt the listening session. Pending retries are disabled
+and refresh failures remain retryable. Detail Back controls retain the originating scene's query,
+filters and pagination, with Home as the fallback for a direct entry. Nested artist/album/track
+navigation preserves parent links without cycles, and the existing shell restores browse scroll.
+Repeated recordings can render in mobile lists without duplicate-key crashes. Tapping a repeated
+row uses that occurrence's position, while shuffle retains every other occurrence in the queue.
+
 ## Recommended next vertical slice
 
 **Halflight Now physical-device acceptance and browse polish.** Verify the implemented core mobile

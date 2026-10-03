@@ -16,6 +16,8 @@
 		mobileScrollKey,
 		shouldFocusMobileDestination,
 		MOBILE_PLAYER_NAVIGATION,
+		MOBILE_DETAIL_NAVIGATION,
+		rememberMobileDetailReturn,
 		mobilePlayerReturnTarget,
 		isNowRoute,
 		type MobilePlayerNavigation
@@ -27,6 +29,8 @@
 	const scrollPositions = new SvelteMap<string, number>();
 	const playerNavigation = $state<MobilePlayerNavigation>({ returnTo: resolve('/(mobile)/home') });
 	setContext(MOBILE_PLAYER_NAVIGATION, playerNavigation);
+	const detailReturnTargets = new SvelteMap<string, string>();
+	setContext(MOBILE_DETAIL_NAVIGATION, { returnTargets: detailReturnTargets });
 
 	// Halflight Now writes are attributed separately from the desktop Listening
 	// Room (see player.svelte.ts's `origin` field / MASTERPLAN's session
@@ -55,6 +59,9 @@
 			shallow: navigation.shallow
 		};
 		const managesScroll = managesMobileScroll(routeNavigation);
+		if (navigation.type !== 'popstate') {
+			rememberMobileDetailReturn(routeNavigation, detailReturnTargets);
+		}
 		const returnTarget = mobilePlayerReturnTarget(routeNavigation.from, routeNavigation.to);
 		if (returnTarget) playerNavigation.returnTo = returnTarget;
 		if (managesScroll && routeNavigation.from) {

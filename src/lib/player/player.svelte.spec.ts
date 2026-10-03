@@ -51,6 +51,42 @@ function expectQueuedTracks(player: PlayerState, tracks: TrackSummary[]): void {
 }
 
 describe('PlayerState', () => {
+	it('starts the tapped duplicate occurrence and queues only the following rows', () => {
+		const player = new PlayerState();
+		const context = [sampleTrack1, sampleTrack2, sampleTrack1, sampleTrack3];
+		player.play(sampleTrack1, context, 'Repeated recordings', 2);
+		expectQueuedTracks(player, [{ ...sampleTrack3, provenance: 'Repeated recordings' }]);
+		expect(player.currentTrack?.id).toBe(sampleTrack1.id);
+	});
+
+	it('finds a repeated track by object identity when a row position is omitted', () => {
+		const player = new PlayerState();
+		const repeat = { ...sampleTrack1 };
+		player.play(repeat, [sampleTrack1, sampleTrack2, repeat, sampleTrack3]);
+		expectQueuedTracks(player, [sampleTrack3]);
+	});
+
+	it('shuffles all remaining occurrences without dropping repeated recordings', () => {
+		const player = new PlayerState();
+		player.shuffle = true;
+		player.play(
+			sampleTrack1,
+			[sampleTrack1, sampleTrack2, sampleTrack1, sampleTrack3],
+			undefined,
+			2
+		);
+		expect(player.queue.map((entry) => entry.id).sort()).toEqual(
+			[sampleTrack1.id, sampleTrack2.id, sampleTrack3.id].sort()
+		);
+		expect(new Set(player.queue.map((entry) => entry.entryId)).size).toBe(3);
+	});
+
+	it('ignores an invalid context position and resolves a copied track by ID', () => {
+		const player = new PlayerState();
+		player.play({ ...sampleTrack2 }, [sampleTrack1, sampleTrack2, sampleTrack3], undefined, 0);
+		expectQueuedTracks(player, [sampleTrack3]);
+	});
+
 	it('plays a track and slices remaining context tracks into the queue', () => {
 		const player = new PlayerState();
 		player.play(sampleTrack2, [sampleTrack1, sampleTrack2, sampleTrack3]);

@@ -6,6 +6,39 @@ export interface MobilePlayerNavigation {
 	returnTo: string;
 }
 
+export const MOBILE_DETAIL_NAVIGATION = Symbol('mobile-detail-navigation');
+export interface MobileDetailNavigation {
+	returnTargets: Map<string, string>;
+}
+
+/** Keep a detail's parent when returning through nested artist/album/track pages. */
+export function rememberMobileDetailReturn(
+	{ from, to, shallow }: MobileNavigation,
+	returnTargets: Map<string, string>
+): void {
+	if (
+		shallow ||
+		!from ||
+		!to ||
+		from.origin !== to.origin ||
+		from.pathname === to.pathname ||
+		!isMobileRoute(from.pathname) ||
+		isPublicMobileRoute(from.pathname) ||
+		!/^\/(albums|playlists|artists|tracks)\/[^/]+\/?$/.test(deLocalizeUrl(to.pathname).pathname)
+	)
+		return;
+	const source = mobileScrollKey(from);
+	const destination = mobileScrollKey(to);
+	const visited = new Set<string>();
+	for (let parent: string | undefined = source; parent && !visited.has(parent);) {
+		// Returning to any ancestor must not make it point back at its child.
+		if (parent === destination) return;
+		visited.add(parent);
+		parent = returnTargets.get(parent);
+	}
+	returnTargets.set(destination, source);
+}
+
 export function isNowRoute(pathname: string): boolean {
 	const path = deLocalizeUrl(pathname).pathname;
 	return path === '/now' || path.startsWith('/now/');
@@ -31,7 +64,7 @@ export function mobilePlayerReturnTarget(from: URL | null, to: URL | null): stri
  * Fragments deliberately stay out of the key so native anchor navigation keeps
  * its expected target behaviour.
  */
-export function mobileScrollKey(url: URL): string {
+export function mobileScrollKey(url: Pick<URL, 'pathname' | 'search'>): string {
 	return `${url.pathname}${url.search}`;
 }
 

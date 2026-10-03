@@ -1,10 +1,18 @@
 import { page } from 'vitest/browser';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import MobilePlaylistDetail from './MobilePlaylistDetail.svelte';
 import { player } from '#lib/player/player.svelte.js';
 import { m } from '#lib/paraglide/messages.js';
 import type { PlaylistDetail } from '#lib/tidal/models';
+
+const navigation = vi.hoisted(() => ({ invalidateAll: vi.fn() }));
+vi.mock('$app/navigation', () => navigation);
+beforeEach(() => {
+	navigation.invalidateAll.mockReset().mockResolvedValue(undefined);
+	player.currentTrack = null;
+	player.queue = [];
+});
 
 const items = [
 	{
@@ -28,10 +36,36 @@ const playlist: PlaylistDetail = {
 
 afterEach(() => {
 	vi.restoreAllMocks();
+	player.currentTrack = null;
+	player.queue = [];
 	player.shuffle = false;
 });
 
 describe('MobilePlaylistDetail.svelte', () => {
+	it('renders repeated recordings and starts the tapped occurrence', async () => {
+		const repeated = [items[0], items[1], items[0]];
+		const play = vi.spyOn(player, 'play').mockImplementation(() => {});
+		render(MobilePlaylistDetail, { playlist: { ...playlist, items: repeated }, state: null });
+		const rows = page.getByRole('button', { name: /Bela Lugosi Is Dead Bauhaus/ });
+		await expect.element(rows.nth(1)).toBeInTheDocument();
+		await rows.nth(1).click();
+		expect(play).toHaveBeenCalledWith(items[0], repeated, playlist.title, 2);
+	});
+
+	it('retries failed playlist data while keeping the current session', async () => {
+		const current = { kind: 'track' as const, id: 'current', title: 'Still playing', artists: [] };
+		player.currentTrack = current;
+		player.currentTime = 37;
+		player.addToQueue(current);
+		const queue = [...player.queue];
+		render(MobilePlaylistDetail, { playlist: null, state: 'unavailable' });
+		await page.getByRole('button', { name: m.track_retry() }).click();
+		expect(navigation.invalidateAll).toHaveBeenCalledOnce();
+		expect(player.currentTrack).toEqual(current);
+		expect(player.currentTime).toBe(37);
+		expect(player.queue).toEqual(queue);
+	});
+
 	it('shows the playlist identity, description, and its tracks', async () => {
 		render(MobilePlaylistDetail, { playlist, state: null });
 

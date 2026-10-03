@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Keep mobile detail retries inside the app so playback survives refresh failures; return detail
+  Back controls to the original browse query and filters. Render repeated playlist recordings
+  safely, start the tapped occurrence, and retain other copies when shuffling.
 - Reduce artwork and metadata latency by resolving request permissions in one fresh database query,
   sharing album artwork requests, reading playback token and market together, and avoiding metadata
   refreshes for optional missing release dates. Retry the desktop cover after a prior image fails.

@@ -1,10 +1,18 @@
 import { page } from 'vitest/browser';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import MobileAlbumDetail from './MobileAlbumDetail.svelte';
 import { player } from '#lib/player/player.svelte.js';
 import { m } from '#lib/paraglide/messages.js';
 import type { AlbumDetail } from '#lib/tidal/models';
+
+const navigation = vi.hoisted(() => ({ invalidateAll: vi.fn() }));
+vi.mock('$app/navigation', () => navigation);
+beforeEach(() => {
+	navigation.invalidateAll.mockReset().mockResolvedValue(undefined);
+	player.currentTrack = null;
+	player.queue = [];
+});
 
 const items = [
 	{ kind: 'track', id: 't1', title: 'Dark Entries', artists: [{ id: 'a1', name: 'Bauhaus' }] },
@@ -27,10 +35,36 @@ const album: AlbumDetail = {
 
 afterEach(() => {
 	vi.restoreAllMocks();
+	player.currentTrack = null;
+	player.queue = [];
 	player.shuffle = false;
 });
 
 describe('MobileAlbumDetail.svelte', () => {
+	it('renders repeated recordings and starts the tapped occurrence', async () => {
+		const repeated = [items[0], items[1], items[0]];
+		const play = vi.spyOn(player, 'play').mockImplementation(() => {});
+		render(MobileAlbumDetail, { album: { ...album, items: repeated }, state: null });
+		const rows = page.getByRole('button', { name: /Dark Entries Bauhaus/ });
+		await expect.element(rows.nth(1)).toBeInTheDocument();
+		await rows.nth(1).click();
+		expect(play).toHaveBeenCalledWith(items[0], repeated, `${m.album_label()} · ${album.title}`, 2);
+	});
+
+	it('retries failed album data while keeping the current session', async () => {
+		const current = { kind: 'track' as const, id: 'current', title: 'Still playing', artists: [] };
+		player.currentTrack = current;
+		player.currentTime = 37;
+		player.addToQueue(current);
+		const queue = [...player.queue];
+		render(MobileAlbumDetail, { album: null, state: 'unavailable' });
+		await page.getByRole('button', { name: m.track_retry() }).click();
+		expect(navigation.invalidateAll).toHaveBeenCalledOnce();
+		expect(player.currentTrack).toEqual(current);
+		expect(player.currentTime).toBe(37);
+		expect(player.queue).toEqual(queue);
+	});
+
 	it('shows the album identity and its tracks', async () => {
 		render(MobileAlbumDetail, { album, state: null });
 

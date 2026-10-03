@@ -6,6 +6,7 @@
 	import type { ArtistDetail } from '#lib/tidal/models';
 	import type { TidalPageState } from '#lib/tidal/page-state';
 	import MobileSubScreenHeader from './MobileSubScreenHeader.svelte';
+	import MobileDetailRetry from './MobileDetailRetry.svelte';
 	import MobileTrackRow from './MobileTrackRow.svelte';
 
 	let { artist, state }: { artist: ArtistDetail | null; state: TidalPageState | null } = $props();
@@ -30,7 +31,8 @@
 	function shuffleTop(): void {
 		if (!topTracks.length) return;
 		player.shuffle = true;
-		player.play(topTracks[Math.floor(Math.random() * topTracks.length)], topTracks, provenance);
+		const index = Math.floor(Math.random() * topTracks.length);
+		player.play(topTracks[index], topTracks, provenance, index);
 	}
 
 	function startRadio(): void {
@@ -43,6 +45,7 @@
 	<section class="artist-detail" aria-labelledby="artist-detail-title">
 		<MobileSubScreenHeader
 			backHref={homeHref}
+			contextualBack
 			backLabel={m.now_detail_back()}
 			heading={artist.name}
 			headingId="artist-detail-title"
@@ -88,11 +91,11 @@
 				<section class="artist-section" aria-labelledby="artist-top-tracks">
 					<h2 id="artist-top-tracks">{m.artist_top_tracks()}</h2>
 					<ul class="artist-tracks">
-						{#each topTracks as track (track.id)}
+						{#each topTracks as track, index (`${track.id}:${index}`)}
 							<li>
 								<MobileTrackRow
 									{track}
-									onActivate={() => player.play(track, topTracks, provenance)}
+									onActivate={() => player.play(track, topTracks, provenance, index)}
 								>
 									{#snippet actions()}
 										<button
@@ -152,6 +155,7 @@
 	<section class="artist-detail" aria-labelledby="artist-detail-title">
 		<MobileSubScreenHeader
 			backHref={homeHref}
+			contextualBack
 			backLabel={m.now_detail_back()}
 			heading={m.artist_label()}
 			headingId="artist-detail-title"
@@ -169,9 +173,7 @@
 		{:else}
 			<div class="notice" role="alert">
 				<p>{m.now_artist_unavailable()}</p>
-				<button type="button" class="notice-action" onclick={() => window.location.reload()}>
-					{m.track_retry()}
-				</button>
+				<MobileDetailRetry />
 			</div>
 		{/if}
 	</section>
