@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Keep desktop page scrolling within the listening panes above the docked player, with no outer
+  document scrolling or scroll chaining beneath it; preserve public and mobile page scrolling.
+- Retain queue edits through browser-storage failures, stalled requests, lost acknowledgements,
+  and long server outages; retry with stable operation IDs and buffer failed database intents in
+  Redis without declaring them committed. Keep save status in compact accessible cloud icons.
 - Keep mobile detail retries inside the app so playback survives refresh failures; return detail
   Back controls to the original browse query and filters. Render repeated playlist recordings
   safely, start the tapped occurrence, and retain other copies when shuffling.

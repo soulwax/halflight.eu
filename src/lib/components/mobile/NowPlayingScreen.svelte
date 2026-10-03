@@ -28,7 +28,9 @@
 			aria-label={m.now_close_player()}><ChevronDown size={24} aria-hidden="true" /></a
 		>
 		<p class="now-context">{track?.provenance ?? m.now_playing_heading()}</p>
-		{#if track}<TrackActionMenu {track} mobile />{/if}
+		{#if track}<div class="now-header-actions">
+				<SessionSaveStatus mobile /><TrackActionMenu {track} mobile />
+			</div>{/if}
 	</header>
 	{#if track}
 		<div class="now-content">
@@ -74,7 +76,6 @@
 						><BadgeInfo size={20} aria-hidden="true" /><span>{m.now_credits_title()}</span></a
 					>
 				</nav>
-				<SessionSaveStatus />
 			</div>
 		</div>
 	{:else}
@@ -90,6 +91,12 @@
 </section>
 
 <style>
+	.now-header-actions {
+		display: flex;
+		flex: none;
+		align-items: center;
+		gap: 0.125rem;
+	}
 	.now-screen {
 		min-height: 100%;
 		padding: calc(0.5rem + env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))

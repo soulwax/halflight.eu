@@ -70,9 +70,8 @@
 
 	<div class="flex items-center justify-between border-b border-(--border-subtle) pb-2">
 		<span class="text-xs tracking-wide text-(--text-muted) uppercase">{m.player_next_up()}</span>
-		<QueueActions />
+		<div class="queue-toolbar-actions"><SessionSaveStatus mobile /><QueueActions /></div>
 	</div>
-	<SessionSaveStatus />
 
 	{#if items.length === 0}
 		<p class="pt-6 text-center text-(--text-muted)">{m.player_queue_empty()}</p>
@@ -127,6 +126,11 @@
 </div>
 
 <style>
+	.queue-toolbar-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+	}
 	.queue-row-controls {
 		display: grid;
 		grid-template-columns: repeat(2, 2rem);

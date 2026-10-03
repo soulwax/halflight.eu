@@ -30,7 +30,14 @@ export interface PlaybackPersistenceSnapshot extends PlaybackStateWrite {
 }
 
 export type PlaybackPersistenceStatus =
-	'saved' | 'saving' | 'offline' | 'server_error' | 'conflict' | 'rejected' | 'unauthenticated';
+	| 'saved'
+	| 'saving'
+	| 'buffered'
+	| 'offline'
+	| 'server_error'
+	| 'conflict'
+	| 'rejected'
+	| 'unauthenticated';
 
 export function isTrackSummary(value: unknown): value is TrackSummary {
 	if (!value || typeof value !== 'object') return false;
@@ -115,6 +122,7 @@ export interface SessionCoordinatorOptions {
 	maxQueueLength?: number;
 	maxHistoryLength?: number;
 	debounceMs?: number;
+	requestTimeoutMs?: number;
 }
 
 /**
@@ -142,6 +150,11 @@ export class PlaybackSessionCoordinator {
 	private readonly maxQueueLength: number;
 	private readonly maxHistoryLength: number;
 	private readonly debounceMs: number;
+	private readonly requestTimeoutMs: number;
+	private changeVersion = 0;
+	private snapshotPending = false;
+	private retryAttempts = 0;
+	private retryTimer: ReturnType<typeof setTimeout> | undefined;
 
 	revision = 0;
 	status: PlaybackPersistenceStatus = 'saved';
@@ -189,6 +202,7 @@ export class PlaybackSessionCoordinator {
 		this.maxQueueLength = options.maxQueueLength ?? 100;
 		this.maxHistoryLength = options.maxHistoryLength ?? 50;
 		this.debounceMs = options.debounceMs ?? 500;
+		this.requestTimeoutMs = options.requestTimeoutMs ?? 10_000;
 	}
 
 	setStatus(newStatus: PlaybackPersistenceStatus): void {
@@ -198,7 +212,8 @@ export class PlaybackSessionCoordinator {
 	}
 
 	retryAfterServerError(): void {
-		if (this.status !== 'server_error') return;
+		if (this.status !== 'server_error' && this.status !== 'offline' && this.status !== 'buffered')
+			return;
 		if (this.serverErrorRetry === 'refresh') {
 			this.setStatus('conflict');
 			void this.refreshQueueFromServer();
@@ -220,6 +235,10 @@ export class PlaybackSessionCoordinator {
 
 	restoreQueueCommands(commands: QueueCommand[]): void {
 		this.queueCommands = commands.slice();
+		if (commands.length) {
+			this.snapshotPending = true;
+			this.changeVersion += 1;
+		}
 		this.notifyQueueCommandsChanged();
 	}
 
@@ -242,9 +261,19 @@ export class PlaybackSessionCoordinator {
 	}
 
 	schedulePersistence(): void {
+		this.snapshotPending = true;
+		this.changeVersion += 1;
 		if (this.status === 'conflict' || (this.canPersistFn && !this.canPersistFn())) return;
+		this.clearRetryTimer();
+		this.retryAttempts = 0;
 		this.setStatus('saving');
-		if (this.persistenceTimer) clearTimeout(this.persistenceTimer);
+		if (this.persistenceInFlight) {
+			this.persistenceQueued = true;
+			return;
+		}
+		// Bound the wait from the first edit instead of postponing indefinitely
+		// while the owner keeps rearranging the queue.
+		if (this.persistenceTimer) return;
 		this.persistenceTimer = setTimeout(() => {
 			this.persistenceTimer = undefined;
 			void this.persistPlaybackState();
@@ -252,6 +281,7 @@ export class PlaybackSessionCoordinator {
 	}
 
 	cancelPendingPersistence(): void {
+		this.clearRetryTimer();
 		if (this.persistenceTimer) {
 			clearTimeout(this.persistenceTimer);
 			this.persistenceTimer = undefined;
@@ -264,8 +294,70 @@ export class PlaybackSessionCoordinator {
 			clearTimeout(this.persistenceTimer);
 			this.persistenceTimer = undefined;
 		}
-		if (this.canPersistFn && !this.canPersistFn()) return;
+		if (this.status === 'conflict' || (this.canPersistFn && !this.canPersistFn())) return;
+		this.snapshotPending = true;
+		this.changeVersion += 1;
+		this.clearRetryTimer();
+		this.retryAttempts = 0;
 		void this.persistPlaybackState();
+	}
+
+	private clearRetryTimer(): void {
+		if (this.retryTimer) clearTimeout(this.retryTimer);
+		this.retryTimer = undefined;
+	}
+
+	private scheduleRetry(): void {
+		if (
+			this.retryTimer ||
+			!this.snapshotPending ||
+			(this.status !== 'offline' && this.status !== 'server_error' && this.status !== 'buffered') ||
+			this.serverErrorRetry !== 'persist'
+		)
+			return;
+		this.retryTimer = setTimeout(
+			() => {
+				this.retryTimer = undefined;
+				this.retryAttempts = Math.min(5, this.retryAttempts + 1);
+				void this.persistPlaybackState();
+			},
+			Math.min(30_000, 1_000 * 2 ** this.retryAttempts)
+		);
+	}
+
+	/** Bound fetch and body parsing, including a server that never finishes its JSON. */
+	private async requestState(
+		url: string,
+		init?: RequestInit
+	): Promise<{ response: Response; state: unknown }> {
+		const controller = new AbortController();
+		let timer: ReturnType<typeof setTimeout> | undefined;
+		const request = (async () => {
+			const response = await this.fetchFn(url, {
+				...init,
+				// Browsers reject oversized keepalive bodies before sending them.
+				// Normal fetch can persist a full queue; its durable journal survives unload.
+				...(typeof init?.body === 'string' && init.keepalive
+					? { keepalive: new TextEncoder().encode(init.body).byteLength <= 32_768 }
+					: {}),
+				signal: controller.signal
+			});
+			const state: unknown = await response.json().catch(() => null);
+			return { response, state };
+		})();
+		try {
+			return await Promise.race([
+				request,
+				new Promise<never>((_, reject) => {
+					timer = setTimeout(() => {
+						controller.abort();
+						reject(new Error('Playback state request timed out'));
+					}, this.requestTimeoutMs);
+				})
+			]);
+		} finally {
+			if (timer) clearTimeout(timer);
+		}
 	}
 
 	snapshotPlaybackState(): PlaybackPersistenceSnapshot {
@@ -328,7 +420,7 @@ export class PlaybackSessionCoordinator {
 			const command = this.queueCommands[0];
 			if (!command) return true;
 			const operationId = this.queueOperationId(command);
-			const response = await this.fetchFn('/api/playback-state/intents', {
+			const { response, state: rawState } = await this.requestState('/api/playback-state/intents', {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
 				body: JSON.stringify({
@@ -345,6 +437,11 @@ export class PlaybackSessionCoordinator {
 			// 401's body never is one, so without this it fell into the next branch
 			// and was reported identically to a network drop — "check your
 			// connection" is actively wrong advice for a session that has ended.
+			if (response.status === 202 && (rawState as { buffered?: boolean } | null)?.buffered) {
+				this.serverErrorRetry = 'persist';
+				this.setStatus('buffered');
+				return false;
+			}
 			if (response.status === 401) {
 				this.setStatus('unauthenticated');
 				return false;
@@ -354,7 +451,7 @@ export class PlaybackSessionCoordinator {
 				this.setStatus('server_error');
 				return false;
 			}
-			const state = (await response.json().catch(() => null)) as SavedPlaybackState | null;
+			const state = rawState as SavedPlaybackState | null;
 			if (
 				!state ||
 				!Array.isArray(state.queue) ||
@@ -412,6 +509,7 @@ export class PlaybackSessionCoordinator {
 				this.queueCommands.shift();
 				this.notifyQueueCommandsChanged();
 			}
+			this.onApplyQueueFn(rebaseQueue(state.queue, this.queueCommands, this.maxQueueLength));
 			this.reconciliationBase = null;
 			this.reconciliationAttempts = 0;
 		}
@@ -426,11 +524,16 @@ export class PlaybackSessionCoordinator {
 		}
 
 		this.persistenceInFlight = true;
+		this.cancelPendingPersistence();
+		this.snapshotPending = true;
+		this.serverErrorRetry = 'persist';
+		this.setStatus('saving');
 		try {
 			if (this.queueCommands.length > 0 && !(await this.persistQueueCommands())) return;
 			const snapshot = this.snapshotPlaybackState();
+			const version = this.changeVersion;
 			const deviceId = this.getDeviceIdFn();
-			const response = await this.fetchFn('/api/playback-state', {
+			const { response, state: rawState } = await this.requestState('/api/playback-state', {
 				method: 'PUT',
 				headers: { 'content-type': 'application/json' },
 				body: JSON.stringify({
@@ -448,7 +551,7 @@ export class PlaybackSessionCoordinator {
 				this.setStatus('server_error');
 				return;
 			}
-			const state = (await response.json().catch(() => null)) as SavedPlaybackState | null;
+			const state = rawState as SavedPlaybackState | null;
 			if (response.status === 409) {
 				if (
 					!state ||
@@ -485,21 +588,28 @@ export class PlaybackSessionCoordinator {
 
 			this.revision = state.revision;
 			this.applyActiveDevice(state);
-			this.queueCommands.splice(0, snapshot.queueCommands.length);
-			this.notifyQueueCommandsChanged();
+			// Only the intent endpoint acknowledges commands. A snapshot response
+			// must never erase an edit added while this request was in flight.
+			this.snapshotPending = version !== this.changeVersion || this.queueCommands.length > 0;
 			this.reconciliationBase = null;
 			this.reconciliationAttempts = 0;
 			// A dropped command earlier in this cycle still needs to reach the
 			// owner; a `'saved'` here — true of the snapshot write in isolation —
 			// would silently erase that signal a moment after it appeared.
-			this.setStatus(this.queueCommandWasRejected ? 'rejected' : 'saved');
+			this.setStatus(
+				this.queueCommandWasRejected ? 'rejected' : this.snapshotPending ? 'saving' : 'saved'
+			);
+			if (!this.snapshotPending) this.retryAttempts = 0;
 		} catch {
 			this.setStatus('offline');
 		} finally {
 			this.persistenceInFlight = false;
-			if (this.persistenceQueued && this.status !== 'conflict') {
+			if (this.persistenceQueued && (this.status === 'saving' || this.status === 'saved')) {
 				this.persistenceQueued = false;
 				void this.persistPlaybackState();
+			} else {
+				this.persistenceQueued = false;
+				this.scheduleRetry();
 			}
 		}
 	}
@@ -510,7 +620,7 @@ export class PlaybackSessionCoordinator {
 
 		try {
 			const deviceId = this.getDeviceIdFn();
-			const response = await this.fetchFn('/api/playback-state', {
+			const { response, state: rawState } = await this.requestState('/api/playback-state', {
 				headers: {
 					accept: 'application/json',
 					...(deviceId ? { 'x-halflight-playback-device': deviceId } : {})
@@ -522,7 +632,7 @@ export class PlaybackSessionCoordinator {
 				this.setStatus('server_error');
 				return;
 			}
-			const state = (await response.json().catch(() => null)) as SavedPlaybackState | null;
+			const state = rawState as SavedPlaybackState | null;
 			if (response.status === 401) {
 				this.setStatus('unauthenticated');
 				return;
@@ -549,6 +659,8 @@ export class PlaybackSessionCoordinator {
 
 			if (this.queueCommands.length === 0) {
 				this.reconciliationBase = null;
+				this.snapshotPending = false;
+				this.cancelPendingPersistence();
 				this.setStatus('saved');
 				return;
 			}
@@ -562,23 +674,29 @@ export class PlaybackSessionCoordinator {
 	async syncPlaybackState(): Promise<void> {
 		if (this.sessionSyncInFlight || this.persistenceInFlight) return;
 		this.sessionSyncInFlight = true;
+		const version = this.changeVersion;
+		const revision = this.revision;
 
 		try {
 			const deviceId = this.getDeviceIdFn();
-			const response = await this.fetchFn('/api/playback-state', {
+			const { response, state: rawState } = await this.requestState('/api/playback-state', {
 				headers: {
 					accept: 'application/json',
 					...(deviceId ? { 'x-halflight-playback-device': deviceId } : {})
 				},
 				cache: 'no-store'
 			});
+			// A poll begun before a local edit/acknowledgement is stale, even if
+			// its response arrives later. It cannot rewind the queue or revision.
+			if (this.persistenceInFlight || version !== this.changeVersion || revision !== this.revision)
+				return;
 			if (response.status >= 500) {
 				this.sessionSyncFailures += 1;
-				this.serverErrorRetry = 'sync';
+				this.serverErrorRetry = this.snapshotPending ? 'persist' : 'sync';
 				this.setStatus('server_error');
 				return;
 			}
-			const state = (await response.json().catch(() => null)) as unknown;
+			const state = rawState;
 			// The background poll's failure path previously changed nothing the UI
 			// could see — a 401 here (the session has ended, in this tab or another)
 			// left the owner staring at a queue that would never sync again, with
@@ -599,6 +717,7 @@ export class PlaybackSessionCoordinator {
 			this.applyActiveDevice(state);
 			const shouldResumePendingQueueWrites =
 				this.status === 'offline' ||
+				this.status === 'buffered' ||
 				this.status === 'unauthenticated' ||
 				(this.status === 'server_error' && this.serverErrorRetry === 'sync');
 			if (state.revision < this.revision) {
@@ -624,6 +743,18 @@ export class PlaybackSessionCoordinator {
 				this.onApplyQueueFn(rebased);
 				this.reconciliationAttempts = 0;
 				this.onHydrateMetadataFn?.(rebased);
+				if (shouldResumePendingQueueWrites) this.schedulePersistence();
+				return;
+			}
+
+			if (this.snapshotPending) {
+				// Queue intents may already be committed while the resume snapshot
+				// failed. A successful GET is not an acknowledgement of that write.
+				if (state.revision > this.revision) {
+					this.revision = state.revision;
+					this.reconciliationBase = state;
+					this.onApplyQueueFn(state.queue.slice(0, this.maxQueueLength));
+				}
 				if (shouldResumePendingQueueWrites) this.schedulePersistence();
 				return;
 			}
@@ -687,6 +818,7 @@ export class PlaybackSessionCoordinator {
 
 	stopSessionSync(): void {
 		this.sessionSyncActive = false;
+		this.clearRetryTimer();
 		if (this.sessionSyncTimer) {
 			clearTimeout(this.sessionSyncTimer);
 			this.sessionSyncTimer = undefined;
@@ -725,13 +857,13 @@ export class PlaybackSessionCoordinator {
 		if (this.playbackClaimPending) return false;
 		this.playbackClaimPending = true;
 		try {
-			const response = await this.fetchFn('/api/playback-state/claim', {
+			const { response, state: rawState } = await this.requestState('/api/playback-state/claim', {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
 				body: JSON.stringify({ deviceId, origin: this.origin }),
 				keepalive: true
 			});
-			const state = (await response.json().catch(() => null)) as unknown;
+			const state = rawState;
 			if (!response.ok || !isSavedPlaybackState(state)) return false;
 			this.revision = Math.max(this.revision, state.revision);
 			this.applyActiveDevice(state);

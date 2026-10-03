@@ -135,6 +135,7 @@ export class PlayerState {
 	origin = $state<PlaybackOrigin>('listening-room');
 	/** Whether the current in-memory session has reached the authoritative server state. */
 	persistenceStatus = $state<PlaybackPersistenceStatus>('saved');
+	localQueueSaved = $state(true);
 	/** Server-projected active playback lease; it contains no device identifier. */
 	activeDevice = $state<PlaybackDeviceStatus | null>(null);
 	playbackClaimPending = $state(false);
@@ -544,6 +545,7 @@ export class PlayerState {
 				this.queueCommands.length === 0
 			) {
 				localStorage.removeItem(QUEUE_CACHE_KEY);
+				this.localQueueSaved = true;
 				return;
 			}
 			localStorage.setItem(
@@ -557,9 +559,10 @@ export class PlayerState {
 					queueCommands: this.queueCommands
 				})
 			);
+			this.localQueueSaved = true;
 		} catch {
-			// Storage may be unavailable (private mode, quota) — this cache is a
-			// convenience for instant paint, never a source of truth.
+			this.localQueueSaved = false;
+			// Server persistence continues even if the browser rejects this copy.
 		}
 	}
 

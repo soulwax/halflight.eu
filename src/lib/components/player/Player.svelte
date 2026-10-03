@@ -103,7 +103,6 @@
 			<PlayerActions {track} {floating} {isNarrow} {tidalUrl} />
 		</div>
 		<PlaybackStatus />
-		<SessionSaveStatus />
 
 		{#if player.isExpanded}
 			<PlayerPanel {track} {floating} onDragStart={startDrag} />
@@ -141,7 +140,7 @@
 					<span class="time">0:00</span>
 				</div>
 			</div>
-			<div class="actions"></div>
+			<div class="actions"><SessionSaveStatus /></div>
 		</div>
 	</section>
 {/if}

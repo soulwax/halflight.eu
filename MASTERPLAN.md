@@ -1586,8 +1586,10 @@ create a general retention exception.
 ## Local Redis cache and coordination
 
 **Use the existing `REDIS_CACHE` service.** The local environment contains an authenticated
-loopback Redis URL; source inspection found no application declaration/client yet. This is a
-configuration observation, not a Redis connectivity, version, persistence, or capacity test.
+loopback Redis URL. The server-only playback buffer now uses the declared optional variable and
+a lazy reused connection. A read-only deployment check confirmed reachability, AOF disabled, and
+an eviction policy; no shared Redis configuration was changed. It remains a secondary buffer,
+not a durable acknowledgement authority.
 Do not copy the URL into documentation, logs, command arguments, or generated artifacts.
 
 Redis is shared, disposable server working memory. Postgres remains authoritative for the owner,
@@ -1724,8 +1726,13 @@ safe operation category, latency, hit/miss/error counts, and aggregate bytes; ne
 | Disconnect races a pending cache write      | New authorization generation makes it unreadable; delete namespace entries asynchronously with bounded retry |
 | Postgres unavailable while Redis is healthy | Do not acknowledge durable writes or use stale Redis as authorization; existing buffered audio may continue  |
 
-First implementation slice: add the server-only client and injected cache interface, then one
-generation-pool consumer with TTL/size/invalidation tests. Second: shared admission with failure
+The queue reliability slice introduced a server-only client and injected playback-buffer interface.
+Failed database intents receive a distinct `202 buffered` response, keep their browser journal, and
+replay through the existing idempotent Postgres service before later writes. Owner authorization still
+requires the normal authenticated boundary; Redis never substitutes for it. Pending operations have
+a bounded owner namespace and are removed only after database acknowledgement or permanent rejection.
+
+Next cache slice: add one generation-pool consumer with TTL/size/invalidation tests. Second: shared admission with failure
 policy and synthetic multi-process concurrency tests. Third, only after mobile polling measurements:
 revision Pub/Sub → authenticated SSE, with dropped-event and reconnect tests.
 
@@ -2608,9 +2615,18 @@ are serialized; one 409 rebases deliberate entry-addressed edits onto the accept
 retries keep stable operation IDs; permanently inapplicable edits are reported and drained without
 blocking later commands. Pending edits survive transport and server failures while local playback
 continues. Network loss, ended sessions, conflicts, rejected commands, and HTTP 5xx failures have
-separate status messages. A server failure now offers an explicit retry in the player, with English
-and German copy. Coordinator and player tests cover conflict recovery, retained edits, retry, and
-background-sync recovery.
+distinct accessible cloud indicators with English and German details and recovery controls on demand.
+Pending writes retry automatically with bounded backoff, retain stable operation IDs, and time out
+stalled fetch/body reads. Oversized snapshots avoid the browser keepalive limit; stale poll replies
+and earlier acknowledgements cannot erase newer edits or falsely report a completed save. A rejected
+browser-storage write does not prevent server persistence. Redis buffers failed database intents
+with `202 buffered`; the browser retains them until Postgres commits. Redis is evictable and is not
+a durability guarantee. Coordinator, service, route, and component tests cover these failure paths.
+
+The desktop listening room also confines document scrolling to its content and context panes.
+The player stays at the viewport bottom, scroll chaining is contained, and public/mobile document
+scrolling returns when that shell is absent. A Chromium geometry check verifies the final content
+item stays reachable above the player and the document cannot scroll below it.
 
 ## Completed vertical slice: queue control in Halflight Now
 

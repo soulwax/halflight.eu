@@ -129,7 +129,7 @@ describe('QueueScene.svelte', () => {
 		await render(QueueScene);
 
 		await expect
-			.element(page.getByText(m.player_sync_saving(), { exact: true }))
+			.element(page.getByRole('status', { name: m.player_sync_saving() }))
 			.toBeInTheDocument();
 	});
 
@@ -139,7 +139,7 @@ describe('QueueScene.svelte', () => {
 		const refresh = vi.spyOn(player, 'refreshQueueFromServer').mockResolvedValue();
 		await render(QueueScene);
 
-		await expect.element(page.getByText(m.player_sync_conflict())).toBeInTheDocument();
+		await page.getByRole('button', { name: m.player_sync_conflict() }).click();
 		await page.getByRole('button', { name: m.player_sync_refresh() }).click();
 		expect(refresh).toHaveBeenCalledOnce();
 		expect(player.currentTrack?.id).toBe('current');
@@ -151,7 +151,7 @@ describe('QueueScene.svelte', () => {
 		const retry = vi.spyOn(player, 'retryPersistence').mockImplementation(() => {});
 		await render(QueueScene);
 
-		await expect.element(page.getByText(m.player_sync_server_error())).toBeInTheDocument();
+		await page.getByRole('button', { name: m.player_sync_local() }).click();
 		await page.getByRole('button', { name: m.player_sync_retry() }).click();
 		expect(retry).toHaveBeenCalledOnce();
 		expect(player.currentTrack?.id).toBe('current');

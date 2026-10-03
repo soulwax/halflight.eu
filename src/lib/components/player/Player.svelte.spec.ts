@@ -35,7 +35,7 @@ describe('Player.svelte', () => {
 		expect(playHere).toHaveBeenCalledOnce();
 	});
 
-	it('explains a service save failure and offers an explicit retry', async () => {
+	it('offers save recovery through the status icon without inline warning text', async () => {
 		player.currentTrack = {
 			kind: 'track',
 			id: 'track-1',
@@ -47,7 +47,9 @@ describe('Player.svelte', () => {
 
 		render(Player);
 
-		await expect.element(page.getByText(m.player_sync_server_error())).toBeInTheDocument();
+		await expect.element(page.getByText(m.player_sync_local())).not.toBeInTheDocument();
+		await page.getByRole('button', { name: m.player_sync_local() }).click();
+		await expect.element(page.getByRole('dialog')).toBeInTheDocument();
 		await page.getByRole('button', { name: m.player_sync_retry() }).click();
 		expect(retry).toHaveBeenCalledOnce();
 	});

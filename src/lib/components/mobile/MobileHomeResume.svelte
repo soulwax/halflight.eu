@@ -62,7 +62,7 @@
 					<a class="resume-open" href={resolve('/(mobile)/now')}>{m.now_open_full_player()}</a>
 				</span>
 			</div>
-			<div class="resume-status"><PlaybackStatus mobile /><SessionSaveStatus /></div>
+			<div class="resume-status"><PlaybackStatus mobile /><SessionSaveStatus mobile /></div>
 		</section>
 	{:else}
 		<section class="empty-state" aria-label={m.now_home_continue_heading()}>

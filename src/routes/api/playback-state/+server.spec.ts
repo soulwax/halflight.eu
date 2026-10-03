@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
 	getPlaybackState: vi.fn(),
+	recoverBufferedPlayback: vi.fn(),
 	savePlaybackState: vi.fn(),
 	parsePlaybackState: vi.fn(),
 	parsePlaybackDeviceId: vi.fn(),
@@ -10,6 +11,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('#lib/server/playback-state', () => mocks);
+vi.mock('#lib/server/playback-buffer', () => mocks);
 
 import { GET, PUT } from './+server';
 
@@ -28,6 +30,7 @@ function event(
 describe('/api/playback-state', () => {
 	beforeEach(() => {
 		mocks.getPlaybackState.mockReset();
+		mocks.recoverBufferedPlayback.mockReset().mockResolvedValue(undefined);
 		mocks.savePlaybackState.mockReset();
 		mocks.parsePlaybackState.mockReset();
 		mocks.parsePlaybackDeviceId.mockReset();
@@ -44,11 +47,13 @@ describe('/api/playback-state', () => {
 	it('returns the signed-in owner’s saved resume state', async () => {
 		expect(await (await GET(event())).json()).toEqual(state);
 		expect(mocks.getPlaybackState).toHaveBeenCalledWith('owner-1', undefined, null);
+		expect(mocks.recoverBufferedPlayback).toHaveBeenCalledWith('owner-1');
 	});
 
 	it('does not expose the owner session to a non-administrator account', async () => {
 		await expect(GET(event(undefined, false))).rejects.toMatchObject({ status: 401 });
 		expect(mocks.getPlaybackState).not.toHaveBeenCalled();
+		expect(mocks.recoverBufferedPlayback).not.toHaveBeenCalled();
 	});
 
 	it('validates and saves JSON state', async () => {

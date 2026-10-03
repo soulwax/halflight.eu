@@ -1,5 +1,6 @@
 import { error, json, type RequestHandler } from '@sveltejs/kit';
-import { applyPlaybackIntent, parsePlaybackIntent } from '#lib/server/playback-state';
+import { parsePlaybackIntent } from '#lib/server/playback-state';
+import { applyBufferedPlaybackIntent } from '#lib/server/playback-buffer';
 
 /**
  * Applies one named playback mutation against the revision the controller last
@@ -16,6 +17,8 @@ export const POST: RequestHandler = async (event) => {
 	const intent = parsePlaybackIntent(payload);
 	if (!intent) error(400, 'Invalid playback intent');
 
-	const result = await applyPlaybackIntent(event.locals.user.id, intent);
+	const result = await applyBufferedPlaybackIntent(event.locals.user.id, intent);
+	if ('buffered' in result)
+		return json(result, { status: 202, headers: { 'Cache-Control': 'private, no-store' } });
 	return json(result.state, { status: result.invalid ? 400 : result.conflict ? 409 : 200 });
 };

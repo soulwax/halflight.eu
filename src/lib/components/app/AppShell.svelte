@@ -174,7 +174,9 @@
 	.app-shell-main {
 		grid-area: main;
 		min-width: 0;
+		min-height: 0;
 		overflow: auto;
+		overscroll-behavior: contain;
 		container-type: inline-size;
 		padding: clamp(1.5rem, 3vw, 2.5rem) var(--shell-gutter);
 		background: transparent;
@@ -187,6 +189,7 @@
 		display: none;
 		min-width: 0;
 		overflow: auto;
+		overscroll-behavior: contain;
 		border-left: 1px solid var(--border-subtle);
 		background: var(--surface-raised);
 		container-type: inline-size;
@@ -201,6 +204,21 @@
 	.app-shell-footer {
 		grid-area: footer;
 		z-index: var(--z-footer);
+	}
+
+	@media (min-width: 64rem) {
+		/* The room owns the viewport. Only its content panes scroll, so wheel,
+		   touchpad and keyboard scrolling cannot move past the docked player. */
+		:global(html:has(.app-shell-canvas)),
+		:global(body:has(.app-shell-canvas)) {
+			height: 100%;
+			overflow: hidden;
+			overscroll-behavior: none;
+		}
+		.app-shell-canvas {
+			height: 100dvh;
+			overflow: clip;
+		}
 	}
 
 	@media (min-width: 90rem) {

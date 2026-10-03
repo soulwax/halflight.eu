@@ -499,6 +499,35 @@ describe('PlayerState', () => {
 		expect(cached.history).toEqual([sampleTrack3]);
 	});
 
+	it('continues saving to the database when browser storage rejects a queue backup', async () => {
+		const fetchSpy = vi.fn(async (_url: string | URL | Request, _init?: RequestInit) =>
+			Response.json({ revision: 1 })
+		);
+		vi.stubGlobal('fetch', fetchSpy);
+		const player = new PlayerState();
+		player.restorePlaybackState({
+			currentTrack: sampleTrack1,
+			queue: persistedQueue(sampleTrack2),
+			history: [],
+			currentTime: 12
+		});
+		const write = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+			throw new DOMException('Full', 'QuotaExceededError');
+		});
+		try {
+			player.flushPersistence();
+			await vi.waitFor(() => expect(player.persistenceStatus).toBe('saved'));
+			expect(player.localQueueSaved).toBe(false);
+			const writes = fetchSpy.mock.calls.filter(
+				([url, init]) => url === '/api/playback-state' && init?.method === 'PUT'
+			);
+			expect(writes).toHaveLength(1);
+			expect(JSON.parse(String(writes[0]?.[1]?.body)).queue).toEqual(persistedQueue(sampleTrack2));
+		} finally {
+			write.mockRestore();
+		}
+	});
+
 	it('keeps a durable clear command in the local queue cache until it is acknowledged', () => {
 		const player = new PlayerState();
 		player.restorePlaybackState({

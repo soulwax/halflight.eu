@@ -1,4 +1,5 @@
 import { error, json, type RequestHandler } from '@sveltejs/kit';
+import { recoverBufferedPlayback } from '#lib/server/playback-buffer';
 import {
 	parsePlaybackState,
 	parsePlaybackDeviceId,
@@ -11,6 +12,7 @@ import {
 export const GET: RequestHandler = async (event) => {
 	if (!event.locals.user || !event.locals.isAdministrator) error(401, 'Unauthorized');
 	const deviceId = parsePlaybackDeviceId(event.request.headers.get('x-halflight-playback-device'));
+	await recoverBufferedPlayback(event.locals.user.id);
 	return json(await getPlaybackState(event.locals.user.id, undefined, deviceId));
 };
 

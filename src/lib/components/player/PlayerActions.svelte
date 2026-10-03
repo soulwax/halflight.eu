@@ -16,6 +16,7 @@
 	import { customPlaylists } from '#lib/player/customPlaylists.svelte.js';
 	import type { TrackSummary } from '#lib/tidal/models';
 	import PlayerVolume from './PlayerVolume.svelte';
+	import SessionSaveStatus from './SessionSaveStatus.svelte';
 
 	let {
 		track,
@@ -89,6 +90,7 @@
 		<PlayerVolume />
 	{/if}
 
+	<SessionSaveStatus />
 	<button
 		type="button"
 		class="a-btn"
