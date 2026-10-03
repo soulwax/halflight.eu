@@ -11,12 +11,14 @@
 	let {
 		track,
 		columns,
+		compact = false,
 		isPlaying = false,
 		onActivate,
 		actions
 	}: {
 		track: TrackSummary;
 		columns: TrackColumn[];
+		compact?: boolean;
 		isPlaying?: boolean;
 		onActivate: () => void;
 		actions?: Snippet;
@@ -40,7 +42,7 @@
 	);
 </script>
 
-<div class:tt-row-playing={isPlaying} class="tt-row" role="row">
+<div class:tt-row-playing={isPlaying} class:compact class="tt-row" role="row">
 	<span class="tt-art" role="cell">
 		{#if cover && cover !== failedCover}
 			<img
@@ -72,16 +74,23 @@
 					>{:else}<span>{artist.name}</span>{/if}{#if i < artistLine.length - 1},
 				{/if}
 			{/each}
-			{#if albumTitle && (cols.album || cols.date)}
+			{#if !compact && albumTitle && (cols.album || cols.date)}
 				<span class="tt-sub-album">
 					· <span>{albumTitle}</span>{#if releaseYear}
 						({releaseYear}){/if}
 				</span>
 			{/if}
 		</span>
+		{#if compact && albumTitle}
+			<span class="tt-inline-album">
+				{#if track.album?.id}
+					<a href={resolve('/app/albums/[id]', { id: track.album.id })}>{albumTitle}</a>
+				{:else}{albumTitle}{/if}
+			</span>
+		{/if}
 	</span>
 
-	{#if cols.album}
+	{#if !compact && cols.album}
 		<span class="tt-album tt-hide-narrow" role="cell">
 			{#if track.album?.id && albumTitle}
 				<a href={resolve('/app/albums/[id]', { id: track.album.id })}>{albumTitle}</a>
@@ -93,13 +102,13 @@
 		</span>
 	{/if}
 
-	{#if cols.date}
+	{#if !compact && cols.date}
 		<span class="tt-date tt-num tt-hide-narrow" role="cell">
 			{releaseYear || '—'}
 		</span>
 	{/if}
 
-	{#if cols.duration}
+	{#if !compact && cols.duration}
 		<span class="tt-time tt-num" role="cell">{formatDuration(track.duration) || '—'}</span>
 	{/if}
 
@@ -121,6 +130,35 @@
 
 	.tt-row:last-child {
 		border-bottom: 0;
+	}
+
+	.compact {
+		gap: 0.5rem;
+		padding: 0.35rem 0.5rem;
+	}
+
+	.compact .tt-title,
+	.compact .tt-artists,
+	.tt-inline-album {
+		white-space: normal;
+		overflow: visible;
+		overflow-wrap: anywhere;
+		line-height: 1.3;
+	}
+
+	.tt-inline-album {
+		font-size: 0.75rem;
+		color: var(--text-muted);
+	}
+
+	.tt-inline-album a {
+		color: inherit;
+		text-decoration: none;
+	}
+
+	.tt-inline-album a:hover {
+		color: var(--text-primary);
+		text-decoration: underline;
 	}
 
 	.tt-row:hover {

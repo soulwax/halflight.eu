@@ -13,6 +13,7 @@
 		provenance,
 		onStartRadio,
 		radioDisabled = false,
+		compact = false,
 		actions
 	}: {
 		track: TrackSummary;
@@ -21,6 +22,8 @@
 		provenance?: string;
 		onStartRadio?: () => void | Promise<void>;
 		radioDisabled?: boolean;
+		/** Queue rows show full identity while leaving a narrow control column. */
+		compact?: boolean;
 		actions?: Snippet;
 	} = $props();
 
@@ -33,9 +36,12 @@
 			.map((artist) => artist.name)
 			.join(', ')
 	);
+	const albumTitle = $derived(
+		track.album && track.album.title !== track.album.id ? track.album.title : null
+	);
 </script>
 
-<div class="mobile-track-row" class:with-actions={Boolean(actions)}>
+<div class="mobile-track-row" class:compact class:with-actions={Boolean(actions)}>
 	<button type="button" class="mobile-track-primary" onclick={onActivate}>
 		<span class="mobile-track-art">
 			{#if cover && cover !== failedCover}
@@ -56,6 +62,9 @@
 			<span class="mobile-track-title">{title}</span>
 			{#if artistLine}
 				<span class="mobile-track-artist">{artistLine}</span>
+			{/if}
+			{#if compact && albumTitle}
+				<span class="mobile-track-album">{albumTitle}</span>
 			{/if}
 		</span>
 	</button>
@@ -142,6 +151,35 @@
 		white-space: nowrap;
 	}
 
+	.compact {
+		padding: 0.25rem;
+	}
+
+	.compact .mobile-track-primary {
+		gap: 0.5rem;
+	}
+
+	.compact .mobile-track-art {
+		width: 2rem;
+		height: 2rem;
+	}
+
+	.compact .mobile-track-title,
+	.compact .mobile-track-artist,
+	.mobile-track-album {
+		white-space: normal;
+		overflow: visible;
+		overflow-wrap: anywhere;
+		line-height: 1.3;
+	}
+
+	.mobile-track-album {
+		display: block;
+		margin-top: 0.14rem;
+		font-size: 0.75rem;
+		color: var(--text-muted);
+	}
+
 	.mobile-track-title {
 		color: var(--text-primary);
 		font-size: 0.875rem;
@@ -173,13 +211,13 @@
 		min-height: 2.75rem;
 	}
 	@media (max-width: 24rem) {
-		.with-actions {
+		.with-actions:not(.compact) {
 			flex-wrap: wrap;
 		}
-		.with-actions .mobile-track-primary {
+		.with-actions:not(.compact) .mobile-track-primary {
 			flex-basis: 100%;
 		}
-		.with-actions .mobile-track-actions {
+		.with-actions:not(.compact) .mobile-track-actions {
 			margin-left: auto;
 		}
 	}

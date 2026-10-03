@@ -54,6 +54,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Compact queue identity into wrapping title, artist and album lines; remove empty date/duration
+  gutters and dash placeholders, and group reorder/remove controls into a narrow column pair.
 - Rebuild the Halflight portrait icon from an editable SVG with high-contrast pale artwork,
   a cyan music note, and a consistent dark surface; use a dedicated maskable icon and Apple touch size.
 - Make Home resume deliberate, reject duplicate pending starts, use explicit OS Play/Pause actions,

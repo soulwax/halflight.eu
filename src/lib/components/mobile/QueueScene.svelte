@@ -84,34 +84,40 @@
 			onfinalize={handleFinalize}
 		>
 			{#each items as entry, i (entry.entryId)}
-				<MobileTrackRow track={entry} onActivate={() => player.playFromQueue(entry.entryId)}>
+				<MobileTrackRow
+					compact
+					track={entry}
+					onActivate={() => player.playFromQueue(entry.entryId)}
+				>
 					{#snippet actions()}
-						<button
-							type="button"
-							class="flex h-12 w-12 items-center justify-center text-(--text-muted) disabled:opacity-30"
-							disabled={i === 0}
-							onclick={(event) => move(entry.entryId, -1, event)}
-							aria-label={m.player_move_up()}
-						>
-							<ArrowUp size={15} />
-						</button>
-						<button
-							type="button"
-							class="flex h-12 w-12 items-center justify-center text-(--text-muted) disabled:opacity-30"
-							disabled={i === items.length - 1}
-							onclick={(event) => move(entry.entryId, 1, event)}
-							aria-label={m.player_move_down()}
-						>
-							<ArrowDown size={15} />
-						</button>
-						<button
-							type="button"
-							class="flex h-12 w-12 items-center justify-center text-(--text-muted)"
-							onclick={() => player.removeFromQueue(entry.entryId)}
-							aria-label={m.player_remove_from_queue()}
-						>
-							<Trash2 size={15} />
-						</button>
+						<div class="queue-row-controls">
+							<button
+								type="button"
+								class="queue-row-button"
+								disabled={i === 0}
+								onclick={(event) => move(entry.entryId, -1, event)}
+								aria-label={m.player_move_up()}
+							>
+								<ArrowUp size={14} aria-hidden="true" />
+							</button>
+							<button
+								type="button"
+								class="queue-row-button"
+								disabled={i === items.length - 1}
+								onclick={(event) => move(entry.entryId, 1, event)}
+								aria-label={m.player_move_down()}
+							>
+								<ArrowDown size={14} aria-hidden="true" />
+							</button>
+							<button
+								type="button"
+								class="queue-row-button queue-remove"
+								onclick={() => player.removeFromQueue(entry.entryId)}
+								aria-label={m.player_remove_from_queue()}
+							>
+								<Trash2 size={14} aria-hidden="true" />
+							</button>
+						</div>
 					{/snippet}
 				</MobileTrackRow>
 			{/each}
@@ -119,3 +125,42 @@
 	{/if}
 	<p class="sr-only" role="status" aria-live="polite">{announcement}</p>
 </div>
+
+<style>
+	.queue-row-controls {
+		display: grid;
+		grid-template-columns: repeat(2, 2rem);
+		grid-template-rows: repeat(2, 2rem);
+		column-gap: 0.125rem;
+	}
+	.queue-row-button {
+		display: grid;
+		width: 2rem;
+		height: 2rem;
+		place-items: center;
+		border: 0;
+		background: transparent;
+		color: var(--text-muted);
+		cursor: pointer;
+	}
+	.queue-row-button:nth-child(2) {
+		grid-column: 1;
+		grid-row: 2;
+	}
+	.queue-remove {
+		grid-column: 2;
+		grid-row: 1 / 3;
+		height: 100%;
+	}
+	.queue-row-button:disabled {
+		opacity: 0.3;
+		cursor: default;
+	}
+	.queue-row-button:hover:not(:disabled) {
+		color: var(--action);
+	}
+	.queue-row-button:focus-visible {
+		outline: 2px solid var(--focus-ring);
+		outline-offset: -2px;
+	}
+</style>

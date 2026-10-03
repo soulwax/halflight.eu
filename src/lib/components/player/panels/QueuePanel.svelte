@@ -74,7 +74,8 @@
 {:else}
 	<TrackTable
 		tracks={items}
-		columns={['album', 'date', 'duration']}
+		compact
+		columns={['album']}
 		rowKey={(_, index) => items[index]?.entryId ?? `row-${index}`}
 		reorderable={true}
 		onconsider={handleConsider}
@@ -86,32 +87,34 @@
 	>
 		{#snippet rowActions(_track, i)}
 			{@const entryId = items[i]?.entryId}
-			<button
-				type="button"
-				class="q-row-btn"
-				disabled={i === 0 || !entryId}
-				onclick={(event) => entryId && move(entryId, -1, event)}
-				aria-label={m.player_move_up()}
-			>
-				<ArrowUp size={13} />
-			</button>
-			<button
-				type="button"
-				class="q-row-btn"
-				disabled={i === items.length - 1 || !entryId}
-				onclick={(event) => entryId && move(entryId, 1, event)}
-				aria-label={m.player_move_down()}
-			>
-				<ArrowDown size={13} />
-			</button>
-			<button
-				type="button"
-				class="q-row-btn"
-				onclick={() => entryId && player.removeFromQueue(entryId)}
-				aria-label={m.player_remove_from_queue()}
-			>
-				<Trash2 size={13} />
-			</button>
+			<div class="q-row-controls">
+				<button
+					type="button"
+					class="q-row-btn"
+					disabled={i === 0 || !entryId}
+					onclick={(event) => entryId && move(entryId, -1, event)}
+					aria-label={m.player_move_up()}
+				>
+					<ArrowUp size={13} aria-hidden="true" />
+				</button>
+				<button
+					type="button"
+					class="q-row-btn"
+					disabled={i === items.length - 1 || !entryId}
+					onclick={(event) => entryId && move(entryId, 1, event)}
+					aria-label={m.player_move_down()}
+				>
+					<ArrowDown size={13} aria-hidden="true" />
+				</button>
+				<button
+					type="button"
+					class="q-row-btn q-remove"
+					onclick={() => entryId && player.removeFromQueue(entryId)}
+					aria-label={m.player_remove_from_queue()}
+				>
+					<Trash2 size={13} aria-hidden="true" />
+				</button>
+			</div>
 		{/snippet}
 	</TrackTable>
 {/if}
@@ -139,20 +142,37 @@
 		color: var(--text-muted);
 		font-size: 0.85rem;
 	}
+	.q-row-controls {
+		display: grid;
+		grid-template-columns: repeat(2, 1.5rem);
+		grid-template-rows: repeat(2, 1.5rem);
+		column-gap: 0.125rem;
+	}
 	.q-row-btn {
 		display: grid;
-		width: 1.7rem;
-		height: 1.7rem;
+		width: 1.5rem;
+		height: 1.5rem;
 		place-items: center;
 		border: 0;
 		background: transparent;
 		color: var(--text-muted);
 		cursor: pointer;
 	}
-	.q-row-btn:hover:not(:disabled),
-	.q-row-btn:focus-visible:not(:disabled) {
+	.q-row-btn:hover:not(:disabled) {
 		color: var(--accent-gold);
-		outline: none;
+	}
+	.q-row-btn:focus-visible {
+		outline: 2px solid var(--focus-ring);
+		outline-offset: -2px;
+	}
+	.q-row-btn:nth-child(2) {
+		grid-column: 1;
+		grid-row: 2;
+	}
+	.q-remove {
+		grid-column: 2;
+		grid-row: 1 / 3;
+		height: 100%;
 	}
 	.q-row-btn:disabled {
 		opacity: 0.3;

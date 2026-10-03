@@ -6,6 +6,7 @@ import { player } from '#lib/player/player.svelte.js';
 import { createQueueEntry } from '#lib/player/queue-entry.js';
 import { m } from '#lib/paraglide/messages.js';
 import type { TrackSummary } from '#lib/tidal/models';
+import '../../../routes/layout.css';
 
 const mk = (id: string, title: string): TrackSummary => ({
 	kind: 'track',
@@ -37,14 +38,55 @@ describe('QueueScene.svelte', () => {
 	});
 
 	it('lists queued tracks and plays one from the queue on tap', async () => {
-		player.queue = [entry('1', 'One'), entry('2', 'Two')];
+		player.queue = [
+			createQueueEntry({
+				...mk('1', 'One'),
+				album: { id: 'album-1', title: 'An entire album name' }
+			}),
+			entry('2', 'Two')
+		];
 		await render(QueueScene);
 
 		await expect.element(page.getByText('One', { exact: true })).toBeInTheDocument();
 		await expect.element(page.getByText('Two', { exact: true })).toBeInTheDocument();
+		await expect
+			.element(page.getByText('An entire album name', { exact: true }))
+			.toBeInTheDocument();
 
 		await page.getByRole('button', { name: /^Two/ }).click();
 		expect(player.currentTrack?.id).toBe('2');
+	});
+
+	it('keeps complete names readable at phone width with compact controls', async () => {
+		const title = 'A long recording title that needs more than one line';
+		const artist = 'An artist with a complete and very long name';
+		const album = 'An album title that must remain readable in the queue';
+		player.queue = [
+			createQueueEntry({
+				...mk('1', title),
+				artists: [{ id: 'artist-1', name: artist }],
+				album: { id: 'album-1', title: album }
+			})
+		];
+		const { container } = await render(QueueScene);
+		container.style.width = '320px';
+		for (const name of [title, artist, album]) {
+			await expect.element(page.getByText(name, { exact: true })).toBeVisible();
+			const text = page.getByText(name, { exact: true }).element();
+			expect(getComputedStyle(text).whiteSpace).toBe('normal');
+			expect(text.scrollWidth).toBeLessThanOrEqual(text.clientWidth);
+		}
+		const row = container.querySelector('.mobile-track-row')!;
+		expect(row.scrollWidth).toBeLessThanOrEqual(row.clientWidth);
+		expect(
+			container.querySelector('.queue-row-controls')!.getBoundingClientRect().width
+		).toBeLessThanOrEqual(68);
+		const up = page
+			.getByRole('button', { name: m.player_move_up() })
+			.element()
+			.getBoundingClientRect();
+		expect(up.width).toBeGreaterThanOrEqual(32);
+		expect(up.height).toBeGreaterThanOrEqual(32);
 	});
 
 	it('shows the current track separately from the upcoming queue', async () => {
