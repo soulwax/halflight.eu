@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { loadStreamData, streamLoader, streamPreloader } from './stream-preloader.js';
+import {
+	getOrAwaitPreloadedStreamData,
+	loadStreamData,
+	streamLoader,
+	streamPreloader
+} from './stream-preloader.js';
 
 afterEach(() => {
 	streamPreloader.clear();
@@ -72,5 +77,31 @@ describe('streamPreloader', () => {
 		streamPreloader.preload('t1');
 		await expect(streamPreloader.getOrAwait('t1')).resolves.toEqual({ audioQuality: 'HIGH' });
 		expect(streamPreloader.consume('t1')).toBeNull();
+	});
+
+	it('keeps look-ahead work alive until a foreground handoff is canceled', async () => {
+		let preloadSignal: AbortSignal | null = null;
+		const fetchMock = vi.fn((_url: string, init?: RequestInit) => {
+			preloadSignal = init?.signal ?? null;
+			return new Promise<Response>((_resolve, reject) => {
+				init?.signal?.addEventListener(
+					'abort',
+					() => reject(new DOMException('Aborted', 'AbortError')),
+					{ once: true }
+				);
+			});
+		});
+		vi.stubGlobal('fetch', fetchMock);
+
+		streamPreloader.preload('joined');
+		await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+		expect(preloadSignal?.aborted).toBe(false);
+
+		const foreground = new AbortController();
+		const handoff = getOrAwaitPreloadedStreamData('joined', foreground.signal);
+		foreground.abort();
+
+		await expect(handoff).resolves.toBeNull();
+		expect(preloadSignal?.aborted).toBe(true);
 	});
 });

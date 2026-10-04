@@ -56,10 +56,44 @@ export const streamLoader = new StreamLoader<PreloadedStreamData>({
 	}
 });
 
-export async function loadStreamData(trackId: string): Promise<PreloadedStreamData | null> {
-	const result = await streamLoader.load(trackId);
+export async function loadStreamData(
+	trackId: string,
+	signal?: AbortSignal
+): Promise<PreloadedStreamData | null> {
+	const result = await streamLoader.load(trackId, signal);
 	return result.ok ? result.data : null;
 }
 
+const preloadAbortControllers = new Map<string, AbortController>();
+
+async function loadPreloadedStreamData(trackId: string): Promise<PreloadedStreamData | null> {
+	const controller = new AbortController();
+	preloadAbortControllers.set(trackId, controller);
+	try {
+		return await loadStreamData(trackId, controller.signal);
+	} finally {
+		if (preloadAbortControllers.get(trackId) === controller) {
+			preloadAbortControllers.delete(trackId);
+		}
+	}
+}
+
 /** Look-ahead cache so the next queued track starts without a `/stream` round trip. */
-export const streamPreloader = new StreamPreloader<PreloadedStreamData>({ load: loadStreamData });
+export const streamPreloader = new StreamPreloader<PreloadedStreamData>({
+	load: loadPreloadedStreamData
+});
+
+/** Join a foreground request to an in-flight look-ahead fetch's cancellation signal. */
+export function getOrAwaitPreloadedStreamData(
+	trackId: string,
+	signal: AbortSignal
+): Promise<PreloadedStreamData | null> {
+	const controller = preloadAbortControllers.get(trackId);
+	const abortPreload = () => controller?.abort();
+	if (signal.aborted) abortPreload();
+	else if (controller) signal.addEventListener('abort', abortPreload, { once: true });
+
+	return streamPreloader.getOrAwait(trackId).finally(() => {
+		signal.removeEventListener('abort', abortPreload);
+	});
+}

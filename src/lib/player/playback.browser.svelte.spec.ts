@@ -163,6 +163,44 @@ describe('PlayerState browser playback', () => {
 		expect(player.streamUrl).toBeNull();
 		expect(player.isPlaying).toBe(false);
 	});
+
+	it.each(['skip', 'close'] as const)(
+		'aborts a joined look-ahead fetch when foreground playback is canceled by %s',
+		async (cancellation) => {
+			let preloadSignal: AbortSignal | null = null;
+			const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+				if (String(url).includes('/lookahead/')) {
+					preloadSignal = init?.signal ?? null;
+					return new Promise<Response>((_resolve, reject) => {
+						init?.signal?.addEventListener(
+							'abort',
+							() => reject(new DOMException('Aborted', 'AbortError')),
+							{ once: true }
+						);
+					});
+				}
+				return Promise.resolve(streamResponse());
+			});
+			vi.stubGlobal('fetch', fetchMock);
+
+			const player = new PlayerState();
+			player.currentTrack = track('current');
+			player.addToQueue(track('lookahead'));
+			await vi.waitFor(() =>
+				expect(fetchMock).toHaveBeenCalledWith(
+					'/api/tracks/lookahead/stream',
+					expect.objectContaining({ signal: expect.any(AbortSignal) })
+				)
+			);
+			expect(preloadSignal?.aborted).toBe(false);
+
+			player.play(track('lookahead'));
+			if (cancellation === 'skip') player.play(track('other'));
+			else player.close();
+
+			await vi.waitFor(() => expect(preloadSignal?.aborted).toBe(true));
+		}
+	);
 });
 
 describe('deliberate resume and retry', () => {

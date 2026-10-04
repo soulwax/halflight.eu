@@ -5,7 +5,6 @@
 	import Button from '#lib/components/ui/Button.svelte';
 	import ViewHeader from '#lib/components/ui/ViewHeader.svelte';
 	import Notice from '#lib/components/ui/Notice.svelte';
-	import TidalDebugTokens from '#lib/components/tidal/TidalDebugTokens.svelte';
 
 	import type { ActionData, PageData } from './$types';
 
@@ -13,8 +12,6 @@
 
 	const status = $derived(data.status);
 	const hasFullPlayback = $derived(data.hasFullPlayback);
-
-	let advancedOpen = $state(false);
 </script>
 
 <svelte:head>
@@ -86,12 +83,6 @@
 			<p>{m.tidal_settings_connect_description()}</p>
 			<Button variant="primary" href={resolve('/tidal/connect')}>{m.tidal_connect()}</Button>
 		</section>
-	{/if}
-
-	{#if status.connected}
-		<details bind:open={advancedOpen}>
-			<summary>{m.settings_advanced()}</summary>{#if advancedOpen}<TidalDebugTokens />{/if}
-		</details>
 	{/if}
 
 	<TidalPlaybackSetup configured={status.configured} hasPlayback={hasFullPlayback} />

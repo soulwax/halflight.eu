@@ -5,14 +5,12 @@
 	import { m } from '#lib/paraglide/messages.js';
 	import MobileSubScreenHeader from '#lib/components/mobile/MobileSubScreenHeader.svelte';
 	import TidalPlaybackSetup from '#lib/components/tidal/TidalPlaybackSetup.svelte';
-	import TidalDebugTokens from '#lib/components/tidal/TidalDebugTokens.svelte';
 	import { getThemeLabel, type Theme } from '#lib/theme.js';
 	import { rememberSiteChoice } from '#lib/mobile/site-entry';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form?: ActionData } = $props();
 
-	let advancedOpen = $state(false);
 	const selectedTheme = $derived<Theme>(form?.theme ?? data.theme);
 
 	function previewTheme(theme: Theme): void {
@@ -213,10 +211,6 @@
 			<button type="submit">{m.streaming_settings_save()}</button>
 		</form>
 	</section>
-
-	<details class="card" bind:open={advancedOpen}>
-		<summary>{m.settings_advanced()}</summary>{#if advancedOpen}<TidalDebugTokens />{/if}
-	</details>
 
 	<section class="card" aria-labelledby="mobile-settings-appearance-title">
 		<div class="card-heading">
