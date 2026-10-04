@@ -44,12 +44,17 @@
 						<button
 							type="button"
 							class="resume-action"
-							disabled={player.isLoading}
+							disabled={player.isLoading || player.resumeStatus !== 'ready'}
 							aria-busy={player.isLoading}
 							onclick={() =>
 								player.playbackMode === 'embed' ? player.retryPlayback() : player.togglePlayPause()}
 						>
-							{#if player.isLoading}<Loader2
+							{#if player.resumeStatus === 'checking'}{m.player_check_pending()}
+							{:else if player.resumeStatus === 'unavailable'}{m.player_unavailable_track()}
+							{:else if player.resumeStatus === 'auth'}{m.player_source_link()}
+							{:else if player.resumeStatus === 'plan'}{m.player_plan_failure()}
+							{:else if player.resumeStatus === 'temporary'}{m.player_temporary_failure()}
+							{:else if player.isLoading}<Loader2
 									size={18}
 									class="animate-spin"
 									aria-hidden="true"

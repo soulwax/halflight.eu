@@ -42,6 +42,19 @@
 	font-size: 0.9rem;
 	color: var(--text-muted);
 }
+
+.syn-player button.title {
+	border: 0;
+	background: none;
+	padding: 0;
+	text-align: left;
+	cursor: pointer;
+}
+
+.syn-player button.title:focus-visible {
+	outline: 2px solid var(--focus-ring);
+	outline-offset: 2px;
+}
 .syn-player .idle-cta {
 	color: var(--action);
 	text-decoration: none;

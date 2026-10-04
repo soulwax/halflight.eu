@@ -49,7 +49,9 @@ export const streamLoader = new StreamLoader<PreloadedStreamData>({
 			reason:
 				typeof source.reason === 'string' && /^[a-z0-9_]{1,64}$/.test(source.reason)
 					? source.reason
-					: `http_${status}`
+					: typeof source.error === 'string' && /^[a-z0-9_]{1,64}$/.test(source.error)
+						? source.error
+						: `http_${status}`
 		};
 	}
 });

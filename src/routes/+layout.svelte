@@ -50,7 +50,8 @@
 	// layouts"), so `layout.css` stays unconditional.
 	let isMobile = $derived(isMobileRoute(page.url.pathname));
 	let isListeningRoom = $derived(
-		deLocalizeHref(page.url.pathname) === '/app' ||
+		deLocalizeHref(page.url.pathname) === '/' ||
+			deLocalizeHref(page.url.pathname) === '/app' ||
 			deLocalizeHref(page.url.pathname).startsWith('/app/')
 	);
 </script>

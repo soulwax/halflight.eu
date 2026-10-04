@@ -20,20 +20,23 @@
 
 	function togglePlayback() {
 		haptics.tick();
-		if (player.isPlaybackActiveElsewhere) player.playHere();
+		if (player.resumeStatus === 'unavailable') player.next();
+		else if (player.isPlaybackActiveElsewhere) player.playHere();
 		else if (player.playbackMode === 'embed') player.retryPlayback();
 		else player.togglePlayPause();
 	}
 	const playLabel = $derived(
-		player.isLoading
-			? m.player_loading()
-			: player.isPlaybackActiveElsewhere
-				? m.now_play_here()
-				: player.playbackMode === 'embed'
-					? m.track_retry()
-					: player.isPlaying
-						? m.player_pause()
-						: m.player_play_track()
+		player.resumeStatus === 'unavailable'
+			? m.player_skip_unavailable()
+			: player.isLoading
+				? m.player_loading()
+				: player.isPlaybackActiveElsewhere
+					? m.now_play_here()
+					: player.playbackMode === 'embed'
+						? m.track_retry()
+						: player.isPlaying
+							? m.player_pause()
+							: m.player_play_track()
 	);
 </script>
 
@@ -86,7 +89,11 @@
 		<button
 			type="button"
 			class="flex h-12 w-12 shrink-0 items-center justify-center text-(--text-primary)"
-			disabled={player.isLoading || player.playbackClaimPending}
+			disabled={player.isLoading ||
+				player.playbackClaimPending ||
+				(player.resumeStatus !== 'ready' &&
+					player.resumeStatus !== 'unavailable' &&
+					!player.isPlaying)}
 			aria-busy={player.isLoading}
 			onclick={togglePlayback}
 			aria-label={playLabel}

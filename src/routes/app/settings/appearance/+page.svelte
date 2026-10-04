@@ -7,6 +7,8 @@
 	import ViewHeader from '#lib/components/ui/ViewHeader.svelte';
 	import Notice from '#lib/components/ui/Notice.svelte';
 	import { getThemeLabel, type Theme } from '#lib/theme.js';
+	import { rememberSiteChoice } from '#lib/mobile/site-entry';
+	import { resolve } from '$app/paths';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -98,9 +100,18 @@
 			</Button>
 		</div>
 	</form>
+	<section class="site-choice" aria-labelledby="site-choice-title">
+		<h2 id="site-choice-title">{m.site_switch_view()}</h2>
+		<Button href={resolve('/(mobile)/home')} onclick={() => rememberSiteChoice('mobile')}
+			>{m.site_mobile_view()}</Button
+		>
+	</section>
 </section>
 
 <style>
+	.site-choice {
+		margin-top: 2rem;
+	}
 	.appearance-settings {
 		max-width: 44rem;
 	}

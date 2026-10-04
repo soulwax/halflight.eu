@@ -14,6 +14,19 @@ afterEach(() => {
 });
 
 describe('Player.svelte', () => {
+	it('opens Now Playing from the song identity without leaving the current page', async () => {
+		player.currentTrack = {
+			kind: 'track',
+			id: 'track-1',
+			title: 'Track One',
+			artists: [{ id: 'artist-1', name: 'Artist One' }]
+		};
+		player.isExpanded = false;
+		render(Player);
+		await page.getByRole('button', { name: m.player_now_playing() }).click();
+		await expect.element(page.getByRole('tab', { name: /queue/i })).toBeInTheDocument();
+		expect(player.isExpanded).toBe(true);
+	});
 	it('makes an explicit desktop takeover available when another device is active', async () => {
 		player.currentTrack = {
 			kind: 'track',

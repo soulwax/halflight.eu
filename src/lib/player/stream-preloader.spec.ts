@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { loadStreamData, streamPreloader } from './stream-preloader.js';
+import { loadStreamData, streamLoader, streamPreloader } from './stream-preloader.js';
 
 afterEach(() => {
 	streamPreloader.clear();
@@ -7,6 +7,16 @@ afterEach(() => {
 });
 
 describe('loadStreamData', () => {
+	it('preserves the safe server error category for recovery UI', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(() => Promise.resolve(Response.json({ error: 'track_unavailable' }, { status: 404 })))
+		);
+		await expect(streamLoader.load('gone')).resolves.toMatchObject({
+			ok: false,
+			reason: 'track_unavailable'
+		});
+	});
 	it('keeps only display fields and rejects malformed successful responses', async () => {
 		vi.stubGlobal(
 			'fetch',

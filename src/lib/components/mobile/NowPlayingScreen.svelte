@@ -75,6 +75,9 @@
 					<a href={resolve('/(mobile)/now/credits')} aria-label={m.now_credits_title()}
 						><BadgeInfo size={20} aria-hidden="true" /><span>{m.now_credits_title()}</span></a
 					>
+					<a href={resolve('/(mobile)/tracks/[id]', { id: track.id })}
+						><BadgeInfo size={20} aria-hidden="true" /><span>{m.track_details_label()}</span></a
+					>
 				</nav>
 			</div>
 		</div>
@@ -186,7 +189,7 @@
 	}
 	.now-secondary {
 		display: grid;
-		grid-template-columns: repeat(3, minmax(0, 1fr));
+		grid-template-columns: repeat(4, minmax(0, 1fr));
 		gap: 0.25rem;
 		margin-top: 0.75rem;
 	}

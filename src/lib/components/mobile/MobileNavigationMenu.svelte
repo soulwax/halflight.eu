@@ -3,6 +3,9 @@
 	import { Disc, Home, Library, Menu, Search, Settings } from '@lucide/svelte';
 	import Dialog from '#lib/components/ui/Dialog.svelte';
 	import { m } from '#lib/paraglide/messages.js';
+	import { rememberSiteChoice, switchSitePath } from '#lib/mobile/site-entry';
+	import { localizeHref } from '#lib/paraglide/runtime';
+	import { page } from '$app/state';
 
 	let { currentPath }: { currentPath: string } = $props();
 	let open = $state(false);
@@ -45,6 +48,13 @@
 				</li>
 			{/each}
 		</ul>
+		<a
+			class="mobile-menu-link"
+			href={localizeHref(`${switchSitePath(currentPath, 'desktop')}${page.url.search}`)}
+			onclick={() => rememberSiteChoice('desktop')}
+		>
+			<span>{m.site_desktop_view()}</span>
+		</a>
 	</nav>
 </Dialog>
 

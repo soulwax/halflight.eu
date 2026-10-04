@@ -117,4 +117,10 @@ describe('GET /api/tracks/[id]/stream', () => {
 		}
 		expect(mocks.markTrackUnplayable).not.toHaveBeenCalled();
 	});
+	it('treats an unknown stream failure as temporary', async () => {
+		mocks.resolveTrackStreamCached.mockRejectedValueOnce(new Error('upstream unavailable'));
+		const response = await GET(event());
+		expect(response.status).toBe(503);
+		expect(await response.json()).toMatchObject({ error: 'stream_unavailable' });
+	});
 });

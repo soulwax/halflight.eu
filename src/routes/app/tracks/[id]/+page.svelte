@@ -283,10 +283,18 @@
 		<PageActions tidalUrl={tidalTrackUrl} {retryHref} />
 	{:else}
 		<StateCard state={data.state} configured={data.configured} {retryHref} />
+		{#if player.currentTrack}
+			<div class="return-player">
+				<Button onclick={() => player.selectPanel('queue')}>{m.player_now_playing()}</Button>
+			</div>
+		{/if}
 	{/if}
 </section>
 
 <style>
+	.return-player {
+		margin-top: 1rem;
+	}
 	.artist-line {
 		margin: 0;
 		font-size: 1.05rem;

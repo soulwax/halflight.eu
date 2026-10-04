@@ -57,6 +57,7 @@
 		class="t-btn play"
 		disabled={!player.currentTrack ||
 			player.isLoading ||
+			(!player.isPlaying && player.resumeStatus !== 'ready') ||
 			player.playbackMode !== 'direct' ||
 			player.isPlaybackActiveElsewhere}
 		aria-busy={player.isLoading}

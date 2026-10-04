@@ -1,11 +1,22 @@
 # Navigation and listening recovery redesign
 
-Written 2026-10-04. Status: specification only; implementation and device acceptance pending.
+Written 2026-10-04. Status: core entry, navigation, and recovery implementation delivered;
+live TIDAL and physical-device acceptance pending.
 This plan takes precedence over earlier claims that mobile navigation is delivered or accepted.
 It supplements [overall UX/UI](overall-ux-ui-plan.md) and
 [mobile player controls](mobile-player-ux-plan.md).
 
 ## Problem and evidence
+
+Implementation record: `/` now chooses the mobile or desktop shell from the CSS viewport
+width after sign-in, with an explicit saved view choice taking priority. Sign-in preserves
+validated internal return destinations. Both shells expose a view switch, and the desktop
+mini-player title opens its expanded player. A single restored song gets a silent stream
+readiness check; confirmed unavailable, authorization, plan, and temporary failures have
+different recovery actions. Unknown stream errors return temporary status. The older local
+queue journal format was invalidated following the owner's content reset. Automated checks
+cover routing, error classification, API status, and the player identity action. Device and
+live account validation are still required for acceptance.
 
 The owner's four iPhone screenshots show sign-in, a restored Home session, an expanded
 player dominated by placeholder artwork, and a track detail failure. The sequence leaves

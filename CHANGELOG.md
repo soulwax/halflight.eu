@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Send narrow-screen sign-ins to Halflight Now, preserve safe return destinations, and make
+  mobile and desktop view selection explicit. Open the desktop player from its song title
+  while keeping track details as a labeled secondary action.
+- Check the restored recording before offering Resume, distinguish playback failures, and
+  prevent unknown upstream failures from appearing as permanently unavailable tracks.
+- Invalidate pre-reset local queue journals when the new player loads.
 - Keep desktop page scrolling within the listening panes above the docked player, with no outer
   document scrolling or scroll chaining beneath it; preserve public and mobile page scrolling.
 - Retain queue edits through browser-storage failures, stalled requests, lost acknowledgements,

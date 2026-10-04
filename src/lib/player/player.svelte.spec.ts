@@ -374,7 +374,7 @@ describe('PlayerState', () => {
 		localStorage.setItem(
 			QUEUE_CACHE_KEY,
 			JSON.stringify({
-				version: 1,
+				version: 3,
 				currentTrack: sampleTrack1,
 				queue: persistedQueue(sampleTrack2),
 				history: [sampleTrack3],
@@ -394,7 +394,7 @@ describe('PlayerState', () => {
 		localStorage.setItem(
 			QUEUE_CACHE_KEY,
 			JSON.stringify({
-				version: 1,
+				version: 3,
 				currentTrack: sampleTrack1,
 				queue: [],
 				history: [],
@@ -423,7 +423,7 @@ describe('PlayerState', () => {
 		localStorage.setItem(
 			QUEUE_CACHE_KEY,
 			JSON.stringify({
-				version: 2,
+				version: 3,
 				currentTrack: sampleTrack1,
 				queue: [localEntry],
 				history: [],
@@ -458,7 +458,7 @@ describe('PlayerState', () => {
 		localStorage.setItem(
 			QUEUE_CACHE_KEY,
 			JSON.stringify({
-				version: 2,
+				version: 3,
 				currentTrack: null,
 				queue: [],
 				history: [],
@@ -482,6 +482,16 @@ describe('PlayerState', () => {
 		expect(player.currentTrack).toBeNull();
 	});
 
+	it('discards the pre-reset browser journal instead of restoring removed content', () => {
+		localStorage.setItem(
+			QUEUE_CACHE_KEY,
+			JSON.stringify({ version: 2, currentTrack: sampleTrack1, queue: [], history: [] })
+		);
+		const player = new PlayerState();
+		expect(player.currentTrack).toBeNull();
+		expect(localStorage.getItem(QUEUE_CACHE_KEY)).toBeNull();
+	});
+
 	it('mirrors the current queue to localStorage so the next load can paint instantly', () => {
 		const player = new PlayerState();
 		player.restorePlaybackState({
@@ -494,7 +504,7 @@ describe('PlayerState', () => {
 		player.schedulePersistence();
 
 		const cached = JSON.parse(localStorage.getItem(QUEUE_CACHE_KEY) ?? 'null');
-		expect(cached.version).toBe(2);
+		expect(cached.version).toBe(3);
 		expect(cached.currentTrack).toEqual(sampleTrack1);
 		expect(cached.history).toEqual([sampleTrack3]);
 	});

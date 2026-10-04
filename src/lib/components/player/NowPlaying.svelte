@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { resolve } from '$app/paths';
 	import { Disc } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { formatReleaseDate } from '#lib/format';
@@ -28,7 +27,12 @@
 	</span>
 
 	<div class="meta">
-		<a class="title" href={resolve('/app/tracks/[id]', { id: track.id })}>{track.title}</a>
+		<button
+			type="button"
+			class="title"
+			onclick={() => player.selectPanel('queue')}
+			aria-label={m.player_now_playing()}>{track.title}</button
+		>
 		<span class="sub">
 			{#if artistLine}<span class="artists">{artistLine}</span>{/if}
 			{#if albumLine}

@@ -1,7 +1,11 @@
 <script lang="ts">
-	import { LogOut, PanelLeftClose, PanelLeftOpen, Settings } from '@lucide/svelte';
+	import { LogOut, PanelLeftClose, PanelLeftOpen, Settings, Smartphone } from '@lucide/svelte';
 	import type { AppNavigationItem } from './navigation.js';
 	import { isCurrentNavigationItem } from './navigation.js';
+	import { m } from '#lib/paraglide/messages.js';
+	import { rememberSiteChoice, switchSitePath } from '#lib/mobile/site-entry';
+	import { localizeHref } from '#lib/paraglide/runtime';
+	import { page } from '$app/state';
 
 	interface Props {
 		navigation: AppNavigationItem[];
@@ -84,6 +88,15 @@
 	</nav>
 
 	<div class="side-nav-account mt-auto border-t border-[var(--border-subtle)] p-3">
+		<a
+			class="app-account-link"
+			href={localizeHref(`${switchSitePath(currentPath, 'mobile')}${page.url.search}`)}
+			title={collapsed ? m.site_mobile_view() : undefined}
+			onclick={() => rememberSiteChoice('mobile')}
+		>
+			<Smartphone size={17} aria-hidden="true" />
+			<span class="side-nav-label">{m.site_mobile_view()}</span>
+		</a>
 		{#if accountHref && accountLabel}
 			<a class="app-account-link" href={accountHref} title={collapsed ? accountLabel : undefined}>
 				<Settings size={17} aria-hidden="true" />

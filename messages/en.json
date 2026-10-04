@@ -1,5 +1,13 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"site_opening": "Opening your listening room…",
+	"site_mobile_view": "Mobile view",
+	"site_desktop_view": "Desktop view",
+	"site_switch_view": "Switch listening view",
+	"player_unavailable_track": "This recording cannot play right now.",
+	"player_temporary_failure": "Playback could not start. Check your connection and try again.",
+	"player_plan_failure": "Your TIDAL account cannot stream this recording.",
+	"player_skip_unavailable": "Skip this recording",
 	"tidal_title": "TIDAL",
 	"tidal_subtitle": "Personal account connection",
 	"tidal_connected": "Connected",

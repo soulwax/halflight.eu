@@ -7,6 +7,7 @@
 	import TidalPlaybackSetup from '#lib/components/tidal/TidalPlaybackSetup.svelte';
 	import TidalDebugTokens from '#lib/components/tidal/TidalDebugTokens.svelte';
 	import { getThemeLabel, type Theme } from '#lib/theme.js';
+	import { rememberSiteChoice } from '#lib/mobile/site-entry';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form?: ActionData } = $props();
@@ -89,6 +90,12 @@
 		lead={m.mobile_settings_description()}
 		headingId="mobile-settings-title"
 	/>
+	<section class="card" aria-labelledby="site-choice-title">
+		<h2 id="site-choice-title">{m.site_switch_view()}</h2>
+		<a class="button" href={resolve('/app')} onclick={() => rememberSiteChoice('desktop')}
+			>{m.site_desktop_view()}</a
+		>
+	</section>
 
 	<section class="card connection" aria-labelledby="mobile-settings-connection-title">
 		<h2 id="mobile-settings-connection-title">{m.mobile_settings_connection_title()}</h2>

@@ -157,6 +157,11 @@ describe('GET /api/tracks/[id]/audio', () => {
 		await expect(GET(event())).rejects.toMatchObject({ status: 404 });
 	});
 
+	it('reports an upstream failure as temporary', async () => {
+		mocks.resolveTrackStreamCached.mockRejectedValueOnce(new Error('upstream unavailable'));
+		await expect(GET(event())).rejects.toMatchObject({ status: 502 });
+	});
+
 	describe('segmented (HiRes DASH) delivery', () => {
 		const SEGMENTS = [
 			'https://cdn.example.test/init.mp4',

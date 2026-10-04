@@ -13,6 +13,7 @@ function event(isAdministrator = true) {
 			isAdministrator
 		},
 		fetch: vi.fn(),
+		url: new URL('https://halflight.test/app/search?q=night'),
 		cookies: {}
 	} as unknown as Parameters<typeof load>[0];
 }
@@ -30,7 +31,10 @@ describe('/app +layout.server', () => {
 	});
 
 	it('redirects a signed-in non-owner before loading owner session data', async () => {
-		await expect(load(event(false))).rejects.toMatchObject({ status: 302, location: '/sign-in' });
+		await expect(load(event(false))).rejects.toMatchObject({
+			status: 302,
+			location: '/sign-in?returnTo=%2Fapp%2Fsearch%3Fq%3Dnight'
+		});
 		expect(mocks.loadSessionShellData).not.toHaveBeenCalled();
 	});
 });

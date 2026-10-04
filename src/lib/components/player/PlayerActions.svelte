@@ -14,6 +14,8 @@
 	import { m } from '#lib/paraglide/messages.js';
 	import { player } from '#lib/player/player.svelte.js';
 	import { customPlaylists } from '#lib/player/customPlaylists.svelte.js';
+	import { resolve } from '$app/paths';
+	import { goto } from '$app/navigation';
 	import type { TrackSummary } from '#lib/tidal/models';
 	import PlayerVolume from './PlayerVolume.svelte';
 	import SessionSaveStatus from './SessionSaveStatus.svelte';
@@ -38,6 +40,13 @@
 				onSelect: () => customPlaylists.promptAddToPlaylist(track)
 			}
 		];
+
+		actions.push({
+			id: 'track-details',
+			label: m.track_details_label(),
+			icon: ExternalLink,
+			onSelect: () => void goto(resolve('/app/tracks/[id]', { id: track.id }))
+		});
 
 		actions.push({
 			id: 'playback-details',

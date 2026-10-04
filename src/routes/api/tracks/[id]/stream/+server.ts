@@ -85,6 +85,6 @@ export const GET: RequestHandler = async (event) => {
 				{ status: 403 }
 			);
 		}
-		return json({ error: 'stream_unavailable', requiresFullAuth: false }, { status: 404 });
+		return json({ error: 'stream_unavailable', requiresFullAuth: false }, { status: 503 });
 	}
 };

@@ -1,5 +1,13 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"site_opening": "Dein Hörraum wird geöffnet…",
+	"site_mobile_view": "Mobile Ansicht",
+	"site_desktop_view": "Desktop-Ansicht",
+	"site_switch_view": "Höransicht wechseln",
+	"player_unavailable_track": "Diese Aufnahme lässt sich gerade nicht abspielen.",
+	"player_temporary_failure": "Die Wiedergabe konnte nicht starten. Prüfe die Verbindung und versuche es erneut.",
+	"player_plan_failure": "Mit deinem TIDAL-Konto lässt sich diese Aufnahme nicht streamen.",
+	"player_skip_unavailable": "Aufnahme überspringen",
 	"tidal_title": "TIDAL",
 	"tidal_subtitle": "Persönliche Kontoverbindung",
 	"tidal_connected": "Verbunden",

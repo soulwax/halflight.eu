@@ -2,9 +2,9 @@
 	import { m } from '#lib/paraglide/messages.js';
 	import Notice from '#lib/components/ui/Notice.svelte';
 	import { enhance } from '$app/forms';
-	import type { ActionData } from './$types';
+	import type { ActionData, PageData } from './$types';
 
-	let { form }: { form: ActionData } = $props();
+	let { form, data }: { form: ActionData; data: PageData } = $props();
 	let mode = $state<'signIn' | 'signUp'>('signIn');
 </script>
 
@@ -27,6 +27,7 @@
 		{/if}
 
 		<form method="post" action="?/signInSocial">
+			<input type="hidden" name="returnTo" value={data.returnTo} />
 			<button class="github-button" type="submit">
 				<svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true" focusable="false">
 					<path
@@ -74,6 +75,7 @@
 			use:enhance
 			class="auth-form"
 		>
+			<input type="hidden" name="returnTo" value={data.returnTo} />
 			{#if mode === 'signUp'}
 				<label>
 					<span>{m.sign_in_name()}</span>

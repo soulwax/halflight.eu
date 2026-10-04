@@ -23,9 +23,44 @@
 	<p class="playback-pending" role="status">
 		{player.isLoading ? m.player_loading() : m.player_buffering()}
 	</p>
+{:else if player.currentTrack && player.resumeStatus === 'checking' && !player.isPlaying}
+	<p class="playback-pending" role="status">{m.player_check_pending()}</p>
+{:else if player.currentTrack && player.resumeStatus === 'unavailable'}
+	<div class="playback-notice" role="status">
+		<p>{m.player_unavailable_track()}</p>
+		<Button onclick={() => player.next()}>{m.player_skip_unavailable()}</Button>
+	</div>
+{:else if player.currentTrack && player.resumeStatus === 'auth'}
+	<div class="playback-notice" role="status">
+		<p>{m.player_source_link()}</p>
+		<Button href={settingsHref}>{m.tidal_settings_title()}</Button>
+	</div>
+{:else if player.currentTrack && player.resumeStatus === 'plan'}
+	<div class="playback-notice" role="status">
+		<p>{m.player_plan_failure()}</p>
+		<Button
+			href={`https://tidal.com/browse/track/${encodeURIComponent(player.currentTrack.id)}`}
+			target="_blank"
+			rel="noreferrer">{m.action_open_in_tidal()}</Button
+		>
+	</div>
+{:else if player.currentTrack && player.resumeStatus === 'temporary' && player.playbackMode !== 'embed'}
+	<div class="playback-notice" role="status">
+		<p>{m.player_temporary_failure()}</p>
+		<Button onclick={() => player.retryPlayback()}>{m.track_retry()}</Button>
+	</div>
 {:else if player.playbackMode === 'embed' && player.currentTrack}
 	<div class="playback-notice" role="status">
-		<p>{player.requiresFullAuth ? m.player_source_link() : m.player_fallback()}</p>
+		<p>
+			{player.requiresFullAuth
+				? m.player_source_link()
+				: player.playbackReason === 'plan_no_streaming'
+					? m.player_plan_failure()
+					: player.playbackReason === 'stream_unavailable' ||
+						  player.playbackReason === 'network_error'
+						? m.player_temporary_failure()
+						: m.player_fallback()}
+		</p>
 		<div class="notice-actions">
 			<Button onclick={() => player.retryPlayback()}>{m.track_retry()}</Button>
 			{#if player.requiresFullAuth}

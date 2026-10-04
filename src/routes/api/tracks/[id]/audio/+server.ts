@@ -86,7 +86,7 @@ async function serveAudio(
 		) {
 			error(403, 'Full playback is not linked. Authorize playback via TIDAL Link in settings.');
 		}
-		error(404, 'Stream unavailable');
+		error(502, 'Stream temporarily unavailable');
 	}
 
 	// Identity of these bytes. Quality matters as much as the track: the URL does

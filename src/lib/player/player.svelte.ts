@@ -56,7 +56,8 @@ const PLAYBACK_DEVICE_KEY = 'syn:player:device-id';
  * by the server; only unacknowledged operations are rebased onto it.
  */
 const QUEUE_CACHE_KEY = 'syn:player:queue-cache';
-const QUEUE_CACHE_VERSION = 2;
+// The production content reset invalidated journals written by older builds.
+const QUEUE_CACHE_VERSION = 3;
 /** Bounded retry for a transient metadata-hydration failure (a dropped
  *  connection, an upstream blip) — a real 404 is never retried. */
 const MAX_METADATA_ATTEMPTS = 3;
@@ -179,6 +180,11 @@ export class PlayerState {
 	hasMediaMetadata = $state(false);
 	/** Diagnostic for the last failed direct-stream attempt (e.g. `not_linked`). */
 	playbackReason = $state<string | null>(null);
+	/** A single bounded stream check for the restored song; it never starts audio. */
+	resumeStatus = $state<'checking' | 'ready' | 'unavailable' | 'auth' | 'plan' | 'temporary'>(
+		'ready'
+	);
+	private resumeCheckGeneration = 0;
 
 	// Synchronized Lyrics state
 	lyrics = $state<string | null>(null);
@@ -216,6 +222,7 @@ export class PlayerState {
 		},
 		onError: () => {
 			// Fall back to embed if direct stream encounters an error
+			this.playbackReason = 'audio_failed';
 			this.playbackMode = 'embed';
 			this.isPlaying = false;
 			this.isLoading = false;
@@ -314,7 +321,13 @@ export class PlayerState {
 				this.writeLocalQueueCache();
 			},
 			onApplySession: (state) => {
+				const previousTrackId = this.currentTrack?.id;
 				this.currentTrack = state.currentTrack;
+				if (!state.currentTrack) this.resumeStatus = 'ready';
+				else if (!this.isPlaying && !this.streamUrl && previousTrackId !== state.currentTrack.id) {
+					this.resumeStatus = 'checking';
+					void this.checkResumeAvailability(state.currentTrack.id);
+				}
 				this.history = state.history.slice(-MAX_HISTORY_LENGTH);
 				this.currentTime = Math.max(0, Math.floor(state.currentTime));
 				this.duration = state.currentTrack?.duration ?? 0;
@@ -499,7 +512,10 @@ export class PlayerState {
 				currentTime?: unknown;
 				queueCommands?: unknown;
 			};
-			if (parsed.version !== 1 && parsed.version !== QUEUE_CACHE_VERSION) return;
+			if (parsed.version !== QUEUE_CACHE_VERSION) {
+				localStorage.removeItem(QUEUE_CACHE_KEY);
+				return;
+			}
 
 			const currentTrack = isTrackSummary(parsed.currentTrack) ? parsed.currentTrack : null;
 			const queue = Array.isArray(parsed.queue)
@@ -726,6 +742,8 @@ export class PlayerState {
 		this.reconciliationBase = null;
 		this.recordQueueReplacement();
 		this.currentTrack = track;
+		this.resumeCheckGeneration += 1;
+		this.resumeStatus = 'ready';
 		this.currentTime = 0;
 		// A scrub preview belongs to the track being dragged. If playback advances
 		// before the pointer is released, drop it rather than committing the old
@@ -1109,6 +1127,14 @@ export class PlayerState {
 				else {
 					this.requiresFullAuth = result.requiresAuth;
 					this.playbackReason = result.reason;
+					this.resumeStatus =
+						result.reason === 'track_unavailable'
+							? 'unavailable'
+							: result.reason === 'plan_no_streaming'
+								? 'plan'
+								: result.requiresAuth || result.reason === 'not_connected'
+									? 'auth'
+									: 'temporary';
 				}
 			}
 		}
@@ -1118,6 +1144,7 @@ export class PlayerState {
 		if (!isCurrentLoad()) return;
 
 		if (data && this.engine.hasElement) {
+			this.resumeStatus = 'ready';
 			// Store metadata
 			this.streamUrl = `/api/tracks/${encodeURIComponent(trackId)}/audio`;
 			this.audioQuality = data.audioQuality || data.audioMode || 'HIGH';
@@ -1461,7 +1488,7 @@ export class PlayerState {
 	}
 
 	/** Restore a server-saved queue once per browser session without auto-playing it. */
-	restorePlaybackState(state: SavedPlaybackState): void {
+	restorePlaybackState(state: SavedPlaybackState, knownUnavailableIds: string[] = []): void {
 		// State seeded by `loadLocalQueueCache` is optimistic only, never a
 		// reason to skip the authoritative restore — only genuine pre-restore
 		// user activity (this flag false, and something already playing/queued)
@@ -1473,6 +1500,14 @@ export class PlayerState {
 		this.hasRestoredPlaybackState = true;
 		this.hasHydratedFromLocalCache = false;
 		this.currentTrack = state.currentTrack;
+		const knownUnavailable = Boolean(
+			state.currentTrack && knownUnavailableIds.includes(state.currentTrack.id)
+		);
+		this.resumeStatus = knownUnavailable
+			? 'unavailable'
+			: state.currentTrack
+				? 'checking'
+				: 'ready';
 		this.queue = state.queue.slice(0, MAX_QUEUE_LENGTH);
 		this.history = state.history.slice(-MAX_HISTORY_LENGTH);
 		this.currentTime = Math.max(0, Math.floor(state.currentTime));
@@ -1490,10 +1525,35 @@ export class PlayerState {
 		}
 
 		if (this.currentTrack) void this.resolveCover(this.currentTrack);
+		if (this.currentTrack && !knownUnavailable)
+			void this.checkResumeAvailability(this.currentTrack.id);
 		this.hydrateTrackMetadata(
 			[...(this.currentTrack ? [this.currentTrack] : []), ...this.queue, ...this.history],
 			MAX_INITIAL_METADATA_HYDRATION
 		);
+	}
+
+	private async checkResumeAvailability(trackId: string): Promise<void> {
+		if (!isBrowser) return;
+		const generation = ++this.resumeCheckGeneration;
+		const result = await streamLoader.load(trackId);
+		if (
+			generation !== this.resumeCheckGeneration ||
+			this.currentTrack?.id !== trackId ||
+			this.isPlaying ||
+			this.isLoading
+		)
+			return;
+		this.resumeStatus = result.ok
+			? 'ready'
+			: result.reason === 'track_unavailable'
+				? 'unavailable'
+				: result.reason === 'plan_no_streaming'
+					? 'plan'
+					: result.requiresAuth || result.reason === 'not_connected'
+						? 'auth'
+						: 'temporary';
+		if (!result.ok) this.playbackReason = result.reason;
 	}
 
 	/**
