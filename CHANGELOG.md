@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Document the navigation and listening recovery redesign after the iPhone report, including
+  mobile entry after sign-in, Now Playing identity taps, resume validation, recovery states,
+  content reset scope, and physical-device acceptance gates.
+
 ### Fixed
 
 - Keep desktop page scrolling within the listening panes above the docked player, with no outer

@@ -30,6 +30,10 @@ listening workflows; [mobile player controls](docs/mobile-player-ux-plan.md) spe
 playback workstream. Their implementation records distinguish delivered core flows from remaining
 screen polish and physical-device acceptance.
 
+The [navigation and listening recovery redesign](docs/navigation-recovery-plan.md), written
+after the owner's 2026-10-04 iPhone report, specifies canonical-domain mobile entry, player
+navigation, resume eligibility, and failure recovery. These flows remain unaccepted.
+
 Mobile planning: [website](#the-mobile-site-halflight-now), [PWA](#the-installed-pwa),
 [later Tauri client](#later-tauri-native-client), and [release gates](#mobile-pwa-and-native-release-gates).
 Server coordination: [local Redis](#local-redis-cache-and-coordination) complements Postgres and
