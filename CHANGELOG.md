@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Rework the mobile fullscreen player in the image of Spotify: moody dark vertical atmospheric
+  gradient, Spotify-styled context header with provenance eyebrows, centered 8px rounded cover
+  with rich ambient shadow, bold left-aligned track identity with release metadata and quality pill,
+  prominent circular transport with tactile micro-interactions, a bottom utility row for track
+  info, credits, and queue count badge, and a signature Spotify Lyrics preview card linked to
+  synchronized lyrics.
 - Document the navigation and listening recovery redesign after the iPhone report, including
   mobile entry after sign-in, Now Playing identity taps, resume validation, recovery states,
   content reset scope, and physical-device acceptance gates.
