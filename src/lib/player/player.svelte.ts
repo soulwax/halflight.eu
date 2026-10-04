@@ -18,7 +18,12 @@ import {
 	toDisplayTrack,
 	type QueueEntry
 } from './queue-entry.js';
-import { streamLoader, streamPreloader, type PreloadedStreamData } from './stream-preloader.js';
+import {
+	getOrAwaitPreloadedStreamData,
+	streamLoader,
+	streamPreloader,
+	type PreloadedStreamData
+} from './stream-preloader.js';
 import {
 	PlaybackSessionCoordinator,
 	isTrackSummary,
@@ -1118,7 +1123,7 @@ export class PlayerState {
 			// If not yet preloaded, check if a preload is inflight or fetch directly.
 			// Do not pause the audio before we have the next source, to preserve the
 			// iOS WebKit background continuation token during queue handover.
-			data = await streamPreloader.getOrAwait(trackId);
+			data = await getOrAwaitPreloadedStreamData(trackId, abort.signal);
 			if (!isCurrentLoad()) return;
 			if (!data) {
 				const result = await streamLoader.load(trackId, abort.signal);
