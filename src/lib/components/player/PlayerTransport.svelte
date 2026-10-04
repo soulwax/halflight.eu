@@ -121,12 +121,27 @@
 		touch-action: manipulation;
 		user-select: none;
 		-webkit-tap-highlight-color: transparent;
+		transition:
+			transform var(--dur-fast) ease,
+			color var(--dur-fast) ease,
+			opacity var(--dur-fast) ease;
+	}
+	.mobile .t-btn:active:not(:disabled) {
+		transform: scale(0.9);
 	}
 	.mobile .play {
 		width: 64px;
 		height: 64px;
 		background: var(--action);
 		color: var(--action-contrast);
+		box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+		transition:
+			transform var(--dur-fast) ease,
+			box-shadow var(--dur-fast) ease;
+	}
+	.mobile .play:active:not(:disabled) {
+		transform: scale(0.94);
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 	}
 	.mobile .t-btn.on {
 		color: var(--action);

@@ -95,13 +95,13 @@ describe('streamPreloader', () => {
 
 		streamPreloader.preload('joined');
 		await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
-		expect(preloadSignal?.aborted).toBe(false);
+		expect((preloadSignal as AbortSignal | null)?.aborted).toBe(false);
 
 		const foreground = new AbortController();
 		const handoff = getOrAwaitPreloadedStreamData('joined', foreground.signal);
 		foreground.abort();
 
 		await expect(handoff).resolves.toBeNull();
-		expect(preloadSignal?.aborted).toBe(true);
+		expect((preloadSignal as AbortSignal | null)?.aborted).toBe(true);
 	});
 });

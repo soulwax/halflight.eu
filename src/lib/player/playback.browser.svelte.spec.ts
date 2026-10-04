@@ -169,7 +169,7 @@ describe('PlayerState browser playback', () => {
 		async (cancellation) => {
 			let preloadSignal: AbortSignal | null = null;
 			const fetchMock = vi.fn((url: string, init?: RequestInit) => {
-				if (String(url).includes('/lookahead/')) {
+				if (String(url).includes('/lookahead/stream')) {
 					preloadSignal = init?.signal ?? null;
 					return new Promise<Response>((_resolve, reject) => {
 						init?.signal?.addEventListener(
@@ -192,13 +192,13 @@ describe('PlayerState browser playback', () => {
 					expect.objectContaining({ signal: expect.any(AbortSignal) })
 				)
 			);
-			expect(preloadSignal?.aborted).toBe(false);
+			expect((preloadSignal as AbortSignal | null)?.aborted).toBe(false);
 
-			player.play(track('lookahead'));
+			player.playFromQueue(player.queue[0].entryId);
 			if (cancellation === 'skip') player.play(track('other'));
 			else player.close();
 
-			await vi.waitFor(() => expect(preloadSignal?.aborted).toBe(true));
+			await vi.waitFor(() => expect((preloadSignal as AbortSignal | null)?.aborted).toBe(true));
 		}
 	);
 });
