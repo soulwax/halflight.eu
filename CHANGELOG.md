@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Remove browser-facing TIDAL token inspection so access and refresh tokens remain server-only.
 - Send narrow-screen sign-ins to Halflight Now, preserve safe return destinations, and make
   mobile and desktop view selection explicit. Open the desktop player from its song title
   while keeping track details as a labeled secondary action.
@@ -56,11 +57,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared playback and queue-save recovery notices, confirmed queue clearing, and named queue saving
   with pending/error/success states and safe retries after a lost response.
 - Mobile full-playback setup with bounded polling, cancellation, and allowlisted OAuth return to
-  mobile Settings; owner token inspection is collapsed under Advanced.
+  mobile Settings.
 - Overall product UX/UI and mobile playback-controls implementation plans, covering desktop and
   mobile navigation, setup, transport, seeking, recovery, music actions, accessibility, and delivery.
-- TIDAL settings can explicitly reveal and copy the signed-in owner's browse and playback OAuth
-  values, with authenticated no-store delivery and matching desktop and mobile controls.
 - Track the standalone `bragi-cli` source as the public `bragi/` submodule; its GitHub repository
   owns the cross-platform release workflow.
 - The standalone `bragi-cli` package, with npm executables, setup, bounded inspection and
