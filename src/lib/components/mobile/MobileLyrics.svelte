@@ -24,6 +24,8 @@
 		<p class="empty" role="status">
 			<Loader2 size={20} class="animate-spin" />{m.now_lyrics_loading()}
 		</p>
+	{:else if player.lyrics === '♪ Instrumental ♪'}
+		<p class="empty">{m.player_lyrics_instrumental()}</p>
 	{:else if player.lyricsCues.length}
 		<div class="cues">
 			{#each player.lyricsCues as cue, index (`${cue.time}-${index}`)}
@@ -36,10 +38,16 @@
 				</button>
 			{/each}
 		</div>
+		{#if player.lyricsProvider}
+			<p class="provider">{m.player_lyrics_provider({ provider: player.lyricsProvider })}</p>
+		{/if}
 	{:else if player.lyrics}
 		<div class="plain">
 			{#each player.lyrics.split('\n') as line, index (index)}<p>{line || ' '}</p>{/each}
 		</div>
+		{#if player.lyricsProvider}
+			<p class="provider">{m.player_lyrics_provider({ provider: player.lyricsProvider })}</p>
+		{/if}
 	{:else}
 		<p class="empty">{m.player_no_lyrics()}</p>
 	{/if}
@@ -97,5 +105,13 @@
 		min-height: 12rem;
 		color: var(--text-muted);
 		text-align: center;
+	}
+	.provider {
+		margin-top: 2rem;
+		text-align: center;
+		font-size: var(--fs-xs);
+		color: var(--text-muted);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
 	}
 </style>

@@ -126,10 +126,20 @@ export {
 } from './device-auth';
 export {
 	fetchTrackLyrics,
+	resolveTrackLyrics,
+	resolveLyricsFallbacks,
+	fetchLrclibLyrics,
+	fetchLyricsOvh,
 	parseLrc,
+	stripLrc,
+	cleanTrackTitle,
+	cleanArtistName,
+	__resetLyricsCache,
 	type LyricCue,
 	type TrackLyricsResponse,
-	type ParsedTrackLyrics
+	type ParsedTrackLyrics,
+	type FallbackLyricsOptions,
+	type ResolveTrackLyricsOptions
 } from './lyrics';
 export {
 	fetchAlbumReview,

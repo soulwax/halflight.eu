@@ -6,6 +6,8 @@
 
 {#if player.isLyricsLoading}
 	<div class="lyr-status"><Loader2 size={20} class="animate-spin" /></div>
+{:else if player.lyrics === '♪ Instrumental ♪'}
+	<p class="empty">{m.player_lyrics_instrumental()}</p>
 {:else if player.lyricsCues.length}
 	<div class="lyr-cues">
 		{#each player.lyricsCues as cue, i (cue.time + '-' + i)}
@@ -19,10 +21,16 @@
 			</button>
 		{/each}
 	</div>
+	{#if player.lyricsProvider}
+		<p class="lyr-provider">{m.player_lyrics_provider({ provider: player.lyricsProvider })}</p>
+	{/if}
 {:else if player.lyrics}
 	<div class="lyr-plain">
 		{#each player.lyrics.split('\n') as line, i (i)}<p>{line || ' '}</p>{/each}
 	</div>
+	{#if player.lyricsProvider}
+		<p class="lyr-provider">{m.player_lyrics_provider({ provider: player.lyricsProvider })}</p>
+	{/if}
 {:else}
 	<p class="empty">{m.player_no_lyrics()}</p>
 {/if}

@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add multi-tier lyrics resolution with eager fetching and community fallbacks:
+  cascades from TIDAL v1 API to LRCLIB (exact match, cleaned metadata match, fuzzy search)
+  and Lyrics.ovh for plain text. Supports instrumental tracks, metadata query hints,
+  L1 in-memory LRU and L2 Redis caching with single-flight deduplication, and exposes
+  provider attribution in player state and UI.
 - Rework the mobile fullscreen player in the image of Spotify: moody dark vertical atmospheric
   gradient, Spotify-styled context header with provenance eyebrows, centered 8px rounded cover
   with rich ambient shadow, bold left-aligned track identity with release metadata and quality pill,

@@ -194,6 +194,7 @@ export class PlayerState {
 	// Synchronized Lyrics state
 	lyrics = $state<string | null>(null);
 	lyricsCues = $state<Array<{ time: number; text: string }>>([]);
+	lyricsProvider = $state<string | null>(null);
 	isLyricsLoading = $state(false);
 	isLyricsOpen = $derived(this.isExpanded && this.panel === 'lyrics');
 
@@ -336,7 +337,10 @@ export class PlayerState {
 				this.history = state.history.slice(-MAX_HISTORY_LENGTH);
 				this.currentTime = Math.max(0, Math.floor(state.currentTime));
 				this.duration = state.currentTrack?.duration ?? 0;
-				if (this.currentTrack) void this.resolveCover(this.currentTrack);
+				if (this.currentTrack) {
+					void this.resolveCover(this.currentTrack);
+					void this.loadLyrics(this.currentTrack.id, this.currentTrack);
+				}
 				this.hydrateTrackMetadata(
 					[...(this.currentTrack ? [this.currentTrack] : []), ...this.history],
 					MAX_INITIAL_METADATA_HYDRATION
@@ -771,6 +775,7 @@ export class PlayerState {
 		this.trackReplayGain = null;
 		this.lyrics = null;
 		this.lyricsCues = [];
+		this.lyricsProvider = null;
 		this.playbackMode = 'direct';
 		this.playbackReason = null;
 		this.requiresFullAuth = false;
@@ -783,7 +788,7 @@ export class PlayerState {
 
 		if (isBrowser) {
 			void this.loadAndPlayStream(track.id);
-			void this.loadLyrics(track.id);
+			void this.loadLyrics(track.id, track);
 			void this.resolveCover(track);
 			void this.resolveTrackMetadata(track);
 		}
@@ -989,27 +994,56 @@ export class PlayerState {
 		this.history = this.history.map(patched);
 	}
 
-	async loadLyrics(trackId: string): Promise<void> {
+	async loadLyrics(trackId: string, trackHint?: TrackSummary | null): Promise<void> {
+		if (!isBrowser) return;
 		this.isLyricsLoading = true;
 		try {
-			const res = await fetch(`/api/tracks/${encodeURIComponent(trackId)}/lyrics`).catch(
+			const track = trackHint ?? (this.currentTrack?.id === trackId ? this.currentTrack : null);
+			const queryParts: string[] = [];
+			if (track) {
+				if (track.title) queryParts.push(`title=${encodeURIComponent(track.title)}`);
+				const artist = track.artists?.[0]?.name;
+				if (artist) queryParts.push(`artist=${encodeURIComponent(artist)}`);
+				if (track.album?.title) queryParts.push(`album=${encodeURIComponent(track.album.title)}`);
+				if (track.duration)
+					queryParts.push(`duration=${encodeURIComponent(String(Math.round(track.duration)))}`);
+			}
+			const query = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
+			const res = await fetch(`/api/tracks/${encodeURIComponent(trackId)}/lyrics${query}`).catch(
 				() => null
 			);
+
+			// Discard late response if track changed while fetching
+			if (this.currentTrack?.id !== trackId) return;
+
 			if (res && res.ok) {
 				const data = (await res.json().catch(() => null)) as {
 					lyrics?: string;
+					subtitles?: string;
 					cues?: Array<{ time: number; text: string }>;
+					lyricsProvider?: string;
 				} | null;
 
 				if (data) {
 					this.lyrics = data.lyrics || null;
 					this.lyricsCues = data.cues || [];
+					this.lyricsProvider = data.lyricsProvider || null;
+					return;
 				}
 			}
+			this.lyrics = null;
+			this.lyricsCues = [];
+			this.lyricsProvider = null;
 		} catch {
-			// Lyrics unavailable
+			if (this.currentTrack?.id === trackId) {
+				this.lyrics = null;
+				this.lyricsCues = [];
+				this.lyricsProvider = null;
+			}
 		} finally {
-			this.isLyricsLoading = false;
+			if (this.currentTrack?.id === trackId) {
+				this.isLyricsLoading = false;
+			}
 		}
 	}
 
@@ -1028,7 +1062,7 @@ export class PlayerState {
 		this.panel = panel;
 		this.isExpanded = true;
 		if (panel === 'lyrics' && !this.lyrics && this.currentTrack) {
-			void this.loadLyrics(this.currentTrack.id);
+			void this.loadLyrics(this.currentTrack.id, this.currentTrack);
 		}
 		if (save) this.savePrefs();
 	}
@@ -1209,6 +1243,9 @@ export class PlayerState {
 
 		if (this.currentTrack && !this.streamUrl) {
 			void this.loadAndPlayStream(this.currentTrack.id);
+			if (!this.lyrics && !this.lyricsCues.length && !this.isLyricsLoading) {
+				void this.loadLyrics(this.currentTrack.id, this.currentTrack);
+			}
 		} else if (this.engine.hasElement && this.streamUrl) {
 			this.isLoading = true;
 			const generation = this.streamLoadGeneration;
@@ -1247,6 +1284,9 @@ export class PlayerState {
 		this.playbackReason = null;
 		this.claimPlaybackControlForIntent();
 		void this.loadAndPlayStream(this.currentTrack.id);
+		if (!this.lyrics && !this.lyricsCues.length && !this.isLyricsLoading) {
+			void this.loadLyrics(this.currentTrack.id, this.currentTrack);
+		}
 	}
 
 	private clampToTrack(seconds: number): number {
