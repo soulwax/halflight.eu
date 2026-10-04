@@ -114,6 +114,7 @@
 		bind:this={mainElement}
 		id="main-content"
 		class="mobile-scroll-region min-h-0 flex-1 overflow-y-auto"
+		class:full-now={isFullNowPlaying}
 	>
 		{@render children()}
 	</main>
@@ -173,6 +174,14 @@
 		overscroll-behavior-y: contain;
 		-webkit-overflow-scrolling: touch;
 		scrollbar-width: none;
+		overflow-x: hidden;
+	}
+
+	.mobile-scroll-region.full-now {
+		padding-bottom: 0;
+		overflow: hidden;
+		display: flex;
+		flex-direction: column;
 	}
 
 	.mobile-scroll-region::-webkit-scrollbar {

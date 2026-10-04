@@ -87,6 +87,8 @@
 		margin: 0;
 		accent-color: var(--action);
 		cursor: pointer;
+		touch-action: manipulation;
+		-webkit-tap-highlight-color: transparent;
 	}
 	.mobile input:disabled {
 		cursor: default;

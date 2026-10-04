@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fit the mobile fullscreen player within the mobile viewport without vertical or horizontal
+  scrolling on standard phone dimensions, fluidly scale artwork to available space, eliminate
+  redundant safe-area padding in the fullscreen layout, and enable snappy touch response with
+  touch-action manipulation.
 - Send narrow-screen sign-ins to Halflight Now, preserve safe return destinations, and make
   mobile and desktop view selection explicit. Open the desktop player from its song title
   while keeping track details as a labeled secondary action.

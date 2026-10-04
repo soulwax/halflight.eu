@@ -193,9 +193,58 @@ describe('mobile Now layout and recovery', () => {
 			expect(rect.height).toBeGreaterThanOrEqual(48);
 			expect(rect.left).toBeGreaterThanOrEqual(0);
 			expect(rect.right).toBeLessThanOrEqual(320);
+			expect(rect.top).toBeGreaterThanOrEqual(0);
+			expect(rect.bottom).toBeLessThanOrEqual(640);
 		}
+		const screen = document.querySelector('.now-screen');
+		expect(screen?.scrollHeight).toBeLessThanOrEqual(640);
+		expect(screen?.scrollWidth).toBeLessThanOrEqual(320);
 		await page.viewport(1280, 900);
 	});
+	it.each([
+		{ width: 375, height: 667 },
+		{ width: 390, height: 844 }
+	])(
+		'fits completely within mobile viewport $width×$height with zero vertical or horizontal overflow',
+		async ({ width, height }) => {
+			await page.viewport(width, height);
+			player.currentTrack = track;
+			player.duration = 542;
+			player.currentTime = 84;
+			await render(NowPlayingScreen);
+
+			const closeBtn = page.getByRole('link', { name: m.now_close_player() });
+			const closeRect = closeBtn.element().getBoundingClientRect();
+			expect(closeRect.top).toBeGreaterThanOrEqual(0);
+
+			for (const name of [
+				m.player_shuffle(),
+				m.player_previous(),
+				m.player_play_track(),
+				m.player_next(),
+				m.player_repeat_off()
+			]) {
+				const rect = page.getByRole('button', { name }).element().getBoundingClientRect();
+				expect(rect.top).toBeGreaterThanOrEqual(0);
+				expect(rect.bottom).toBeLessThanOrEqual(height);
+				expect(rect.left).toBeGreaterThanOrEqual(0);
+				expect(rect.right).toBeLessThanOrEqual(width);
+			}
+
+			for (const linkName of [m.now_queue_open(), m.now_lyrics_open(), m.now_credits_title()]) {
+				const linkRect = page
+					.getByRole('link', { name: linkName })
+					.element()
+					.getBoundingClientRect();
+				expect(linkRect.bottom).toBeLessThanOrEqual(height);
+			}
+
+			const screen = document.querySelector('.now-screen');
+			expect(screen?.scrollHeight).toBeLessThanOrEqual(height);
+			expect(screen?.scrollWidth).toBeLessThanOrEqual(width);
+			await page.viewport(1280, 900);
+		}
+	);
 	it('shows a safe TIDAL destination with direct seek and play unavailable in fallback', async () => {
 		player.currentTrack = track;
 		player.playbackMode = 'embed';

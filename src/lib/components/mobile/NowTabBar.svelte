@@ -48,6 +48,8 @@
 		overflow-wrap: anywhere;
 		position: relative;
 		border-radius: var(--radius-md);
+		touch-action: manipulation;
+		-webkit-tap-highlight-color: transparent;
 		transition:
 			color var(--dur-fast) var(--ease-out),
 			background-color var(--dur-fast) var(--ease-out);

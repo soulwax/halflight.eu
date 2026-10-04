@@ -185,6 +185,12 @@
 		border: 0;
 		border-radius: var(--radius-full);
 		cursor: pointer;
+		touch-action: manipulation;
+		transition: background-color var(--dur-fast) ease;
+	}
+	.track-mobile-trigger:hover,
+	.track-mobile-trigger:active {
+		background: var(--surface-selected);
 	}
 	.track-mobile-trigger:focus-visible {
 		outline: 2px solid var(--focus-ring);

@@ -143,6 +143,12 @@
 	}
 	.mobile-mini-player a {
 		min-height: 48px;
+		touch-action: manipulation;
+		-webkit-tap-highlight-color: transparent;
+	}
+	.mobile-mini-player button {
+		touch-action: manipulation;
+		-webkit-tap-highlight-color: transparent;
 	}
 	.mobile-mini-player button:focus-visible {
 		outline: 2px solid var(--focus-ring);

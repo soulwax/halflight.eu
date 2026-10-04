@@ -118,6 +118,9 @@
 		background: transparent;
 		color: var(--text-secondary);
 		cursor: pointer;
+		touch-action: manipulation;
+		user-select: none;
+		-webkit-tap-highlight-color: transparent;
 	}
 	.mobile .play {
 		width: 64px;

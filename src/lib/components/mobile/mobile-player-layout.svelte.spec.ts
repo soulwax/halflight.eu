@@ -58,8 +58,23 @@ it.each([
 			expect(rect.height).toBeGreaterThanOrEqual(48);
 			expect(rect.left).toBeGreaterThanOrEqual(0);
 			expect(rect.right).toBeLessThanOrEqual(width);
+			if (scale === 1) {
+				expect(rect.top).toBeGreaterThanOrEqual(0);
+				expect(rect.bottom).toBeLessThanOrEqual(height);
+			}
 		}
 		expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(width);
+		if (scale === 1) {
+			const screen = document.querySelector('.now-screen');
+			expect(screen?.scrollHeight).toBeLessThanOrEqual(height);
+			for (const linkName of [m.now_queue_open(), m.now_lyrics_open(), m.now_credits_title()]) {
+				const linkRect = page
+					.getByRole('link', { name: linkName })
+					.element()
+					.getBoundingClientRect();
+				expect(linkRect.bottom).toBeLessThanOrEqual(height);
+			}
+		}
 	}
 );
 it('keeps all four German navigation labels and touch targets at 320px with enlarged text', async () => {
