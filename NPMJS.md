@@ -3,8 +3,7 @@
 ## Decision
 
 Extract Syn's audio-file identification and metadata reading into the standalone
-[`soulwax/bragi-audio`](https://github.com/soulwax/bragi-audio) repository, mounted in this repository as the
-`./bragi-audio` Git submodule. The public npm package is
+[`soulwax/bragi-audio`](https://github.com/soulwax/bragi-audio) repository. The public npm package is
 [`bragi-audio`](https://www.npmjs.com/package/bragi-audio), released as `0.2.2`. Syn imports `bragi-audio` directly from the pinned registry release.
 
 The package must answer two different questions without conflating them:
@@ -282,16 +281,14 @@ sizes, long strings, and unknown tags.
 
 ## Syn integration
 
-The submodule is a development and release boundary, not Syn's production dependency mechanism.
-Published Syn builds should consume a pinned npm version and lockfile integrity; they must not
+The standalone repository is the development and release boundary. Syn builds should consume a pinned npm version and lockfile integrity; they must not
 depend on Git being available during deployment.
 
 ### Current release integration
 
 Syn installs `"bragi-audio": "0.2.2"`; the lockfile records the registry artifact and its
 integrity. `bragi-audio`, `bragi-audio/player`, `bragi-audio/delivery`, and `bragi-audio/audio` imports resolve
-to that release. The source submodule remains available for package development, but deployment
-installation no longer requires its files or Git. Package changes need a new publication and an
+to that release. Deployment installation requires neither the package source nor Git. Package changes need a new publication and an
 explicit dependency/lockfile update before Syn consumes them.
 
 ### Data ownership

@@ -89,11 +89,11 @@ Watch for the case where **no `/stream` request appears at all**: that is
 
 ## Traps that cost real time
 
-- **The `<audio>` element lives in the `bragi-audio` submodule, not in `src/`.**
+- **The `<audio>` element lives in the `bragi-audio` package, not in `src/`.**
   `AudioEngine` (`bragi-audio/src/player/audio-engine.ts`) owns the element, the Web Audio
   headroom stage, and volume application; `player.svelte.ts` only reacts to its events
   (the `new AudioEngine({...})` field). Syn consumes the **published** `bragi-audio` npm release.
-  Editing `bragi-audio/src/` affects the source submodule; build and publish a new package version,
+  To change it, edit the separate `soulwax/bragi-audio` repository, publish a new version,
   then update Syn's dependency and lockfile to consume it. `queue-entry.ts`,
   `playback-reconciliation.ts`, `playback-assessment.ts`,
   `stream-preloader.ts`, and `media-session.ts` are likewise thin Syn-typed wrappers over

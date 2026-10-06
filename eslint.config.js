@@ -16,7 +16,7 @@ const gitignorePath = path.resolve(import.meta.dirname, '.gitignore');
 // because building the TS program per run is slow.
 export default defineConfig(
 	includeIgnoreFile(gitignorePath),
-	{ ignores: ['src/lib/paraglide/**', 'storybook-static/**', 'bragi-audio/**', 'bragi/**'] },
+	{ ignores: ['src/lib/paraglide/**', 'storybook-static/**'] },
 	js.configs.recommended,
 	ts.configs.recommended,
 	svelte.configs.recommended,
