@@ -774,5 +774,8 @@
 	"now_library_clear_search": "Clear search",
 	"now_library_no_matches": "No saved playlists match “{query}”. Try another search.",
 	"now_library_unplayable_skipped": "{count} currently unavailable tracks are excluded from playback. Your saved playlists are unchanged.",
-	"now_library_available_count": "{count} available to play"
+	"now_library_available_count": "{count} available to play",
+	"now_error_description": "This screen couldn’t be loaded. Your music keeps playing.",
+	"now_error_not_found": "This page doesn’t exist. Your music keeps playing.",
+	"now_error_home": "Back to Home"
 }

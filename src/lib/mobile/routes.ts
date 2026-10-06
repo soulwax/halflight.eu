@@ -41,3 +41,12 @@ export function isPublicMobileRoute(pathname: string): boolean {
 		(path) => deLocalizedPathname === path || deLocalizedPathname.startsWith(`${path}/`)
 	);
 }
+
+/**
+ * Where an error page sends the listener. A failure on a Halflight Now URL must
+ * stay on the mobile site rather than dropping a phone into the desktop
+ * Listening Room.
+ */
+export function errorRecoveryPath(pathname: string): '/home' | '/app' {
+	return isMobileRoute(pathname) && !isPublicMobileRoute(pathname) ? '/home' : '/app';
+}

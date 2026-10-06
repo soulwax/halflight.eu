@@ -774,5 +774,8 @@
 	"now_library_clear_search": "Suche zurücksetzen",
 	"now_library_no_matches": "Keine gespeicherten Playlists passen zu „{query}“. Versuche eine andere Suche.",
 	"now_library_unplayable_skipped": "{count} derzeit nicht verfügbare Titel werden bei der Wiedergabe übersprungen. Deine gespeicherten Playlists bleiben unverändert.",
-	"now_library_available_count": "{count} Titel abspielbar"
+	"now_library_available_count": "{count} Titel abspielbar",
+	"now_error_description": "Dieser Bildschirm konnte nicht geladen werden. Deine Musik läuft weiter.",
+	"now_error_not_found": "Diese Seite gibt es nicht. Deine Musik läuft weiter.",
+	"now_error_home": "Zurück zur Startseite"
 }

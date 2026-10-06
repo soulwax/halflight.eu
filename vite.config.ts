@@ -40,7 +40,12 @@ export default defineConfig({
 			extensions: ['.svelte', '.svx', '.md'],
 			experimental: {
 				remoteFunctions: true,
-				forkPreloads: true
+				// Off: with async mode, a forked preload of `/now/lyrics` let a torn-down
+				// Now Playing template effect read Svelte's uninitialised sentinel, so
+				// `setAttribute('aria-valuetext', Symbol)` threw and the whole route fell
+				// to the root error page. Reproducible on Kit 3.0.0-next.25 / Svelte
+				// 5.57; retest before turning it back on after a Kit upgrade.
+				forkPreloads: false
 			}
 		}),
 		paraglideVitePlugin({

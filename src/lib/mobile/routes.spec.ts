@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isMobileRoute, isPublicMobileRoute } from './routes';
+import { errorRecoveryPath, isMobileRoute, isPublicMobileRoute } from './routes';
 
 describe('isMobileRoute', () => {
 	it('matches an exact mobile root path', () => {
@@ -42,5 +42,19 @@ describe('isMobileRoute', () => {
 		expect(isPublicMobileRoute('/de-de/offline')).toBe(true);
 		expect(isPublicMobileRoute('/home')).toBe(false);
 		expect(isPublicMobileRoute('/app')).toBe(false);
+	});
+});
+
+describe('errorRecoveryPath', () => {
+	it('keeps a failed Halflight Now screen on the mobile site', () => {
+		expect(errorRecoveryPath('/now/lyrics')).toBe('/home');
+		expect(errorRecoveryPath('/albums/123')).toBe('/home');
+		expect(errorRecoveryPath('/de-de/search')).toBe('/home');
+	});
+
+	it('sends desktop and unrelated paths to the Listening Room', () => {
+		expect(errorRecoveryPath('/app/albums/123')).toBe('/app');
+		expect(errorRecoveryPath('/sign-in')).toBe('/app');
+		expect(errorRecoveryPath('/offline')).toBe('/app');
 	});
 });
