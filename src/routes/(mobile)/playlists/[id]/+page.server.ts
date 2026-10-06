@@ -27,7 +27,7 @@ const failure = (state: TidalPageState, _configured: boolean, id?: string): Mobi
  * detail stay desktop work.
  */
 export const load: PageServerLoad = async (event): Promise<MobilePlaylistData> => {
-	if (!event.locals.isAdministrator) error(403, 'Forbidden');
+	if (!event.locals.isListener) error(403, 'Forbidden');
 
 	const user = event.locals.user;
 	const id = event.params.id;

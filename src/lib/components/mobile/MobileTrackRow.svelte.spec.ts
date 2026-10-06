@@ -3,6 +3,7 @@ import { createRawSnippet } from 'svelte';
 import { describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import MobileTrackRow from './MobileTrackRow.svelte';
+import { player } from '#lib/player/player.svelte.js';
 import { m } from '#lib/paraglide/messages.js';
 import type { TrackSummary } from '#lib/tidal/models';
 
@@ -36,6 +37,24 @@ describe('MobileTrackRow.svelte', () => {
 		});
 
 		await expect.element(page.getByRole('button', { name: 'Remove' })).toBeInTheDocument();
+	});
+
+	it('keeps the selected occurrence when Play Now comes from the action sheet', async () => {
+		const repeated = [track, { ...track, id: 'other', title: 'Other song' }, track];
+		const play = vi.spyOn(player, 'play').mockImplementation(() => {});
+		render(MobileTrackRow, {
+			track,
+			contextTracks: repeated,
+			contextIndex: 2,
+			provenance: 'An album',
+			onActivate: () => {}
+		});
+
+		await page.getByRole('button', { name: m.track_action_menu() }).click();
+		await page.getByRole('dialog').getByRole('button', { name: m.track_action_play_now() }).click();
+
+		expect(play).toHaveBeenCalledWith(track, repeated, 'An album', 2);
+		play.mockRestore();
 	});
 
 	it('hides unresolved provider identifiers until live metadata arrives', async () => {

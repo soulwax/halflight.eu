@@ -18,7 +18,7 @@ import { POST } from './+server';
 
 function makeEvent(user: { id: string } | null = { id: 'admin-1' }, isAdmin = true) {
 	return {
-		locals: { user, isAdministrator: isAdmin },
+		locals: { user, isListener: isAdmin },
 		fetch: vi.fn()
 	} as unknown as Parameters<typeof POST>[0];
 }

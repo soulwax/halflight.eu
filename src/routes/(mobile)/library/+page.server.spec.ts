@@ -27,7 +27,7 @@ import { load } from './+page.server';
 
 function event(url: string) {
 	return {
-		locals: { user: { id: 'owner' }, isAdministrator: true },
+		locals: { user: { id: 'owner' }, isListener: true },
 		url: new URL(url),
 		fetch: vi.fn(),
 		cookies: {}

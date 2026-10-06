@@ -9,7 +9,7 @@ vi.mock('#lib/server/tidal', () => ({
 import { GET } from './+server';
 function event(query: string, returnTo = '/settings') {
 	return {
-		locals: { user: { id: 'owner' }, isAdministrator: true },
+		locals: { user: { id: 'owner' }, isListener: true },
 		url: new URL('https://halflight.test/tidal/callback?' + query),
 		cookies: {
 			get: () =>

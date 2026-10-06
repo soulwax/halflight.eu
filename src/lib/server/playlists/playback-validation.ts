@@ -55,6 +55,7 @@ export async function validatePlaylistPlayback(
 		let request = inFlight.get(key);
 		if (!request) {
 			request = resolveTrackStreamCached(track.id, {
+				userId: ownerId,
 				quality,
 				ctx: { ...ctx, fetch: (...args) => pacedFetch(ctx.fetch ?? fetch, ...args) }
 			})

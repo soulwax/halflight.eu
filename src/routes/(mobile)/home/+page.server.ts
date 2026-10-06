@@ -13,7 +13,7 @@ const MIX_LENGTH = 8;
  */
 export const load: PageServerLoad = async (event): Promise<{ dailyMix: TrackSummary[] }> => {
 	if (!event.locals.user) redirect(302, '/sign-in');
-	if (!event.locals.isAdministrator) error(403, 'Forbidden');
+	if (!event.locals.isListener) error(403, 'Forbidden');
 
 	const connection = await getConnectionStatus();
 	if (!connection.connected) return { dailyMix: [] };

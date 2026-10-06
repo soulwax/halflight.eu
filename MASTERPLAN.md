@@ -263,7 +263,7 @@ A good day with Halflight:
 
 1. **Keep tokens server-only.** The browser receives display data and action results, never access
    or refresh tokens, never a CDN URL.
-2. **Keep the encrypted single-row token store.** The two-token model (browse + playback) stays.
+2. **Keep the encrypted per-user token store.** The two-token model (browse + playback) stays.
 3. **Use least-privilege scopes.** Read-only scopes ship first; write scopes only when their UI is
    implemented and verified.
 4. **Use product actions, not arbitrary API requests.** Search, save, remove, create playlist, add

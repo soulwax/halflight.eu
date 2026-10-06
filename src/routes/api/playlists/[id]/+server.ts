@@ -13,7 +13,7 @@ interface UpdatePlaylistPayload {
 }
 
 export const PATCH: RequestHandler = async (event) => {
-	if (!event.locals.user || !event.locals.isAdministrator) {
+	if (!event.locals.user || !event.locals.isListener) {
 		error(401, 'Unauthorized');
 	}
 
@@ -51,7 +51,7 @@ export const PATCH: RequestHandler = async (event) => {
 };
 
 export const DELETE: RequestHandler = async (event) => {
-	if (!event.locals.user || !event.locals.isAdministrator) {
+	if (!event.locals.user || !event.locals.isListener) {
 		error(401, 'Unauthorized');
 	}
 

@@ -19,14 +19,14 @@ function eventFor(
 	method: string,
 	{
 		user = true,
-		isAdministrator = user,
+		isListener = user,
 		path = 'users/me',
 		query = ''
-	}: { user?: boolean; isAdministrator?: boolean; path?: string; query?: string } = {}
+	}: { user?: boolean; isListener?: boolean; path?: string; query?: string } = {}
 ) {
 	const fetch = vi.fn();
 	return {
-		locals: { user: user ? { id: 'user-1' } : undefined, isAdministrator },
+		locals: { user: user ? { id: 'user-1' } : undefined, isListener },
 		params: { path },
 		url: new URL(`https://syn.bluesix.dev/tidal/api/${path}${query}`),
 		request: new Request(`https://syn.bluesix.dev/tidal/api/${path}${query}`, { method }),
@@ -74,7 +74,7 @@ describe('/tidal/api/[...path]', () => {
 	});
 
 	it('does not expose the owner TIDAL connection to a signed-in non-administrator', async () => {
-		const event = eventFor('GET', { isAdministrator: false });
+		const event = eventFor('GET', { isListener: false });
 
 		const response = await GET(event as unknown as Parameters<typeof GET>[0]);
 

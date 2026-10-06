@@ -7,6 +7,8 @@
 	import { SvelteMap } from 'svelte/reactivity';
 	import { player } from '#lib/player/player.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
+	import { deLocalizeHref, localizeHref } from '#lib/paraglide/runtime';
+	import ConnectTidalNotice from '#lib/components/app/ConnectTidalNotice.svelte';
 	import MiniPlayer from '#lib/components/mobile/MiniPlayer.svelte';
 	import MobileNavigationMenu from '#lib/components/mobile/MobileNavigationMenu.svelte';
 	import NowTabBar from '#lib/components/mobile/NowTabBar.svelte';
@@ -119,6 +121,13 @@
 		class="mobile-scroll-region min-h-0 flex-1 overflow-y-auto"
 		class:full-now={isFullNowPlaying}
 	>
+		{#if !isFullNowPlaying}
+			<ConnectTidalNotice
+				connection={data.connection}
+				settingsHref={localizeHref(resolve('/(mobile)/settings'))}
+				hidden={deLocalizeHref(page.url.pathname) === '/settings'}
+			/>
+		{/if}
 		{@render children()}
 	</main>
 	{#if !isFullNowPlaying}

@@ -7,7 +7,7 @@ import { getConnectionStatus, getTrackCoverId } from '#lib/server/tidal';
  * playback metadata endpoint without returning its CDN URL to the browser.
  */
 export const GET: RequestHandler = async (event) => {
-	if (!event.locals.user || !event.locals.isAdministrator) error(401, 'Unauthorized');
+	if (!event.locals.user || !event.locals.isListener) error(401, 'Unauthorized');
 	const trackId = event.params.id;
 	if (!trackId) error(400, 'Track ID required');
 

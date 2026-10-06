@@ -3,7 +3,7 @@ import { buildLastfmAuthorizeUrl, isLastfmConfigured } from '#lib/server/lastfm'
 import { writeLastfmOAuthCookie } from '../oauth-cookie';
 
 export const GET: RequestHandler = (event) => {
-	if (!event.locals.user || !event.locals.isAdministrator) redirect(302, '/sign-in');
+	if (!event.locals.user || !event.locals.isListener) redirect(302, '/sign-in');
 	if (!isLastfmConfigured()) redirect(303, '/app/settings/lastfm?error=unavailable');
 	writeLastfmOAuthCookie(event.cookies, event.locals.user.id, event.url.protocol === 'https:');
 	redirect(302, buildLastfmAuthorizeUrl(), { external: ['https://www.last.fm'] });

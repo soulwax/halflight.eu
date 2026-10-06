@@ -7,6 +7,7 @@
 	import Player from '#lib/components/player/Player.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { onNavigate } from '$app/navigation';
+	import ConnectTidalNotice from '#lib/components/app/ConnectTidalNotice.svelte';
 	import { deLocalizeHref, localizeHref } from '#lib/paraglide/runtime';
 	import { player } from '#lib/player/player.svelte.js';
 	import { resolve } from '$app/paths';
@@ -105,6 +106,11 @@
 	collapseRailLabel={m.nav_collapse()}
 	expandRailLabel={m.nav_expand()}
 >
+	<ConnectTidalNotice
+		connection={data.connection}
+		settingsHref={localizeHref(resolve('/app/settings/tidal'))}
+		hidden={page.url.pathname.includes('/settings/tidal')}
+	/>
 	{@render children()}
 </AppShell>
 

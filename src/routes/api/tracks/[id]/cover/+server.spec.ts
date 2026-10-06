@@ -22,10 +22,10 @@ const fetchMock = vi.fn();
 function makeEvent(
 	trackId = '12345',
 	user: { id: string } | null = { id: 'u1' },
-	isAdministrator = true
+	isListener = true
 ) {
 	return {
-		locals: { user, isAdministrator },
+		locals: { user, isListener },
 		params: { id: trackId },
 		fetch: fetchMock,
 		cookies: {} as unknown as Cookies

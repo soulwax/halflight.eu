@@ -32,10 +32,10 @@ function makeEvent(
 	params: Record<string, string> = {},
 	body?: Record<string, unknown>,
 	user: { id: string } | null = { id: 'u1' },
-	isAdministrator = true
+	isListener = true
 ) {
 	return {
-		locals: { user, isAdministrator },
+		locals: { user, isListener },
 		params,
 		request: {
 			json: vi.fn().mockResolvedValue(body ?? {})

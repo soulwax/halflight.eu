@@ -8,6 +8,9 @@ declare global {
 		interface Locals {
 			user?: User;
 			session?: Session;
+			/** Any signed-in, active user: may use the player and their own library. */
+			isListener?: boolean;
+			/** Manages other users; gates `/app/admin` only. */
 			isAdministrator?: boolean;
 			isFirstAdministrator?: boolean;
 			/** Resolved once per request in hooks.server.ts: DB for a signed-in

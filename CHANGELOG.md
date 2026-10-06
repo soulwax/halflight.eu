@@ -7,7 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A shell-wide notice (desktop and mobile) guiding a listener to connect their own TIDAL
+  account, or authorise playback, before anything can play.
+- Per-listener request budgets (`429` with `Retry-After`): tighter for search, stream
+  metadata, playlist import/sync and taste generation, generous for audio Range requests,
+  so one listener cannot exhaust the shared TIDAL app's quota.
+
 ### Changed
+
+- Product routes, API handlers and the TIDAL/Last.fm connection flows are now open to every
+  signed-in, active user (`locals.isListener`); only `/app/admin` still requires an
+  administrator. Each listener uses their own TIDAL connection and data.
+- The stream-manifest cache is keyed per user and disconnecting only clears that user's
+  entries, so signed CDN URLs can never be served across accounts.
 
 - Refresh the README for the current product and remove the old generated screenshots and their capture script.
 

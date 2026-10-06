@@ -34,10 +34,10 @@ const fetchMock = vi.fn();
 function makeEvent(
 	body: Record<string, unknown> = {},
 	user: { id: string } | null = { id: 'u1' },
-	isAdministrator = true
+	isListener = true
 ) {
 	return {
-		locals: { user, isAdministrator },
+		locals: { user, isListener },
 		request: {
 			json: vi.fn().mockResolvedValue(body)
 		},

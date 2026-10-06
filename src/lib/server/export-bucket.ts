@@ -14,6 +14,7 @@ import {
 
 const EXPORT_PREFIX = 'halflight-exports/v1/';
 const EXPORT_TTL_MS = 15 * 60 * 1_000;
+const OWNER_ID = /^[A-Za-z0-9_-]{1,128}$/;
 const ARTIFACT_ID = /^(?<expiresAt>\d{13})-(?<token>[0-9a-f-]{36})\.(?<format>json|m3u8)$/i;
 
 export type ExportFormat = 'json' | 'm3u8';
@@ -45,13 +46,14 @@ export interface StoredExport {
 export interface ExportBucket {
 	readonly enabled: boolean;
 	put(input: {
+		userId: string;
 		content: Uint8Array;
 		contentType: string;
 		fileName: string;
 		format: ExportFormat;
 	}): Promise<{ id: string; expiresAt: string }>;
-	get(id: string): Promise<StoredExport | null>;
-	delete(id: string): Promise<boolean>;
+	get(userId: string, id: string): Promise<StoredExport | null>;
+	delete(userId: string, id: string): Promise<boolean>;
 }
 
 function parseArtifactId(id: string): { expiresAt: number; format: ExportFormat } | null {
@@ -67,8 +69,9 @@ function contentTypeFor(format: ExportFormat): string {
 	return format === 'json' ? 'application/json; charset=utf-8' : 'audio/x-mpegurl; charset=utf-8';
 }
 
-function objectKey(id: string): string {
-	return `${EXPORT_PREFIX}${id}`;
+/** Objects live under their owner, so one listener can never address another's export. */
+function objectKey(userId: string, id: string): string {
+	return `${EXPORT_PREFIX}${userId}/${id}`;
 }
 
 function isConfigured(config: ExportBucketConfig): config is Required<ExportBucketConfig> {
@@ -122,13 +125,14 @@ export function createExportBucket(
 
 	return {
 		enabled: true,
-		async put({ content, contentType, fileName, format }) {
+		async put({ userId, content, contentType, fileName, format }) {
+			if (!OWNER_ID.test(userId)) throw new Error('Invalid export owner.');
 			const expiresAt = Date.now() + EXPORT_TTL_MS;
 			const id = `${expiresAt}-${crypto.randomUUID()}.${format}`;
 			await bucketClient.send(
 				new PutObjectCommand({
 					Bucket: config.bucket,
-					Key: objectKey(id),
+					Key: objectKey(userId, id),
 					Body: content,
 					ContentType: contentType,
 					ContentDisposition: `attachment; filename="${fileName}"`,
@@ -137,18 +141,19 @@ export function createExportBucket(
 			);
 			return { id, expiresAt: new Date(expiresAt).toISOString() };
 		},
-		async get(id) {
+		async get(userId, id) {
+			if (!OWNER_ID.test(userId)) return null;
 			const artifact = parseArtifactId(id);
 			if (!artifact) return null;
 			if (artifact.expiresAt <= Date.now()) {
 				await bucketClient.send(
-					new DeleteObjectCommand({ Bucket: config.bucket, Key: objectKey(id) })
+					new DeleteObjectCommand({ Bucket: config.bucket, Key: objectKey(userId, id) })
 				);
 				return null;
 			}
 
 			const response = (await bucketClient.send(
-				new GetObjectCommand({ Bucket: config.bucket, Key: objectKey(id) })
+				new GetObjectCommand({ Bucket: config.bucket, Key: objectKey(userId, id) })
 			)) as {
 				Body?: ExportObjectBody;
 				ContentType?: string;
@@ -165,10 +170,10 @@ export function createExportBucket(
 					response.ContentDisposition ?? `attachment; filename="export.${artifact.format}"`
 			};
 		},
-		async delete(id) {
-			if (!parseArtifactId(id)) return false;
+		async delete(userId, id) {
+			if (!OWNER_ID.test(userId) || !parseArtifactId(id)) return false;
 			await bucketClient.send(
-				new DeleteObjectCommand({ Bucket: config.bucket, Key: objectKey(id) })
+				new DeleteObjectCommand({ Bucket: config.bucket, Key: objectKey(userId, id) })
 			);
 			return true;
 		}

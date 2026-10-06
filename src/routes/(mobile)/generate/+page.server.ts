@@ -16,7 +16,7 @@ interface SeedArtistOption {
 
 export const load: PageServerLoad = async (event) => {
 	const user = event.locals.user;
-	if (!user || !event.locals.isAdministrator) throw redirect(303, resolve('/sign-in'));
+	if (!user || !event.locals.isListener) throw redirect(303, resolve('/sign-in'));
 
 	const [profile, connection] = await Promise.all([
 		getTasteProfile(user.id),
@@ -47,7 +47,7 @@ export const load: PageServerLoad = async (event) => {
 export const actions: Actions = {
 	generate: async (event) => {
 		const user = event.locals.user;
-		if (!user || !event.locals.isAdministrator) throw error(401, 'Unauthorized');
+		if (!user || !event.locals.isListener) throw error(401, 'Unauthorized');
 
 		const connection = await getConnectionStatus();
 		if (!connection.connected) return fail(409, { errorCode: 'generation_connection_required' });

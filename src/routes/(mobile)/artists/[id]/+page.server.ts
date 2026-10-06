@@ -26,7 +26,7 @@ const failure = (state: TidalPageState, _configured: boolean, id?: string): Mobi
  * recordings for us.
  */
 export const load: PageServerLoad = async (event): Promise<MobileArtistData> => {
-	if (!event.locals.isAdministrator) error(403, 'Forbidden');
+	if (!event.locals.isListener) error(403, 'Forbidden');
 
 	return loadTidalPage(event, {
 		getConnectionStatus,

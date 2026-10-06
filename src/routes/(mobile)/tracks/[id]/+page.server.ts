@@ -24,7 +24,7 @@ const failure = (state: TidalPageState, _configured: boolean, id?: string): Mobi
  * credits, and the artist's other work stay desktop depth.
  */
 export const load: PageServerLoad = async (event): Promise<MobileTrackData> => {
-	if (!event.locals.isAdministrator) error(403, 'Forbidden');
+	if (!event.locals.isListener) error(403, 'Forbidden');
 
 	return loadTidalPage(event, {
 		getConnectionStatus,

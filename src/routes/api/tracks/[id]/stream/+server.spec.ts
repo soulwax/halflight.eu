@@ -29,10 +29,10 @@ import { GET } from './+server';
 function event(
 	trackId = '123',
 	user: { id: string } | null = { id: 'owner-1' },
-	isAdministrator = true
+	isListener = true
 ) {
 	return {
-		locals: { user, isAdministrator },
+		locals: { user, isListener },
 		params: { id: trackId },
 		url: new URL(`https://syn.test/api/tracks/${trackId}/stream`),
 		fetch: vi.fn(),

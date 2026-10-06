@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { Disc, ListPlus, ListStart, Play, Shuffle } from '@lucide/svelte';
+	import { Disc, ListPlus, Play, Shuffle } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { formatReleaseDate } from '#lib/format';
 	import { player } from '#lib/player/player.svelte.js';
@@ -83,26 +83,13 @@
 			<ul class="album-tracks">
 				{#each items as track, index (`${track.id}:${index}`)}
 					<li>
-						<MobileTrackRow {track} onActivate={() => player.play(track, items, provenance, index)}>
-							{#snippet actions()}
-								<button
-									type="button"
-									class="row-action"
-									onclick={() => player.playNext(track, provenance)}
-									aria-label={m.player_play_next()}
-								>
-									<ListStart size={16} aria-hidden="true" />
-								</button>
-								<button
-									type="button"
-									class="row-action"
-									onclick={() => player.addToQueue(track, provenance)}
-									aria-label={m.player_add_to_queue()}
-								>
-									<ListPlus size={16} aria-hidden="true" />
-								</button>
-							{/snippet}
-						</MobileTrackRow>
+						<MobileTrackRow
+							{track}
+							contextTracks={items}
+							contextIndex={index}
+							{provenance}
+							onActivate={() => player.play(track, items, provenance, index)}
+						/>
 					</li>
 				{/each}
 			</ul>
@@ -227,24 +214,6 @@
 		margin: 0.5rem 0 0;
 		padding: 0;
 		list-style: none;
-	}
-
-	.row-action {
-		display: grid;
-		width: 2.75rem;
-		height: 2.75rem;
-		place-items: center;
-		border: 0;
-		background: transparent;
-		color: var(--text-muted);
-		cursor: pointer;
-	}
-
-	.row-action:active,
-	.row-action:focus-visible {
-		color: var(--action);
-		outline: 2px solid var(--focus-ring);
-		outline-offset: 1px;
 	}
 
 	.notice {

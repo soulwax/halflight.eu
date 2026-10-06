@@ -23,7 +23,7 @@ const run = (): Promise<{ dailyMix: TrackSummary[] }> =>
 
 function event() {
 	return {
-		locals: { user: { id: 'owner' }, isAdministrator: true },
+		locals: { user: { id: 'owner' }, isListener: true },
 		fetch: vi.fn(),
 		cookies: {}
 	} as any;

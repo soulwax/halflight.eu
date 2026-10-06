@@ -21,7 +21,7 @@ const PAGE_SIZE = 12;
 
 export const load: PageServerLoad = async (event): Promise<MobileLibraryData> => {
 	if (!event.locals.user) redirect(302, '/sign-in');
-	if (!event.locals.isAdministrator) error(403, 'Forbidden');
+	if (!event.locals.isListener) error(403, 'Forbidden');
 
 	const tabParam = event.url.searchParams.get('tab');
 	const tab = tabParam === 'private' || tabParam === 'tracks' ? tabParam : 'saved';

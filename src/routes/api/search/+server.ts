@@ -7,7 +7,7 @@ const MAX_QUERY_LENGTH = 160;
 const SEARCH_INCLUDES = ['tracks.artists', 'tracks.albums', 'albums.artists'];
 
 export const GET: RequestHandler = async (event) => {
-	if (!event.locals.user || !event.locals.isAdministrator) {
+	if (!event.locals.user || !event.locals.isListener) {
 		error(401, 'Unauthorized');
 	}
 

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { GET } from './+server';
 
-function event(isAdministrator = true) {
+function event(isListener = true) {
 	return {
-		locals: { user: { id: 'owner' }, isAdministrator }
+		locals: { user: { id: 'owner' }, isListener }
 	} as unknown as Parameters<typeof GET>[0];
 }
 

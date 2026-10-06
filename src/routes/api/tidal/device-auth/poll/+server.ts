@@ -2,7 +2,7 @@ import { error, json, type RequestHandler } from '@sveltejs/kit';
 import { pollDeviceToken, writePlaybackRecord } from '#lib/server/tidal';
 
 export const POST: RequestHandler = async (event) => {
-	if (!event.locals.user || !event.locals.isAdministrator) {
+	if (!event.locals.user || !event.locals.isListener) {
 		error(401, 'Unauthorized');
 	}
 

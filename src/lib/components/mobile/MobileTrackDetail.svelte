@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { Disc, ListPlus, ListStart, Play, Radio } from '@lucide/svelte';
+	import { Disc, Play } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { formatDuration, formatReleaseDate } from '#lib/format';
 	import { player } from '#lib/player/player.svelte.js';
@@ -8,6 +8,7 @@
 	import type { TidalPageState } from '#lib/tidal/page-state';
 	import MobileSubScreenHeader from './MobileSubScreenHeader.svelte';
 	import MobileDetailRetry from './MobileDetailRetry.svelte';
+	import TrackActionMenu from '#lib/components/music/TrackActionMenu.svelte';
 
 	let { track, state }: { track: TrackDetail | null; state: TidalPageState | null } = $props();
 
@@ -87,28 +88,13 @@
 				<Play size={18} fill="currentColor" aria-hidden="true" />
 				{m.player_play_track()}
 			</button>
-			<button
-				type="button"
-				onclick={() => track && player.playNext(track)}
-				aria-label={m.player_play_next()}
-			>
-				<ListStart size={18} aria-hidden="true" />
-			</button>
-			<button
-				type="button"
-				onclick={() => track && player.addToQueue(track)}
-				aria-label={m.player_add_to_queue()}
-			>
-				<ListPlus size={18} aria-hidden="true" />
-			</button>
-			<button
-				type="button"
-				onclick={startRadio}
-				disabled={!radioTracks.length}
-				aria-label={m.player_start_radio()}
-			>
-				<Radio size={18} aria-hidden="true" />
-			</button>
+			<TrackActionMenu
+				{track}
+				mobile
+				showPlayNow={false}
+				onStartRadio={startRadio}
+				radioDisabled={!radioTracks.length}
+			/>
 		</div>
 
 		<a class="attribution" href="https://tidal.com" rel="noreferrer">{m.tidal_attribution()}</a>

@@ -13,9 +13,9 @@ vi.mock('#lib/server/tidal', () => ({
 
 import { GET } from './+server';
 
-const event = (isAdministrator = true) =>
+const event = (isListener = true) =>
 	({
-		locals: { user: { id: 'owner' }, isAdministrator },
+		locals: { user: { id: 'owner' }, isListener },
 		params: { id: 'track-1' },
 		fetch: vi.fn(),
 		cookies: {}

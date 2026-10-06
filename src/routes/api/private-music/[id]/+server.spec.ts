@@ -18,7 +18,7 @@ import { DELETE, GET, HEAD } from './+server';
 
 function event(request = new Request('https://syn.test/api/private-music/file-1')) {
 	return {
-		locals: { user: { id: 'owner' }, isAdministrator: true },
+		locals: { user: { id: 'owner' }, isListener: true },
 		params: { id: 'file-1' },
 		request
 	} as unknown as Parameters<typeof GET>[0];

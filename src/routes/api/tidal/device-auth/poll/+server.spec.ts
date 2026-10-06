@@ -21,10 +21,10 @@ import { POST } from './+server';
 function makeEvent(
 	body: object,
 	user: { id: string } | null = { id: 'admin-1' },
-	isAdministrator = true
+	isListener = true
 ) {
 	return {
-		locals: { user, isAdministrator },
+		locals: { user, isListener },
 		request: new Request('http://localhost:3000/api/tidal/device-auth/poll', {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },

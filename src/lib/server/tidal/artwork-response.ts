@@ -15,7 +15,7 @@ export async function proxyArtwork(
 	event: RequestEvent,
 	lookup: typeof getTrackCoverId
 ): Promise<Response> {
-	if (!event.locals.user || !event.locals.isAdministrator) error(401, 'Unauthorized');
+	if (!event.locals.user || !event.locals.isListener) error(401, 'Unauthorized');
 	const trackId = event.params.id;
 	if (!trackId) error(400, 'Track ID required');
 	const requestedSize = event.url.searchParams.get('size') ?? '640';

@@ -11,7 +11,7 @@ interface PrivateMusicExport {
 }
 
 function requireOwner(event: Parameters<RequestHandler>[0]): string {
-	if (!event.locals.user || !event.locals.isAdministrator) error(401, 'Unauthorized');
+	if (!event.locals.user || !event.locals.isListener) error(401, 'Unauthorized');
 	return event.locals.user.id;
 }
 
@@ -81,6 +81,7 @@ export const POST: RequestHandler = async (event) => {
 	try {
 		const artifact = buildExport(await dbPrivateMusicStore.list(userId), event.request.url);
 		const stored = await exportBucket.put({
+			userId,
 			content: new TextEncoder().encode(artifact.content),
 			contentType: artifact.contentType,
 			fileName: artifact.fileName,

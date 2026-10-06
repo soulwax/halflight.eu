@@ -19,7 +19,7 @@ import { playlistWorkResponse } from '#lib/server/playlists/response';
  */
 export const POST: RequestHandler = async (event) => {
 	const user = event.locals.user;
-	if (!user || !event.locals.isAdministrator) {
+	if (!user || !event.locals.isListener) {
 		error(401, 'Unauthorized');
 	}
 

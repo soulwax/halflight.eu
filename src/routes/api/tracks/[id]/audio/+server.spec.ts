@@ -35,9 +35,9 @@ import { GET, HEAD } from './+server';
 // SvelteKit's wrapper forwards request context that the media CDN 403s on.
 const fetchMock = vi.fn();
 
-function event(range?: string, isAdministrator = true, extraHeaders: Record<string, string> = {}) {
+function event(range?: string, isListener = true, extraHeaders: Record<string, string> = {}) {
 	return {
-		locals: { user: { id: 'owner-1' }, isAdministrator },
+		locals: { user: { id: 'owner-1' }, isListener },
 		params: { id: '123' },
 		url: new URL('https://syn.test/api/tracks/123/audio'),
 		request: new Request('https://syn.test/api/tracks/123/audio', {

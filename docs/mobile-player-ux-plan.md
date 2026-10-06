@@ -289,3 +289,11 @@ Home no longer repeats the same playback alert beneath its Resume card, and the 
 transport yields to the shared recovery action when playback needs intervention. Full-screen Now
 Playing keeps its detailed in-context status. Automated checks pass; physical-device acceptance
 remains open.
+
+## Follow-up implementation — 2026-10-06
+
+Track rows on album, artist and playlist details now use the same action sheet as Search and
+Library, including queue-add feedback and playlist actions. Track detail keeps Play as its single
+prominent action and groups secondary actions in the sheet. Contextual Play Now retains the
+selected occurrence in lists with duplicate recordings. Physical-device acceptance and the broader
+mobile review remain open.

@@ -7,7 +7,7 @@ import {
 } from '#lib/server/tidal';
 
 export const GET: RequestHandler = async (event) => {
-	if (!event.locals.user || !event.locals.isAdministrator) {
+	if (!event.locals.user || !event.locals.isListener) {
 		error(401, 'Unauthorized');
 	}
 

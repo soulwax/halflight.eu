@@ -13,7 +13,7 @@ import { DELETE, GET } from './+server';
 
 function event(id = '1234567890123-123e4567-e89b-12d3-a456-426614174000.m3u8', admin = true) {
 	return {
-		locals: { user: { id: 'owner' }, isAdministrator: admin },
+		locals: { user: { id: 'owner' }, isListener: admin },
 		params: { id }
 	} as unknown as Parameters<typeof GET>[0];
 }
@@ -49,5 +49,17 @@ describe('/api/exports/[id]', () => {
 		mocks.delete.mockResolvedValue(true);
 		const response = await DELETE(event());
 		expect(await response.json()).toEqual({ deleted: true });
+	});
+
+	it('only ever addresses the signed-in listeners own exports', async () => {
+		mocks.get.mockResolvedValue(null);
+		mocks.delete.mockResolvedValue(false);
+		const id = '1234567890123-123e4567-e89b-12d3-a456-426614174000.m3u8';
+
+		await expect(GET(event())).rejects.toMatchObject({ status: 404 });
+		await DELETE(event());
+
+		expect(mocks.get).toHaveBeenCalledWith('owner', id);
+		expect(mocks.delete).toHaveBeenCalledWith('owner', id);
 	});
 });

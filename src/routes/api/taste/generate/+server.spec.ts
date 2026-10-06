@@ -33,13 +33,13 @@ const set: ProvisionalSet = {
 
 function eventFor(
 	user: { id: string } | null = { id: 'owner-1' },
-	isAdministrator = true
+	isListener = true
 ): Parameters<typeof POST>[0] {
 	const form = new FormData();
 	form.set('targetCount', '20');
 	form.set('familiarity', '50');
 	return {
-		locals: { user, isAdministrator },
+		locals: { user, isListener },
 		request: new Request('http://localhost/api/taste/generate', { method: 'POST', body: form }),
 		fetch: vi.fn(),
 		cookies: {}

@@ -3,7 +3,7 @@ import { fetchUserFavorites, getConnectionStatus } from '#lib/server/tidal';
 
 export const GET: RequestHandler = async (event) => {
 	const user = event.locals.user;
-	if (!user || !event.locals.isAdministrator) {
+	if (!user || !event.locals.isListener) {
 		throw error(401, 'Unauthorized');
 	}
 

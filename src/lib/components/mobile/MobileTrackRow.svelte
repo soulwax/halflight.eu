@@ -10,6 +10,7 @@
 		track,
 		onActivate,
 		contextTracks,
+		contextIndex,
 		provenance,
 		onStartRadio,
 		radioDisabled = false,
@@ -19,6 +20,7 @@
 		track: TrackSummary;
 		onActivate: () => void;
 		contextTracks?: TrackSummary[];
+		contextIndex?: number;
 		provenance?: string;
 		onStartRadio?: () => void | Promise<void>;
 		radioDisabled?: boolean;
@@ -78,6 +80,7 @@
 				mobile
 				{track}
 				{contextTracks}
+				{contextIndex}
 				{provenance}
 				{onStartRadio}
 				{radioDisabled}

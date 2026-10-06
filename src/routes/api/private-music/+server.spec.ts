@@ -41,7 +41,7 @@ import { GET, POST } from './+server';
 
 function event(request = new Request('https://syn.test/api/private-music'), admin = true) {
 	return {
-		locals: { user: { id: 'owner' }, isAdministrator: admin },
+		locals: { user: { id: 'owner' }, isListener: admin },
 		request
 	} as unknown as Parameters<typeof GET>[0];
 }

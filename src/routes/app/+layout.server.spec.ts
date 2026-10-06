@@ -6,11 +6,12 @@ vi.mock('#lib/server/session-shell', () => ({ loadSessionShellData: mocks.loadSe
 
 import { load } from './+layout.server';
 
-function event(isAdministrator = true) {
+function event(isListener = true) {
 	return {
 		locals: {
 			user: { id: 'owner-1', name: 'Owner', email: 'owner@example.test' },
-			isAdministrator
+			isListener,
+			isAdministrator: false
 		},
 		fetch: vi.fn(),
 		url: new URL('https://halflight.test/app/search?q=night'),
@@ -26,7 +27,7 @@ describe('/app +layout.server', () => {
 
 		const result = await load(event());
 
-		expect(result).toMatchObject({ user: { name: 'Owner', isAdministrator: true } });
+		expect(result).toMatchObject({ user: { name: 'Owner', isAdministrator: false } });
 		expect(mocks.loadSessionShellData).toHaveBeenCalledOnce();
 	});
 

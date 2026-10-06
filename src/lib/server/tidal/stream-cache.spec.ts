@@ -51,8 +51,18 @@ describe('resolveTrackStreamCached', () => {
 		const resolve = vi.fn().mockResolvedValue(info);
 		const cache = memoryCache();
 
-		const first = await resolveTrackStreamCached('123', { quality: 'LOSSLESS', cache, resolve });
-		const second = await resolveTrackStreamCached('123', { quality: 'LOSSLESS', cache, resolve });
+		const first = await resolveTrackStreamCached('123', {
+			userId: 'u1',
+			quality: 'LOSSLESS',
+			cache,
+			resolve
+		});
+		const second = await resolveTrackStreamCached('123', {
+			userId: 'u1',
+			quality: 'LOSSLESS',
+			cache,
+			resolve
+		});
 
 		expect(first).toEqual(info);
 		expect(second).toEqual(info);
@@ -70,8 +80,8 @@ describe('resolveTrackStreamCached', () => {
 		const cache = memoryCache();
 
 		const both = Promise.all([
-			resolveTrackStreamCached('123', { quality: 'LOSSLESS', cache, resolve }),
-			resolveTrackStreamCached('123', { quality: 'LOSSLESS', cache, resolve })
+			resolveTrackStreamCached('123', { userId: 'u1', quality: 'LOSSLESS', cache, resolve }),
+			resolveTrackStreamCached('123', { userId: 'u1', quality: 'LOSSLESS', cache, resolve })
 		]);
 		release(info);
 
@@ -83,8 +93,8 @@ describe('resolveTrackStreamCached', () => {
 		const resolve = vi.fn().mockResolvedValue(info);
 		const cache = memoryCache();
 
-		await resolveTrackStreamCached('123', { quality: 'LOSSLESS', cache, resolve });
-		await resolveTrackStreamCached('123', { quality: 'HIGH', cache, resolve });
+		await resolveTrackStreamCached('123', { userId: 'u1', quality: 'LOSSLESS', cache, resolve });
+		await resolveTrackStreamCached('123', { userId: 'u1', quality: 'HIGH', cache, resolve });
 
 		expect(resolve).toHaveBeenCalledTimes(2);
 	});
@@ -93,7 +103,7 @@ describe('resolveTrackStreamCached', () => {
 		const resolve = vi.fn().mockResolvedValue(info);
 		const cache = memoryCache();
 
-		await resolveTrackStreamCached('123', { quality: 'LOSSLESS', cache, resolve });
+		await resolveTrackStreamCached('123', { userId: 'u1', quality: 'LOSSLESS', cache, resolve });
 
 		const stored = [...cache.store.values()];
 		expect(stored).toHaveLength(1);
@@ -105,13 +115,13 @@ describe('resolveTrackStreamCached', () => {
 		const resolve = vi.fn().mockResolvedValue(info);
 		const cache = memoryCache();
 
-		await resolveTrackStreamCached('123', { quality: 'LOSSLESS', cache, resolve });
+		await resolveTrackStreamCached('123', { userId: 'u1', quality: 'LOSSLESS', cache, resolve });
 		// Stands in for `pnpm pm2:reload`: the process restarts, Redis does not.
 		__resetStreamCache();
 
-		expect(await resolveTrackStreamCached('123', { quality: 'LOSSLESS', cache, resolve })).toEqual(
-			info
-		);
+		expect(
+			await resolveTrackStreamCached('123', { userId: 'u1', quality: 'LOSSLESS', cache, resolve })
+		).toEqual(info);
 		expect(resolve).toHaveBeenCalledTimes(1);
 	});
 
@@ -119,7 +129,12 @@ describe('resolveTrackStreamCached', () => {
 		const resolve = vi.fn().mockResolvedValue(info);
 
 		expect(
-			await resolveTrackStreamCached('123', { quality: 'LOSSLESS', cache: brokenCache, resolve })
+			await resolveTrackStreamCached('123', {
+				userId: 'u1',
+				quality: 'LOSSLESS',
+				cache: brokenCache,
+				resolve
+			})
 		).toEqual(info);
 		expect(resolve).toHaveBeenCalledTimes(1);
 	});
@@ -132,11 +147,45 @@ describe('resolveTrackStreamCached', () => {
 		const cache = memoryCache();
 
 		await expect(
-			resolveTrackStreamCached('123', { quality: 'LOSSLESS', cache, resolve })
+			resolveTrackStreamCached('123', { userId: 'u1', quality: 'LOSSLESS', cache, resolve })
 		).rejects.toThrow('upstream 502');
-		expect(await resolveTrackStreamCached('123', { quality: 'LOSSLESS', cache, resolve })).toEqual(
-			info
-		);
+		expect(
+			await resolveTrackStreamCached('123', { userId: 'u1', quality: 'LOSSLESS', cache, resolve })
+		).toEqual(info);
+		expect(resolve).toHaveBeenCalledTimes(2);
+	});
+
+	it('never serves one user a manifest resolved for another', async () => {
+		const resolve = vi.fn().mockResolvedValue(info);
+		const cache = memoryCache();
+
+		await resolveTrackStreamCached('123', { userId: 'u1', quality: 'LOSSLESS', cache, resolve });
+		await resolveTrackStreamCached('123', { userId: 'u2', quality: 'LOSSLESS', cache, resolve });
+
+		expect(resolve).toHaveBeenCalledTimes(2);
+		expect(cache.store.size).toBe(2);
+	});
+
+	it('does not cache a request without a user id', async () => {
+		const resolve = vi.fn().mockResolvedValue(info);
+		const cache = memoryCache();
+
+		await resolveTrackStreamCached('123', { quality: 'LOSSLESS', cache, resolve });
+		await resolveTrackStreamCached('123', { quality: 'LOSSLESS', cache, resolve });
+
+		expect(resolve).toHaveBeenCalledTimes(2);
+		expect(cache.store.size).toBe(0);
+	});
+
+	it('invalidates only the disconnecting user', async () => {
+		const resolve = vi.fn().mockResolvedValue(info);
+		const cache = memoryCache();
+
+		await resolveTrackStreamCached('123', { userId: 'u1', quality: 'LOSSLESS', cache, resolve });
+		await resolveTrackStreamCached('123', { userId: 'u2', quality: 'LOSSLESS', cache, resolve });
+		await invalidateStreamCache('u1', cache);
+		await resolveTrackStreamCached('123', { userId: 'u2', quality: 'LOSSLESS', cache, resolve });
+
 		expect(resolve).toHaveBeenCalledTimes(2);
 	});
 
@@ -145,8 +194,18 @@ describe('resolveTrackStreamCached', () => {
 		const cache = memoryCache();
 
 		// A colon would let one id address another's cache entry.
-		await resolveTrackStreamCached('123:456', { quality: 'LOSSLESS', cache, resolve });
-		await resolveTrackStreamCached('123:456', { quality: 'LOSSLESS', cache, resolve });
+		await resolveTrackStreamCached('123:456', {
+			userId: 'u1',
+			quality: 'LOSSLESS',
+			cache,
+			resolve
+		});
+		await resolveTrackStreamCached('123:456', {
+			userId: 'u1',
+			quality: 'LOSSLESS',
+			cache,
+			resolve
+		});
 
 		expect(resolve).toHaveBeenCalledTimes(2);
 		expect(cache.store.size).toBe(0);
@@ -156,12 +215,12 @@ describe('resolveTrackStreamCached', () => {
 		const resolve = vi.fn().mockResolvedValue(info);
 		const cache = memoryCache();
 
-		await resolveTrackStreamCached('123', { quality: 'LOSSLESS', cache, resolve });
-		await invalidateStreamCache(cache);
+		await resolveTrackStreamCached('123', { userId: 'u1', quality: 'LOSSLESS', cache, resolve });
+		await invalidateStreamCache('u1', cache);
 		expect(cache.store.size).toBe(0);
 
 		// Both tiers are gone, so the next play resolves afresh.
-		await resolveTrackStreamCached('123', { quality: 'LOSSLESS', cache, resolve });
+		await resolveTrackStreamCached('123', { userId: 'u1', quality: 'LOSSLESS', cache, resolve });
 		expect(resolve).toHaveBeenCalledTimes(2);
 	});
 });

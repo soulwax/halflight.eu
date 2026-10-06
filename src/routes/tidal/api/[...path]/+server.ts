@@ -31,7 +31,7 @@ function safeErrorResponse(status: number, message: string): Response {
 }
 
 const handler: RequestHandler = async (event) => {
-	if (!event.locals.user || !event.locals.isAdministrator) {
+	if (!event.locals.user || !event.locals.isListener) {
 		return safeErrorResponse(401, 'Not authenticated.');
 	}
 

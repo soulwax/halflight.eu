@@ -6,7 +6,7 @@ import { parseByteRange } from '#lib/server/tidal/segmented';
 import { entityTag, matchesEntityTag, rangeIsUsable } from '#lib/server/http-range';
 
 function requireOwner(event: Parameters<RequestHandler>[0]): string {
-	if (!event.locals.user || !event.locals.isAdministrator) error(401, 'Unauthorized');
+	if (!event.locals.user || !event.locals.isListener) error(401, 'Unauthorized');
 	return event.locals.user.id;
 }
 

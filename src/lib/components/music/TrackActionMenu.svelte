@@ -11,9 +11,11 @@
 	let {
 		track,
 		contextTracks,
+		contextIndex,
 		provenance,
 		onStartRadio,
 		radioDisabled = false,
+		showPlayNow = true,
 		align = 'end',
 		side = 'bottom',
 		triggerClass = '',
@@ -22,9 +24,11 @@
 	}: {
 		track: TrackSummary;
 		contextTracks?: TrackSummary[];
+		contextIndex?: number;
 		provenance?: string;
 		onStartRadio?: () => void | Promise<void>;
 		radioDisabled?: boolean;
+		showPlayNow?: boolean;
 		align?: 'start' | 'center' | 'end';
 		side?: 'top' | 'right' | 'bottom' | 'left';
 		triggerClass?: string;
@@ -77,46 +81,52 @@
 		}
 	}
 
-	const menuItems = $derived<DropdownMenuItem[]>([
-		{
-			id: 'play-now',
-			label: m.track_action_play_now(),
-			icon: Play,
-			onSelect: () => {
-				player.play(track, contextTracks ?? [track], provenance);
-				open = false;
+	const menuItems = $derived<DropdownMenuItem[]>(
+		[
+			{
+				id: 'play-now',
+				label: m.track_action_play_now(),
+				icon: Play,
+				onSelect: () => {
+					if (contextIndex === undefined) {
+						player.play(track, contextTracks ?? [track], provenance);
+					} else {
+						player.play(track, contextTracks ?? [track], provenance, contextIndex);
+					}
+					open = false;
+				}
+			},
+			{
+				id: 'play-next',
+				label: m.track_action_play_next(),
+				icon: ListStart,
+				onSelect: () => enqueue(true)
+			},
+			{
+				id: 'add-to-queue',
+				label: m.track_action_add_to_queue(),
+				icon: ListPlus,
+				onSelect: () => enqueue(false)
+			},
+			{
+				id: 'start-radio',
+				label: m.track_action_start_radio(),
+				icon: Radio,
+				disabled: radioDisabled || radioLoading,
+				onSelect: () => void startRadio()
+			},
+			{
+				id: 'add-to-playlist',
+				label: m.track_action_add_to_playlist(),
+				icon: FolderPlus,
+				separator: true,
+				onSelect: () => {
+					open = false;
+					customPlaylists.promptAddToPlaylist(track);
+				}
 			}
-		},
-		{
-			id: 'play-next',
-			label: m.track_action_play_next(),
-			icon: ListStart,
-			onSelect: () => enqueue(true)
-		},
-		{
-			id: 'add-to-queue',
-			label: m.track_action_add_to_queue(),
-			icon: ListPlus,
-			onSelect: () => enqueue(false)
-		},
-		{
-			id: 'start-radio',
-			label: m.track_action_start_radio(),
-			icon: Radio,
-			disabled: radioDisabled || radioLoading,
-			onSelect: () => void startRadio()
-		},
-		{
-			id: 'add-to-playlist',
-			label: m.track_action_add_to_playlist(),
-			icon: FolderPlus,
-			separator: true,
-			onSelect: () => {
-				open = false;
-				customPlaylists.promptAddToPlaylist(track);
-			}
-		}
-	]);
+		].filter((item) => showPlayNow || item.id !== 'play-now')
+	);
 </script>
 
 {#if mobile}

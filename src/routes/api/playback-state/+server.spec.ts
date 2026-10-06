@@ -17,12 +17,9 @@ import { GET, PUT } from './+server';
 
 const state = { currentTrack: null, queue: [], history: [], currentTime: 0 };
 
-function event(
-	request = new Request('https://syn.test/api/playback-state'),
-	isAdministrator = true
-) {
+function event(request = new Request('https://syn.test/api/playback-state'), isListener = true) {
 	return {
-		locals: { user: { id: 'owner-1' }, isAdministrator },
+		locals: { user: { id: 'owner-1' }, isListener },
 		request
 	} as unknown as Parameters<typeof GET>[0];
 }

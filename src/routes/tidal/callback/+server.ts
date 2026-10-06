@@ -4,7 +4,7 @@ import { clearOAuthCookie, readOAuthCookie, tidalReturnTo } from '../oauth-cooki
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async (event) => {
-	if (!event.locals.user || !event.locals.isAdministrator) redirect(302, '/sign-in');
+	if (!event.locals.user || !event.locals.isListener) redirect(302, '/sign-in');
 
 	const params = event.url.searchParams;
 	const saved = readOAuthCookie(event.cookies);

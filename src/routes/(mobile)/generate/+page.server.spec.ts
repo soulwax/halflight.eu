@@ -24,7 +24,7 @@ function event(entries: Record<string, string> = {}) {
 	const formData = new FormData();
 	for (const [key, value] of Object.entries(entries)) formData.set(key, value);
 	return {
-		locals: { user: { id: 'owner-1' }, isAdministrator: true },
+		locals: { user: { id: 'owner-1' }, isListener: true },
 		request: new Request('http://localhost/generate', { method: 'POST', body: formData }),
 		fetch: vi.fn(),
 		cookies: {}

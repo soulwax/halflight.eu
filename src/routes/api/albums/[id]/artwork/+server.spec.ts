@@ -5,7 +5,7 @@ import { GET } from './+server';
 
 const event = (owner = true) =>
 	({
-		locals: { user: { id: 'owner' }, isAdministrator: owner },
+		locals: { user: { id: 'owner' }, isListener: owner },
 		params: { id: '456' },
 		url: new URL('https://halflight.test/api/albums/456/artwork?size=80'),
 		fetch: vi.fn(),

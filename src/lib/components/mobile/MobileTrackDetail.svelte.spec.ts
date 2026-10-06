@@ -73,15 +73,31 @@ describe('MobileTrackDetail.svelte', () => {
 		const addToQueue = vi.spyOn(player, 'addToQueue').mockImplementation(() => {});
 		render(MobileTrackDetail, { track, state: null });
 
-		await page.getByRole('button', { name: m.player_add_to_queue() }).click();
+		await page.getByRole('button', { name: m.track_action_menu() }).click();
+		await page
+			.getByRole('dialog')
+			.getByRole('button', { name: m.track_action_add_to_queue() })
+			.click();
 
-		expect(addToQueue).toHaveBeenCalledWith(track);
+		expect(addToQueue).toHaveBeenCalledWith(track, undefined);
 	});
 
 	it('disables radio without a radio neighbourhood', async () => {
 		render(MobileTrackDetail, { track, state: null });
 
-		await expect.element(page.getByRole('button', { name: m.player_start_radio() })).toBeDisabled();
+		await page.getByRole('button', { name: m.track_action_menu() }).click();
+		await expect
+			.element(page.getByRole('dialog').getByRole('button', { name: m.track_action_start_radio() }))
+			.toBeDisabled();
+	});
+
+	it('keeps the detail page primary action singular', async () => {
+		render(MobileTrackDetail, { track, state: null });
+
+		await page.getByRole('button', { name: m.track_action_menu() }).click();
+		await expect
+			.element(page.getByRole('dialog').getByRole('button', { name: m.track_action_play_now() }))
+			.not.toBeInTheDocument();
 	});
 
 	it('explains a missing track', async () => {

@@ -18,9 +18,9 @@ import { load } from './+page.server';
 
 const fetchMock = vi.fn();
 
-function event(id = 'pl-1', isAdministrator = true) {
+function event(id = 'pl-1', isListener = true) {
 	return {
-		locals: { user: { id: 'owner' }, isAdministrator },
+		locals: { user: { id: 'owner' }, isListener },
 		params: { id },
 		fetch: fetchMock,
 		cookies: {}

@@ -19,9 +19,9 @@ import { GET } from './+server';
 
 const fetchMock = vi.fn();
 
-function makeEvent(user: { id: string } | null = { id: 'u1' }, isAdministrator = true) {
+function makeEvent(user: { id: string } | null = { id: 'u1' }, isListener = true) {
 	return {
-		locals: { user, isAdministrator },
+		locals: { user, isListener },
 		request: { json: vi.fn() },
 		fetch: fetchMock,
 		cookies: {} as unknown as Cookies

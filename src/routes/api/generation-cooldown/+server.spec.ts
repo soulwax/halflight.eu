@@ -8,13 +8,9 @@ vi.mock('#lib/server/taste/cooldown', () => ({
 
 import { POST } from './+server';
 
-function event(
-	body: string,
-	user: { id: string } | null = { id: 'owner-1' },
-	isAdministrator = true
-) {
+function event(body: string, user: { id: string } | null = { id: 'owner-1' }, isListener = true) {
 	return {
-		locals: { user, isAdministrator },
+		locals: { user, isListener },
 		request: new Request('http://localhost/api/generation-cooldown', {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },

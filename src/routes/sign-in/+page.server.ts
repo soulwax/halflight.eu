@@ -6,7 +6,7 @@ import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = (event) => {
 	const returnTo = safeProductReturn(event.url.searchParams.get('returnTo')) ?? '/';
-	if (event.locals.user && event.locals.isAdministrator) redirect(302, returnTo);
+	if (event.locals.user && event.locals.isListener) redirect(302, returnTo);
 	return { returnTo };
 };
 

@@ -25,9 +25,9 @@ const profile = {
 	updatedAt: '2026-09-04T00:00:00.000Z'
 };
 
-function eventFor(user = true, isAdministrator = true): Parameters<typeof GET>[0] {
+function eventFor(user = true, isListener = true): Parameters<typeof GET>[0] {
 	return {
-		locals: user ? { user: { id: 'owner-1' }, isAdministrator } : { isAdministrator: false },
+		locals: user ? { user: { id: 'owner-1' }, isListener } : { isListener: false },
 		fetch: vi.fn(),
 		cookies: {}
 	} as unknown as Parameters<typeof GET>[0];

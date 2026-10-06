@@ -3,8 +3,7 @@
 [![CI](https://github.com/soulwax/halflight.eu/actions/workflows/ci.yml/badge.svg)](https://github.com/soulwax/halflight.eu/actions/workflows/ci.yml)
 
 Halflight ([halflight.eu](https://halflight.eu)) is a listening room built around TIDAL. Anyone can deploy their own
-copy, and the goal for the hosted site is that anyone can sign in at halflight.eu with a free TIDAL account and
-start listening. The player and its listening session (now playing, queue, history and resume position) are the
+copy, and anyone can sign in at halflight.eu with their own TIDAL account and start listening. The player and its listening session (now playing, queue, history and resume position) are the
 product; every route exists to feed it. _Syn_ is the code name, so the package, tables, env vars and API paths keep
 `syn`.
 
@@ -14,9 +13,9 @@ product; every route exists to feed it. _Syn_ is the code name, so the package, 
 
 ## Features
 
-- **Open to everyone (in progress)** — self-hosting is supported today. Tokens and playback state are already per
-  user; what remains is opening the product routes, which currently require the administrator, to every signed-in
-  listener.
+- **Open to everyone** — sign-up is open and every listener is isolated: their own TIDAL connection, playback
+  session, playlists and caches, with per-user request limits protecting the shared TIDAL app. Only `/app/admin`
+  requires an administrator.
 - **Two sites, one session** — a desktop Listening Room (`/app`) and a mobile PWA, Halflight Now, sharing one
   player and one server-authoritative playback session (queue, history and position survive reloads and devices).
 - **Direct playback** — audio is proxied through the server, with Range support and automatic quality fallback

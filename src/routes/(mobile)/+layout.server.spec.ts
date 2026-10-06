@@ -6,9 +6,9 @@ vi.mock('#lib/server/session-shell', () => ({ loadSessionShellData: mocks.loadSe
 
 import { load } from './+layout.server';
 
-function event(isAdministrator = true) {
+function event(isListener = true) {
 	return {
-		locals: { user: { id: 'owner-1' }, isAdministrator },
+		locals: { user: { id: 'owner-1' }, isListener },
 		fetch: vi.fn(),
 		url: new URL('https://halflight.test/search?q=night'),
 		cookies: {}

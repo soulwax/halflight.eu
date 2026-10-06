@@ -48,7 +48,7 @@ async function serveAudio(
 	event: Parameters<RequestHandler>[0],
 	headOnly: boolean
 ): Promise<Response> {
-	if (!event.locals.user || !event.locals.isAdministrator) error(401, 'Unauthorized');
+	if (!event.locals.user || !event.locals.isListener) error(401, 'Unauthorized');
 	const trackId = event.params.id;
 	if (!trackId) error(400, 'Track ID required');
 
@@ -68,6 +68,7 @@ async function serveAudio(
 	let stream;
 	try {
 		stream = await resolveTrackStreamCached(trackId, {
+			userId: event.locals.user.id,
 			quality: await getRequestedStreamQuality(event.url, event.locals.user.id),
 			ctx: { fetch: event.fetch, cookies: event.cookies }
 		});

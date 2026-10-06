@@ -10,9 +10,9 @@ vi.mock('#lib/server/tidal', async (importOriginal) => {
 import type { Cookies } from '@sveltejs/kit';
 import { GET } from './+server';
 
-function makeEvent(user: { id: string } | null = { id: 'owner-1' }, isAdministrator = true) {
+function makeEvent(user: { id: string } | null = { id: 'owner-1' }, isListener = true) {
 	return {
-		locals: { user, isAdministrator },
+		locals: { user, isListener },
 		params: { id: '12345' },
 		url: new URL('https://halflight.test/api/tracks/12345/artwork'),
 		fetch: vi.fn(),

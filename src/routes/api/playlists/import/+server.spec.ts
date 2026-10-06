@@ -25,11 +25,11 @@ const fetchMock = vi.fn();
 function makeEvent(
 	body: unknown = {},
 	user: { id: string } | null = { id: 'u1' },
-	isAdministrator = true,
+	isListener = true,
 	jsonError?: unknown
 ) {
 	return {
-		locals: { user, isAdministrator },
+		locals: { user, isListener },
 		request: {
 			json:
 				jsonError === undefined

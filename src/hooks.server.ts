@@ -2,6 +2,7 @@ import { getTextDirection } from '#lib/paraglide/runtime';
 import { paraglideMiddleware } from '#lib/paraglide/server';
 import { getRequestAccess } from '#lib/server/request-access';
 import { auth } from '#lib/server/auth';
+import { requestLimiter } from '#lib/server/rate-limit';
 import { DEFAULT_THEME, getThemeSettings, isTheme } from '#lib/server/theme-settings';
 import { building } from '$app/env';
 import type { Handle } from '@sveltejs/kit/hooks';
@@ -42,11 +43,13 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
 		if (!access.active) {
 			event.locals.session = undefined;
 			event.locals.user = undefined;
+			event.locals.isListener = false;
 			event.locals.isAdministrator = false;
 			event.locals.isFirstAdministrator = false;
 		} else {
 			event.locals.session = session.session;
 			event.locals.user = session.user;
+			event.locals.isListener = true;
 			event.locals.isAdministrator = access.isAdministrator;
 			event.locals.isFirstAdministrator = access.isFirstAdministrator;
 		}
@@ -68,6 +71,16 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
 	} else {
 		const cookieTheme = event.cookies.get(THEME_COOKIE);
 		event.locals.theme = cookieTheme && isTheme(cookieTheme) ? cookieTheme : DEFAULT_THEME;
+	}
+
+	if (event.locals.user) {
+		const limit = requestLimiter.check(event.locals.user.id, event.url.pathname);
+		if (!limit.allowed) {
+			return new Response('Too many requests', {
+				status: 429,
+				headers: { 'Retry-After': String(limit.retryAfterSeconds) }
+			});
+		}
 	}
 
 	return svelteKitHandler({ event, resolve, auth, building });

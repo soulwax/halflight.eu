@@ -33,10 +33,10 @@ function event(
 		headers: { 'content-type': 'application/json' },
 		body: JSON.stringify(intent)
 	}),
-	isAdministrator = true
+	isListener = true
 ) {
 	return {
-		locals: { user: { id: 'owner-1' }, isAdministrator },
+		locals: { user: { id: 'owner-1' }, isListener },
 		request
 	} as unknown as Parameters<typeof POST>[0];
 }

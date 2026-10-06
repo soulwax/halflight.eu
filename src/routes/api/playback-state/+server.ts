@@ -10,14 +10,14 @@ import {
 } from '#lib/server/playback-state';
 
 export const GET: RequestHandler = async (event) => {
-	if (!event.locals.user || !event.locals.isAdministrator) error(401, 'Unauthorized');
+	if (!event.locals.user || !event.locals.isListener) error(401, 'Unauthorized');
 	const deviceId = parsePlaybackDeviceId(event.request.headers.get('x-halflight-playback-device'));
 	await recoverBufferedPlayback(event.locals.user.id);
 	return json(await getPlaybackState(event.locals.user.id, undefined, deviceId));
 };
 
 export const PUT: RequestHandler = async (event) => {
-	if (!event.locals.user || !event.locals.isAdministrator) error(401, 'Unauthorized');
+	if (!event.locals.user || !event.locals.isListener) error(401, 'Unauthorized');
 	if (!event.request.headers.get('content-type')?.includes('application/json')) {
 		error(415, 'Expected a JSON playback state');
 	}

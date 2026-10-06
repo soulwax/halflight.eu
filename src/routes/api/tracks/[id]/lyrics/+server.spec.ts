@@ -25,7 +25,7 @@ const fetchMock = vi.fn();
 function makeEvent(
 	trackId = 'trk-1',
 	user: { id: string } | null = { id: 'u1' },
-	isAdministrator = true,
+	isListener = true,
 	searchParams?: Record<string, string>
 ) {
 	const url = new URL(`http://localhost/api/tracks/${trackId}/lyrics`);
@@ -35,7 +35,7 @@ function makeEvent(
 		}
 	}
 	return {
-		locals: { user, isAdministrator },
+		locals: { user, isListener },
 		params: { id: trackId },
 		url,
 		fetch: fetchMock,

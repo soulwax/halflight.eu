@@ -22,7 +22,7 @@ function isAuthProblem(cause: unknown): boolean {
 
 /** Server-resolved stream metadata. Audio bytes are available through the matching `/audio` route. */
 export const GET: RequestHandler = async (event) => {
-	if (!event.locals.user || !event.locals.isAdministrator) error(401, 'Unauthorized');
+	if (!event.locals.user || !event.locals.isListener) error(401, 'Unauthorized');
 	const trackId = event.params.id;
 	if (!trackId) error(400, 'Track ID required');
 
@@ -45,6 +45,7 @@ export const GET: RequestHandler = async (event) => {
 		// Shares its memoised entry with the `/audio` route, so the concurrent pair
 		// this page issues on track start costs one upstream resolution, not two.
 		const stream = await resolveTrackStreamCached(trackId, {
+			userId: event.locals.user.id,
 			quality: requestedQuality,
 			ctx: { fetch: event.fetch, cookies: event.cookies }
 		});

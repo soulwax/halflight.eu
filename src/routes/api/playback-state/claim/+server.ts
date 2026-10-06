@@ -7,7 +7,7 @@ import {
 
 /** Explicitly move the shared resume-point lease to this browser device. */
 export const POST: RequestHandler = async (event) => {
-	if (!event.locals.user || !event.locals.isAdministrator) error(401, 'Unauthorized');
+	if (!event.locals.user || !event.locals.isListener) error(401, 'Unauthorized');
 	if (!event.request.headers.get('content-type')?.includes('application/json')) {
 		error(415, 'Expected a JSON playback claim');
 	}

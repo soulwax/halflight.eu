@@ -12,7 +12,7 @@ const cooldownRequestSchema = v.object({
 
 export const POST: RequestHandler = async (event) => {
 	const user = event.locals.user;
-	if (!user || !event.locals.isAdministrator) throw error(401, 'Unauthorized');
+	if (!user || !event.locals.isListener) throw error(401, 'Unauthorized');
 
 	let body: unknown;
 	try {

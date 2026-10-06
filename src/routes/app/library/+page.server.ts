@@ -16,7 +16,7 @@ const KINDS: LibraryKind[] = ['albums', 'artists', 'tracks', 'playlists'];
 
 export const load: PageServerLoad = async (event) => {
 	if (!event.locals.user) redirect(302, '/sign-in');
-	if (!event.locals.isAdministrator) error(403, 'Forbidden');
+	if (!event.locals.isListener) error(403, 'Forbidden');
 	const files = await dbPrivateMusicStore.list(event.locals.user.id);
 	const usedBytes = files.reduce((total, file) => total + file.sizeBytes, 0);
 	const privateMusic = {

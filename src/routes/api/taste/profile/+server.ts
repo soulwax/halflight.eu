@@ -4,7 +4,7 @@ import { getTasteProfile, refreshTasteProfile } from '#lib/server/taste/profile'
 
 /** The private profile is derived state only: no catalogue data reaches this route. */
 export const GET: RequestHandler = async (event) => {
-	if (!event.locals.user || !event.locals.isAdministrator) error(401, 'Unauthorized');
+	if (!event.locals.user || !event.locals.isListener) error(401, 'Unauthorized');
 	return json(await getTasteProfile(event.locals.user.id), {
 		headers: { 'cache-control': 'private, no-store' }
 	});
@@ -12,7 +12,7 @@ export const GET: RequestHandler = async (event) => {
 
 /** Re-read live account signals and atomically replace the owner's derived profile. */
 export const POST: RequestHandler = async (event) => {
-	if (!event.locals.user || !event.locals.isAdministrator) error(401, 'Unauthorized');
+	if (!event.locals.user || !event.locals.isListener) error(401, 'Unauthorized');
 
 	const connection = await getConnectionStatus();
 	if (!connection.connected) error(409, 'TIDAL connection required');

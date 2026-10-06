@@ -126,11 +126,12 @@ export const GET: RequestHandler = async (event) => {
 
 /** Stores an explicit owner export for a short hand-off window. */
 export const POST: RequestHandler = async (event) => {
-	if (!event.locals.user || !event.locals.isAdministrator) error(401, 'Unauthorized');
+	if (!event.locals.user || !event.locals.isListener) error(401, 'Unauthorized');
 	if (!exportBucket.enabled) error(503, 'Export storage is not configured');
 	try {
 		const artifact = await buildPlaylistExport(event, false);
 		const stored = await exportBucket.put({
+			userId: event.locals.user.id,
 			content: new TextEncoder().encode(artifact.content),
 			contentType: artifact.contentType,
 			fileName: artifact.fileName,
