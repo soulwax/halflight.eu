@@ -35,6 +35,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Extend Halflight Now to the large viewport in standalone PWA mode so the
+  fullscreen player uses the space beneath the home indicator; regular mobile
+  browsers continue using the dynamic viewport around browser chrome.
 - Fit the mobile fullscreen player within the mobile viewport without vertical or horizontal
   scrolling on standard phone dimensions, fluidly scale artwork to available space, eliminate
   redundant safe-area padding in the fullscreen layout, and enable snappy touch response with

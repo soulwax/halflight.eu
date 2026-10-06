@@ -30,3 +30,7 @@ project.inlang/cache/
 storybook-static
 .env*
 external/
+
+AGENTS.md
+AGENT.md
+CLAUDE.md

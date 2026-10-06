@@ -101,7 +101,7 @@
 	const showChrome = $derived(!isOnNowRoute || !player.currentTrack);
 </script>
 
-<div class="mobile-shell flex min-h-dvh flex-col bg-(--surface-canvas) text-(--text-primary)">
+<div class="mobile-shell flex flex-col bg-(--surface-canvas) text-(--text-primary)">
 	{#if showChrome}
 		<header class="mobile-app-header flex shrink-0 items-center gap-1">
 			<MobileNavigationMenu currentPath={page.url.pathname} />
@@ -128,10 +128,10 @@
 
 <style>
 	.mobile-shell {
-		height: 100vh;
-		height: 100dvh;
+		--mobile-shell-height: 100vh;
+		height: var(--mobile-shell-height);
+		min-height: var(--mobile-shell-height);
 		overflow: hidden;
-		min-height: 100dvh;
 		background:
 			radial-gradient(
 				120% 44% at 50% -8%,
@@ -140,6 +140,20 @@
 			),
 			var(--surface-canvas);
 		isolation: isolate;
+	}
+
+	@supports (height: 100dvh) {
+		.mobile-shell {
+			--mobile-shell-height: 100dvh;
+		}
+	}
+
+	@supports (height: 100lvh) {
+		@media (display-mode: standalone) {
+			.mobile-shell {
+				--mobile-shell-height: 100lvh;
+			}
+		}
 	}
 
 	.mobile-app-header {
