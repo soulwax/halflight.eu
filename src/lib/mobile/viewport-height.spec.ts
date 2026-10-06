@@ -2,8 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
 	readMobileViewportBox,
 	setMobileViewportBox,
-	standaloneBottomExtension,
-	standaloneBottomInset
+	standaloneBottomExtension
 } from './viewport-height';
 
 describe('readMobileViewportBox', () => {
@@ -55,37 +54,13 @@ describe('setMobileViewportBox', () => {
 	});
 });
 
-describe('standaloneBottomInset', () => {
-	const iPhone15 = { width: 393, height: 852 };
-
-	it('drops the padding when the window already ends above the home indicator', () => {
-		expect(standaloneBottomInset(34, iPhone15, { width: 393, height: 818 })).toBe(0);
-	});
-
-	it('keeps the controls clear of the indicator when the window covers it', () => {
-		expect(standaloneBottomInset(34, iPhone15, { width: 393, height: 852 })).toBe(34);
-		expect(standaloneBottomInset(34, iPhone15, { width: 393, height: 840 })).toBe(22);
-	});
-
-	it('measures landscape against the short side, as iOS keeps screen in portrait', () => {
-		expect(standaloneBottomInset(21, iPhone15, { width: 852, height: 393 })).toBe(21);
-		expect(standaloneBottomInset(21, iPhone15, { width: 852, height: 372 })).toBe(0);
-	});
-
-	it('needs no padding without a bottom inset and keeps it when the screen is unknown', () => {
-		expect(standaloneBottomInset(0, iPhone15, { width: 393, height: 818 })).toBe(0);
-		expect(standaloneBottomInset(34, { width: 0, height: 0 }, { width: 393, height: 818 })).toBe(
-			34
-		);
-	});
-});
-
 describe('standaloneBottomExtension', () => {
 	const iPhone15 = { width: 393, height: 852 };
 
-	it('extends the portrait shell through the home-indicator strip', () => {
+	it('extends the portrait shell only by its measured safe area', () => {
 		expect(standaloneBottomExtension(34, iPhone15, { width: 393, height: 818 })).toBe(34);
-		expect(standaloneBottomExtension(34, iPhone15, { width: 393, height: 852 })).toBe(0);
+		expect(standaloneBottomExtension(34, iPhone15, { width: 393, height: 852 })).toBe(34);
+		expect(standaloneBottomExtension(240, iPhone15, { width: 393, height: 612 })).toBe(48);
 	});
 
 	it('does not add portrait-style extension in landscape or without a safe area', () => {

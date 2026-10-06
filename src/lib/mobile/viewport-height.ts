@@ -11,8 +11,7 @@ export interface MobileViewportMode {
 /**
  * Browsers need the visible viewport so their address bar is not covered. An
  * installed app has no browser chrome, so use the app viewport unless its
- * software keyboard is actively shrinking the visible area. The PWA's extra
- * bottom safe area is painted separately and must not move the controls.
+ * software keyboard is actively shrinking the visible area.
  */
 export function readMobileViewportBox(
 	visualViewport: Pick<VisualViewport, 'height' | 'offsetTop'> | null | undefined,
@@ -44,31 +43,6 @@ export function setMobileViewportBox(element: HTMLElement, box: MobileViewportBo
 	element.style.setProperty('--mobile-viewport-top', `${offsetTop}px`);
 }
 
-/**
- * Bottom padding the installed app's tab bar and mini player still need.
- *
- * In the browser the bottom chrome pads by the whole `safe-area-inset-bottom`.
- * An installed iOS app can instead end its window above the home-indicator
- * strip (that strip is painted to match the navigation), so padding by the full
- * inset as well counts the same space twice and floats the navigation high
- * above the bottom edge. Subtract whatever the screen already leaves below the
- * window. iOS keeps `screen` in portrait axes, so compare against the side that
- * matches the current orientation.
- */
-export function standaloneBottomInset(
-	safeAreaBottom: number,
-	screen: Pick<Screen, 'width' | 'height'>,
-	viewport: { width: number; height: number }
-): number {
-	if (!Number.isFinite(safeAreaBottom) || safeAreaBottom <= 0) return 0;
-	const long = Math.max(screen.width, screen.height);
-	const short = Math.min(screen.width, screen.height);
-	const screenExtent = viewport.width > viewport.height ? short : long;
-	if (!Number.isFinite(screenExtent) || screenExtent <= 0) return safeAreaBottom;
-	const stripBelowWindow = Math.max(0, screenExtent - viewport.height);
-	return Math.max(0, safeAreaBottom - stripBelowWindow);
-}
-
 /** Extra portrait PWA space painted below the app viewport for the home indicator. */
 export function standaloneBottomExtension(
 	safeAreaBottom: number,
@@ -76,9 +50,12 @@ export function standaloneBottomExtension(
 	viewport: { width: number; height: number }
 ): number {
 	if (!Number.isFinite(safeAreaBottom) || safeAreaBottom <= 0) return 0;
-	const long = Math.max(screen.width, screen.height);
+	if (!Number.isFinite(viewport.width) || !Number.isFinite(viewport.height) || viewport.height <= 0)
+		return 0;
 	const short = Math.min(screen.width, screen.height);
-	const screenExtent = viewport.width > viewport.height ? short : long;
-	if (!Number.isFinite(screenExtent) || screenExtent <= 0) return 0;
-	return Math.max(0, screenExtent - viewport.height);
+	if (!Number.isFinite(short) || short <= 0 || viewport.width > short) return 0;
+	// In installed portrait iOS, use the safe-area measurement itself. The screen
+	// dimensions can include browser/system strips that aren't part of the app's
+	// layout viewport, creating a large false extension and empty bottom region.
+	return Math.min(safeAreaBottom, 48);
 }

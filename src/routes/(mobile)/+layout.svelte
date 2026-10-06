@@ -18,8 +18,7 @@
 	import {
 		readMobileViewportBox,
 		setMobileViewportBox,
-		standaloneBottomExtension,
-		standaloneBottomInset
+		standaloneBottomExtension
 	} from '#lib/mobile/viewport-height.js';
 	import {
 		managesMobileScroll,
@@ -70,16 +69,13 @@
 			if (!standalone) return;
 			const safeBottom = Number.parseFloat(getComputedStyle(insetProbe).paddingBottom) || 0;
 			const viewport = { width: window.innerWidth, height: window.innerHeight };
-			const inset = standaloneBottomInset(safeBottom, window.screen, viewport);
+			const inset = safeBottom;
 			shellElement.style.setProperty('--mobile-bottom-inset', `${inset}px`);
 			shellElement.style.setProperty(
 				'--mobile-bottom-extension',
 				`${standaloneBottomExtension(safeBottom, window.screen, viewport)}px`
 			);
-			shellElement.style.setProperty(
-				'--mobile-bottom-physical-strip',
-				`${Math.max(0, safeBottom - inset)}px`
-			);
+			shellElement.style.setProperty('--mobile-bottom-physical-strip', '0px');
 		};
 		const syncViewportHeight = () => {
 			const activeElement = document.activeElement;

@@ -670,7 +670,6 @@
 		margin: 0 auto;
 		justify-content: space-between;
 		gap: clamp(0.35rem, 1.2vh, 0.8rem);
-		padding-bottom: var(--mobile-bottom-extension, 0px);
 	}
 
 	/* Artwork */
@@ -1060,6 +1059,7 @@
 		color: var(--text-primary);
 		text-decoration: none;
 		min-height: 48px;
+		flex: none;
 		box-sizing: border-box;
 		touch-action: manipulation;
 		-webkit-tap-highlight-color: transparent;
