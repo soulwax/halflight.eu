@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Full lyrics views (desktop panel and mobile screen) now follow the synced line as the song plays and pin the upcoming line as a smaller caption.
+
 - Add multi-tier lyrics resolution with eager fetching and community fallbacks:
   cascades from TIDAL v1 API to LRCLIB (exact match, cleaned metadata match, fuzzy search)
   and Lyrics.ovh for plain text. Supports instrumental tracks, metadata query hints,
