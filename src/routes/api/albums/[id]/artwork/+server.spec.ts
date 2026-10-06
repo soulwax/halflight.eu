@@ -28,7 +28,9 @@ describe('album artwork route', () => {
 		try {
 			const response = await GET(event());
 			expect(mocks.getAlbumCoverId).toHaveBeenCalledWith('456', expect.anything());
-			expect(response.headers.get('cache-control')).toBe('private, max-age=3600');
+			expect(response.headers.get('cache-control')).toBe(
+				'private, max-age=86400, stale-while-revalidate=604800'
+			);
 			expect(response.headers.get('location')).toBeNull();
 			expect(await response.text()).toBe('image');
 		} finally {

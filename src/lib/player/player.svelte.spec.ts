@@ -996,6 +996,53 @@ describe('PlayerState', () => {
 		expect(player.history[0]?.artists).toEqual([{ id: 'artist-3', name: 'Joy Division' }]);
 	});
 
+	it('keeps the artwork a track already shows when metadata resolves mid-track', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn((url: string) => {
+				if (String(url).endsWith('/metadata')) {
+					return Promise.resolve(
+						new Response(
+							JSON.stringify({
+								track: {
+									kind: 'track',
+									id: '123',
+									title: 'Resolved title',
+									artists: [{ id: 'artist-1', name: 'Bauhaus' }],
+									imageUrl: '/api/albums/456/artwork',
+									album: { id: '456', title: 'Album', imageUrl: '/api/albums/456/artwork' }
+								}
+							}),
+							{ status: 200 }
+						)
+					);
+				}
+				return Promise.reject(new Error('offline'));
+			})
+		);
+
+		const player = new PlayerState();
+		player.restorePlaybackState({
+			currentTrack: {
+				kind: 'track',
+				id: '123',
+				title: '123',
+				artists: [{ id: 'artist-1', name: 'artist-1' }],
+				imageUrl: 'https://resources.tidal.com/images/a0/b1/640x640.jpg'
+			},
+			queue: [],
+			history: [],
+			currentTime: 0
+		});
+
+		await vi.waitFor(() => expect(player.currentTrack?.title).toBe('Resolved title'));
+		// Re-addressing the same cover reloaded it and re-faded the full-screen player.
+		expect(player.currentTrack?.imageUrl).toBe(
+			'https://resources.tidal.com/images/a0/b1/640x640.jpg'
+		);
+		expect(player.currentTrack?.album?.id).toBe('456');
+	});
+
 	it('bounds restore-time metadata hydration for a legacy queue', async () => {
 		vi.useFakeTimers();
 		const fetchSpy = vi.fn((url: string) => {

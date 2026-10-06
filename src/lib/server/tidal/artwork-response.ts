@@ -50,7 +50,9 @@ export async function proxyArtwork(
 
 	const headers = new Headers({
 		'content-type': contentType,
-		'cache-control': 'private, max-age=3600',
+		// A track's or album's cover does not change; a day spares re-downloads
+		// on every revisit, and stale-while-revalidate keeps old copies usable.
+		'cache-control': 'private, max-age=86400, stale-while-revalidate=604800',
 		'x-content-type-options': 'nosniff'
 	});
 	const contentLength = upstream.headers.get('content-length');

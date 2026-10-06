@@ -1020,9 +1020,14 @@ export class PlayerState {
 	private applyTrackMetadata(metadata: TrackSummary): void {
 		const enrich = <T extends TrackSummary>(candidate: T): T => {
 			if (candidate.id !== metadata.id) return candidate;
+			// Metadata fills in missing details but never re-addresses artwork the
+			// track already has: the same cover under a new URL reloaded it and
+			// re-faded the full-screen player mid-track.
+			const artwork = trackArtworkUrl(candidate);
 			return {
 				...candidate,
 				...metadata,
+				...(artwork ? { imageUrl: artwork } : {}),
 				...(candidate.provenance ? { provenance: candidate.provenance } : {})
 			} as T;
 		};

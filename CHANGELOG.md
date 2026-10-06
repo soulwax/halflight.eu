@@ -81,6 +81,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The full-screen player no longer reloads its artwork and re-fades the backdrop shortly after a
+  track starts. A track's artwork URL is now canonical: once a track enters playback its
+  `imageUrl` is used verbatim, late metadata no longer re-addresses it, and `trackArtworkUrl` no
+  longer turns a track URL into the album URL when album data arrives. Artwork responses are
+  cacheable for a day.
 - Opening Lyrics (and other Now Playing sub-screens) from the mobile player no longer crashes
   into an error page. SvelteKit's experimental `forkPreloads` let the outgoing player's seek bar
   read Svelte's uninitialised sentinel during the preloaded navigation; it is now off. A failed

@@ -15,8 +15,26 @@ describe('display artwork URLs', () => {
 		expect(artworkUrlForSize('/api/albums/456/artwork?size=80', 640)).toBe(
 			'/api/albums/456/artwork'
 		);
-		expect(trackArtworkUrl({ id: '123', album, imageUrl: '/api/tracks/123/artwork' }, 80)).toBe(
-			'/api/albums/456/artwork?size=80'
+	});
+	it('keeps a track’s canonical artwork when album data arrives later', () => {
+		const album = { id: '456', title: 'Album' };
+		// Without album data the track proxy is canonical; once written to imageUrl
+		// it must not turn into the album URL, which would reload the same cover.
+		const canonical = trackArtworkUrl({ id: '123' });
+		expect(canonical).toBe('/api/tracks/123/artwork');
+		expect(trackArtworkUrl({ id: '123', album, imageUrl: canonical ?? undefined })).toBe(canonical);
+		expect(trackArtworkUrl({ id: '123', album, imageUrl: canonical ?? undefined }, 80)).toBe(
+			'/api/tracks/123/artwork?size=80'
+		);
+	});
+	it('prefers catalogue images, which work without the playback token', () => {
+		const album = {
+			id: '456',
+			title: 'Album',
+			imageUrl: 'https://resources.tidal.com/images/a0/640x640.jpg'
+		};
+		expect(trackArtworkUrl({ id: '123', album }, 80)).toBe(
+			'https://resources.tidal.com/images/a0/80x80.jpg'
 		);
 	});
 	it('does not send private or unresolved identifiers to TIDAL', () => {
