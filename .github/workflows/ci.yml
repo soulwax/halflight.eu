@@ -17,6 +17,15 @@ jobs:
   verify:
     name: Verify
     runs-on: ubuntu-latest
+    # Placeholders only: they satisfy src/env.ts validation, nothing connects to them.
+    env:
+      DATABASE_URL: postgres://ci:ci@localhost:5432/ci
+      ORIGIN: http://localhost:3000
+      BETTER_AUTH_SECRET: ci-placeholder-secret-not-for-production
+      GITHUB_CLIENT_ID: ci-placeholder
+      GITHUB_CLIENT_SECRET: ci-placeholder
+      ADMIN_USERNAME: ci-admin
+      ADMIN_PASSWORD: ci-placeholder-password
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
