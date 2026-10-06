@@ -32,6 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Keep actionable playback recovery visible across Halflight Now screens. The shared shell now carries
   remote-playback, unavailable-track, authorization, plan, stream, and fallback recovery with one
   clear next action; the mini player no longer repeats the same recovery controls.
+- Unify mobile album, artist, playlist and track actions in the same reviewed action sheet, with
+  queue feedback and the correct duplicate-track occurrence preserved for contextual Play Now.
 - Remove the `bragi` and `bragi-audio` Git submodules; both are developed in their own repositories and consumed from npm.
 - Rebrand the repository to `soulwax/halflight.eu` with homepage `https://halflight.eu`; the `syn` code name is unchanged.
 
