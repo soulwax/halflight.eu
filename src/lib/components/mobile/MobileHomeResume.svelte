@@ -73,7 +73,6 @@
 
 <style>
 	.mobile-home {
-		min-height: 100%;
 		padding: clamp(1.5rem, 6vw, 2.5rem) clamp(1.25rem, 5vw, 2rem) clamp(2.5rem, 9vw, 4rem);
 	}
 
