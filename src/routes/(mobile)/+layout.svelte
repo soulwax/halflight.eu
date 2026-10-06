@@ -18,6 +18,7 @@
 	import {
 		readMobileViewportBox,
 		setMobileViewportBox,
+		standaloneBottomExtension,
 		standaloneBottomInset
 	} from '#lib/mobile/viewport-height.js';
 	import {
@@ -68,11 +69,17 @@
 		const syncBottomInset = () => {
 			if (!standalone) return;
 			const safeBottom = Number.parseFloat(getComputedStyle(insetProbe).paddingBottom) || 0;
-			const inset = standaloneBottomInset(safeBottom, window.screen, {
-				width: window.innerWidth,
-				height: window.innerHeight
-			});
+			const viewport = { width: window.innerWidth, height: window.innerHeight };
+			const inset = standaloneBottomInset(safeBottom, window.screen, viewport);
 			shellElement.style.setProperty('--mobile-bottom-inset', `${inset}px`);
+			shellElement.style.setProperty(
+				'--mobile-bottom-extension',
+				`${standaloneBottomExtension(safeBottom, window.screen, viewport)}px`
+			);
+			shellElement.style.setProperty(
+				'--mobile-bottom-physical-strip',
+				`${Math.max(0, safeBottom - inset)}px`
+			);
 		};
 		const syncViewportHeight = () => {
 			const activeElement = document.activeElement;
@@ -244,13 +251,15 @@
 		   it the window already ends above (see standaloneBottomInset), so the
 		   navigation sits at the bottom edge instead of floating over spare space. */
 		--mobile-bottom-inset: env(safe-area-inset-bottom, 0px);
+		--mobile-bottom-extension: 0px;
+		--mobile-bottom-physical-strip: 0px;
 		/* JS refreshes these from visualViewport as browser chrome, keyboard and
 		   orientation change. Viewport units are only the pre-hydration fallback;
 		   some iOS standalone versions report a stale 100dvh/100lvh value. */
 		position: fixed;
 		top: var(--mobile-viewport-top, 0px);
 		inset-inline: 0;
-		height: var(--mobile-viewport-height, 100vh);
+		height: calc(var(--mobile-viewport-height, 100vh) + var(--mobile-bottom-extension));
 		min-height: 0;
 		overflow: hidden;
 		/* No double-tap zoom; pinch zoom stays available. */
@@ -269,7 +278,7 @@
 
 	@supports (height: 100dvh) {
 		.mobile-shell {
-			height: var(--mobile-viewport-height, 100dvh);
+			height: calc(var(--mobile-viewport-height, 100dvh) + var(--mobile-bottom-extension));
 		}
 	}
 

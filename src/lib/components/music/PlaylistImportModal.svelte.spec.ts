@@ -120,7 +120,7 @@ describe('PlaylistImportModal.svelte', () => {
 			.toBeDisabled();
 	});
 
-	it('names the playlists that TIDAL could not import', async () => {
+	it('does not surface API sync failures in the interface', async () => {
 		const fetchMock = vi
 			.fn()
 			.mockResolvedValueOnce(jsonResponse({ playlists }))
@@ -145,8 +145,14 @@ describe('PlaylistImportModal.svelte', () => {
 		await expect.element(importButton).toBeEnabled();
 		(importButton.element() as HTMLButtonElement).click();
 
-		await expect
-			.element(page.getByText(m.playlist_import_failed_playlists({ titles: 'Night Drive' })))
-			.toBeInTheDocument();
+		await expect.element(page.getByText('Night Drive')).toBeInTheDocument();
+		expect(page.getByRole('alert').length).toBe(0);
+	});
+
+	it('keeps the chooser quiet when loading playlists fails', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('upstream failure')));
+		render(PlaylistImportModal);
+		await expect.element(page.getByText(m.playlist_no_playlists())).toBeInTheDocument();
+		expect(page.getByRole('alert').length).toBe(0);
 	});
 });

@@ -79,9 +79,26 @@ async function collectPages(
 			// changes the owner's ordered selection. Make the caller retry instead.
 			throw new Error(`TIDAL ${operation} pagination did not finish.`);
 		}
-		// TIDAL controls the pagination token format. Following the supplied link
-		// avoids assuming cursor pagination when an endpoint changes its scheme.
-		page = await tidalJson<Document<Resource[]>>(next, {}, ctx);
+		// TIDAL controls the pagination token format, but the link is untrusted
+		// provider data. Resolve relative links against the fixed API origin and
+		// reject redirects to any other host or protocol before attaching a token.
+		const base = new URL(TIDAL_API_BASE);
+		let nextUrl: URL;
+		try {
+			nextUrl = new URL(next, `${base.origin}/`);
+		} catch {
+			throw new Error(`TIDAL ${operation} pagination link was invalid.`);
+		}
+		if (nextUrl.origin !== base.origin || nextUrl.protocol !== 'https:') {
+			throw new Error(`TIDAL ${operation} pagination link was unsafe.`);
+		}
+		page = await tidalJson<Document<Resource[]>>(
+			nextUrl.origin === base.origin && next.startsWith('/')
+				? `${nextUrl.pathname}${nextUrl.search}`
+				: nextUrl.toString(),
+			{},
+			ctx
+		);
 	}
 }
 
@@ -269,6 +286,12 @@ export async function getFullPlaylist(
 	const attrs = (data.attributes ?? {}) as Record<string, unknown>;
 	const numberOfItemsAttr = attrs.numberOfItems ?? attrs.numberOfTracks;
 	const expectedCount = typeof numberOfItemsAttr === 'number' ? numberOfItemsAttr : undefined;
+	if (
+		expectedCount !== undefined &&
+		(!Number.isSafeInteger(expectedCount) || expectedCount < 0 || expectedCount > 5000)
+	) {
+		throw new Error('TIDAL playlist item count was invalid.');
+	}
 	const hasNext = Boolean(itemsRel?.links?.next);
 
 	if (
@@ -280,7 +303,7 @@ export async function getFullPlaylist(
 			countryCode: opts.countryCode,
 			include: ['artists', 'albums']
 		});
-		if (expectedCount !== undefined && fullItems.items.length < expectedCount) {
+		if (expectedCount !== undefined && fullItems.items.length !== expectedCount) {
 			throw new Error('TIDAL playlist items were incomplete.');
 		}
 		return {

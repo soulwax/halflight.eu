@@ -219,6 +219,41 @@ describe('TIDAL playlist API wrappers', () => {
 		expect(res.included).toHaveLength(7); // initial t1 + page1/2 included (t1, t2, t3) + page1/2 items (t1, t2, t3)
 	});
 
+	it('rejects pagination links that could send the bearer token off the TIDAL API host', async () => {
+		expect.assertions(2);
+		vi.mocked(tidalJson)
+			.mockResolvedValueOnce({
+				data: {
+					id: 'p1',
+					type: 'playlists',
+					attributes: { numberOfItems: 2 },
+					relationships: { items: { data: [{ id: 't1', type: 'tracks' }] } }
+				}
+			} as any)
+			.mockResolvedValueOnce({
+				data: [{ id: 't1', type: 'tracks' }],
+				links: { next: 'https://attacker.example/steal-token' }
+			} as any);
+
+		await expect(getFullPlaylist('p1')).rejects.toThrow('pagination link was unsafe');
+		expect(tidalJson).toHaveBeenCalledTimes(2);
+	});
+
+	it('rejects implausible provider playlist counts before fetching items', async () => {
+		expect.assertions(2);
+		vi.mocked(tidalJson).mockResolvedValueOnce({
+			data: {
+				id: 'p1',
+				type: 'playlists',
+				attributes: { numberOfItems: 5001 },
+				relationships: { items: { data: [] } }
+			}
+		} as any);
+
+		await expect(getFullPlaylist('p1')).rejects.toThrow('item count was invalid');
+		expect(tidalJson).toHaveBeenCalledTimes(1);
+	});
+
 	it('uses nested item includes so TIDAL does not reject playlist imports with 400', async () => {
 		expect.assertions(2);
 		vi.mocked(tidalJson).mockResolvedValue({

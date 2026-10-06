@@ -670,6 +670,7 @@
 		margin: 0 auto;
 		justify-content: space-between;
 		gap: clamp(0.35rem, 1.2vh, 0.8rem);
+		padding-bottom: var(--mobile-bottom-extension, 0px);
 	}
 
 	/* Artwork */
@@ -677,7 +678,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		flex: 1 1 0;
+		flex: 1 0 0;
 		min-height: 0;
 		min-width: 0;
 		width: 100%;
@@ -698,6 +699,7 @@
 		aspect-ratio: 1;
 		min-width: 0;
 		min-height: 0;
+		flex: none;
 		transform: translate3d(var(--drag-x), 0, 0) scale(var(--art-scale));
 		transition: transform 520ms cubic-bezier(0.34, 1.36, 0.64, 1);
 		will-change: transform;

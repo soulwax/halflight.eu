@@ -17,11 +17,8 @@
 
 	let playlists = $state<ImportablePlaylist[]>([]);
 	const selectedIds = new SvelteSet<string>();
-	let isLoading = $state(false);
 	let isImporting = $state(false);
-	let errorMessage = $state<string | null>(null);
 	let successMessage = $state<string | null>(null);
-	let failedPlaylistIds = $state<string[]>([]);
 
 	$effect(() => {
 		if (customPlaylists.isImportOpen) {
@@ -30,31 +27,20 @@
 			// Reset state on close
 			playlists = [];
 			selectedIds.clear();
-			errorMessage = null;
 			successMessage = null;
-			failedPlaylistIds = [];
 		}
 	});
 
 	async function loadPlaylists() {
-		isLoading = true;
-		errorMessage = null;
 		try {
 			const res = await fetch('/api/playlists/import');
-			if (!res.ok) {
-				throw new Error(m.playlist_import_load_failed());
-			}
+			if (!res.ok) return;
 			const data = (await res.json()) as { playlists: ImportablePlaylist[]; error?: string | null };
-			if (data.error) {
-				throw new Error(
-					data.error === 'not_connected' ? m.tidal_not_connected() : m.playlist_import_load_failed()
-				);
-			}
+			if (data.error) return;
 			playlists = data.playlists || [];
-		} catch (err) {
-			errorMessage = err instanceof Error ? err.message : m.playlist_import_load_failed();
-		} finally {
-			isLoading = false;
+		} catch {
+			// A transient API sync problem leaves the chooser empty without exposing
+			// transport or provider details to the listener.
 		}
 	}
 
@@ -79,9 +65,7 @@
 	async function handleImport() {
 		if (selectedIds.size === 0) return;
 		isImporting = true;
-		errorMessage = null;
 		successMessage = null;
-		failedPlaylistIds = [];
 
 		try {
 			const res = await fetch('/api/playlists/import', {
@@ -90,9 +74,7 @@
 				body: JSON.stringify({ tidalPlaylistIds: Array.from(selectedIds) })
 			});
 
-			if (!res.ok) {
-				throw new Error(m.playlist_import_some_failed({ count: selectedIds.size }));
-			}
+			if (!res.ok) return;
 
 			const data = (await res.json()) as {
 				totalImported: number;
@@ -103,18 +85,11 @@
 				error?: 'invalid_playlist_selection';
 				imported?: Array<{ tidalPlaylistId: string; status: string }>;
 			};
-			if (data.error === 'invalid_playlist_selection') {
-				errorMessage = m.playlist_import_selection_invalid();
-				return;
-			}
+			if (data.error === 'invalid_playlist_selection') return;
 
 			const failures = (data.imported ?? []).filter((result) => result.status === 'error');
-			failedPlaylistIds = failures.map((result) => result.tidalPlaylistId);
-			const failedTitles = playlists
-				.filter((playlist) => failedPlaylistIds.includes(playlist.id))
-				.map((playlist) => playlist.title);
-
-			successMessage = data.totalImported
+			const successfulCount = Math.max(0, data.totalImported - failures.length);
+			successMessage = successfulCount
 				? `${m.playlist_import_done()} (${data.totalImported}) ${m.playlist_import_source_preserved()} ${m.playlist_import_playback_checked({ count: data.totalTracksSkipped })}`
 				: null;
 
@@ -124,21 +99,15 @@
 			// Reload the list to update `isImported` badges
 			await loadPlaylists();
 			selectedIds.clear();
-			if (data.totalErrors > 0) {
-				errorMessage = failedTitles.length
-					? m.playlist_import_failed_playlists({ titles: failedTitles.join(', ') })
-					: m.playlist_import_some_failed({ count: data.totalErrors });
+			if (failures.length > 0) {
 				return;
 			}
 
 			setTimeout(() => {
 				customPlaylists.closeImport();
 			}, 1200);
-		} catch (err) {
-			errorMessage =
-				err instanceof Error
-					? err.message
-					: m.playlist_import_some_failed({ count: selectedIds.size });
+		} catch {
+			// Keep provider and transport failures out of the interface.
 		} finally {
 			isImporting = false;
 		}
@@ -167,20 +136,11 @@
 		</header>
 
 		<div class="modal-body">
-			{#if errorMessage}
-				<Notice tone="danger">{errorMessage}</Notice>
-			{/if}
-
 			{#if successMessage}
 				<Notice tone="success">{successMessage}</Notice>
 			{/if}
 
-			{#if isLoading}
-				<div class="loading-wrap">
-					<Loader2 size={24} class="animate-spin text-[var(--action)]" />
-					<span>{m.playlist_import_loading()}</span>
-				</div>
-			{:else if playlists.length === 0}
+			{#if playlists.length === 0}
 				<div class="empty-wrap">
 					<p>{m.playlist_no_playlists()}</p>
 				</div>
@@ -251,7 +211,7 @@
 
 			<Button
 				variant="primary"
-				disabled={selectedIds.size === 0 || isImporting || isLoading}
+				disabled={selectedIds.size === 0 || isImporting}
 				onclick={handleImport}
 			>
 				{#if isImporting}
@@ -340,7 +300,6 @@
 		flex: 1;
 	}
 
-	.loading-wrap,
 	.empty-wrap {
 		padding: 3rem 1rem;
 		display: flex;

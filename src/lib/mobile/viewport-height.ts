@@ -68,3 +68,17 @@ export function standaloneBottomInset(
 	const stripBelowWindow = Math.max(0, screenExtent - viewport.height);
 	return Math.max(0, safeAreaBottom - stripBelowWindow);
 }
+
+/** Extra portrait PWA space painted below the app viewport for the home indicator. */
+export function standaloneBottomExtension(
+	safeAreaBottom: number,
+	screen: Pick<Screen, 'width' | 'height'>,
+	viewport: { width: number; height: number }
+): number {
+	if (!Number.isFinite(safeAreaBottom) || safeAreaBottom <= 0) return 0;
+	const long = Math.max(screen.width, screen.height);
+	const short = Math.min(screen.width, screen.height);
+	const screenExtent = viewport.width > viewport.height ? short : long;
+	if (!Number.isFinite(screenExtent) || screenExtent <= 0) return 0;
+	return Math.max(0, screenExtent - viewport.height);
+}

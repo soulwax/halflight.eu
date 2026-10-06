@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
 	readMobileViewportBox,
 	setMobileViewportBox,
+	standaloneBottomExtension,
 	standaloneBottomInset
 } from './viewport-height';
 
@@ -76,5 +77,19 @@ describe('standaloneBottomInset', () => {
 		expect(standaloneBottomInset(34, { width: 0, height: 0 }, { width: 393, height: 818 })).toBe(
 			34
 		);
+	});
+});
+
+describe('standaloneBottomExtension', () => {
+	const iPhone15 = { width: 393, height: 852 };
+
+	it('extends the portrait shell through the home-indicator strip', () => {
+		expect(standaloneBottomExtension(34, iPhone15, { width: 393, height: 818 })).toBe(34);
+		expect(standaloneBottomExtension(34, iPhone15, { width: 393, height: 852 })).toBe(0);
+	});
+
+	it('does not add portrait-style extension in landscape or without a safe area', () => {
+		expect(standaloneBottomExtension(21, iPhone15, { width: 852, height: 393 })).toBe(0);
+		expect(standaloneBottomExtension(0, iPhone15, { width: 393, height: 818 })).toBe(0);
 	});
 });
