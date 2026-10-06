@@ -11,6 +11,7 @@
 	import MobileNavigationMenu from '#lib/components/mobile/MobileNavigationMenu.svelte';
 	import NowTabBar from '#lib/components/mobile/NowTabBar.svelte';
 	import PlaylistDialog from '#lib/components/music/PlaylistDialog.svelte';
+	import PlaybackStatus from '#lib/components/player/PlaybackStatus.svelte';
 	import {
 		managesMobileScroll,
 		mobileScrollKey,
@@ -109,6 +110,9 @@
 				<span>{m.brand_name()}</span>
 			</a>
 		</header>
+	{/if}
+	{#if !isFullNowPlaying}
+		<PlaybackStatus mobile attentionOnly />
 	{/if}
 	<main
 		bind:this={mainElement}

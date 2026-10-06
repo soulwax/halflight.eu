@@ -74,13 +74,6 @@
 				{#if artistLine}
 					<span class="block truncate text-xs text-(--text-muted)">{artistLine}</span>
 				{/if}
-				{#if player.isPlaybackActiveElsewhere}<span class="mini-status"
-						>{m.now_playing_elsewhere()}</span
-					>
-				{:else if player.playbackMode === 'embed'}<span class="mini-status"
-						>{m.player_fallback()}</span
-					>
-				{/if}
 			</span>
 		</a>
 		{#if player.persistenceStatus !== 'saved'}
@@ -91,9 +84,15 @@
 			class="flex h-12 w-12 shrink-0 items-center justify-center text-(--text-primary)"
 			disabled={player.isLoading ||
 				player.playbackClaimPending ||
+				player.isPlaybackActiveElsewhere ||
+				player.playbackMode === 'embed' ||
 				(player.resumeStatus !== 'ready' &&
 					player.resumeStatus !== 'unavailable' &&
-					!player.isPlaying)}
+					!player.isPlaying) ||
+				player.resumeStatus === 'unavailable' ||
+				player.resumeStatus === 'auth' ||
+				player.resumeStatus === 'plan' ||
+				player.resumeStatus === 'temporary'}
 			aria-busy={player.isLoading}
 			onclick={togglePlayback}
 			aria-label={playLabel}
@@ -131,15 +130,6 @@
 		top: 0.25rem;
 		border-radius: var(--radius-full);
 		background: var(--surface-raised);
-	}
-	.mini-status {
-		display: block;
-		max-width: 100%;
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		color: var(--text-secondary);
-		font-size: var(--fs-xs);
 	}
 	.mobile-mini-player a {
 		min-height: 48px;

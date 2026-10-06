@@ -5,7 +5,6 @@
 	import { player } from '#lib/player/player.svelte.js';
 	import { trackArtworkUrl } from '#lib/tidal/artwork';
 	import MobileScreenHeader from './MobileScreenHeader.svelte';
-	import PlaybackStatus from '#lib/components/player/PlaybackStatus.svelte';
 	import SessionSaveStatus from '#lib/components/player/SessionSaveStatus.svelte';
 
 	const track = $derived(player.currentTrack);
@@ -40,26 +39,21 @@
 					{#if artistLine}
 						<span class="resume-artist">{artistLine}</span>
 					{/if}
-					{#if !player.isPlaybackActiveElsewhere}
+					{#if !player.isPlaybackActiveElsewhere && player.playbackMode !== 'embed' && (player.resumeStatus === 'ready' || player.resumeStatus === 'checking' || player.isLoading)}
 						<button
 							type="button"
 							class="resume-action"
-							disabled={player.isLoading || player.resumeStatus !== 'ready'}
+							disabled={player.isLoading || player.resumeStatus === 'checking'}
 							aria-busy={player.isLoading}
 							onclick={() =>
 								player.playbackMode === 'embed' ? player.retryPlayback() : player.togglePlayPause()}
 						>
 							{#if player.resumeStatus === 'checking'}{m.player_check_pending()}
-							{:else if player.resumeStatus === 'unavailable'}{m.player_unavailable_track()}
-							{:else if player.resumeStatus === 'auth'}{m.player_source_link()}
-							{:else if player.resumeStatus === 'plan'}{m.player_plan_failure()}
-							{:else if player.resumeStatus === 'temporary'}{m.player_temporary_failure()}
 							{:else if player.isLoading}<Loader2
 									size={18}
 									class="animate-spin"
 									aria-hidden="true"
 								/>{m.player_loading()}
-							{:else if player.playbackMode === 'embed'}{m.track_retry()}
 							{:else if player.isPlaying}<Pause size={18} aria-hidden="true" />{m.player_pause()}
 							{:else}<Play size={18} aria-hidden="true" />{m.now_home_resume_cta()}{/if}
 						</button>
@@ -67,7 +61,7 @@
 					<a class="resume-open" href={resolve('/(mobile)/now')}>{m.now_open_full_player()}</a>
 				</span>
 			</div>
-			<div class="resume-status"><PlaybackStatus mobile /><SessionSaveStatus mobile /></div>
+			<div class="resume-status"><SessionSaveStatus mobile /></div>
 		</section>
 	{:else}
 		<section class="empty-state" aria-label={m.now_home_continue_heading()}>
