@@ -14,7 +14,7 @@
 	async function retry() {
 		retrying = true;
 		try {
-			await goto(page.url.href, { invalidateAll: true, replaceState: true, noScroll: true });
+			await goto(page.url.href, { invalidateAll: true, replaceState: true });
 		} finally {
 			retrying = false;
 		}

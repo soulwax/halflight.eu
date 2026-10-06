@@ -78,6 +78,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Opening Lyrics (and other Now Playing sub-screens) from the mobile player no longer crashes
+  into an error page. SvelteKit's experimental `forkPreloads` let the outgoing player's seek bar
+  read Svelte's uninitialised sentinel during the preloaded navigation; it is now off. A failed
+  Halflight Now screen also renders inside the mobile layout, keeping the mini player, tabs and
+  audio, and an error on any mobile URL returns to mobile Home instead of the desktop Listening
+  Room.
 - Extend Halflight Now to the large viewport in standalone PWA mode so the
   fullscreen player uses the space beneath the home indicator; regular mobile
   browsers continue using the dynamic viewport around browser chrome.
