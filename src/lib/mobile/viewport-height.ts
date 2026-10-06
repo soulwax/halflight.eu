@@ -3,19 +3,33 @@ export interface MobileViewportBox {
 	offsetTop: number;
 }
 
-/** Prefer the visible viewport (including browser chrome and keyboard changes). */
+export interface MobileViewportMode {
+	standalone?: boolean;
+	keyboardOpen?: boolean;
+}
+
+/**
+ * Browsers need the visible viewport so their address bar is not covered. An
+ * installed app has no browser chrome, so use the full app viewport unless its
+ * software keyboard is actively shrinking the visible area.
+ */
 export function readMobileViewportBox(
 	visualViewport: Pick<VisualViewport, 'height' | 'offsetTop'> | null | undefined,
-	innerHeight: number
+	innerHeight: number,
+	mode: MobileViewportMode = {}
 ): MobileViewportBox {
 	const visualHeight = visualViewport?.height;
-	const height =
+	const validVisualHeight =
 		typeof visualHeight === 'number' && Number.isFinite(visualHeight) && visualHeight > 0
 			? visualHeight
-			: innerHeight;
+			: null;
+	const useVisibleViewport = !mode.standalone || mode.keyboardOpen;
+	const height = useVisibleViewport ? (validVisualHeight ?? innerHeight) : innerHeight;
 	const visualOffset = visualViewport?.offsetTop;
 	const offsetTop =
-		typeof visualOffset === 'number' && Number.isFinite(visualOffset) ? visualOffset : 0;
+		useVisibleViewport && typeof visualOffset === 'number' && Number.isFinite(visualOffset)
+			? visualOffset
+			: 0;
 	return {
 		height: Number.isFinite(height) && height > 0 ? height : 0,
 		offsetTop

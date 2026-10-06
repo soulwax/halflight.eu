@@ -51,10 +51,29 @@
 	onMount(() => {
 		player.startSessionSync();
 		const visualViewport = window.visualViewport;
+		const standalone =
+			window.matchMedia('(display-mode: standalone)').matches ||
+			(window.navigator as Navigator & { standalone?: boolean }).standalone === true;
 		const syncViewportHeight = () => {
+			const activeElement = document.activeElement;
+			const hasEditableFocus =
+				activeElement instanceof HTMLElement &&
+				(activeElement.isContentEditable ||
+					activeElement.matches(
+						'textarea, input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="hidden"])'
+					));
+			const keyboardOpen = Boolean(
+				standalone &&
+				hasEditableFocus &&
+				visualViewport &&
+				visualViewport.height < window.innerHeight - 80
+			);
 			setMobileViewportBox(
 				shellElement,
-				readMobileViewportBox(window.visualViewport, window.innerHeight)
+				readMobileViewportBox(window.visualViewport, window.innerHeight, {
+					standalone,
+					keyboardOpen
+				})
 			);
 		};
 		syncViewportHeight();
