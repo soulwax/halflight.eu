@@ -14,9 +14,9 @@ product; every route exists to feed it. _Syn_ is the code name, so the package, 
 
 ## Features
 
-- **Open to everyone (in progress)** — self-hosting is supported today. Multi-user sign-in on halflight.eu with each
-  listener's own TIDAL account is the direction, not yet the behaviour: the TIDAL connection and product routes are
-  currently tied to a single owner (see below).
+- **Open to everyone (in progress)** — self-hosting is supported today. Tokens and playback state are already per
+  user; what remains is opening the product routes, which currently require the administrator, to every signed-in
+  listener.
 - **Two sites, one session** — a desktop Listening Room (`/app`) and a mobile PWA, Halflight Now, sharing one
   player and one server-authoritative playback session (queue, history and position survive reloads and devices).
 - **Direct playback** — audio is proxied through the server, with Range support and automatic quality fallback
@@ -67,8 +67,7 @@ lint, unit tests, Storybook tests and a build on every push and pull request.
 
 ## TIDAL connection
 
-Halflight keeps two independent, encrypted, auto-refreshing TIDAL tokens, currently in the single-row `tidal_auth`
-table (one TIDAL account per deployment; per-listener storage is the planned change). All
+Halflight keeps two independent, encrypted, auto-refreshing TIDAL tokens per user in `tidal_auth`. All
 token logic lives under [`src/lib/server/tidal/`](src/lib/server/tidal) and never reaches the browser.
 
 | Token    | Flow                                             | Used for                               |
