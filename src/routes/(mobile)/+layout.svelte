@@ -72,7 +72,8 @@
 				shellElement,
 				readMobileViewportBox(window.visualViewport, window.innerHeight, {
 					standalone,
-					keyboardOpen
+					keyboardOpen,
+					screenHeight: window.screen.height
 				})
 			);
 		};
