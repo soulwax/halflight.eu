@@ -17,14 +17,13 @@ describe('readMobileViewportBox', () => {
 		});
 	});
 
-	it('uses the full screen bounds in standalone mode when no keyboard is open', () => {
+	it('uses the app viewport in standalone mode when no keyboard is open', () => {
 		expect(
 			readMobileViewportBox({ height: 720, offsetTop: 12 }, 800, {
-				standalone: true,
-				screenHeight: 900
+				standalone: true
 			})
 		).toEqual({
-			height: 900,
+			height: 800,
 			offsetTop: 0
 		});
 	});
@@ -33,8 +32,7 @@ describe('readMobileViewportBox', () => {
 		expect(
 			readMobileViewportBox({ height: 470, offsetTop: 32 }, 800, {
 				standalone: true,
-				keyboardOpen: true,
-				screenHeight: 900
+				keyboardOpen: true
 			})
 		).toEqual({ height: 470, offsetTop: 32 });
 	});

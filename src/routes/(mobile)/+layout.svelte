@@ -54,6 +54,7 @@
 		const standalone =
 			window.matchMedia('(display-mode: standalone)').matches ||
 			(window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+		if (standalone) document.documentElement.classList.add('mobile-standalone');
 		const syncViewportHeight = () => {
 			const activeElement = document.activeElement;
 			const hasEditableFocus =
@@ -72,8 +73,7 @@
 				shellElement,
 				readMobileViewportBox(window.visualViewport, window.innerHeight, {
 					standalone,
-					keyboardOpen,
-					screenHeight: window.screen.height
+					keyboardOpen
 				})
 			);
 		};
@@ -84,6 +84,7 @@
 		window.addEventListener('orientationchange', syncViewportHeight);
 		window.addEventListener('pageshow', syncViewportHeight);
 		return () => {
+			document.documentElement.classList.remove('mobile-standalone');
 			visualViewport?.removeEventListener('resize', syncViewportHeight);
 			visualViewport?.removeEventListener('scroll', syncViewportHeight);
 			window.removeEventListener('resize', syncViewportHeight);
@@ -204,6 +205,14 @@
 		height: 100%;
 		overflow: hidden;
 		overscroll-behavior: none;
+		background-color: var(--surface-canvas);
+	}
+
+	/* The standalone app can expose a home-indicator strip beyond its visual
+	   viewport. Match that strip to the bottom navigation without moving controls. */
+	:global(html.mobile-standalone:has(.mobile-shell)),
+	:global(html.mobile-standalone body:has(.mobile-shell)) {
+		background-color: var(--surface-raised);
 	}
 
 	.mobile-shell {

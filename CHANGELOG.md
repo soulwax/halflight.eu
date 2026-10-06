@@ -10,8 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Halflight Now measures the visible mobile viewport as browser chrome, keyboard, and orientation
-  change, uses full device screen bounds in standalone mode, and brings the most recent successful
-  search results back when returning to Search.
+  change, fills the standalone app's exposed bottom area without shifting controls, and brings the
+  most recent successful search results back when returning to Search.
 - A shell-wide notice (desktop and mobile) guiding a listener to connect their own TIDAL
   account, or authorise playback, before anything can play.
 - Per-listener request budgets (`429` with `Retry-After`): tighter for search, stream
