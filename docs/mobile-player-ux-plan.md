@@ -6,6 +6,13 @@ The parent [Overall Halflight UX/UI plan](overall-ux-ui-plan.md) covers the comp
 mobile product, setup, information architecture, and shared visual/interaction system. This
 document specifies the first mobile playback delivery workstream.
 
+**The composition here is superseded by the
+[mobile listening experience plan](mobile-listening-experience-plan.md) (decided 2026-10-06):**
+Now Playing becomes an overlay sheet with queue, lyrics and credits as views inside it, and the
+tab bar drops to three destinations. Read the "Intended mobile composition" diagrams below as
+history. The **player behavior contract** — every control, state and failure rule in the table
+further down — is unchanged and still the specification; the new plan builds on it.
+
 ## Outcome and priorities
 
 Make Halflight feel familiar to someone who uses a mobile music player: find music, start it,

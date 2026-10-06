@@ -34,6 +34,13 @@ The [navigation and listening recovery redesign](docs/navigation-recovery-plan.m
 after the owner's 2026-10-04 iPhone report, specifies canonical-domain mobile entry, player
 navigation, resume eligibility, and failure recovery. These flows remain unaccepted.
 
+The [mobile listening experience plan](docs/mobile-listening-experience-plan.md) (2026-10-06)
+takes Halflight Now to a Spotify-grade interaction model: Now Playing as an overlay sheet, a
+three-tab bar with per-tab stacks, instant Back, a verified device matrix, and audio hardening.
+The visual identity and the four theme presets stay unchanged. Its scope decisions are settled;
+implementation has not started, and it supersedes the Now-tab and route-based Now composition in
+the two plans above.
+
 Mobile planning: [website](#the-mobile-site-halflight-now), [PWA](#the-installed-pwa),
 [later Tauri client](#later-tauri-native-client), and [release gates](#mobile-pwa-and-native-release-gates).
 Server coordination: [local Redis](#local-redis-cache-and-coordination) complements Postgres and
@@ -997,10 +1004,13 @@ Now Playing (a destination, not a modal)
 
 ### Halflight Now contracts
 
-- **Four destinations only:** Home, Search, Library, and Now Playing. Queue, lyrics, credits, and
-  item detail are layered destinations reached from the current listening context, not permanent
-  tabs.
-- **Now Playing owns the device.** It is full-screen, thumb-friendly, and immediate. Artwork is
+- **Three destinations only:** Home, Search, and Library. Now Playing is reached from the mini
+  player rather than a tab (decided 2026-10-06; see the
+  [mobile listening experience plan](docs/mobile-listening-experience-plan.md)). Queue, lyrics,
+  credits, and item detail are layered destinations reached from the current listening context,
+  not permanent tabs.
+- **Now Playing owns the device.** It is a full-height overlay sheet above the current scene —
+  thumb-friendly and immediate, and it never unmounts or reloads the screen beneath. Artwork is
   dominant; transport is stable; the queue opens without losing playback; a swipe or explicit close
   returns to the prior scene. Respect reduced motion and never make a gesture the only control.
 - **Home is one decision deep.** Resume first; otherwise one personalised set, one recent return

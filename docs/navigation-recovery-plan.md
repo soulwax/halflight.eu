@@ -6,6 +6,14 @@ This plan takes precedence over earlier claims that mobile navigation is deliver
 It supplements [overall UX/UI](overall-ux-ui-plan.md) and
 [mobile player controls](mobile-player-ux-plan.md).
 
+**Superseded in two places by the [mobile listening experience plan](mobile-listening-experience-plan.md)
+(decided 2026-10-06).** The mobile tab bar is **Home, Search, Library** — the Now tab is removed
+and the mini player is the way into the player — and Now Playing becomes an **overlay sheet**
+rather than a navigated screen. The "Navigation composition" table and the "Mobile screen
+specification" below therefore describe the previous composition. Everything else here — entry
+and route contract, the availability/recovery contract, the reset record, and the acceptance
+gates — still stands.
+
 ## Problem and evidence
 
 Implementation record: `/` now chooses the mobile or desktop shell from the CSS viewport

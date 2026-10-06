@@ -41,6 +41,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   queue feedback and the correct duplicate-track occurrence preserved for contextual Play Now.
 - Remove the `bragi` and `bragi-audio` Git submodules; both are developed in their own repositories and consumed from npm.
 - Rebrand the repository to `soulwax/halflight.eu` with homepage `https://halflight.eu`; the `syn` code name is unchanged.
+- Plan the next Halflight Now stage in `docs/mobile-listening-experience-plan.md`: Now Playing
+  becomes an overlay sheet above the current scene, the tab bar drops to Home/Search/Library,
+  and the plan adds per-tab navigation stacks, a verified phone device matrix, and audio
+  hardening. `MASTERPLAN.md`'s Halflight Now contracts and the two earlier mobile plans now
+  point at it for those superseded compositions. Documentation only; the visual identity and the
+  four theme presets are unchanged.
 
 ### Added
 
