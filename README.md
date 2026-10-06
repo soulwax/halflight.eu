@@ -2,137 +2,124 @@
 
 [![CI](https://github.com/soulwax/halflight.eu/actions/workflows/ci.yml/badge.svg)](https://github.com/soulwax/halflight.eu/actions/workflows/ci.yml)
 
-A personal, single-user streaming service built on the owner's TIDAL account. See [`AGENTS.md`](AGENTS.md) for the stack,
-commands, and conventions.
+Halflight ([halflight.eu](https://halflight.eu)) is a personal, single-user listening room built on the owner's own
+TIDAL account. The player and its listening session (now playing, queue, history and resume position) are the
+product; every route exists to feed it. _Syn_ is the code name, so the package, tables, env vars and API paths keep
+`syn`.
 
-## Developing
-
-```sh
-pnpm install
-pnpm dev            # dev server (port per ORIGIN in .env — default :3000)
-```
-
-Requires **Node 22 or 24** (`fnm use 24`). The Vercel adapter runtime is pinned to
-`nodejs24.x` in [`vite.config.ts`](vite.config.ts).
-
-```sh
-pnpm check                              # type check
-pnpm lint                               # prettier + eslint
-pnpm format
-pnpm exec vitest --run --project server # server-side unit tests (fast, no browser)
-pnpm test                               # unit + Playwright e2e
-pnpm build && pnpm preview              # production build
-```
-
-## Screenshots
-
-| Now playing on mobile                                                                                                | Compact now playing on mobile                                                                                                |
+| Now playing                                                                                                          | Compact now playing                                                                                                          |
 | -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | ![Halflight mobile player showing the current track, playback controls, and lyrics](.github/screenshots/screen1.png) | ![Halflight compact mobile player showing the current track, playback controls, and lyrics](.github/screenshots/screen2.png) |
 
-| Sign in                                                                                | Mobile sign in                                                                       |
-| -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| ![Halflight sign-in page on desktop](static/readme-screenshots/01-sign-in-desktop.png) | ![Halflight sign-in page on mobile](static/readme-screenshots/02-sign-in-mobile.png) |
+## Features
 
-| Home                                                                       | Mobile home                                                                         |
-| -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| ![Halflight home dashboard](static/readme-screenshots/03-home-desktop.png) | ![Halflight home dashboard on mobile](static/readme-screenshots/04-home-mobile.png) |
+- **Two sites, one session** — a desktop Listening Room (`/app`) and a mobile PWA, Halflight Now, sharing one
+  player and one server-authoritative playback session (queue, history and position survive reloads and devices).
+- **Direct playback** — audio is proxied through the server, with Range support and automatic quality fallback
+  from hi-res to lossless, high and low. The browser never receives a token or a TIDAL media URL.
+- **Synced lyrics** — the active line follows the playhead, with the next line shown as a smaller caption.
+- **Deterministic taste engine** — explainable set generation from your own library. Nothing is sent to an LLM, and
+  nothing is written to TIDAL without review.
+- **Optional extras** — Last.fm scrobbling, playlist export, private music upload and a Redis cache, each off until
+  configured.
 
-| Empty search                                                               | Mobile empty search                                                                         |
-| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| ![TIDAL search empty state](static/readme-screenshots/05-search-empty.png) | ![TIDAL search empty state on mobile](static/readme-screenshots/06-search-empty-mobile.png) |
+## Stack
 
-| Search validation                                                                       | Search results                                                           |
-| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| ![TIDAL search validation state](static/readme-screenshots/07-search-invalid-query.png) | ![TIDAL search results](static/readme-screenshots/08-search-results.png) |
+SvelteKit with Svelte 5 (runes), TypeScript, Tailwind CSS v4, PostgreSQL (Neon) through Drizzle, Better Auth,
+Paraglide (`en`, `de-DE`), and [`bragi-audio`](https://www.npmjs.com/package/bragi-audio) for the browser player
+engine. Package manager: **pnpm only**. See [`AGENTS.md`](AGENTS.md) for conventions and [`CLAUDE.md`](CLAUDE.md)
+for the architecture map; product direction is in [`MASTERPLAN.md`](MASTERPLAN.md).
 
-| Track state                                                           | TIDAL settings                                                                |
-| --------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| ![Track detail state](static/readme-screenshots/09-track-invalid.png) | ![TIDAL connection settings](static/readme-screenshots/10-tidal-settings.png) |
+## Getting started
 
-| Mobile settings                                                                                | Mobile search results                                                                     |
-| ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| ![TIDAL connection settings on mobile](static/readme-screenshots/11-tidal-settings-mobile.png) | ![TIDAL search results on mobile](static/readme-screenshots/12-search-results-mobile.png) |
+Requires **Node 22 or 24** and a Postgres database.
+
+```sh
+pnpm install
+cp .env.example .env     # then fill it in; every variable is declared in src/env.ts
+pnpm db:migrate
+pnpm dev                 # port per ORIGIN in .env, default :3000
+```
+
+Sign-up is open but privilege is not: the account matching `ADMIN_USERNAME` becomes the owner, and only
+administrators can use the product routes.
+
+### Commands
+
+```sh
+pnpm check               # svelte-check
+pnpm lint                # prettier + eslint
+pnpm lint:types          # type-aware eslint (slower)
+pnpm format
+pnpm test:unit           # client and server projects
+pnpm test:storybook
+pnpm test:e2e            # Playwright
+pnpm build               # Node build in build/
+pnpm build:vercel        # Vercel build
+```
+
+Client and Storybook tests need Playwright's Chromium (`pnpm exec playwright install chromium`). CI runs check,
+lint, unit tests, Storybook tests and a build on every push and pull request.
 
 ## TIDAL connection
 
-A reusable, server-only wrapper around a personal TIDAL account: OAuth
-authorization-code + PKCE, an encrypted token store, automatic refresh, and a
-dashboard at [`/tidal`](src/routes/tidal). All token logic lives under
-[`src/lib/server/tidal/`](src/lib/server/tidal) and never reaches the browser.
+Halflight keeps two independent, encrypted, auto-refreshing TIDAL tokens in the single-row `tidal_auth` table. All
+token logic lives under [`src/lib/server/tidal/`](src/lib/server/tidal) and never reaches the browser.
+
+| Token    | Flow                                             | Used for                               |
+| -------- | ------------------------------------------------ | -------------------------------------- |
+| Browse   | OAuth authorization code + PKCE (developer app)  | Catalogue, library and search (v2 API) |
+| Playback | TIDAL device authorization (TIDAL Link, `r_usr`) | Streaming, lyrics and credits (v1 API) |
 
 ### 1. Register a TIDAL app
 
-At <https://developer.tidal.com>, create an app and note the **client ID** and
-(for a confidential app) the **client secret**. Add these **redirect URIs**
-exactly:
+At <https://developer.tidal.com>, create an app and note the client ID (and the secret, for a confidential app). Add
+these redirect URIs exactly:
 
-- `http://localhost:3000/tidal/callback` — development
-- `https://<your-domain>/tidal/callback` — production
+- `http://localhost:3000/tidal/callback` for development
+- `https://<your-domain>/tidal/callback` for production
 
-Grant the app the scopes you want. The default request set is read-only:
-`user.read entitlements.read collection.read playlists.read recommendations.read
-search.read`. Some scopes require approval from TIDAL.
+The default scope request is read-only: `user.read entitlements.read collection.read playlists.read
+recommendations.read search.read`. Some scopes need approval from TIDAL.
 
 ### 2. Configure the environment
 
-Copy `.env.example` to `.env` and fill in:
+| Variable              | Required               | Notes                                                                                                          |
+| --------------------- | ---------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `TIDAL_CLIENT_ID`     | yes                    | From the developer portal.                                                                                     |
+| `TIDAL_CLIENT_SECRET` | confidential apps only | Sent in the token request body.                                                                                |
+| `TIDAL_REDIRECT_URI`  | no                     | Defaults to `${ORIGIN}/tidal/callback`. Must match the portal exactly.                                         |
+| `TIDAL_SCOPES`        | no                     | Space-separated. Defaults to the read-only set above.                                                          |
+| `TIDAL_TOKEN_ENC_KEY` | yes                    | 32-byte base64 key (`openssl rand -base64 32`). Keep it stable: changing it makes stored tokens undecryptable. |
+| `DATABASE_URL`        | yes                    | Postgres. Tokens are stored as encrypted ciphertext only.                                                      |
 
-| Variable              | Required               | Notes                                                                                                                                   |
-| --------------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `TIDAL_CLIENT_ID`     | yes                    | From the developer portal.                                                                                                              |
-| `TIDAL_CLIENT_SECRET` | confidential apps only | Sent in the token request body.                                                                                                         |
-| `TIDAL_REDIRECT_URI`  | no                     | Defaults to `${ORIGIN}/tidal/callback`. Must match the portal exactly.                                                                  |
-| `TIDAL_SCOPES`        | no                     | Space-separated. Defaults to the read-only set above.                                                                                   |
-| `TIDAL_TOKEN_ENC_KEY` | yes                    | 32-byte key, base64. `openssl rand -base64 32`. **Keep it stable** — changing it makes the stored token undecryptable (just reconnect). |
-| `DATABASE_URL`        | yes                    | Postgres. The token record is stored as one encrypted row.                                                                              |
+Set the same variables in your host for every environment that serves the app.
 
-For a deploy, set the same variables in the hosting provider (e.g. Vercel project
-settings) for every environment that serves the app.
+### 3. Connect
 
-### 3. Create the table
+Sign in as the administrator, open **Settings → TIDAL**, and connect the browse token, then pair the playback token
+with the device code shown there. **Disconnect** deletes the stored row (TIDAL has no revocation endpoint).
 
-```sh
-pnpm db:migrate      # applies drizzle/*.sql, including the tidal_auth table
-```
-
-The record lives in a single row of `tidal_auth`; `secret` holds the
-AES-256-GCM ciphertext of the JSON token record. The plaintext never touches the
-database.
-
-### 4. Connect
-
-Sign in (the dashboard is behind the Better Auth session), open `/tidal`, and
-click **Connect TIDAL**. When connected the page shows the account, library
-summary, personal mixes, a search box, and a raw API console. **Disconnect**
-deletes the stored row (TIDAL has no token-revocation endpoint).
-
-### Using the wrapper in a feature
-
-```ts
-// any +page.server.ts / +server.ts
-import { tidalJson, tidalApi } from '#lib/server/tidal';
-
-export const load = async (event) => {
-	const ctx = { fetch: event.fetch };
-	const playlists = await tidalApi.getCollectionPage('playlists', {}, ctx);
-	const raw = await tidalJson('/users/me', {}, ctx); // anything not wrapped
-	return { playlists, raw };
-};
-```
-
-`tidalJson` / `tidalFetch` obtain a valid access token (refreshing and persisting
-rotated tokens first if needed), send the JSON:API `Accept` header, and retry
-once after a `401`. The browser can also reach any endpoint through the
-authenticated proxy at `/tidal/api/<path>` — tokens stay on the server.
+The browser can read any v2 endpoint through the authenticated, read-only proxy at `/tidal/api/<path>`; tokens stay
+on the server.
 
 ### Tests
 
 ```sh
-pnpm exec vitest --run --project server src/lib/server/tidal
+pnpm exec vitest run --project server src/lib/server/tidal
 ```
 
-Cover encryption round-trip and tamper detection, encrypted persistence,
-expiry/refresh with refresh-token rotation, concurrent-refresh coalescing, and
-the 401 retry path. They use `.env.test` fixtures and an in-memory token store —
-no database or network.
+These cover encryption round trips and tamper detection, expiry and refresh with rotation, concurrent-refresh
+coalescing and the 401 retry, using an in-memory store, so no database or network is needed.
+
+## Deployment
+
+The default target is Vercel. For self-hosting, `ADAPTER=node` builds `build/`, managed by PM2:
+
+```sh
+pnpm pm2:start           # migrate, build, start
+pnpm pm2:reload          # migrate, build, reload with updated env
+```
+
+Production has no durable local filesystem: owned state lives in Postgres, and optional buckets handle exports,
+private music and the hi-res segment cache.
