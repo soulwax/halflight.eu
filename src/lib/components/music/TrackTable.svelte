@@ -16,6 +16,7 @@
 		contextTracks,
 		provenance,
 		columns = ['album', 'date', 'duration'],
+		compact = false,
 		rowActions,
 		onRowActivate,
 		rowKey,
@@ -27,6 +28,8 @@
 		contextTracks?: TrackSummary[];
 		provenance?: string;
 		columns?: TrackColumn[];
+		/** Stack identity and omit optional column gutters for the player queue. */
+		compact?: boolean;
 		rowActions?: Snippet<[TrackSummary, number]>;
 		onRowActivate?: (track: TrackSummary, index: number) => void;
 		/**
@@ -45,9 +48,9 @@
 		rowKey?.(track, index) ?? `${track.id}-${index}`;
 
 	const cols = $derived({
-		album: columns.includes('album'),
-		date: columns.includes('date'),
-		duration: columns.includes('duration')
+		album: !compact && columns.includes('album'),
+		date: !compact && columns.includes('date'),
+		duration: !compact && columns.includes('duration')
 	});
 	const activeContext = $derived(contextTracks ?? tracks);
 	const hasActions = true;
@@ -81,6 +84,7 @@
 
 <div
 	class="track-table"
+	class:compact
 	role="table"
 	style:--tt-grid={gridTemplate}
 	style:--tt-grid-narrow={narrowGridTemplate}
@@ -101,7 +105,12 @@
 		<div
 			class="tt-body"
 			role="rowgroup"
-			use:queueDndZone={{ items: tracks, flipDurationMs: 150, dropTargetStyle: {} }}
+			use:queueDndZone={{
+				items: tracks,
+				flipDurationMs: 150,
+				dropTargetStyle: {},
+				delayTouchStart: true
+			}}
 			{onconsider}
 			{onfinalize}
 		>
@@ -109,6 +118,7 @@
 				<TrackTableRow
 					{track}
 					{columns}
+					{compact}
 					isPlaying={player.currentTrack?.id === track.id}
 					onActivate={() => activate(track, index)}
 				>
@@ -128,6 +138,7 @@
 				<TrackTableRow
 					{track}
 					{columns}
+					{compact}
 					isPlaying={player.currentTrack?.id === track.id}
 					onActivate={() => activate(track, index)}
 				>
@@ -157,6 +168,15 @@
 	.tt-body {
 		display: flex;
 		flex-direction: column;
+	}
+
+	.compact {
+		--tt-art-size: 2rem;
+	}
+
+	.compact .tt-head {
+		gap: 0.5rem;
+		padding: 0.4rem 0.5rem;
 	}
 
 	.tt-head {

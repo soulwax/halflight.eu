@@ -73,3 +73,27 @@ describe('TrackActionMenu.svelte', () => {
 		expect(promptSpy).toHaveBeenCalledWith(sampleTrack);
 	});
 });
+
+describe('mobile track action sheet', () => {
+	it('announces queue additions and returns focus to the row action after closing', async () => {
+		player.queue = [];
+		const screen = await render(TrackActionMenu, { track: sampleTrack, mobile: true });
+		const trigger = page.getByRole('button', { name: m.track_action_menu() });
+		await trigger.click();
+		const action = page
+			.getByRole('dialog')
+			.getByRole('button', { name: m.track_action_play_next() });
+		await expect.element(action).toBeInTheDocument();
+		expect(action.element().getBoundingClientRect().height).toBeGreaterThanOrEqual(48);
+		await action.click();
+		expect(player.queue[0]?.id).toBe(sampleTrack.id);
+		await expect
+			.element(page.getByText(m.now_library_next_added({ title: sampleTrack.title })))
+			.toBeInTheDocument();
+		await page.getByRole('button', { name: m.action_close() }).click();
+		await expect.element(page.getByRole('dialog')).not.toBeInTheDocument();
+		await expect.element(trigger).toHaveFocus();
+		await screen.unmount();
+		player.queue = [];
+	});
+});

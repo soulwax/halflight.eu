@@ -1,14 +1,15 @@
 <script lang="ts">
-	import { resolve } from '$app/paths';
 	import { Disc } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { formatReleaseDate } from '#lib/format';
 	import { player } from '#lib/player/player.svelte.js';
 	import type { TrackSummary } from '#lib/tidal/models';
+	import { trackArtworkUrl } from '#lib/tidal/artwork';
 
 	let { track }: { track: TrackSummary } = $props();
 
-	const cover = $derived(track.imageUrl ?? track.album?.imageUrl ?? null);
+	const cover = $derived(trackArtworkUrl(track, 160));
+	let failedCover = $state<string | null>(null);
 	const artistLine = $derived(track.artists.map((a) => a.name).join(', '));
 	const releaseYear = $derived(formatReleaseDate(track.album?.releaseDate));
 	const albumLine = $derived(
@@ -18,15 +19,20 @@
 
 <div class="identity">
 	<span class="cover" class:spin={player.isPlaying && !player.isLoading}>
-		{#if cover}
-			<img src={cover} alt="" />
+		{#if cover && cover !== failedCover}
+			<img src={cover} alt="" decoding="async" onerror={() => (failedCover = cover)} />
 		{:else}
 			<span class="cover-fallback"><Disc size={18} /></span>
 		{/if}
 	</span>
 
 	<div class="meta">
-		<a class="title" href={resolve('/app/tracks/[id]', { id: track.id })}>{track.title}</a>
+		<button
+			type="button"
+			class="title"
+			onclick={() => player.selectPanel('queue')}
+			aria-label={m.player_now_playing()}>{track.title}</button
+		>
 		<span class="sub">
 			{#if artistLine}<span class="artists">{artistLine}</span>{/if}
 			{#if albumLine}

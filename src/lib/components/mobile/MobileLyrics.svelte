@@ -4,6 +4,8 @@
 	import { m } from '#lib/paraglide/messages.js';
 	import { formatClock } from '#lib/format';
 	import { player } from '#lib/player/player.svelte.js';
+	import { followActiveLyric } from '#lib/player/lyrics-follow.js';
+	import LyricsNextCaption from '#lib/components/player/LyricsNextCaption.svelte';
 	import MobileSubScreenHeader from './MobileSubScreenHeader.svelte';
 
 	const track = $derived(player.currentTrack);
@@ -24,22 +26,32 @@
 		<p class="empty" role="status">
 			<Loader2 size={20} class="animate-spin" />{m.now_lyrics_loading()}
 		</p>
+	{:else if player.lyrics === '♪ Instrumental ♪'}
+		<p class="empty">{m.player_lyrics_instrumental()}</p>
 	{:else if player.lyricsCues.length}
 		<div class="cues">
 			{#each player.lyricsCues as cue, index (`${cue.time}-${index}`)}
 				<button
 					type="button"
 					class:active={player.activeLyricIndex === index}
+					use:followActiveLyric={player.activeLyricIndex === index}
 					onclick={() => player.seek(cue.time)}
 				>
 					<span>{formatClock(cue.time)}</span>{cue.text || '♪'}
 				</button>
 			{/each}
 		</div>
+		{#if player.lyricsProvider}
+			<p class="provider">{m.player_lyrics_provider({ provider: player.lyricsProvider })}</p>
+		{/if}
+		<LyricsNextCaption />
 	{:else if player.lyrics}
 		<div class="plain">
 			{#each player.lyrics.split('\n') as line, index (index)}<p>{line || ' '}</p>{/each}
 		</div>
+		{#if player.lyricsProvider}
+			<p class="provider">{m.player_lyrics_provider({ provider: player.lyricsProvider })}</p>
+		{/if}
 	{:else}
 		<p class="empty">{m.player_no_lyrics()}</p>
 	{/if}
@@ -97,5 +109,13 @@
 		min-height: 12rem;
 		color: var(--text-muted);
 		text-align: center;
+	}
+	.provider {
+		margin-top: 2rem;
+		text-align: center;
+		font-size: var(--fs-xs);
+		color: var(--text-muted);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
 	}
 </style>

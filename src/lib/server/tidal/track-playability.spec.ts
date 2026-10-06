@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const dbMocks = vi.hoisted(() => ({
 	insert: vi.fn(),
@@ -12,7 +12,8 @@ import {
 	__resetTrackPlayabilityCache,
 	filterPlayableTracks,
 	getUnplayableTrackIds,
-	markTrackUnplayable
+	markTrackUnplayable,
+	UNPLAYABLE_TRACK_TTL_MS
 } from './track-playability';
 
 function mockInsertChain() {
@@ -22,8 +23,8 @@ function mockInsertChain() {
 	return { values, onConflictDoUpdate };
 }
 
-function mockSelectChain(rows: { trackId: string }[]) {
-	const where = vi.fn().mockResolvedValue(rows);
+function mockSelectChain(rows: { trackId: string; checkedAt?: Date }[]) {
+	const where = vi.fn().mockResolvedValue(rows.map((row) => ({ checkedAt: new Date(), ...row })));
 	const from = vi.fn(() => ({ where }));
 	dbMocks.select.mockReturnValue({ from });
 	return { from, where };
@@ -33,6 +34,34 @@ describe('track-playability', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		__resetTrackPlayabilityCache();
+	});
+	afterEach(() => vi.useRealTimers());
+	it('expires a local failure at 24 hours so a repaired asset can be retried', async () => {
+		vi.useFakeTimers();
+		mockInsertChain();
+		await markTrackUnplayable('repaired', 'asset not ready for playback');
+		expect(await getUnplayableTrackIds(['repaired'])).toEqual(new Set(['repaired']));
+		vi.setSystemTime(Date.now() + UNPLAYABLE_TRACK_TTL_MS);
+		mockSelectChain([]);
+		expect(await getUnplayableTrackIds(['repaired'])).toEqual(new Set());
+		expect(dbMocks.select).toHaveBeenCalledOnce();
+	});
+	it('keeps the original database expiry when a failure is cached later', async () => {
+		vi.useFakeTimers();
+		const now = Date.now();
+		mockSelectChain([
+			{ trackId: 'old', checkedAt: new Date(now - UNPLAYABLE_TRACK_TTL_MS + 1000) }
+		]);
+		expect(await getUnplayableTrackIds(['old'])).toEqual(new Set(['old']));
+		vi.setSystemTime(now + 1000);
+		mockSelectChain([]);
+		expect(await getUnplayableTrackIds(['old'])).toEqual(new Set());
+	});
+	it('ignores expired database rows even when returned by the store', async () => {
+		mockSelectChain([
+			{ trackId: 'expired', checkedAt: new Date(Date.now() - UNPLAYABLE_TRACK_TTL_MS) }
+		]);
+		expect(await getUnplayableTrackIds(['expired'])).toEqual(new Set());
 	});
 
 	it('marks a track unplayable and serves it from the process cache without a DB read', async () => {

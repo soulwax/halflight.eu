@@ -21,6 +21,9 @@ export default [
 	{
 		languageOptions: {
 			parserOptions: {
+				// Keep this identical for TS and Svelte files; changing it between
+				// files makes projectService reload the entire TypeScript project.
+				extraFileExtensions: ['.svelte'],
 				projectService: {
 					// Never silently fall back to a default project for files not
 					// covered by tsconfig's `include`; surface the error instead.

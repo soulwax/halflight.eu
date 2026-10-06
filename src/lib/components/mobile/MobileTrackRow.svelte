@@ -3,6 +3,7 @@
 	import { Disc } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import type { TrackSummary } from '#lib/tidal/models';
+	import { trackArtworkUrl } from '#lib/tidal/artwork';
 	import TrackActionMenu from '#lib/components/music/TrackActionMenu.svelte';
 
 	let {
@@ -12,6 +13,7 @@
 		provenance,
 		onStartRadio,
 		radioDisabled = false,
+		compact = false,
 		actions
 	}: {
 		track: TrackSummary;
@@ -20,10 +22,13 @@
 		provenance?: string;
 		onStartRadio?: () => void | Promise<void>;
 		radioDisabled?: boolean;
+		/** Queue rows show full identity while leaving a narrow control column. */
+		compact?: boolean;
 		actions?: Snippet;
 	} = $props();
 
-	const cover = $derived(track.imageUrl ?? track.album?.imageUrl ?? null);
+	const cover = $derived(trackArtworkUrl(track, 80));
+	let failedCover = $state<string | null>(null);
 	const title = $derived(track.title === track.id ? m.track_unavailable_title() : track.title);
 	const artistLine = $derived(
 		track.artists
@@ -31,13 +36,24 @@
 			.map((artist) => artist.name)
 			.join(', ')
 	);
+	const albumTitle = $derived(
+		track.album && track.album.title !== track.album.id ? track.album.title : null
+	);
 </script>
 
-<div class="mobile-track-row">
+<div class="mobile-track-row" class:compact class:with-actions={Boolean(actions)}>
 	<button type="button" class="mobile-track-primary" onclick={onActivate}>
 		<span class="mobile-track-art">
-			{#if cover}
-				<img src={cover} alt="" loading="lazy" width="44" height="44" />
+			{#if cover && cover !== failedCover}
+				<img
+					src={cover}
+					alt=""
+					loading="lazy"
+					decoding="async"
+					width="44"
+					height="44"
+					onerror={() => (failedCover = cover)}
+				/>
 			{:else}
 				<Disc size={16} aria-hidden="true" />
 			{/if}
@@ -46,6 +62,9 @@
 			<span class="mobile-track-title">{title}</span>
 			{#if artistLine}
 				<span class="mobile-track-artist">{artistLine}</span>
+			{/if}
+			{#if compact && albumTitle}
+				<span class="mobile-track-album">{albumTitle}</span>
 			{/if}
 		</span>
 	</button>
@@ -56,6 +75,7 @@
 	{:else}
 		<div class="mobile-track-actions">
 			<TrackActionMenu
+				mobile
 				{track}
 				{contextTracks}
 				{provenance}
@@ -131,6 +151,35 @@
 		white-space: nowrap;
 	}
 
+	.compact {
+		padding: 0.25rem;
+	}
+
+	.compact .mobile-track-primary {
+		gap: 0.5rem;
+	}
+
+	.compact .mobile-track-art {
+		width: 2rem;
+		height: 2rem;
+	}
+
+	.compact .mobile-track-title,
+	.compact .mobile-track-artist,
+	.mobile-track-album {
+		white-space: normal;
+		overflow: visible;
+		overflow-wrap: anywhere;
+		line-height: 1.3;
+	}
+
+	.mobile-track-album {
+		display: block;
+		margin-top: 0.14rem;
+		font-size: 0.75rem;
+		color: var(--text-muted);
+	}
+
 	.mobile-track-title {
 		color: var(--text-primary);
 		font-size: 0.875rem;
@@ -160,5 +209,16 @@
 	:global(.mobile-action-btn) {
 		min-width: 2.75rem;
 		min-height: 2.75rem;
+	}
+	@media (max-width: 24rem) {
+		.with-actions:not(.compact) {
+			flex-wrap: wrap;
+		}
+		.with-actions:not(.compact) .mobile-track-primary {
+			flex-basis: 100%;
+		}
+		.with-actions:not(.compact) .mobile-track-actions {
+			margin-left: auto;
+		}
 	}
 </style>

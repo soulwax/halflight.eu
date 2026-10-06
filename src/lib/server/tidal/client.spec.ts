@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getAccessToken, getPlaybackToken, tidalFetch, resetRefreshGuard } from './client';
+import {
+	getAccessToken,
+	getPlaybackToken,
+	getPlaybackTokenDetails,
+	tidalFetch,
+	resetRefreshGuard
+} from './client';
 import {
 	writePlaybackRecord,
 	writeRecord,
@@ -161,6 +167,17 @@ describe('tidalFetch transient failures', () => {
 });
 
 describe('getPlaybackToken', () => {
+	it('returns playback credentials and market from one read, keeping browse credentials separate', async () => {
+		const store = memoryStore();
+		await writeRecord(record({ accessToken: 'browse-token', countryCode: 'US' }), store);
+		await writePlaybackRecord(record({ accessToken: 'device-token', countryCode: 'NL' }), store);
+		const read = vi.spyOn(store, 'read');
+		expect(await getPlaybackTokenDetails({ store })).toEqual({
+			accessToken: 'device-token',
+			countryCode: 'NL'
+		});
+		expect(read).toHaveBeenCalledExactlyOnceWith('playback');
+	});
 	it('throws TidalPlaybackNotLinkedError when no device token is stored', async () => {
 		await expect(getPlaybackToken({ store: memoryStore() })).rejects.toBeInstanceOf(
 			TidalPlaybackNotLinkedError

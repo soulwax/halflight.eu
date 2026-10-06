@@ -9,10 +9,13 @@ bun.lockb
 /static/
 /drizzle/
 /external/
-/syn.js/
+/bragi-audio/
 
 # Generated (paraglide / inlang)
 /src/lib/paraglide/
 /project.inlang/.meta.json
 /project.inlang/README.md
 /project.inlang/cache/
+
+# Standalone CLI submodule with its own tooling
+/bragi/

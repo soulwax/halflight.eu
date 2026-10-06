@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { Check, ExternalLink, Loader2, Music, Sparkles } from '@lucide/svelte';
+	import TidalPlaybackSetup from '#lib/components/tidal/TidalPlaybackSetup.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import Button from '#lib/components/ui/Button.svelte';
 	import ViewHeader from '#lib/components/ui/ViewHeader.svelte';
@@ -12,75 +12,6 @@
 
 	const status = $derived(data.status);
 	const hasFullPlayback = $derived(data.hasFullPlayback);
-
-	let deviceLoading = $state(false);
-	let deviceData = $state<{
-		deviceCode: string;
-		userCode: string;
-		verificationUri: string;
-		verificationUriComplete: string;
-		expiresIn: number;
-		interval: number;
-	} | null>(null);
-	let deviceStatus = $state<'idle' | 'authorizing' | 'success' | 'expired' | 'error'>('idle');
-	let deviceError = $state<string | null>(null);
-	let pollTimer: ReturnType<typeof setInterval> | null = null;
-
-	async function startDeviceAuth() {
-		deviceLoading = true;
-		deviceError = null;
-		deviceStatus = 'idle';
-
-		try {
-			const res = await fetch('/api/tidal/device-auth', { method: 'POST' });
-			if (!res.ok) {
-				throw new Error('device_authorization_unavailable');
-			}
-
-			deviceData = await res.json();
-			deviceStatus = 'authorizing';
-			deviceLoading = false;
-
-			if (pollTimer) clearInterval(pollTimer);
-			const intervalMs = Math.max((deviceData?.interval || 2) * 1000, 2000);
-
-			pollTimer = setInterval(() => void pollDeviceAuthorization(), intervalMs);
-		} catch {
-			deviceLoading = false;
-			deviceStatus = 'error';
-			deviceError = m.tidal_device_auth_error();
-		}
-	}
-
-	async function pollDeviceAuthorization() {
-		if (!deviceData?.deviceCode) return;
-		try {
-			const pollRes = await fetch('/api/tidal/device-auth/poll', {
-				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ deviceCode: deviceData.deviceCode })
-			});
-			const pollData = await pollRes.json();
-			if (pollData.status === 'success') {
-				if (pollTimer) clearInterval(pollTimer);
-				deviceStatus = 'success';
-				setTimeout(() => {
-					window.location.href = resolve('/app/settings/tidal?connected=1');
-				}, 1000);
-			} else if (pollData.status === 'expired') {
-				if (pollTimer) clearInterval(pollTimer);
-				deviceStatus = 'expired';
-			} else if (pollData.status === 'error') {
-				if (pollTimer) clearInterval(pollTimer);
-				deviceStatus = 'error';
-				deviceError = m.tidal_device_auth_error();
-			}
-		} catch {
-			if (pollTimer) clearInterval(pollTimer);
-			deviceStatus = 'error';
-			deviceError = m.tidal_device_auth_error();
-		}
-	}
 </script>
 
 <svelte:head>
@@ -154,74 +85,13 @@
 		</section>
 	{/if}
 
-	<!-- Full Song Playback (TIDAL Link) Card -->
-	<section class="device-auth-card" aria-labelledby="device-auth-title">
-		<div class="device-auth-header">
-			<Music size={22} class="text-[var(--action)]" />
-			<div>
-				<h2 id="device-auth-title">{m.tidal_device_auth_title()}</h2>
-				<p>{m.tidal_device_auth_desc()}</p>
-			</div>
-		</div>
-
-		<div class="playback-badge-row">
-			{#if hasFullPlayback}
-				<span class="playback-status-pill pill-active">
-					<Check size={13} />
-					{m.tidal_playback_full_active()}
-				</span>
-			{:else}
-				<span class="playback-status-pill pill-standard">
-					{m.tidal_playback_standard_only()}
-				</span>
-			{/if}
-		</div>
-
-		{#if deviceStatus === 'authorizing' && deviceData}
-			<div class="device-prompt-box">
-				<p class="prompt-text">{m.tidal_device_auth_prompt()}</p>
-				<div class="code-banner">
-					<span class="user-code">{deviceData.userCode}</span>
-				</div>
-				<div class="device-actions">
-					<Button
-						variant="primary"
-						href={`https://${deviceData.verificationUriComplete}`}
-						target="_blank"
-						rel="noreferrer"
-					>
-						<ExternalLink size={15} />
-						{m.tidal_device_auth_open()}
-					</Button>
-				</div>
-				<p class="waiting-text">
-					<Loader2 size={14} class="mr-1 inline animate-spin" />
-					{m.tidal_device_auth_waiting()}
-				</p>
-			</div>
-		{:else if deviceStatus === 'success'}
-			<Notice tone="success">{m.tidal_device_auth_success()}</Notice>
-		{:else}
-			<div class="device-actions mt-3">
-				<Button variant="primary" disabled={deviceLoading} onclick={startDeviceAuth}>
-					{#if deviceLoading}
-						<Loader2 size={15} class="animate-spin" />
-					{:else}
-						<Sparkles size={15} />
-					{/if}
-					{m.tidal_device_auth_btn()}
-				</Button>
-			</div>
-			{#if deviceError}
-				<Notice tone="danger">{deviceError}</Notice>
-			{/if}
-		{/if}
-	</section>
+	<TidalPlaybackSetup configured={status.configured} hasPlayback={hasFullPlayback} />
 
 	<section class="streaming-settings-card" aria-labelledby="streaming-settings-title">
 		<div>
 			<h2 id="streaming-settings-title">{m.streaming_settings_title()}</h2>
 			<p>{m.streaming_settings_description()}</p>
+			<p>{m.streaming_settings_next_track()}</p>
 		</div>
 
 		{#if form?.streamingSettingsSaved}
@@ -327,107 +197,6 @@
 		background: var(--danger);
 	}
 
-	.device-auth-card {
-		position: relative;
-		margin-top: 1.5rem;
-		border: var(--module-border);
-		border-radius: var(--module-radius);
-		background: var(--surface-raised);
-		padding: 1.75rem;
-	}
-
-	.device-auth-header {
-		display: flex;
-		align-items: flex-start;
-		gap: 0.85rem;
-		margin-bottom: 1.25rem;
-	}
-
-	.device-auth-header h2 {
-		margin: 0 0 0.35rem;
-		font-size: 1.15rem;
-		font-weight: 800;
-		text-transform: uppercase;
-	}
-
-	.device-auth-header p {
-		margin: 0;
-		color: var(--text-muted);
-		font-size: 0.85rem;
-		line-height: 1.45;
-	}
-
-	.playback-badge-row {
-		margin-bottom: 1rem;
-	}
-
-	.playback-status-pill {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.35rem;
-		font-family: var(--font-mono, monospace);
-		font-size: 0.75rem;
-		font-weight: 700;
-		letter-spacing: 0.04em;
-		padding: 0.35rem 0.75rem;
-		border-radius: var(--radius-sm);
-		border: 1px solid var(--border-strong);
-	}
-
-	.pill-active {
-		background: var(--paper);
-		color: var(--action);
-		border-color: var(--action);
-	}
-
-	.pill-standard {
-		background: var(--surface-canvas);
-		color: var(--text-muted);
-	}
-
-	.device-prompt-box {
-		margin-top: 1rem;
-		padding: 1.25rem;
-		border-radius: var(--radius-sm);
-		background: var(--paper);
-		border: 1px solid var(--border-subtle);
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		text-align: center;
-		gap: 1rem;
-	}
-
-	.prompt-text {
-		margin: 0;
-		font-size: 0.88rem;
-		color: var(--text-primary);
-	}
-
-	.code-banner {
-		padding: 0.75rem 1.5rem;
-		background: var(--surface-canvas);
-		border: 2px dashed var(--action);
-		border-radius: var(--radius-sm);
-	}
-
-	.user-code {
-		font-family: var(--font-mono, monospace);
-		font-size: 1.75rem;
-		font-weight: 900;
-		letter-spacing: 0.15em;
-		color: var(--action);
-	}
-
-	.waiting-text {
-		margin: 0;
-		color: var(--text-muted);
-		font-size: 0.8rem;
-		font-family: var(--font-mono, monospace);
-	}
-
-	.connection-card h2,
-	.info-card h2,
 	.streaming-settings-card h2 {
 		margin: 0 0 0.5rem;
 		font-size: 1.35rem;

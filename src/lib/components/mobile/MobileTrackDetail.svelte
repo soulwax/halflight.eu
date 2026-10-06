@@ -7,6 +7,7 @@
 	import type { TrackDetail } from '#lib/tidal/models';
 	import type { TidalPageState } from '#lib/tidal/page-state';
 	import MobileSubScreenHeader from './MobileSubScreenHeader.svelte';
+	import MobileDetailRetry from './MobileDetailRetry.svelte';
 
 	let { track, state }: { track: TrackDetail | null; state: TidalPageState | null } = $props();
 
@@ -37,6 +38,7 @@
 	<section class="track-detail" aria-labelledby="track-detail-title">
 		<MobileSubScreenHeader
 			backHref={homeHref}
+			contextualBack
 			backLabel={m.now_detail_back()}
 			heading={track.title}
 			headingId="track-detail-title"
@@ -115,6 +117,7 @@
 	<section class="track-detail" aria-labelledby="track-detail-title">
 		<MobileSubScreenHeader
 			backHref={homeHref}
+			contextualBack
 			backLabel={m.now_detail_back()}
 			heading={m.track_label()}
 			headingId="track-detail-title"
@@ -132,9 +135,7 @@
 		{:else}
 			<div class="notice" role="alert">
 				<p>{m.now_track_unavailable()}</p>
-				<button type="button" class="notice-action" onclick={() => window.location.reload()}>
-					{m.track_retry()}
-				</button>
+				<MobileDetailRetry />
 			</div>
 		{/if}
 	</section>

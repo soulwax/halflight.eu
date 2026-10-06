@@ -119,8 +119,10 @@ function persistCompletedAssembly(
 }
 
 function cacheCompletedAssembly(options: StreamSegmentedOptions, bytes: ArrayBuffer): void {
-	evict(bytes.byteLength);
-	cache.set(options.key, { bytes, storedAt: Date.now() });
+	if (bytes.byteLength <= MAX_TOTAL_BYTES) {
+		evict(bytes.byteLength);
+		cache.set(options.key, { bytes, storedAt: Date.now() });
+	}
 	if (options.persistentCache) {
 		persistCompletedAssembly(options.persistentCache, options.key, bytes, options.mimeType);
 	}
@@ -215,7 +217,8 @@ async function probeTotalSize(
 					}),
 				{ signal }
 			);
-			const length = Number(res.headers.get('content-length'));
+			const rawLength = res.headers.get('content-length');
+			const length = rawLength === null ? NaN : Number(rawLength);
 			if (!res.ok || !Number.isSafeInteger(length) || length < 0) {
 				usable = false;
 				return;
@@ -312,37 +315,8 @@ function streamAndCache(
 	});
 }
 
-interface ByteRange {
-	start: number;
-	end: number;
-}
-
-/** Parse a single `bytes=` range against a known size. `null` = no/invalid range. */
-export function parseByteRange(header: string | null | undefined, size: number): ByteRange | null {
-	if (!header) return null;
-	const match = /^bytes=(\d*)-(\d*)$/.exec(header.trim());
-	if (!match) return null;
-
-	const hasStart = match[1] !== '';
-	const hasEnd = match[2] !== '';
-	if (!hasStart && !hasEnd) return null;
-
-	let start: number;
-	let end: number;
-	if (!hasStart) {
-		// Suffix range: the final N bytes.
-		const suffix = parseInt(match[2], 10);
-		if (suffix <= 0) return null;
-		start = Math.max(0, size - suffix);
-		end = size - 1;
-	} else {
-		start = parseInt(match[1], 10);
-		end = hasEnd ? parseInt(match[2], 10) : size - 1;
-	}
-
-	if (start > end || start >= size) return null;
-	return { start, end: Math.min(end, size - 1) };
-}
+export { parseByteRange } from 'bragi-audio/delivery';
+import { parseByteRange } from 'bragi-audio/delivery';
 
 export interface StreamSegmentedOptions {
 	/** Cache key — track id + delivered quality, so a re-request reuses the buffer. */

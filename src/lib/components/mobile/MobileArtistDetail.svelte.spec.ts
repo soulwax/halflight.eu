@@ -1,10 +1,18 @@
 import { page } from 'vitest/browser';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import MobileArtistDetail from './MobileArtistDetail.svelte';
 import { player } from '#lib/player/player.svelte.js';
 import { m } from '#lib/paraglide/messages.js';
 import type { ArtistDetail } from '#lib/tidal/models';
+
+const navigation = vi.hoisted(() => ({ invalidateAll: vi.fn() }));
+vi.mock('$app/navigation', () => navigation);
+beforeEach(() => {
+	navigation.invalidateAll.mockReset().mockResolvedValue(undefined);
+	player.currentTrack = null;
+	player.queue = [];
+});
 
 const topTracks = [
 	{ kind: 'track', id: 't1', title: 'Dark Entries', artists: [{ id: 'a1', name: 'Bauhaus' }] },
@@ -22,10 +30,26 @@ const artist: ArtistDetail = {
 
 afterEach(() => {
 	vi.restoreAllMocks();
+	player.currentTrack = null;
+	player.queue = [];
 	player.shuffle = false;
 });
 
 describe('MobileArtistDetail.svelte', () => {
+	it('retries failed artist data while keeping the current session', async () => {
+		const current = { kind: 'track' as const, id: 'current', title: 'Still playing', artists: [] };
+		player.currentTrack = current;
+		player.currentTime = 37;
+		player.addToQueue(current);
+		const queue = [...player.queue];
+		render(MobileArtistDetail, { artist: null, state: 'unavailable' });
+		await page.getByRole('button', { name: m.track_retry() }).click();
+		expect(navigation.invalidateAll).toHaveBeenCalledOnce();
+		expect(player.currentTrack).toEqual(current);
+		expect(player.currentTime).toBe(37);
+		expect(player.queue).toEqual(queue);
+	});
+
 	it('shows the artist, top tracks, and albums', async () => {
 		render(MobileArtistDetail, { artist, state: null });
 

@@ -18,12 +18,21 @@ the full **Listening Room** on desktop and the focused **Halflight Now** mobile 
 progresses from a complete mobile website to an installable PWA, then a later Tauri native client;
 all three use the same server-owned listening session.
 
-Last reviewed: 2026-09-05. Package documentation was checked on this date; proposed dependencies
+Last reviewed: 2026-10-02. Package documentation was checked on this date; proposed dependencies
 still need compatibility verification against the lockfile when their feature is implemented.
 
 Implementation guide: start with **Current state**, **Third-party packages and reuse decisions**,
 and **Implementation contracts and delivery gates**. These distinguish existing foundations from
 planned work; the product sections describe the intended finished experience.
+
+UX/UI delivery: [Overall Halflight UX/UI](docs/overall-ux-ui-plan.md) covers both sites and complete
+listening workflows; [mobile player controls](docs/mobile-player-ux-plan.md) specifies the first
+playback workstream. Their implementation records distinguish delivered core flows from remaining
+screen polish and physical-device acceptance.
+
+The [navigation and listening recovery redesign](docs/navigation-recovery-plan.md), written
+after the owner's 2026-10-04 iPhone report, specifies canonical-domain mobile entry, player
+navigation, resume eligibility, and failure recovery. These flows remain unaccepted.
 
 Mobile planning: [website](#the-mobile-site-halflight-now), [PWA](#the-installed-pwa),
 [later Tauri client](#later-tauri-native-client), and [release gates](#mobile-pwa-and-native-release-gates).
@@ -296,7 +305,7 @@ record implementation milestones; the acceptance gaps below still need delivery 
 | Service experience  | Strong player foundation and all major browse routes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | No single product model yet; home and routes still read like separate pages                                                                                                                                                                                                                             |
 | Playback            | Full-track streaming (BTS single-file + segmented DASH), Range/seek, quality ladder, ReplayGain, embed fallback                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | No gapless/crossfade; no pre-buffering of the next queue item                                                                                                                                                                                                                                           |
 | Player UI           | Decomposed component set, docked shell region, queue/lyrics/source panels, floating mode, self-check telemetry                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | Queue editing is basic; no "why is this playing?" provenance                                                                                                                                                                                                                                            |
-| Session state       | Resumable queue/history/position, revision/origin fields, conditional writes, HTTP 409 conflicts, entry-addressed idempotent intents, a drain path for a permanently-inapplicable operation, and a distinct status for an ended session across all four call sites                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | Live cross-tab updates and active-device fencing/pause-on-loss remain incomplete; a `500` still surfaces as the generic offline message                                                                                                                                                                 |
+| Session state       | Resumable queue/history/position, revision/origin fields, conditional writes, HTTP 409 conflicts, entry-addressed idempotent intents, a drain path for a permanently-inapplicable operation, and a distinct status for an ended session across all four call sites                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | Live cross-tab updates and active-device fencing/pause-on-loss remain incomplete; HTTP 5xx failures now have a distinct status and retry action, with pending queue edits preserved                                                                                                                     |
 | Auth / TIDAL OAuth  | Better Auth, PKCE + state, dual-token model, encrypted persistence, rotation, single-flight refresh                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | Stable                                                                                                                                                                                                                                                                                                  |
 | API client          | Authenticated fetch, pre-expiry refresh, 401 retry, typed helpers, JSON:API normalisers, `loadTidalPage`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | Relationship traversal helpers exist but are barely used                                                                                                                                                                                                                                                |
 | Product surfaces    | Shell, home, search, library, mixes, artist/album/track/playlist detail, settings                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Surfaces do not yet consistently offer the same queue verbs                                                                                                                                                                                                                                             |
@@ -950,6 +959,11 @@ Desktop (>= 90rem — context panel available)     Laptop / desktop (64-90rem)
 
 ## The mobile site: Halflight Now
 
+The concrete delivery plan for familiar player controls and consistent mobile/desktop UX lives in
+[Mobile player controls and overall UX/UI](docs/mobile-player-ux-plan.md). It starts with reliable
+cold-open/resume and truthful playback states, then shell navigation, transport/seek, and consistent
+browse-to-listen actions. Its proposed changes are not yet implementation-complete.
+
 Halflight Now is a different site because mobile listening is a different activity. It is designed
 from the full-screen player outward, not from the desktop route tree inward. Its job is to make the
 next musical decision effortless while walking, travelling, cooking, or briefly checking in — and
@@ -1576,8 +1590,10 @@ create a general retention exception.
 ## Local Redis cache and coordination
 
 **Use the existing `REDIS_CACHE` service.** The local environment contains an authenticated
-loopback Redis URL; source inspection found no application declaration/client yet. This is a
-configuration observation, not a Redis connectivity, version, persistence, or capacity test.
+loopback Redis URL. The server-only playback buffer now uses the declared optional variable and
+a lazy reused connection. A read-only deployment check confirmed reachability, AOF disabled, and
+an eviction policy; no shared Redis configuration was changed. It remains a secondary buffer,
+not a durable acknowledgement authority.
 Do not copy the URL into documentation, logs, command arguments, or generated artifacts.
 
 Redis is shared, disposable server working memory. Postgres remains authoritative for the owner,
@@ -1714,8 +1730,13 @@ safe operation category, latency, hit/miss/error counts, and aggregate bytes; ne
 | Disconnect races a pending cache write      | New authorization generation makes it unreadable; delete namespace entries asynchronously with bounded retry |
 | Postgres unavailable while Redis is healthy | Do not acknowledge durable writes or use stale Redis as authorization; existing buffered audio may continue  |
 
-First implementation slice: add the server-only client and injected cache interface, then one
-generation-pool consumer with TTL/size/invalidation tests. Second: shared admission with failure
+The queue reliability slice introduced a server-only client and injected playback-buffer interface.
+Failed database intents receive a distinct `202 buffered` response, keep their browser journal, and
+replay through the existing idempotent Postgres service before later writes. Owner authorization still
+requires the normal authenticated boundary; Redis never substitutes for it. Pending operations have
+a bounded owner namespace and are removed only after database acknowledgement or permanent rejection.
+
+Next cache slice: add one generation-pool consumer with TTL/size/invalidation tests. Second: shared admission with failure
 policy and synthetic multi-process concurrency tests. Third, only after mobile polling measurements:
 revision Pub/Sub → authenticated SSE, with dropped-event and reconnect tests.
 
@@ -2382,10 +2403,11 @@ afterthought.
       artwork, transport, seek) and a minimal `/home` (resume card) exist behind the `(mobile)`
       route group, sharing the `player` singleton, `/api/playback-state`, and design tokens with
       zero desktop-component imports; writes now correctly send `origin: 'halflight-now'` (see
-      `player.svelte.ts`'s `origin` field, previously dead code). Library, lyrics, credits, and
-      queue editing on mobile are still open. Mobile Search now has a dedicated `/search` route,
-      cancellation-safe grouped live results, and track-level play, play-next, queue, and radio
-      actions. Mobile Library now presents saved playlists and paginated favorite tracks with
+      `player.svelte.ts`'s `origin` field, previously dead code). Queue editing now uses stable
+      entry IDs, accessible reorder/remove/clear controls, and visible persistence recovery states.
+      Library, lyrics, and credits on mobile are still open. Mobile Search now has a dedicated
+      `/search` route, cancellation-safe grouped live results, and track-level play, play-next,
+      queue, and radio actions. Mobile Library now presents saved playlists and paginated favorite tracks with
       play, next, queue, retry, connection, and reviewed replacement states; Now Playing includes
       provenance, actual quality, focused lyrics, and contributor credits. Detail sheets and
       physical-device acceptance remain open. Mobile Settings now offers the
@@ -2590,33 +2612,114 @@ Exit: three months in, sets are noticeably sharper and the profile is still legi
 Exit: `pnpm check`, `pnpm lint`, `pnpm lint:types`, and the full suite pass; critical journeys pass
 against deterministic mocks; the owner can diagnose common failures without opening the database.
 
+## Completed vertical slice: queue conflict safety
+
+Queue persistence is separated from audio playback in the client-safe session coordinator. Writes
+are serialized; one 409 rebases deliberate entry-addressed edits onto the accepted server queue;
+retries keep stable operation IDs; permanently inapplicable edits are reported and drained without
+blocking later commands. Pending edits survive transport and server failures while local playback
+continues. Network loss, ended sessions, conflicts, rejected commands, and HTTP 5xx failures have
+distinct accessible cloud indicators with English and German details and recovery controls on demand.
+Pending writes retry automatically with bounded backoff, retain stable operation IDs, and time out
+stalled fetch/body reads. Oversized snapshots avoid the browser keepalive limit; stale poll replies
+and earlier acknowledgements cannot erase newer edits or falsely report a completed save. A rejected
+browser-storage write does not prevent server persistence. Redis buffers failed database intents
+with `202 buffered`; the browser retains them until Postgres commits. Redis is evictable and is not
+a durability guarantee. Coordinator, service, route, and component tests cover these failure paths.
+
+The desktop listening room also confines document scrolling to its content and context panes.
+The player stays at the viewport bottom, scroll chaining is contained, and public/mobile document
+scrolling returns when that shell is absent. A Chromium geometry check verifies the final content
+item stays reachable above the player and the document cannot scroll below it.
+
+## Completed vertical slice: queue control in Halflight Now
+
+The mobile queue shows the current track and upcoming entries and supports play, reorder, remove,
+clear, and save through the existing session commands. Stable queue-entry IDs keep duplicate tracks
+distinct. Reorder announcements and controls remain keyboard accessible. Mobile now exposes saving,
+offline, conflict, server-error retry, rejected-command, and expired-session states in English and
+German; refreshing or retrying queue persistence leaves the current track intact. Browser coverage
+checks duplicate removal, reordering, clear, current-track continuity, and the conflict/retry actions.
+Existing player tests cover durable queue intent and server conflict recovery.
+
+## Completed vertical slice: mobile interruption and reconnect recovery
+
+When an offline queue command is still pending and a successful background poll reports the same
+server revision, the coordinator now resumes that durable command instead of leaving it unsaved.
+If a poll briefly sees an older replica revision, the client retains its newer base and uses the
+conditional intent write to reconcile safely. The operation ID is reused, so retry remains
+idempotent. A 401 that later recovers follows the same path. Player and coordinator tests verify the
+current track, position, and playing state survive both network and authentication recovery, with no
+playback claim; prior tests cover explicit retry after a transient service failure. The default suite
+keeps the high-value client and server tests together and runs Storybook checks separately.
+
+## Core listening UX delivery — 2026-10-02
+
+Home now resumes deliberately. Shared transport exposes pending, availability, fallback and
+recovery states; mobile Now has adaptive controls and contextual return navigation. The shell
+reserves bottom navigation and mini-player rows, including transport on Now subroutes. Queue
+clear is confirmed, and named queue and playlist-dialog saves report server-confirmed results
+without implicit TIDAL publication. Mobile Settings supports browse and full-playback setup with
+bounded polling; token inspection lives under Advanced. See the implementation records in the
+[mobile](docs/mobile-player-ux-plan.md) and [overall](docs/overall-ux-ui-plan.md) UX plans.
+
+Automated coverage includes transport boundaries, unavailable/late seeks, duplicate-start
+protection, fallback retry, failed-save recovery, OAuth return boundaries, narrow viewports, German
+labels and enlarged text. Physical-device acceptance remains open.
+
+## Library and playability stability — 2026-10-02
+
+Halflight Now can search the owner's saved playlists by title or saved track/album/artist metadata
+without catalogue crawling. Search queries survive pagination and Now return navigation. Saved
+counts remain distinct from playable entries; filtering never rewrites the owner's playlist.
+Library retry refreshes server data without reloading or stopping the permanent player. Private
+upload storage is queried only for its own tab and has a retryable failure boundary.
+
+Asset failures now try lower quality tiers before excluding a recording. If every requested tier
+fails, higher-tier metadata is checked only to establish whether the recording is unavailable;
+audio never exceeds the requested quality. Authentication and transport failures never become
+negative playability records. Confirmed negatives expire after 24 hours in Postgres lookups and
+the process cache, allowing repaired or relicensed recordings another attempt.
+
+Favorites retain their list context when tapped; replacing an active queue requires the shared
+accessible confirmation dialog. Saved-playlist actions have 48px targets and narrow rows wrap.
+Album and playlist additions use one durable append operation rather than a save per track.
+Missing artwork loads directly through the image route, with lazy thumbnails, bounded sizes and
+shared concurrent metadata resolution; queue scrolling no longer immediately starts a touch drag.
+Imports now verify stream resolution before reporting success. Confirmed asset failures are omitted
+from playlist JSON and editing views while owned source snapshots remain intact; paced, cached
+validation stops on account, transport or throttling failures instead of labelling them defective.
+Import and pull responses send JSON whitespace while checking, keeping production proxy connections
+active without reporting success before the checks finish.
+Authenticated requests resolve current account permissions in one database query, with no cached
+revocations. Album tracks share an artwork endpoint and browser image cache; artwork resolves token
+and market together, and metadata hydration no longer fetches merely for an absent release date.
+Physical-device playback and broader library browse coverage remain the next acceptance work.
+
+### Mobile browse stability — 2026-10-03
+
+Album, playlist, artist and track retries invalidate server data inside the permanent mobile shell;
+they no longer reload the document or interrupt the listening session. Pending retries are disabled
+and refresh failures remain retryable. Detail Back controls retain the originating scene's query,
+filters and pagination, with Home as the fallback for a direct entry. Nested artist/album/track
+navigation preserves parent links without cycles, and the existing shell restores browse scroll.
+Repeated recordings can render in mobile lists without duplicate-key crashes. Tapping a repeated
+row uses that occurrence's position, while shuffle retains every other occurrence in the queue.
+
 ## Recommended next vertical slice
 
-**A queue edit that survives a conflict while music keeps playing.** This is the first independently
-reviewable checkpoint toward one session across both sites. It addresses an observed gap without
-requiring a mobile deployment, provider write, or storage experiment.
+**Halflight Now physical-device acceptance and browse polish.** Verify the implemented core mobile
+listening path before adding discovery surfaces.
 
-1. Extract the persistence/reconciliation decisions from `player.svelte.ts` into pure client-safe
-   logic. Keep the mounted player and existing `/api/playback-state` route.
-2. Validate snapshot/command inputs with Valibot at the server boundary. Preserve compatibility
-   during rollout; use a versioned contract when entry IDs or named intents change the payload.
-3. Serialise pending writes and handle 409 explicitly. Reconcile the returned state before another
-   write; a stale snapshot must never receive a fresh revision and overwrite the accepted queue.
-4. Use two test clients to race an append/remove while synthetic audio advances. Add delayed and
-   lost responses, reload, and a storage outage. Keep the UI responsive and show when state has
-   not been saved instead of replacing the current queue with an empty fallback.
-5. Review the error and conflict states in English and German. Document the protocol and rollback:
-   additive database changes first, compatible server second, client last; old clients must not be
-   allowed to submit destructive writes against an unsupported contract.
+1. Verify server restore wins over the optimistic local queue cache while pending queue commands are
+   rebased and kept durable.
+2. Verify resume, fallback and recovery on physical iOS and Android, including browser/PWA safe
+   areas, keyboard interaction and lock-screen controls.
+3. Complete the broader search/detail/library navigation and density review against the overall UX
+   plan, retaining the session, browse query, filters, scroll and shared action meanings.
 
-**Accepted when:** one stale write loses without losing a deliberate edit, retries cannot overwrite
-newer state, audio continues, and reload restores the last accepted session. Changes are confined
-to the session store/API/client logic and relevant UI messages/tests. Add fast-check where it helps
-exercise state-transition invariants; no additional service is required.
-
-Then complete accessible queue review and bounded generation, and prove `m.halflight.eu/now` plus
-minimal Home against the same protocol. Add active-device takeover before enabling mobile position
-writes. Expand mobile route breadth only after the two-host handoff passes its acceptance bar.
+**Accepted when:** a cold open restores the same current track, position, queue, and history without
+starting audio; one explicit resume action starts playback and navigation preserves the session.
 
 ## Success measures
 

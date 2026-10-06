@@ -1,11 +1,11 @@
-# `syn.js` audio metadata package plan
+# `bragi-audio` audio package plan
 
 ## Decision
 
 Extract Syn's audio-file identification and metadata reading into the standalone
-[`soulwax/syn.js`](https://github.com/soulwax/syn.js) repository, mounted in this repository as the
-`./syn.js` Git submodule. The published package name is intended to be `syn.js`; the name is
-currently unclaimed in the npm registry, but publishing remains a separate, explicit release step.
+[`soulwax/bragi-audio`](https://github.com/soulwax/bragi-audio) repository, mounted in this repository as the
+`./bragi-audio` Git submodule. The public npm package is
+[`bragi-audio`](https://www.npmjs.com/package/bragi-audio), released as `0.2.2`. Syn imports `bragi-audio` directly from the pinned registry release.
 
 The package must answer two different questions without conflating them:
 
@@ -14,15 +14,16 @@ The package must answer two different questions without conflating them:
 2. **Can this deployment process it?** Report the formats handled by the built-in parser and, in a
    later optional Node adapter, the capabilities of a configured `ffprobe`/FFmpeg installation.
 
-The first release implements the first question. It does not decode, remux, transcode, upload,
-store, fetch, or play audio.
+The root metadata entry implements the first question. Version 0.2.1 adds independent browser
+playback, Web Fetch streaming/downloads, and explicit PCM/WAV encoding/decoding entries. Provider
+authentication, DRM, manifest resolution, remuxing and compressed audio encoding remain outside
+the package.
 
 ## Why this is a package boundary
 
-Syn currently keeps one format registry in `src/lib/server/private-music.ts`, but upload validation
-uses only browser MIME metadata and the filename suffix. The route then buffers the whole file,
-stores its declared canonical MIME type, and persists only filename, type, size, and creation time.
-This creates three avoidable problems:
+Before extraction, Syn kept its format registry in `src/lib/server/private-music.ts`, and upload
+validation trusted browser MIME metadata and filename suffixes. The route buffered the file and
+stored the declared MIME type. That created three problems the shared package boundary addresses:
 
 - renamed or malformed files can pass validation;
 - useful owner-owned tags such as title, artist, album, track number, duration, and codec are lost;
@@ -50,7 +51,7 @@ library behavior remain Syn concerns.
 
 ### Later slices
 
-- An optional `syn.js/ffprobe` Node-only adapter that receives an executable path, invokes it with a
+- An optional `bragi-audio/ffprobe` Node-only adapter that receives an executable path, invokes it with a
   fixed argument array, applies a timeout and output cap, and reports actual host capabilities.
 - Optional bounded loudness or waveform workers only after a concrete Syn product need and a
   processing/retention review.
@@ -59,10 +60,12 @@ library behavior remain Syn concerns.
 
 ### Non-goals
 
-- No audio decoding, playback, transcoding, remuxing, DRM handling, or codec implementation.
+- No compressed audio encoding, remuxing or DRM handling. The separate `bragi-audio/audio` entry provides
+  bounded PCM/WAV codecs and delegates complete-file decoding to a supplied browser audio context.
 - No automatic subprocess discovery or bundled FFmpeg binary.
-- No network access, URL parser, remote artwork lookup, or metadata enrichment.
-- No S3, database, HTTP, UI, authentication, TIDAL, or Syn-specific object identifiers.
+- No network access from the metadata root; explicit Web Fetch streaming/download APIs live in
+  `bragi-audio/delivery`. No remote artwork lookup or metadata enrichment.
+- No S3, database, UI, authentication, TIDAL, or Syn-specific object identifiers.
 - No raw `music-metadata` response in the public contract.
 - No claim that metadata parsing means a browser or server decoder can play the file.
 - No mutation or rewriting of source files or tags in the first major version.
@@ -70,7 +73,7 @@ library behavior remain Syn concerns.
 ## Package layout
 
 ```text
-syn.js/
+bragi-audio/
   src/
     formats.ts       # immutable registry and magic-byte identification
     metadata.ts      # normalized public contracts and tag conversion
@@ -91,9 +94,9 @@ syn.js/
   SECURITY.md
 ```
 
-Keep internal modules private through `package.json#exports`; consumers import from `syn.js`, not
+Keep internal modules private through `package.json#exports`; consumers import from `bragi-audio`, not
 from build paths. If the ffprobe adapter is approved later, expose only the explicit
-`syn.js/ffprobe` subpath so browser bundlers cannot accidentally include Node process code.
+`bragi-audio/ffprobe` subpath so browser bundlers cannot accidentally include Node process code.
 
 ## Public API
 
@@ -273,10 +276,9 @@ sizes, long strings, and unknown tags.
   an npm token in either repository.
 - Publish public access, include `LICENSE`, `README.md`, `CHANGELOG.md`, and `SECURITY.md`, and set
   `files` so only `dist`, declarations, and documentation enter the tarball.
-- Start with a `0.1.0` prerelease/canary after Syn integration tests pass. Promote the identical
-  commit to `0.1.0`; do not publish straight from an unreviewed workstation state.
-- Before first publish, recheck package-name ownership. If `syn.js` is unavailable or ambiguous,
-  use an owner-controlled npm scope without changing the GitHub repository or API design.
+- Release the exact checked tarball after Syn integration tests pass and a clean consumer verifies
+  its runtime exports and TypeScript declarations.
+- The owner selected the unscoped `bragi-audio` npm name. Recheck ownership before any future rename.
 
 ## Syn integration
 
@@ -284,14 +286,13 @@ The submodule is a development and release boundary, not Syn's production depend
 Published Syn builds should consume a pinned npm version and lockfile integrity; they must not
 depend on Git being available during deployment.
 
-### Current prerelease integration
+### Current release integration
 
-Phase B currently uses the checked `file:./syn.js` submodule dependency so the upload route can be
-verified before the first npm publication. The submodule commits its checked `dist/` output, and the
-root lockfile pins the Gitlink-visible package contents. A fresh checkout must initialize submodules
-before `pnpm install`. Before a production release, publish an immutable package version and replace
-the `file:` specifier with that npm version; do not leave deployment correctness dependent on an
-uninitialized Git submodule.
+Syn installs `"bragi-audio": "0.2.2"`; the lockfile records the registry artifact and its
+integrity. `bragi-audio`, `bragi-audio/player`, `bragi-audio/delivery`, and `bragi-audio/audio` imports resolve
+to that release. The source submodule remains available for package development, but deployment
+installation no longer requires its files or Git. Package changes need a new publication and an
+explicit dependency/lockfile update before Syn consumes them.
 
 ### Data ownership
 
@@ -320,7 +321,7 @@ change with adapter-specific tests.
 ### Migration sequence
 
 1. Characterize the current seven-format registry and upload errors with tests.
-2. Build and release the standalone parser package from `./syn.js`.
+2. Build and release the standalone parser package from `./bragi-audio`.
 3. Add a temporary workspace or packed-tarball integration test without changing production.
 4. Replace Syn's duplicate format registry with package exports.
 5. Analyze uploads before bucket persistence and use the detected canonical MIME.
@@ -337,19 +338,19 @@ downloadable because their object keys and stored bytes do not change.
 
 ## Delivery phases and gates
 
-### Implementation status — 2026-09-22
+### Implementation status — 2026-09-28
 
-Phase A is implemented in the `./syn.js` submodule and pushed to the package repository's `main`
-branch. The package currently has 22 passing tests, passes strict TypeScript and ESLint checks,
-builds declarations and ESM output, passes a dry-run package audit, and imports successfully from
-its packed tarball in a clean consumer. It has not been published to npm. Phases B through D remain
-planned work and must retain their separate migration and release gates.
+Phases A and B are implemented. `bragi-audio@0.2.2` is published, with 100 passing package tests,
+strict TypeScript and ESLint checks, ESM/declaration builds, a tarball audit, and clean-consumer
+runtime/type checks. GitHub CI passes on Node 20, 22, and 24. Browser playback, bounded delivery,
+and PCM/WAV codecs are separate public entries. Phases C and D retain their separate migration
+and release gates.
 
-### Phase A — bootstrap `syn.js`
+### Phase A — bootstrap `bragi-audio`
 
 - Create the standalone repository, TypeScript build, immutable format registry, magic-byte
   detector, normalized contracts, bounded analyzer, generated fixtures, and documentation.
-- Add it to this repository as `./syn.js` with a relative path and GitHub URL in `.gitmodules`.
+- Add it to this repository as `./bragi-audio` with a relative path and GitHub URL in `.gitmodules`.
 
 **Gate:** package checks, tests, build, `pnpm pack --dry-run`, and clean-consumer import pass; the
 parent repository records one submodule commit and `NPMJS.md` matches the implemented API.
@@ -360,7 +361,7 @@ parent repository records one submodule commit and `NPMJS.md` matches the implem
 - Analyze before bucket write, reject malformed/mismatched files, and store the detected MIME.
 - Preserve current quota and cleanup semantics.
 
-**Current status:** Syn now derives its format menu from `syn.js`, reads the upload bytes once after
+**Current status:** Syn now derives its format menu from `bragi-audio`, reads the upload bytes once after
 the quota check, validates container and audio properties with strict filename/MIME hints, and sends
 only the detected canonical MIME type to bucket and database writes. Generic
 `application/octet-stream` remains a permitted browser hint. Normalized title/artist/album metadata
@@ -380,7 +381,7 @@ deleting a file removes the same owned state as before.
 
 ### Phase D — streaming and runtime capabilities
 
-- `syn.js` now exposes `analyzeWebStream` for bounded Web-stream analysis. It requires trusted
+- `bragi-audio` now exposes `analyzeWebStream` for bounded Web-stream analysis. It requires trusted
   size metadata, reads until it has a 4 KiB detection prefix, and replays pulled chunks to the
   parser instead of materializing a second full-file buffer. Wire it into Syn only after an
   adapter-specific upload-flow memory measurement and cancellation test.
@@ -390,9 +391,51 @@ deleting a file removes the same owned state as before.
 abort, output overflow, missing executable, malformed JSON, and hostile hint values without invoking
 a shell.
 
+## Browser playback entry (`bragi-audio/player`)
+
+### Decision — 2026-09-28
+
+Export the framework-agnostic half of Syn's audio engine as a second, dependency-free entry point,
+`bragi-audio/player`, next to the unchanged server-side root. Separate entry points keep `music-metadata`
+out of browser bundles and DOM code out of server bundles; a package test fails if any
+`src/player/` module imports anything but its siblings.
+
+### What moved, and what stays in Syn
+
+| Layer                                                                                                   | Where                                                                                                                                                                   |
+| ------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AudioEngine`: one `<audio>` element, event forwarding, buffered %, de-clicked Web Audio headroom stage | `bragi-audio/player`. Mobile keeps `allowWebAudio` false (iOS suspends Web Audio on lock).                                                                              |
+| Queue identity, `QueueCommand`, `rebaseQueue`                                                           | `bragi-audio/player`, generic over `{ id: string }`; `#lib/player/queue-entry.ts` / `playback-reconciliation.ts` fix it to `TrackSummary`.                              |
+| `assessPlayback`                                                                                        | `bragi-audio/player` returns issue codes and ranks tiers only when given `qualityRank`; `#lib/player/playback-assessment.ts` supplies TIDAL's ranks and Paraglide text. |
+| `StreamPreloader`                                                                                       | `bragi-audio/player` with an injected `load`; `#lib/player/stream-preloader.ts` supplies the `/api/tracks/[id]/stream` loader.                                          |
+| Media Session helpers                                                                                   | `bragi-audio/player`; Syn supplies the localised unknown-artist fallback.                                                                                               |
+| `PlayerState` (runes, prefs, Last.fm, lyrics, embed fallback) and `PlaybackSessionCoordinator`          | **Stay in Syn.** The coordinator is Syn's own `/api/playback-state` protocol; export it only when a second consumer exists.                                             |
+| TIDAL stream resolution, quality ladder, sealed manifest cache, S3 segment cache, tokens                | **Never exported.**                                                                                                                                                     |
+
+### Delivery entry — 2026-09-28
+
+Version 0.2.1 includes original Web Fetch streaming/download helpers, generic byte ranges,
+conditional HTTP helpers and transient retries. Every media request is explicit, injectable, bounded
+and cancellable. It needs no Syn state, framework, filesystem, credentials, or environment variables.
+
+### Remaining slice — DASH assembly
+
+A future Web-Fetch-only server entry for the remaining generic half of `/api/tracks/[id]/audio`: the
+DASH `SegmentTemplate` parser and an
+instance-scoped `createSegmentAssembler({ maxEntries, maxBytes, ttlMs, concurrency,
+persistentCache })` replacing `segmented.ts`'s module-level LRU. It must throw package-owned errors
+(Syn maps them to `TidalError`) and contain nothing TIDAL-named.
+
+**Gate before publishing derived DASH code:** check the licences of `oskvr37/tiddl` and `Dniel97/OrpheusDL-TIDAL`,
+which the application references, before re-releasing derived code under MIT. tiddl's Apache-2.0
+license was verified from its upstream repository on 2026-09-28; the referenced OrpheusDL-TIDAL
+repository/license could not be retrieved. Its parser and the existing segment assembly remain in
+Syn and are excluded from the npm release. Sources: [tiddl license](https://github.com/oskvr37/tiddl/blob/main/LICENSE),
+[referenced OrpheusDL repository](https://github.com/Dniel97/OrpheusDL-TIDAL).
+
 ## Phase A acceptance checklist
 
-- [x] `syn.js` is an actual Git submodule with an independently buildable repository.
+- [x] `bragi-audio` is an actual Git submodule with an independently buildable repository.
 - [x] Byte signatures, not suffixes, select the canonical format.
 - [x] MP3, FLAC, AAC, M4A/MP4, Ogg, WAV, and WebM are represented by one registry.
 - [x] Metadata normalization does not expose parser-specific objects.
@@ -400,6 +443,7 @@ a shell.
 - [x] Inputs, strings, arrays, and artwork are bounded.
 - [x] Errors and warnings use stable codes.
 - [x] Synthetic fixture tests cover success, mismatch, truncation, and limits.
-- [x] The package has no framework, storage, network, database, or TIDAL dependency.
+- [x] The metadata root has no framework, storage, network, database, or TIDAL dependency.
+- [x] Delivery uses only explicit Web Fetch APIs; browser entries have no runtime dependencies.
 - [x] Build output and packed contents are reproducible and minimal.
-- [x] No npm publication occurs until the separate release gate is approved.
+- [x] Owner explicitly authorized npm publication; checks and clean-consumer validation are required.

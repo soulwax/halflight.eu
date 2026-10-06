@@ -15,37 +15,6 @@
 	box-shadow: 0 -8px 24px -24px rgb(0 0 0 / 72%);
 }
 
-.player-sync-status {
-	margin: 0;
-	padding: 0.25rem 0.75rem 0.5rem;
-	color: var(--warning, var(--text-muted));
-	font-size: 0.72rem;
-}
-.syn-player .player-sync-status {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 0.75rem;
-}
-.syn-player .player-sync-action {
-	flex: 0 0 auto;
-	padding: 0.2rem 0.45rem;
-	border: 1px solid currentColor;
-	border-radius: var(--radius-sm);
-	background: transparent;
-	color: inherit;
-	font: inherit;
-	font-weight: 700;
-	cursor: pointer;
-	/* Also used as an <a> (the sign-in-again action): unset link defaults so it
-	   reads as the same control as the <button> instances. */
-	text-decoration: none;
-}
-.syn-player .player-sync-action:hover,
-.syn-player .player-sync-action:focus-visible {
-	background: color-mix(in oklab, currentColor 14%, transparent);
-}
-
 .syn-player.floating {
 	position: fixed;
 	z-index: var(--z-overlay);
@@ -72,6 +41,19 @@
 	font-family: var(--font-display);
 	font-size: 0.9rem;
 	color: var(--text-muted);
+}
+
+.syn-player button.title {
+	border: 0;
+	background: none;
+	padding: 0;
+	text-align: left;
+	cursor: pointer;
+}
+
+.syn-player button.title:focus-visible {
+	outline: 2px solid var(--focus-ring);
+	outline-offset: 2px;
 }
 .syn-player .idle-cta {
 	color: var(--action);
@@ -170,6 +152,8 @@
 	appearance: none;
 	width: 11px;
 	height: 11px;
+	/* Chromium/WebKit align the thumb's top with the 3px track by default. */
+	margin-top: -4px;
 	border-radius: 999px;
 	background: var(--action);
 	border: 0;
@@ -747,6 +731,14 @@
 	color: var(--text-muted);
 	font-size: 0.9rem;
 	line-height: 1.6;
+}
+.syn-player .lyr-provider {
+	margin: 1.5rem 0 0.5rem;
+	padding: 0 0.6rem;
+	font-size: 0.72rem;
+	color: var(--text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
 }
 
 .syn-player .source {

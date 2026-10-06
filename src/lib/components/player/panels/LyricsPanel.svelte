@@ -2,10 +2,14 @@
 	import { Loader2 } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { player } from '#lib/player/player.svelte.js';
+	import { followActiveLyric } from '#lib/player/lyrics-follow.js';
+	import LyricsNextCaption from '../LyricsNextCaption.svelte';
 </script>
 
 {#if player.isLyricsLoading}
 	<div class="lyr-status"><Loader2 size={20} class="animate-spin" /></div>
+{:else if player.lyrics === '♪ Instrumental ♪'}
+	<p class="empty">{m.player_lyrics_instrumental()}</p>
 {:else if player.lyricsCues.length}
 	<div class="lyr-cues">
 		{#each player.lyricsCues as cue, i (cue.time + '-' + i)}
@@ -13,16 +17,24 @@
 				type="button"
 				class="lyr-line"
 				class:active={player.activeLyricIndex === i}
+				use:followActiveLyric={player.activeLyricIndex === i}
 				onclick={() => player.seek(cue.time)}
 			>
 				{cue.text || '♪'}
 			</button>
 		{/each}
 	</div>
+	{#if player.lyricsProvider}
+		<p class="lyr-provider">{m.player_lyrics_provider({ provider: player.lyricsProvider })}</p>
+	{/if}
+	<LyricsNextCaption />
 {:else if player.lyrics}
 	<div class="lyr-plain">
 		{#each player.lyrics.split('\n') as line, i (i)}<p>{line || ' '}</p>{/each}
 	</div>
+	{#if player.lyricsProvider}
+		<p class="lyr-provider">{m.player_lyrics_provider({ provider: player.lyricsProvider })}</p>
+	{/if}
 {:else}
 	<p class="empty">{m.player_no_lyrics()}</p>
 {/if}

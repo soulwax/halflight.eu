@@ -1,52 +1,107 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { StreamPreloader } from './stream-preloader.js';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+	getOrAwaitPreloadedStreamData,
+	loadStreamData,
+	streamLoader,
+	streamPreloader
+} from './stream-preloader.js';
 
-describe('StreamPreloader', () => {
-	let preloader: StreamPreloader;
+afterEach(() => {
+	streamPreloader.clear();
+	vi.unstubAllGlobals();
+});
 
-	beforeEach(() => {
-		preloader = new StreamPreloader();
+describe('loadStreamData', () => {
+	it('preserves the safe server error category for recovery UI', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(() => Promise.resolve(Response.json({ error: 'track_unavailable' }, { status: 404 })))
+		);
+		await expect(streamLoader.load('gone')).resolves.toMatchObject({
+			ok: false,
+			reason: 'track_unavailable'
+		});
+	});
+	it('keeps only display fields and rejects malformed successful responses', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(() =>
+				Promise.resolve(
+					Response.json({
+						audioQuality: 'HIGH',
+						urls: ['https://private.test'],
+						token: 'fixture',
+						sampleRate: '44100'
+					})
+				)
+			)
+		);
+		await expect(loadStreamData('t1')).resolves.toEqual({ audioQuality: 'HIGH' });
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(() => Promise.resolve(Response.json({ urls: ['https://private.test'] })))
+		);
+		await expect(loadStreamData('t1')).resolves.toBeNull();
+	});
+	it('reads stream metadata from the encoded /stream endpoint', async () => {
+		const body = { audioQuality: 'LOSSLESS', codecs: 'flac', bitDepth: 16, sampleRate: 44100 };
+		const fetchMock = vi.fn(() => Promise.resolve(new Response(JSON.stringify(body))));
+		vi.stubGlobal('fetch', fetchMock);
+
+		await expect(loadStreamData('a/b')).resolves.toEqual(body);
+		expect(fetchMock).toHaveBeenCalledWith('/api/tracks/a%2Fb/stream', { signal: null });
 	});
 
-	afterEach(() => {
-		preloader.clear();
-		vi.unstubAllGlobals();
-	});
-
-	it('returns null when no metadata has been preloaded', () => {
-		expect(preloader.consume('track-nonexistent')).toBeNull();
-	});
-
-	it('preloads and caches metadata from the stream endpoint', async () => {
-		const mockData = {
-			audioQuality: 'LOSSLESS',
-			codecs: 'flac',
-			bitDepth: 16,
-			sampleRate: 44100
-		};
+	it('treats an error status or an unreadable body as not directly playable', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(() => Promise.resolve(new Response('{}', { status: 403 })))
+		);
+		await expect(loadStreamData('t1')).resolves.toBeNull();
 
 		vi.stubGlobal(
 			'fetch',
-			vi.fn((url: string) => {
-				if (String(url).includes('/stream')) {
-					return Promise.resolve(new Response(JSON.stringify(mockData), { status: 200 }));
-				}
-				return Promise.reject(new Error('not found'));
-			})
+			vi.fn(() => Promise.resolve(new Response('not json')))
+		);
+		await expect(loadStreamData('t1')).resolves.toBeNull();
+	});
+});
+
+describe('streamPreloader', () => {
+	it('preloads through the /stream loader and hands the entry out once', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(() => Promise.resolve(new Response(JSON.stringify({ audioQuality: 'HIGH' }))))
 		);
 
-		preloader.preload('track-123');
+		streamPreloader.preload('t1');
+		await expect(streamPreloader.getOrAwait('t1')).resolves.toEqual({ audioQuality: 'HIGH' });
+		expect(streamPreloader.consume('t1')).toBeNull();
+	});
 
-		// Wait for inflight fetch
-		const data = await preloader.getOrAwait('track-123');
-		expect(data).toMatchObject({
-			audioQuality: 'LOSSLESS',
-			codecs: 'flac',
-			bitDepth: 16,
-			sampleRate: 44100
+	it('keeps look-ahead work alive until a foreground handoff is canceled', async () => {
+		let preloadSignal: AbortSignal | null = null;
+		const fetchMock = vi.fn((_url: string, init?: RequestInit) => {
+			preloadSignal = init?.signal ?? null;
+			return new Promise<Response>((_resolve, reject) => {
+				init?.signal?.addEventListener(
+					'abort',
+					() => reject(new DOMException('Aborted', 'AbortError')),
+					{ once: true }
+				);
+			});
 		});
+		vi.stubGlobal('fetch', fetchMock);
 
-		// Subsequent consume is null because it was consumed
-		expect(preloader.consume('track-123')).toBeNull();
+		streamPreloader.preload('joined');
+		await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+		expect((preloadSignal as AbortSignal | null)?.aborted).toBe(false);
+
+		const foreground = new AbortController();
+		const handoff = getOrAwaitPreloadedStreamData('joined', foreground.signal);
+		foreground.abort();
+
+		await expect(handoff).resolves.toBeNull();
+		expect((preloadSignal as AbortSignal | null)?.aborted).toBe(true);
 	});
 });

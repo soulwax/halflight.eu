@@ -1,11 +1,33 @@
 import { describe, expect, it } from 'vitest';
 import {
+	buildPrecacheAssets,
 	isNavigationRequest,
 	isPrecacheCandidate,
 	shouldBypassServiceWorker
 } from './service-worker-policy.js';
 
 describe('service-worker-policy.ts', () => {
+	it('normalizes actual manifest records before applying the public cache allowlist', () => {
+		expect(
+			buildPrecacheAssets([
+				{ path: '_app/immutable/entry/app.hash.js' },
+				{ path: '_app/immutable/assets/layout.hash.css' },
+				{ path: 'icons/halflight-192.png' },
+				{ path: '/icons/halflight-192.png' },
+				{ path: 'manifest.webmanifest' },
+				{ path: '_app/immutable/__data.json' },
+				{ path: 'api/tracks/123/audio' },
+				{ path: 'home' },
+				{ path: 'sign-in' }
+			])
+		).toEqual([
+			'/_app/immutable/entry/app.hash.js',
+			'/_app/immutable/assets/layout.hash.css',
+			'/icons/halflight-192.png',
+			'/manifest.webmanifest',
+			'/offline'
+		]);
+	});
 	it('bypasses audio streams and manifests', () => {
 		const audioUrl = new URL('https://m.halflight.eu/api/tracks/track-123/audio');
 		const streamUrl = new URL('https://m.halflight.eu/api/tracks/track-123/stream');

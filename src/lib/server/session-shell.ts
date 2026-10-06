@@ -2,11 +2,13 @@ import type { RequestEvent } from '@sveltejs/kit';
 import { getConnectionStatus } from '#lib/server/tidal';
 import { getPlaybackState, type PlaybackState } from '#lib/server/playback-state';
 import { getStreamingSettings, type StreamingSettings } from '#lib/server/streaming-settings';
+import { getUnplayableTrackIds } from '#lib/server/tidal/track-playability';
 
 export interface SessionShellData {
-	connection: { connected: boolean; configured: boolean };
+	connection: { connected: boolean; configured: boolean; hasPlayback?: boolean };
 	streamingSettings: StreamingSettings;
 	playbackState: PlaybackState;
+	knownUnavailableIds: string[];
 }
 
 /**
@@ -25,13 +27,20 @@ export async function loadSessionShellData(event: RequestEvent): Promise<Session
 		getStreamingSettings(userId),
 		getPlaybackState(userId)
 	]);
+	const knownUnavailableIds = [
+		...(playbackState.currentTrack ? [playbackState.currentTrack.id] : []),
+		...playbackState.queue.slice(0, 8).map((track) => track.id)
+	];
+	const unavailable = await getUnplayableTrackIds(knownUnavailableIds);
 
 	return {
 		connection: {
 			connected: connection.connected,
-			configured: connection.configured
+			configured: connection.configured,
+			hasPlayback: connection.hasPlayback
 		},
 		streamingSettings,
-		playbackState
+		playbackState,
+		knownUnavailableIds: [...unavailable]
 	};
 }

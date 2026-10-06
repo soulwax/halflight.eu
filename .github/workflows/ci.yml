@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+    # Placeholders only: they satisfy src/env.ts validation, nothing connects to them.
+    env:
+      DATABASE_URL: postgres://ci:ci@localhost:5432/ci
+      ORIGIN: http://localhost:3000
+      BETTER_AUTH_SECRET: ci-placeholder-secret-not-for-production
+      GITHUB_CLIENT_ID: ci-placeholder
+      GITHUB_CLIENT_SECRET: ci-placeholder
+      ADMIN_USERNAME: soulwax
+      ADMIN_PASSWORD: ci-placeholder-password
+      TIDAL_CLIENT_ID: ci-placeholder
+      TIDAL_TOKEN_ENC_KEY: Y2ktcGxhY2Vob2xkZXIta2V5LTMyLWJ5dGVzLWxvbmc=
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12.9.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Generate Paraglide messages
+        run: pnpm exec paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide --emit-ts-declarations
+
+      - name: Check types and Svelte
+        run: pnpm check
+
+      - name: Lint and format
+        run: pnpm lint
+
+      - name: Run unit tests
+        run: pnpm test:unit
+
+      - name: Run Storybook tests
+        run: pnpm test:storybook
+
+      - name: Build production app
+        run: pnpm build

@@ -4,7 +4,8 @@
 	import { ArrowDown, ArrowUp, Trash2 } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { player } from '#lib/player/player.svelte.js';
-	import { customPlaylists } from '#lib/player/customPlaylists.svelte.js';
+	import QueueActions from '#lib/components/player/QueueActions.svelte';
+	import SessionSaveStatus from '#lib/components/player/SessionSaveStatus.svelte';
 	import { describeQueueMove } from '#lib/player/queue-announce.js';
 	import { queueDndZone, type DndEvent } from '#lib/player/queue-dnd.js';
 	import type { QueueEntry } from '#lib/player/queue-entry.js';
@@ -57,16 +58,6 @@
 		const sibling = direction === -1 ? button.nextElementSibling : button.previousElementSibling;
 		if (sibling instanceof HTMLButtonElement && !sibling.disabled) sibling.focus();
 	}
-
-	function saveQueue() {
-		const tracks = player.currentTrack ? [player.currentTrack, ...player.queue] : [...player.queue];
-		if (!tracks.length) return;
-		customPlaylists.createPlaylist(
-			`${m.player_queue()} — ${new Date().toLocaleDateString()}`,
-			m.player_save_queue(),
-			tracks
-		);
-	}
 </script>
 
 <div class="flex h-full flex-col px-4 py-4">
@@ -79,22 +70,7 @@
 
 	<div class="flex items-center justify-between border-b border-(--border-subtle) pb-2">
 		<span class="text-xs tracking-wide text-(--text-muted) uppercase">{m.player_next_up()}</span>
-		<div class="flex items-center gap-1">
-			{#if player.queueCount || player.currentTrack}
-				<button type="button" class="min-h-12 px-2 text-sm text-(--action)" onclick={saveQueue}>
-					{m.player_save_queue()}
-				</button>
-			{/if}
-			{#if player.queueCount}
-				<button
-					type="button"
-					class="min-h-12 px-2 text-sm text-(--text-muted)"
-					onclick={() => player.clearQueue()}
-				>
-					{m.player_clear_queue()}
-				</button>
-			{/if}
-		</div>
+		<div class="queue-toolbar-actions"><SessionSaveStatus mobile /><QueueActions /></div>
 	</div>
 
 	{#if items.length === 0}
@@ -102,39 +78,45 @@
 	{:else}
 		<div
 			class="flex-1 divide-y divide-(--border-subtle) overflow-y-auto"
-			use:queueDndZone={{ items, flipDurationMs: 150, dropTargetStyle: {} }}
+			use:queueDndZone={{ items, flipDurationMs: 150, dropTargetStyle: {}, delayTouchStart: true }}
 			onconsider={handleConsider}
 			onfinalize={handleFinalize}
 		>
 			{#each items as entry, i (entry.entryId)}
-				<MobileTrackRow track={entry} onActivate={() => player.playFromQueue(entry.entryId)}>
+				<MobileTrackRow
+					compact
+					track={entry}
+					onActivate={() => player.playFromQueue(entry.entryId)}
+				>
 					{#snippet actions()}
-						<button
-							type="button"
-							class="flex h-12 w-12 items-center justify-center text-(--text-muted) disabled:opacity-30"
-							disabled={i === 0}
-							onclick={(event) => move(entry.entryId, -1, event)}
-							aria-label={m.player_move_up()}
-						>
-							<ArrowUp size={15} />
-						</button>
-						<button
-							type="button"
-							class="flex h-12 w-12 items-center justify-center text-(--text-muted) disabled:opacity-30"
-							disabled={i === items.length - 1}
-							onclick={(event) => move(entry.entryId, 1, event)}
-							aria-label={m.player_move_down()}
-						>
-							<ArrowDown size={15} />
-						</button>
-						<button
-							type="button"
-							class="flex h-12 w-12 items-center justify-center text-(--text-muted)"
-							onclick={() => player.removeFromQueue(entry.entryId)}
-							aria-label={m.player_remove_from_queue()}
-						>
-							<Trash2 size={15} />
-						</button>
+						<div class="queue-row-controls">
+							<button
+								type="button"
+								class="queue-row-button"
+								disabled={i === 0}
+								onclick={(event) => move(entry.entryId, -1, event)}
+								aria-label={m.player_move_up()}
+							>
+								<ArrowUp size={14} aria-hidden="true" />
+							</button>
+							<button
+								type="button"
+								class="queue-row-button"
+								disabled={i === items.length - 1}
+								onclick={(event) => move(entry.entryId, 1, event)}
+								aria-label={m.player_move_down()}
+							>
+								<ArrowDown size={14} aria-hidden="true" />
+							</button>
+							<button
+								type="button"
+								class="queue-row-button queue-remove"
+								onclick={() => player.removeFromQueue(entry.entryId)}
+								aria-label={m.player_remove_from_queue()}
+							>
+								<Trash2 size={14} aria-hidden="true" />
+							</button>
+						</div>
 					{/snippet}
 				</MobileTrackRow>
 			{/each}
@@ -142,3 +124,47 @@
 	{/if}
 	<p class="sr-only" role="status" aria-live="polite">{announcement}</p>
 </div>
+
+<style>
+	.queue-toolbar-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+	}
+	.queue-row-controls {
+		display: grid;
+		grid-template-columns: repeat(2, 2rem);
+		grid-template-rows: repeat(2, 2rem);
+		column-gap: 0.125rem;
+	}
+	.queue-row-button {
+		display: grid;
+		width: 2rem;
+		height: 2rem;
+		place-items: center;
+		border: 0;
+		background: transparent;
+		color: var(--text-muted);
+		cursor: pointer;
+	}
+	.queue-row-button:nth-child(2) {
+		grid-column: 1;
+		grid-row: 2;
+	}
+	.queue-remove {
+		grid-column: 2;
+		grid-row: 1 / 3;
+		height: 100%;
+	}
+	.queue-row-button:disabled {
+		opacity: 0.3;
+		cursor: default;
+	}
+	.queue-row-button:hover:not(:disabled) {
+		color: var(--action);
+	}
+	.queue-row-button:focus-visible {
+		outline: 2px solid var(--focus-ring);
+		outline-offset: -2px;
+	}
+</style>

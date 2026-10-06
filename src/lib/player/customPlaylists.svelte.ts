@@ -125,7 +125,8 @@ export class CustomPlaylistsManager {
 					id: newPlaylist.id,
 					title: newPlaylist.title,
 					description: newPlaylist.description,
-					items: newPlaylist.items
+					items: newPlaylist.items,
+					syncTidal: false
 				})
 			})
 				.then(async (res) => {

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { TidalApiError } from '#lib/server/tidal/errors';
+import { TidalApiError, TidalNotConnectedError } from '#lib/server/tidal/errors';
 
 const mocks = vi.hoisted(() => ({
 	getConnectionStatus: vi.fn(),
@@ -85,14 +85,14 @@ describe('GET /api/tracks/[id]/metadata', () => {
 		expect(mocks.getConnectionStatus).not.toHaveBeenCalled();
 	});
 
-	it('returns a safe connection failure before requesting metadata', async () => {
-		mocks.getConnectionStatus.mockResolvedValue({ connected: false });
+	it('returns a safe connection failure from the token accessor without extra status reads', async () => {
+		mocks.getTrack.mockRejectedValue(new TidalNotConnectedError());
 
 		const response = await GET(event());
 
 		expect(response.status).toBe(503);
 		expect(await response.json()).toEqual({ error: 'not_connected' });
-		expect(mocks.getTrack).not.toHaveBeenCalled();
+		expect(mocks.getConnectionStatus).not.toHaveBeenCalled();
 	});
 
 	it('marks an upstream missing recording as not found instead of a retryable outage', async () => {

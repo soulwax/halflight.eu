@@ -1,48 +1,95 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { goto, invalidateAll } from '$app/navigation';
+	import { localizeHref } from '#lib/paraglide/runtime';
+	import Dialog from '#lib/components/ui/Dialog.svelte';
 	import { Disc, ListPlus, Play } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import PrivateMusicShelf from '#lib/components/music/PrivateMusicShelf.svelte';
 	import { player } from '#lib/player/player.svelte.js';
 	import type { MobileLibraryData } from '#lib/tidal/mobile-library';
 	import type { TrackSummary } from '#lib/tidal/models';
+	import { trackArtworkUrl } from '#lib/tidal/artwork';
 	import MobileScreenHeader from './MobileScreenHeader.svelte';
 	import MobileTrackRow from './MobileTrackRow.svelte';
 
 	let { data }: { data: MobileLibraryData } = $props();
-	let confirmation: HTMLDialogElement;
-	let pending = $state<{ title: string; tracks: TrackSummary[] } | null>(null);
+	let confirmationOpen = $state(false);
+	let refreshing = $state(false);
+	let searching = $state(false);
+	let pending = $state<{ title: string; tracks: TrackSummary[]; start: TrackSummary } | null>(null);
 	let feedback = $state('');
+	let failedArtwork = $state<Record<string, boolean>>({});
 	const libraryHref = resolve('/(mobile)/library');
 
-	function play(title: string, tracks: TrackSummary[]): void {
+	function play(title: string, tracks: TrackSummary[], start = tracks[0]): void {
 		if (!tracks.length) return;
 		feedback = '';
 		if (player.currentTrack || player.queueCount) {
-			pending = { title, tracks };
-			confirmation.showModal();
+			pending = { title, tracks, start };
+			confirmationOpen = true;
 		} else {
-			player.play(tracks[0], tracks, title);
+			player.play(start, tracks, title);
 		}
 	}
 
 	function confirmPlay(): void {
 		if (!pending) return;
-		player.play(pending.tracks[0], pending.tracks, pending.title);
-		confirmation.close();
+		player.play(pending.start, pending.tracks, pending.title);
+		confirmationOpen = false;
+		pending = null;
 	}
 
 	function enqueue(title: string, tracks: TrackSummary[]): void {
-		for (const track of tracks) player.addToQueue(track, title);
+		player.addMultipleToQueue(tracks, title);
 		feedback = m.now_library_added({ title });
+	}
+	async function retryLibrary(): Promise<void> {
+		if (refreshing) return;
+		refreshing = true;
+		feedback = '';
+		try {
+			await invalidateAll();
+		} catch {
+			feedback = m.now_library_unavailable();
+		} finally {
+			refreshing = false;
+		}
+	}
+	async function searchLibrary(
+		event: SubmitEvent & { currentTarget: HTMLFormElement }
+	): Promise<void> {
+		event.preventDefault();
+		if (searching) return;
+		const query = String(new FormData(event.currentTarget).get('q') ?? '').trim();
+		searching = true;
+		feedback = '';
+		try {
+			await goto(
+				`${localizeHref(libraryHref)}?${new URLSearchParams({ tab: 'saved', ...(query ? { q: query } : {}) })}`,
+				{ reset: false }
+			);
+		} catch {
+			feedback = m.now_library_unavailable();
+		} finally {
+			searching = false;
+		}
 	}
 </script>
 
 {#snippet artwork(track?: TrackSummary)}
-	{@const cover = track?.imageUrl ?? track?.album?.imageUrl}
+	{@const cover = trackArtworkUrl(track, 160)}
 	<span class="artwork">
-		{#if cover}
-			<img src={cover} alt="" loading="lazy" width="64" height="64" />
+		{#if cover && !failedArtwork[cover]}
+			<img
+				src={cover}
+				alt=""
+				loading="lazy"
+				decoding="async"
+				width="64"
+				height="64"
+				onerror={() => cover && (failedArtwork[cover] = true)}
+			/>
 		{:else}
 			<Disc size={28} aria-hidden="true" />
 		{/if}
@@ -69,22 +116,62 @@
 			{m.now_library_favorites()}
 		</a>
 	</nav>
+	{#if data.tab === 'saved'}
+		<form
+			method="get"
+			action={localizeHref(libraryHref)}
+			class="library-search"
+			role="search"
+			onsubmit={searchLibrary}
+		>
+			<input type="hidden" name="tab" value="saved" />
+			<label for="saved-library-query">{m.now_library_search_label()}</label>
+			<div class="search-controls">
+				<input
+					id="saved-library-query"
+					type="search"
+					name="q"
+					value={data.query ?? ''}
+					maxlength="120"
+					placeholder={m.now_library_search_placeholder()}
+				/>
+				<button type="submit" disabled={searching} aria-busy={searching}>{m.search_button()}</button
+				>
+			</div>
+			{#if data.query}
+				<a class="text-action" href={`${localizeHref(libraryHref)}?tab=saved`}
+					>{m.now_library_clear_search()}</a
+				>
+			{/if}
+		</form>
+	{/if}
+	{#if data.hiddenTrackCount}
+		<p class="availability-note">
+			{m.now_library_unplayable_skipped({ count: data.hiddenTrackCount })}
+		</p>
+	{/if}
 
-	{#if data.tab === 'private'}
+	{#if data.tab === 'private' && data.status !== 'unavailable'}
 		<PrivateMusicShelf library={data.privateMusic} headingId="mobile-private-music-title" />
 	{:else if data.status === 'disconnected'}
 		<div class="notice" role="status">
 			<p>{m.search_not_connected_description()}</p>
-			<a class="text-action" href={resolve('/app/settings/tidal')}>{m.tidal_settings_title()}</a>
+			<a class="text-action" href={localizeHref(resolve('/(mobile)/settings'))}
+				>{m.tidal_settings_title()}</a
+			>
 		</div>
 	{:else if data.status === 'unavailable'}
 		<div class="notice" role="alert">
 			<p>{m.now_library_unavailable()}</p>
-			<button type="button" onclick={() => window.location.reload()}>{m.track_retry()}</button>
+			<button type="button" disabled={refreshing} aria-busy={refreshing} onclick={retryLibrary}
+				>{m.track_retry()}</button
+			>
 		</div>
 	{:else if data.tab === 'saved'}
 		{#if !data.playlists.length}
-			<p class="notice">{m.now_library_empty_saved()}</p>
+			<p class="notice">
+				{data.query ? m.now_library_no_matches({ query: data.query }) : m.now_library_empty_saved()}
+			</p>
 		{:else}
 			<ul class="library-list">
 				{#each data.playlists as playlist (playlist.id)}
@@ -93,7 +180,14 @@
 							{@render artwork(playlist.items[0])}
 							<div class="copy">
 								<h2>{playlist.title}</h2>
-								<p>{m.now_library_count({ count: playlist.items.length })}</p>
+								<p>
+									{m.now_library_count({
+										count: playlist.totalTrackCount ?? playlist.items.length
+									})}
+								</p>
+								{#if (playlist.totalTrackCount ?? playlist.items.length) > playlist.items.length}
+									<p>{m.now_library_available_count({ count: playlist.items.length })}</p>
+								{/if}
 							</div>
 						</a>
 						<div class="playlist-actions">
@@ -128,7 +222,7 @@
 						{track}
 						contextTracks={data.tracks}
 						provenance={m.now_library_favorites()}
-						onActivate={() => play(track.title, [track])}
+						onActivate={() => play(m.now_library_favorites(), data.tracks, track)}
 					/>
 				</li>
 			{/each}
@@ -155,20 +249,29 @@
 	{/if}
 </section>
 
-<dialog
-	bind:this={confirmation}
-	aria-labelledby="library-confirm-title"
-	onclose={() => (pending = null)}
+<Dialog
+	bind:open={confirmationOpen}
+	title={m.now_library_replace({ title: pending?.title ?? '' })}
+	onOpenChange={(open) => {
+		if (!open) pending = null;
+	}}
 >
-	<h2 id="library-confirm-title">{m.now_library_replace({ title: pending?.title ?? '' })}</h2>
-	<div class="actions">
-		<button type="button" onclick={() => confirmation.close()}>{m.playlist_cancel()}</button>
+	<div class="actions confirmation-actions">
+		<button
+			type="button"
+			onclick={() => {
+				confirmationOpen = false;
+				pending = null;
+			}}>{m.playlist_cancel()}</button
+		>
 		<button type="button" onclick={confirmPlay}>{m.now_library_confirm()}</button>
 	</div>
-</dialog>
+</Dialog>
 
 <style>
 	.mobile-library {
+		min-width: 0;
+		overflow-wrap: anywhere;
 		max-width: 44rem;
 		margin-inline: auto;
 		padding: clamp(1.5rem, 6vw, 2.5rem) clamp(1.25rem, 5vw, 2rem) clamp(2.5rem, 9vw, 4rem);
@@ -197,12 +300,13 @@
 		background: color-mix(in oklab, var(--surface-raised) 78%, transparent);
 	}
 	.filters a {
-		flex: 1;
+		flex: 1 1 5rem;
 		min-height: 2.5rem;
 		border: 0;
 		border-radius: var(--radius-full);
 		background: transparent;
 		text-align: center;
+		overflow-wrap: anywhere;
 	}
 	.filters a[aria-current='page'] {
 		background: var(--surface-selected);
@@ -303,10 +407,10 @@
 		gap: 0.125rem;
 	}
 	.playlist-actions button {
-		width: 2.75rem;
-		min-width: 2.75rem;
-		height: 2.75rem;
-		min-height: 2.75rem;
+		width: 3rem;
+		min-width: 3rem;
+		height: 3rem;
+		min-height: 3rem;
 		padding: 0;
 		border: 0;
 		border-radius: var(--radius-full);
@@ -342,23 +446,45 @@
 	.attribution {
 		font-size: 0.75rem;
 	}
-	dialog {
-		margin: auto;
-		width: min(28rem, calc(100% - 2rem));
-		max-height: calc(100dvh - 2rem);
-		overflow-y: auto;
+	.confirmation-actions {
 		padding: 1.5rem;
+	}
+	.library-search {
+		margin-block: 1rem;
+	}
+	.library-search label {
+		display: block;
+		margin-bottom: 0.5rem;
+	}
+	.search-controls {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+	}
+	.search-controls input {
+		min-width: 0;
+		width: 100%;
+		flex: 1 1 10rem;
+		min-height: 3rem;
 		border: 1px solid var(--border-subtle);
-		border-radius: var(--radius-lg);
+		border-radius: var(--radius-md);
 		background: var(--surface-raised);
 		color: var(--text-primary);
+		padding-inline: 0.75rem;
 	}
-	dialog::backdrop {
-		background: var(--overlay);
+	.availability-note {
+		color: var(--text-muted);
+		margin-block: 1rem;
 	}
-	dialog h2 {
-		font-size: 1.1rem;
-		overflow-wrap: anywhere;
-		margin-bottom: 1.5rem;
+	@media (max-width: 24rem) {
+		.playlist-row {
+			flex-wrap: wrap;
+		}
+		.playlist-row .identity {
+			flex-basis: 100%;
+		}
+		.playlist-actions {
+			margin-left: auto;
+		}
 	}
 </style>

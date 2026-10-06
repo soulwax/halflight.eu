@@ -42,7 +42,7 @@ export const load: PageServerLoad = async (event) => {
 						numberOfItems: items.length,
 						items
 					},
-					localPlaylist: local,
+					localPlaylist: { ...local, items },
 					isLocal: true,
 					syncStatus: local.syncStatus,
 					hasWriteScopes: Boolean(connection.hasWriteScopes),
@@ -123,7 +123,7 @@ export const load: PageServerLoad = async (event) => {
 					const localPlaylists = await getUserPlaylists(user.id);
 					const match = localPlaylists.find((p) => p.tidalPlaylistId === tidalId);
 					if (match) {
-						localPlaylist = match;
+						localPlaylist = { ...match, items: await filterPlayableTracks(match.items) };
 						syncStatus = match.syncStatus;
 					}
 				} catch {

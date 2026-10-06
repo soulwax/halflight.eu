@@ -29,6 +29,22 @@
 		contentClass?: string;
 		showClose?: boolean;
 	} = $props();
+	let returnFocus: HTMLElement | null = null;
+	$effect(() => {
+		if (
+			open &&
+			document.activeElement instanceof HTMLElement &&
+			document.activeElement !== document.body &&
+			!document.activeElement.closest('[role="dialog"]')
+		)
+			returnFocus = document.activeElement;
+	});
+	function restoreFocus(event: Event) {
+		if (returnFocus?.isConnected) {
+			event.preventDefault();
+			returnFocus.focus();
+		}
+	}
 </script>
 
 <BitsDialog.Root bind:open {onOpenChange}>
@@ -43,7 +59,7 @@
 	{/if}
 	<BitsDialog.Portal>
 		<BitsDialog.Overlay class="dialog-overlay" />
-		<BitsDialog.Content class="dialog-content {contentClass}">
+		<BitsDialog.Content class="dialog-content {contentClass}" onCloseAutoFocus={restoreFocus}>
 			<header class="dialog-header">
 				<div class="dialog-header-text">
 					{#if titleSnippet}
@@ -137,8 +153,8 @@
 	:global(.dialog-close-btn) {
 		display: grid;
 		place-items: center;
-		width: 2.15rem;
-		height: 2.15rem;
+		width: 3rem;
+		height: 3rem;
 		border: 1px solid var(--border-subtle);
 		border-radius: var(--radius-sm, 6px);
 		background: transparent;
@@ -183,6 +199,12 @@
 		to {
 			opacity: 1;
 			transform: translate(-50%, -50%) scale(1);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		:global(.dialog-overlay),
+		:global(.dialog-content) {
+			animation: none;
 		}
 	}
 </style>

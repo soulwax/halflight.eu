@@ -1,3 +1,6 @@
+import { StreamLoader, StreamPreloader } from 'bragi-audio/player';
+
+/** The client-safe body of `GET /api/tracks/[id]/stream`. */
 export interface PreloadedStreamData {
 	audioQuality?: string;
 	audioMode?: string;
@@ -9,85 +12,88 @@ export interface PreloadedStreamData {
 	trackReplayGain?: number | null;
 	isPreview?: boolean;
 	requiresFullAuth?: boolean;
-	fetchedAt: number;
 }
 
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-const MAX_ENTRIES = 5;
-
-export class StreamPreloader {
-	private cache = new Map<string, PreloadedStreamData>();
-	private inflight = new Map<string, Promise<PreloadedStreamData | null>>();
-
-	/**
-	 * Preload stream metadata for an upcoming track so next-track transition is instant.
-	 */
-	preload(trackId: string): void {
-		if (!trackId || typeof fetch === 'undefined') return;
-
-		// Check if already fresh in cache or already inflight
-		const existing = this.cache.get(trackId);
-		if (existing && Date.now() - existing.fetchedAt < CACHE_TTL_MS) return;
-		if (this.inflight.has(trackId)) return;
-
-		const promise = fetch(`/api/tracks/${encodeURIComponent(trackId)}/stream`)
-			.then(async (res) => {
-				if (!res.ok) return null;
-				const data = (await res.json().catch(() => null)) as PreloadedStreamData | null;
-				if (data) {
-					data.fetchedAt = Date.now();
-					this.setCache(trackId, data);
-				}
-				return data;
-			})
-			.catch(() => null)
-			.finally(() => {
-				this.inflight.delete(trackId);
-			});
-
-		this.inflight.set(trackId, promise);
+function parseStreamData(body: unknown): PreloadedStreamData | null {
+	if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
+	const source = body as Record<string, unknown>;
+	if (typeof source.audioQuality !== 'string' && typeof source.audioMode !== 'string') return null;
+	const data: PreloadedStreamData = {};
+	for (const key of ['audioQuality', 'audioMode', 'codecs', 'fileExtension'] as const) {
+		if (typeof source[key] === 'string' && source[key].length <= 128) data[key] = source[key];
 	}
-
-	/**
-	 * Retrieve and consume cached metadata if available.
-	 */
-	consume(trackId: string): PreloadedStreamData | null {
-		const cached = this.cache.get(trackId);
-		if (!cached) return null;
-		this.cache.delete(trackId);
-		if (Date.now() - cached.fetchedAt > CACHE_TTL_MS) return null;
-		return cached;
+	if (
+		source.requestedQuality === null ||
+		(typeof source.requestedQuality === 'string' && source.requestedQuality.length <= 128)
+	)
+		data.requestedQuality = source.requestedQuality;
+	for (const key of ['bitDepth', 'sampleRate', 'trackReplayGain'] as const) {
+		const value = source[key];
+		if (value === null || (typeof value === 'number' && Number.isFinite(value))) data[key] = value;
 	}
+	for (const key of ['isPreview', 'requiresFullAuth'] as const) {
+		if (typeof source[key] === 'boolean') data[key] = source[key];
+	}
+	return data;
+}
 
-	/**
-	 * Await inflight preload if in progress, or return null.
-	 */
-	async getOrAwait(trackId: string): Promise<PreloadedStreamData | null> {
-		const consumed = this.consume(trackId);
-		if (consumed) return consumed;
+/** The package fetches/decodes; Syn supplies the endpoint and safe display contract. */
+export const streamLoader = new StreamLoader<PreloadedStreamData>({
+	url: (trackId) => `/api/tracks/${encodeURIComponent(trackId)}/stream`,
+	parse: parseStreamData,
+	parseError(body, status) {
+		const source = body && typeof body === 'object' ? (body as Record<string, unknown>) : {};
+		return {
+			requiresAuth:
+				typeof source.requiresFullAuth === 'boolean' ? source.requiresFullAuth : status === 403,
+			reason:
+				typeof source.reason === 'string' && /^[a-z0-9_]{1,64}$/.test(source.reason)
+					? source.reason
+					: typeof source.error === 'string' && /^[a-z0-9_]{1,64}$/.test(source.error)
+						? source.error
+						: `http_${status}`
+		};
+	}
+});
 
-		const pending = this.inflight.get(trackId);
-		if (pending) {
-			const result = await pending;
-			if (result) this.cache.delete(trackId);
-			return result;
+export async function loadStreamData(
+	trackId: string,
+	signal?: AbortSignal
+): Promise<PreloadedStreamData | null> {
+	const result = await streamLoader.load(trackId, signal);
+	return result.ok ? result.data : null;
+}
+
+const preloadAbortControllers = new Map<string, AbortController>();
+
+async function loadPreloadedStreamData(trackId: string): Promise<PreloadedStreamData | null> {
+	const controller = new AbortController();
+	preloadAbortControllers.set(trackId, controller);
+	try {
+		return await loadStreamData(trackId, controller.signal);
+	} finally {
+		if (preloadAbortControllers.get(trackId) === controller) {
+			preloadAbortControllers.delete(trackId);
 		}
-
-		return null;
-	}
-
-	clear(): void {
-		this.cache.clear();
-		this.inflight.clear();
-	}
-
-	private setCache(trackId: string, data: PreloadedStreamData): void {
-		if (this.cache.size >= MAX_ENTRIES) {
-			const oldestKey = this.cache.keys().next().value;
-			if (oldestKey) this.cache.delete(oldestKey);
-		}
-		this.cache.set(trackId, data);
 	}
 }
 
-export const streamPreloader = new StreamPreloader();
+/** Look-ahead cache so the next queued track starts without a `/stream` round trip. */
+export const streamPreloader = new StreamPreloader<PreloadedStreamData>({
+	load: loadPreloadedStreamData
+});
+
+/** Join a foreground request to an in-flight look-ahead fetch's cancellation signal. */
+export function getOrAwaitPreloadedStreamData(
+	trackId: string,
+	signal: AbortSignal
+): Promise<PreloadedStreamData | null> {
+	const controller = preloadAbortControllers.get(trackId);
+	const abortPreload = () => controller?.abort();
+	if (signal.aborted) abortPreload();
+	else if (controller) signal.addEventListener('abort', abortPreload, { once: true });
+
+	return streamPreloader.getOrAwait(trackId).finally(() => {
+		signal.removeEventListener('abort', abortPreload);
+	});
+}

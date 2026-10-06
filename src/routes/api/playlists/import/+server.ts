@@ -1,6 +1,7 @@
 import { error, json, type RequestHandler } from '@sveltejs/kit';
 import { listImportablePlaylists, pullPlaylist } from '#lib/server/playlists/sync';
 import { getConnectionStatus } from '#lib/server/tidal';
+import { playlistWorkResponse } from '#lib/server/playlists/response';
 
 const deferredStreamValidation = 'deferred' as const;
 
@@ -79,19 +80,21 @@ export const POST: RequestHandler = async (event) => {
 		fetch: event.fetch,
 		cookies: event.cookies
 	};
-	const imported = [];
-
-	for (const tidalId of ids) {
-		const result = await pullPlaylist(tidalId, ctx);
-		imported.push(result);
-	}
-
-	return json({
-		imported,
-		totalImported: imported.filter((r) => r.status === 'created' || r.status === 'synced').length,
-		totalErrors: imported.filter((r) => r.status === 'error').length,
-		totalTracksSkipped: imported.reduce((total, result) => total + result.tracksSkipped, 0),
-		totalTracksReplaced: imported.reduce((total, result) => total + result.tracksReplaced, 0),
-		streamValidation: deferredStreamValidation
+	return playlistWorkResponse(async () => {
+		const imported = [];
+		for (const tidalId of ids) {
+			const result = await pullPlaylist(tidalId, ctx);
+			imported.push(result);
+		}
+		return {
+			imported,
+			totalImported: imported.filter((r) => r.status === 'created' || r.status === 'synced').length,
+			totalErrors: imported.filter((r) => r.status === 'error').length,
+			totalTracksSkipped: imported.reduce((total, result) => total + result.tracksSkipped, 0),
+			totalTracksReplaced: imported.reduce((total, result) => total + result.tracksReplaced, 0),
+			streamValidation: imported.every((result) => result.streamValidation === 'verified')
+				? 'verified'
+				: deferredStreamValidation
+		};
 	});
 };

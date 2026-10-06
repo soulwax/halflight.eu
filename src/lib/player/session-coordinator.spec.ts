@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	PlaybackSessionCoordinator,
 	type SavedPlaybackState,
@@ -35,6 +35,15 @@ function makeEntry(track: TrackSummary, entryId: string): QueueEntry {
 }
 
 describe('PlaybackSessionCoordinator', () => {
+	const coordinators = new Set<PlaybackSessionCoordinator>();
+	afterEach(() => {
+		for (const coordinator of coordinators) {
+			coordinator.cancelPendingPersistence();
+			coordinator.stopSessionSync();
+		}
+		coordinators.clear();
+		vi.useRealTimers();
+	});
 	let appliedQueue: QueueEntry[];
 	let appliedSession: SavedPlaybackState | null;
 	let statusHistory: PlaybackPersistenceStatus[];
@@ -70,12 +79,14 @@ describe('PlaybackSessionCoordinator', () => {
 		options: {
 			canPersist?: () => boolean;
 			onQueueCommandsChange?: (commands: readonly QueueCommand[]) => void;
+			requestTimeoutMs?: number;
 		} = {}
 	) {
-		return new PlaybackSessionCoordinator({
+		const coordinator = new PlaybackSessionCoordinator({
 			origin: 'listening-room',
 			fetch: fetchMock,
 			debounceMs: 10,
+			requestTimeoutMs: options.requestTimeoutMs,
 			getCurrentState: () => currentState,
 			onApplyQueue: (q) => {
 				appliedQueue = q;
@@ -96,7 +107,186 @@ describe('PlaybackSessionCoordinator', () => {
 			onQueueCommandsChange: options.onQueueCommandsChange,
 			canPersist: options.canPersist
 		});
+		coordinators.add(coordinator);
+		return coordinator;
 	}
+
+	it('automatically retries a lost intent response with the same operation identity', async () => {
+		vi.useFakeTimers();
+		const bodies: Array<{ operationId: string }> = [];
+		let fail = true;
+		const fetchMock = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+			if (String(url).endsWith('/intents')) {
+				bodies.push(JSON.parse(String(init?.body)));
+				if (fail) throw new Error('Lost response');
+				return Response.json({
+					currentTrack: null,
+					queue: [makeEntry(sampleTrack1, 'entry-local')],
+					history: [],
+					currentTime: 0,
+					revision: 1
+				});
+			}
+			return Response.json({ revision: 2 });
+		});
+		const coordinator = createCoordinator(fetchMock);
+		coordinator.recordCommand({
+			type: 'append',
+			entries: [makeEntry(sampleTrack1, 'entry-local')]
+		});
+		await vi.advanceTimersByTimeAsync(10);
+		expect(coordinator.status).toBe('offline');
+		expect(coordinator.queueCommands).toHaveLength(1);
+		fail = false;
+		await vi.advanceTimersByTimeAsync(1_000);
+		expect(coordinator.status).toBe('saved');
+		expect(bodies[1].operationId).toBe(bodies[0].operationId);
+		expect(coordinator.queueCommands).toEqual([]);
+	});
+
+	it('times out a hung body, releases the save lock and retries', async () => {
+		vi.useFakeTimers();
+		let signal: AbortSignal | null | undefined;
+		const stalled = new Response(new ReadableStream());
+		const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+			signal = init?.signal;
+			return stalled;
+		});
+		const coordinator = createCoordinator(fetchMock, { requestTimeoutMs: 20 });
+		coordinator.schedulePersistence();
+		await vi.advanceTimersByTimeAsync(30);
+		expect(signal?.aborted).toBe(true);
+		expect(coordinator.persistenceInFlight).toBe(false);
+		expect(coordinator.status).toBe('offline');
+		fetchMock.mockResolvedValue(Response.json({ revision: 1 }));
+		await vi.advanceTimersByTimeAsync(1_000);
+		expect(coordinator.status).toBe('saved');
+	});
+
+	it('does not report saved between an old acknowledgement and newer edits', async () => {
+		const replies: Array<(response: Response) => void> = [];
+		const fetchMock = vi.fn(
+			() =>
+				new Promise<Response>((resolve) => {
+					replies.push(resolve);
+				})
+		);
+		const coordinator = createCoordinator(fetchMock);
+		const first = coordinator.persistPlaybackState();
+		currentState.currentTime = 37;
+		coordinator.schedulePersistence();
+		replies[0](Response.json({ revision: 1 }));
+		await first;
+		expect(coordinator.status).toBe('saving');
+		expect(statusHistory).not.toContain('saved');
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+		replies[1](Response.json({ revision: 2 }));
+		await vi.waitFor(() => expect(coordinator.status).toBe('saved'));
+	});
+
+	it('ignores a background read that began before a queue edit', async () => {
+		vi.useFakeTimers();
+		let finish!: (response: Response) => void;
+		const coordinator = createCoordinator(
+			vi.fn(
+				() =>
+					new Promise<Response>((resolve) => {
+						finish = resolve;
+					})
+			)
+		);
+		const poll = coordinator.syncPlaybackState();
+		currentState.queue = [makeEntry(sampleTrack1, 'entry-local')];
+		coordinator.recordCommand({ type: 'append', entries: currentState.queue });
+		finish(
+			Response.json({ currentTrack: null, queue: [], history: [], currentTime: 0, revision: 99 })
+		);
+		await poll;
+		expect(currentState.queue.map((entry) => entry.entryId)).toEqual(['entry-local']);
+		expect(coordinator.revision).toBe(0);
+		expect(coordinator.status).toBe('saving');
+	});
+
+	it('does not treat a successful read as acknowledgement of a failed resume write', async () => {
+		vi.useFakeTimers();
+		const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) =>
+			init?.method === 'PUT'
+				? new Response(null, { status: 503 })
+				: Response.json({ currentTrack: null, queue: [], history: [], currentTime: 0, revision: 0 })
+		);
+		const coordinator = createCoordinator(fetchMock);
+		await coordinator.persistPlaybackState();
+		await coordinator.syncPlaybackState();
+		expect(coordinator.status).toBe('server_error');
+		fetchMock.mockResolvedValue(Response.json({ revision: 1 }));
+		await vi.advanceTimersByTimeAsync(1_000);
+		expect(coordinator.status).toBe('saved');
+	});
+
+	it('uses normal fetch for a large queue exceeding the browser keepalive limit', async () => {
+		currentState.queue = Array.from({ length: 100 }, (_, index) =>
+			makeEntry({ ...sampleTrack1, title: 'x'.repeat(512) }, `entry-${index}`)
+		);
+		const fetchMock = vi.fn(async (_url: string | URL | Request, _init?: RequestInit) =>
+			Response.json({ revision: 1 })
+		);
+		const coordinator = createCoordinator(fetchMock);
+		await coordinator.persistPlaybackState();
+		expect(fetchMock.mock.calls[0]?.[1]?.keepalive).toBe(false);
+		expect(coordinator.status).toBe('saved');
+	});
+
+	it('retains Redis-buffered commands until the database acknowledges them', async () => {
+		vi.useFakeTimers();
+		const fetchMock = vi.fn(async () => Response.json({ buffered: true }, { status: 202 }));
+		const coordinator = createCoordinator(fetchMock);
+		coordinator.recordCommand({ type: 'clear' });
+		await vi.advanceTimersByTimeAsync(10);
+		expect(coordinator.status).toBe('buffered');
+		expect(coordinator.queueCommands).toHaveLength(1);
+		fetchMock.mockImplementation(async () =>
+			Response.json({ currentTrack: null, queue: [], history: [], currentTime: 0, revision: 1 })
+		);
+		await vi.advanceTimersByTimeAsync(1_000);
+		expect(coordinator.status).toBe('saved');
+		expect(coordinator.queueCommands).toEqual([]);
+	});
+
+	it('keeps retrying a long outage with a bounded delay', async () => {
+		vi.useFakeTimers();
+		const fetchMock = vi.fn(async () => new Response(null, { status: 503 }));
+		const coordinator = createCoordinator(fetchMock);
+		await coordinator.persistPlaybackState();
+		await vi.advanceTimersByTimeAsync(91_000);
+		expect(fetchMock).toHaveBeenCalledTimes(8);
+		expect(coordinator.status).toBe('server_error');
+		fetchMock.mockImplementation(async () => Response.json({ revision: 1 }));
+		await vi.advanceTimersByTimeAsync(30_000);
+		expect(coordinator.status).toBe('saved');
+	});
+
+	it('does not repeatedly write after authentication has expired', async () => {
+		vi.useFakeTimers();
+		const fetchMock = vi.fn(async () => new Response(null, { status: 401 }));
+		const coordinator = createCoordinator(fetchMock);
+		coordinator.recordCommand({ type: 'clear' });
+		await vi.advanceTimersByTimeAsync(120_000);
+		expect(fetchMock).toHaveBeenCalledOnce();
+		expect(coordinator.queueCommands).toHaveLength(1);
+		expect(coordinator.status).toBe('unauthenticated');
+	});
+
+	it('saves from the first edit deadline even while more changes arrive', async () => {
+		vi.useFakeTimers();
+		const fetchMock = vi.fn(async () => Response.json({ revision: 1 }));
+		const coordinator = createCoordinator(fetchMock);
+		coordinator.schedulePersistence();
+		await vi.advanceTimersByTimeAsync(9);
+		coordinator.schedulePersistence();
+		await vi.advanceTimersByTimeAsync(1);
+		expect(fetchMock).toHaveBeenCalledOnce();
+		expect(coordinator.status).toBe('saved');
+	});
 
 	it('buffers queue commands and sends them via /api/playback-state/intents', async () => {
 		const calls: Array<{ url: string; body: any }> = [];
@@ -451,6 +641,239 @@ describe('PlaybackSessionCoordinator', () => {
 
 		await vi.waitFor(() => expect(coordinator.status).toBe('offline'));
 		expect(coordinator.queueCommands).toHaveLength(1);
+	});
+
+	it('replays a pending queue edit after reconnect when the server revision is unchanged', async () => {
+		let online = false;
+		const intentBodies: Array<Record<string, unknown>> = [];
+		const fetchMock = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+			const path = String(url);
+			if (path === '/api/playback-state/intents') {
+				intentBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+				if (!online) throw new Error('network down');
+				return new Response(
+					JSON.stringify({
+						currentTrack: sampleTrack2,
+						queue: [makeEntry(sampleTrack1, 'entry-local')],
+						history: [],
+						currentTime: 14,
+						revision: 1
+					}),
+					{ status: 200 }
+				);
+			}
+			if (path === '/api/playback-state' && init?.method === 'PUT') {
+				return new Response(JSON.stringify({ revision: 2 }), { status: 200 });
+			}
+			if (path === '/api/playback-state') {
+				if (!online) throw new Error('network down');
+				return new Response(
+					JSON.stringify({
+						currentTrack: sampleTrack2,
+						queue: [],
+						history: [],
+						currentTime: 14,
+						revision: 0
+					}),
+					{ status: 200 }
+				);
+			}
+			return new Response(null, { status: 404 });
+		}) as typeof fetch;
+
+		currentState.currentTrack = sampleTrack3;
+		currentState.currentTime = 42;
+		currentState.isPlaying = true;
+		currentState.hasLocalMedia = true;
+		const coordinator = createCoordinator(fetchMock);
+		coordinator.recordCommand({
+			type: 'append',
+			entries: [makeEntry(sampleTrack1, 'entry-local')]
+		});
+
+		await vi.waitFor(() => expect(coordinator.status).toBe('offline'));
+		expect(coordinator.queueCommands).toHaveLength(1);
+		const firstOperationId = intentBodies[0]?.operationId;
+
+		online = true;
+		await coordinator.syncPlaybackState();
+		await vi.waitFor(() => expect(coordinator.status).toBe('saved'));
+
+		expect(intentBodies).toHaveLength(2);
+		expect(intentBodies[1]).toMatchObject({
+			expectedRevision: 0,
+			operationId: firstOperationId,
+			intent: { type: 'queue.append' }
+		});
+		expect(coordinator.queueCommands).toHaveLength(0);
+		expect(appliedSession).toBeNull();
+		expect(currentState.currentTrack?.id).toBe('track-3');
+		expect(currentState.currentTime).toBe(42);
+	});
+
+	it('replays a pending queue edit after authentication returns', async () => {
+		let authenticated = false;
+		const intentBodies: Array<Record<string, unknown>> = [];
+		const fetchMock = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+			const path = String(url);
+			if (path === '/api/playback-state/intents') {
+				intentBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+				if (!authenticated) {
+					return new Response(JSON.stringify({ message: 'Unauthorized' }), { status: 401 });
+				}
+				return new Response(
+					JSON.stringify({
+						currentTrack: sampleTrack2,
+						queue: [makeEntry(sampleTrack1, 'entry-local')],
+						history: [],
+						currentTime: 14,
+						revision: 1
+					}),
+					{ status: 200 }
+				);
+			}
+			if (path === '/api/playback-state' && init?.method === 'PUT') {
+				return new Response(JSON.stringify({ revision: 2 }), { status: 200 });
+			}
+			if (path === '/api/playback-state') {
+				if (!authenticated) {
+					return new Response(JSON.stringify({ message: 'Unauthorized' }), { status: 401 });
+				}
+				return new Response(
+					JSON.stringify({
+						currentTrack: sampleTrack2,
+						queue: [],
+						history: [],
+						currentTime: 14,
+						revision: 0
+					}),
+					{ status: 200 }
+				);
+			}
+			return new Response(null, { status: 404 });
+		}) as typeof fetch;
+
+		const coordinator = createCoordinator(fetchMock);
+		coordinator.recordCommand({
+			type: 'append',
+			entries: [makeEntry(sampleTrack1, 'entry-local')]
+		});
+		await vi.waitFor(() => expect(coordinator.status).toBe('unauthenticated'));
+		expect(coordinator.queueCommands).toHaveLength(1);
+
+		authenticated = true;
+		await coordinator.syncPlaybackState();
+		await vi.waitFor(() => expect(coordinator.status).toBe('saved'));
+
+		expect(intentBodies).toHaveLength(2);
+		expect(intentBodies[1]).toMatchObject({
+			expectedRevision: 0,
+			operationId: intentBodies[0]?.operationId
+		});
+		expect(coordinator.queueCommands).toHaveLength(0);
+		expect(appliedSession).toBeNull();
+	});
+
+	it('reports a service failure and preserves a queue command until retry succeeds', async () => {
+		let serviceUnavailable = true;
+		const fetchMock = vi.fn(async (url: string | URL | Request) => {
+			if (String(url) === '/api/playback-state/intents') {
+				if (serviceUnavailable) return new Response('temporarily unavailable', { status: 503 });
+				return new Response(
+					JSON.stringify({
+						currentTrack: null,
+						queue: [makeEntry(sampleTrack1, 'entry-local')],
+						history: [],
+						currentTime: 0,
+						revision: 1
+					}),
+					{ status: 200 }
+				);
+			}
+			return new Response(JSON.stringify({ revision: 2 }), { status: 200 });
+		}) as typeof fetch;
+
+		const coordinator = createCoordinator(fetchMock);
+		coordinator.recordCommand({
+			type: 'append',
+			entries: [makeEntry(sampleTrack1, 'entry-local')]
+		});
+
+		await vi.waitFor(() => expect(coordinator.status).toBe('server_error'));
+		expect(coordinator.queueCommands).toHaveLength(1);
+
+		serviceUnavailable = false;
+		coordinator.retryAfterServerError();
+		await vi.waitFor(() => expect(coordinator.status).toBe('saved'));
+		expect(coordinator.queueCommands).toHaveLength(0);
+	});
+
+	it('reports a service failure while saving a snapshot and allows a retry', async () => {
+		let serviceUnavailable = true;
+		const fetchMock = vi.fn(async () => {
+			if (serviceUnavailable) return new Response('internal error', { status: 500 });
+			return new Response(JSON.stringify({ revision: 1 }), { status: 200 });
+		}) as typeof fetch;
+
+		const coordinator = createCoordinator(fetchMock);
+		coordinator.schedulePersistence();
+		await vi.waitFor(() => expect(coordinator.status).toBe('server_error'));
+
+		serviceUnavailable = false;
+		coordinator.retryAfterServerError();
+		await vi.waitFor(() => expect(coordinator.status).toBe('saved'));
+	});
+
+	it('retries a failed conflict refresh through the same recovery path', async () => {
+		let serviceUnavailable = true;
+		const fetchMock = vi.fn(async () => {
+			if (serviceUnavailable) return new Response('internal error', { status: 500 });
+			return new Response(
+				JSON.stringify({
+					currentTrack: null,
+					queue: [makeEntry(sampleTrack2, 'entry-remote')],
+					history: [],
+					currentTime: 0,
+					revision: 4
+				}),
+				{ status: 200 }
+			);
+		}) as typeof fetch;
+
+		const coordinator = createCoordinator(fetchMock);
+		coordinator.status = 'conflict';
+		await coordinator.refreshQueueFromServer();
+		expect(coordinator.status).toBe('server_error');
+
+		serviceUnavailable = false;
+		coordinator.retryAfterServerError();
+		await vi.waitFor(() => expect(coordinator.status).toBe('saved'));
+		expect(appliedQueue.map((entry) => entry.entryId)).toEqual(['entry-remote']);
+	});
+
+	it('surfaces and then clears a service error from background session sync', async () => {
+		let serviceUnavailable = true;
+		const fetchMock = vi.fn(async () => {
+			if (serviceUnavailable) return new Response('internal error', { status: 500 });
+			return new Response(
+				JSON.stringify({
+					currentTrack: null,
+					queue: [],
+					history: [],
+					currentTime: 0,
+					revision: 0
+				}),
+				{ status: 200 }
+			);
+		}) as typeof fetch;
+
+		const coordinator = createCoordinator(fetchMock);
+		await coordinator.syncPlaybackState();
+		expect(coordinator.status).toBe('server_error');
+
+		serviceUnavailable = false;
+		coordinator.retryAfterServerError();
+		await vi.waitFor(() => expect(coordinator.status).toBe('saved'));
 	});
 
 	it('distinguishes an ended session from a network drop when sending a queue command', async () => {

@@ -1,5 +1,5 @@
 import { and, desc, eq, sql } from 'drizzle-orm';
-import { AUDIO_ACCEPT, AUDIO_FORMATS, analyzeAudio, AudioMetadataError } from 'syn.js';
+import { AUDIO_ACCEPT, AUDIO_FORMATS, analyzeAudio, AudioMetadataError } from 'bragi-audio';
 import { db } from '#lib/server/db';
 import { privateMusicFile } from '#lib/server/db/schema';
 
@@ -8,7 +8,7 @@ export const MAX_PRIVATE_MUSIC_TOTAL_BYTES = 512 * 1024 * 1024;
 
 /**
  * The browser-facing format choices and server-side byte inspection derive from
- * syn.js. Filename and MIME metadata remain only untrusted hints; the actual
+ * bragi-audio. Filename and MIME metadata remain only untrusted hints; the actual
  * stored type is detected from the audio bytes before bucket persistence.
  */
 export const PRIVATE_MUSIC_FORMATS = AUDIO_FORMATS;

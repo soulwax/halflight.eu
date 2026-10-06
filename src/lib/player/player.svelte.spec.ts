@@ -51,6 +51,42 @@ function expectQueuedTracks(player: PlayerState, tracks: TrackSummary[]): void {
 }
 
 describe('PlayerState', () => {
+	it('starts the tapped duplicate occurrence and queues only the following rows', () => {
+		const player = new PlayerState();
+		const context = [sampleTrack1, sampleTrack2, sampleTrack1, sampleTrack3];
+		player.play(sampleTrack1, context, 'Repeated recordings', 2);
+		expectQueuedTracks(player, [{ ...sampleTrack3, provenance: 'Repeated recordings' }]);
+		expect(player.currentTrack?.id).toBe(sampleTrack1.id);
+	});
+
+	it('finds a repeated track by object identity when a row position is omitted', () => {
+		const player = new PlayerState();
+		const repeat = { ...sampleTrack1 };
+		player.play(repeat, [sampleTrack1, sampleTrack2, repeat, sampleTrack3]);
+		expectQueuedTracks(player, [sampleTrack3]);
+	});
+
+	it('shuffles all remaining occurrences without dropping repeated recordings', () => {
+		const player = new PlayerState();
+		player.shuffle = true;
+		player.play(
+			sampleTrack1,
+			[sampleTrack1, sampleTrack2, sampleTrack1, sampleTrack3],
+			undefined,
+			2
+		);
+		expect(player.queue.map((entry) => entry.id).sort()).toEqual(
+			[sampleTrack1.id, sampleTrack2.id, sampleTrack3.id].sort()
+		);
+		expect(new Set(player.queue.map((entry) => entry.entryId)).size).toBe(3);
+	});
+
+	it('ignores an invalid context position and resolves a copied track by ID', () => {
+		const player = new PlayerState();
+		player.play({ ...sampleTrack2 }, [sampleTrack1, sampleTrack2, sampleTrack3], undefined, 0);
+		expectQueuedTracks(player, [sampleTrack3]);
+	});
+
 	it('plays a track and slices remaining context tracks into the queue', () => {
 		const player = new PlayerState();
 		player.play(sampleTrack2, [sampleTrack1, sampleTrack2, sampleTrack3]);
@@ -338,7 +374,7 @@ describe('PlayerState', () => {
 		localStorage.setItem(
 			QUEUE_CACHE_KEY,
 			JSON.stringify({
-				version: 1,
+				version: 3,
 				currentTrack: sampleTrack1,
 				queue: persistedQueue(sampleTrack2),
 				history: [sampleTrack3],
@@ -358,7 +394,7 @@ describe('PlayerState', () => {
 		localStorage.setItem(
 			QUEUE_CACHE_KEY,
 			JSON.stringify({
-				version: 1,
+				version: 3,
 				currentTrack: sampleTrack1,
 				queue: [],
 				history: [],
@@ -387,7 +423,7 @@ describe('PlayerState', () => {
 		localStorage.setItem(
 			QUEUE_CACHE_KEY,
 			JSON.stringify({
-				version: 2,
+				version: 3,
 				currentTrack: sampleTrack1,
 				queue: [localEntry],
 				history: [],
@@ -422,7 +458,7 @@ describe('PlayerState', () => {
 		localStorage.setItem(
 			QUEUE_CACHE_KEY,
 			JSON.stringify({
-				version: 2,
+				version: 3,
 				currentTrack: null,
 				queue: [],
 				history: [],
@@ -446,6 +482,16 @@ describe('PlayerState', () => {
 		expect(player.currentTrack).toBeNull();
 	});
 
+	it('discards the pre-reset browser journal instead of restoring removed content', () => {
+		localStorage.setItem(
+			QUEUE_CACHE_KEY,
+			JSON.stringify({ version: 2, currentTrack: sampleTrack1, queue: [], history: [] })
+		);
+		const player = new PlayerState();
+		expect(player.currentTrack).toBeNull();
+		expect(localStorage.getItem(QUEUE_CACHE_KEY)).toBeNull();
+	});
+
 	it('mirrors the current queue to localStorage so the next load can paint instantly', () => {
 		const player = new PlayerState();
 		player.restorePlaybackState({
@@ -458,9 +504,38 @@ describe('PlayerState', () => {
 		player.schedulePersistence();
 
 		const cached = JSON.parse(localStorage.getItem(QUEUE_CACHE_KEY) ?? 'null');
-		expect(cached.version).toBe(2);
+		expect(cached.version).toBe(3);
 		expect(cached.currentTrack).toEqual(sampleTrack1);
 		expect(cached.history).toEqual([sampleTrack3]);
+	});
+
+	it('continues saving to the database when browser storage rejects a queue backup', async () => {
+		const fetchSpy = vi.fn(async (_url: string | URL | Request, _init?: RequestInit) =>
+			Response.json({ revision: 1 })
+		);
+		vi.stubGlobal('fetch', fetchSpy);
+		const player = new PlayerState();
+		player.restorePlaybackState({
+			currentTrack: sampleTrack1,
+			queue: persistedQueue(sampleTrack2),
+			history: [],
+			currentTime: 12
+		});
+		const write = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+			throw new DOMException('Full', 'QuotaExceededError');
+		});
+		try {
+			player.flushPersistence();
+			await vi.waitFor(() => expect(player.persistenceStatus).toBe('saved'));
+			expect(player.localQueueSaved).toBe(false);
+			const writes = fetchSpy.mock.calls.filter(
+				([url, init]) => url === '/api/playback-state' && init?.method === 'PUT'
+			);
+			expect(writes).toHaveLength(1);
+			expect(JSON.parse(String(writes[0]?.[1]?.body)).queue).toEqual(persistedQueue(sampleTrack2));
+		} finally {
+			write.mockRestore();
+		}
 	});
 
 	it('keeps a durable clear command in the local queue cache until it is acknowledged', () => {
@@ -654,6 +729,29 @@ describe('PlayerState', () => {
 		player.moveQueueItem(second, -1); // no-op at the top edge
 		expectQueuedTracks(player, [sampleTrack3, sampleTrack2]);
 	});
+	it('appends a whole playlist with one durable command and one local-cache write', () => {
+		const player = new PlayerState();
+		const tracks = Array.from({ length: 100 }, (_, index) => ({
+			...sampleTrack1,
+			id: `playlist-${index}`,
+			...(index === 0 ? { provenance: 'Track-specific source' } : {})
+		}));
+		const write = vi.spyOn(Storage.prototype, 'setItem');
+		try {
+			player.addMultipleToQueue(tracks, 'Saved playlist');
+			expect(player.queue).toHaveLength(100);
+			expect(new Set(player.queue.map((entry) => entry.entryId)).size).toBe(100);
+			expect(player.queue[0].provenance).toBe('Track-specific source');
+			expect(player.queue[99].provenance).toBe('Saved playlist');
+			expect(player.queueCommands).toEqual([{ type: 'append', entries: player.queue }]);
+			expect(write.mock.calls.filter(([key]) => key === 'syn:player:queue-cache')).toHaveLength(1);
+			const cached = JSON.parse(localStorage.getItem('syn:player:queue-cache') ?? 'null');
+			expect(cached.queue).toHaveLength(100);
+			expect(cached.queueCommands).toHaveLength(1);
+		} finally {
+			write.mockRestore();
+		}
+	});
 
 	it('reorders queued tracks with reorderQueue and queues replacement command', () => {
 		const player = new PlayerState();
@@ -768,25 +866,35 @@ describe('PlayerState', () => {
 		expect(player.currentTime).toBe(10);
 	});
 
-	it('backfills missing artwork through the cover endpoint', async () => {
-		vi.stubGlobal(
-			'fetch',
-			vi.fn((url: string) => {
-				if (String(url).endsWith('/cover')) {
-					return Promise.resolve(
-						new Response(JSON.stringify({ imageUrl: 'https://img.test/c.jpg', album: null }), {
-							status: 200
-						})
-					);
-				}
-				return Promise.reject(new Error('offline'));
-			})
-		);
-
+	it('supplies missing artwork immediately without a preliminary cover lookup', () => {
+		const fetchSpy = vi.fn((_url: string) => Promise.reject(new Error('offline')));
+		vi.stubGlobal('fetch', fetchSpy);
 		const player = new PlayerState();
-		player.play({ ...sampleTrack1, imageUrl: undefined });
+		player.play({ ...sampleTrack1, id: '123', imageUrl: undefined });
+		expect(player.currentTrack?.imageUrl).toBe('/api/tracks/123/artwork');
+		expect(fetchSpy.mock.calls.some(([url]) => String(url).endsWith('/cover'))).toBe(false);
+	});
 
-		await vi.waitFor(() => expect(player.currentTrack?.imageUrl).toBe('https://img.test/c.jpg'));
+	it('does not fetch metadata for known tracks solely because their release date is absent', async () => {
+		vi.useFakeTimers();
+		const fetchSpy = vi.fn(() => Promise.reject(new Error('offline')));
+		vi.stubGlobal('fetch', fetchSpy);
+		const player = new PlayerState();
+		const track = {
+			...sampleTrack1,
+			id: 'known-without-release-date',
+			album: { id: 'album-1', title: 'Known album' }
+		};
+		player.restorePlaybackState({
+			currentTrack: track,
+			queue: persistedQueue(track),
+			history: [track],
+			currentTime: 0
+		});
+		player.retryUnresolvedMetadata();
+		await vi.advanceTimersByTimeAsync(10_000);
+		expect(fetchSpy).not.toHaveBeenCalledWith('/api/tracks/known-without-release-date/metadata');
+		expect(player.currentTrack?.title).toBe(track.title);
 	});
 
 	it('hydrates an identifier-only resumed track with live display metadata', async () => {
@@ -970,7 +1078,7 @@ describe('PlayerState', () => {
 		expect(player.currentTrack?.title).toBe('Bela Lugosi Is Dead');
 	});
 
-	/** `restorePlaybackState` also fires a `/cover` lookup; isolate the metadata calls from it. */
+	/** Count metadata hydration independently of other background playback requests. */
 	function metadataCallCount(fetchSpy: ReturnType<typeof vi.fn>): number {
 		return fetchSpy.mock.calls.filter(([url]) => String(url).endsWith('/metadata')).length;
 	}
@@ -1281,6 +1389,95 @@ describe('PlayerState', () => {
 		});
 	});
 
+	it('recovers an offline mobile queue edit on reconnect without claiming or replacing playback', async () => {
+		let online = false;
+		const intentBodies: Array<Record<string, unknown>> = [];
+		let claimCalls = 0;
+		const fetchSpy = vi.fn((url: string, init?: RequestInit) => {
+			if (url === '/api/playback-state/claim') {
+				claimCalls += 1;
+				return Promise.resolve(new Response(null, { status: 409 }));
+			}
+			if (url === '/api/playback-state/intents') {
+				intentBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+				if (!online) return Promise.reject(new Error('network down'));
+				return Promise.resolve(
+					new Response(
+						JSON.stringify({
+							currentTrack: sampleTrack3,
+							queue: persistedQueue(sampleTrack2),
+							history: [],
+							currentTime: 30,
+							revision: 1,
+							activeDevice
+						}),
+						{ status: 200 }
+					)
+				);
+			}
+			if (url === '/api/playback-state' && init?.method === 'PUT') {
+				return Promise.resolve(new Response(JSON.stringify({ revision: 2 }), { status: 200 }));
+			}
+			if (url === '/api/playback-state') {
+				if (!online) return Promise.reject(new Error('network down'));
+				return Promise.resolve(
+					new Response(
+						JSON.stringify({
+							currentTrack: sampleTrack3,
+							queue: [],
+							history: [],
+							currentTime: 30,
+							revision: 0,
+							activeDevice
+						}),
+						{ status: 200 }
+					)
+				);
+			}
+			return Promise.resolve(new Response(null, { status: 404 }));
+		});
+		vi.stubGlobal('fetch', fetchSpy);
+
+		const activeDevice = {
+			origin: 'halflight-now' as const,
+			expiresAt: new Date(Date.now() + 60_000).toISOString(),
+			isCurrent: true
+		};
+		const player = new PlayerState();
+		player.origin = 'halflight-now';
+		player.restorePlaybackState({
+			currentTrack: sampleTrack1,
+			queue: [],
+			history: [],
+			currentTime: 42,
+			revision: 0,
+			activeDevice
+		});
+		player.isPlaying = true;
+		player.addToQueue(sampleTrack2);
+
+		await vi.waitFor(() => expect(player.persistenceStatus).toBe('offline'));
+		expect(player.queueCommands).toHaveLength(1);
+		expect(player.currentTrack?.id).toBe('track-1');
+
+		online = true;
+		await player.syncPlaybackState();
+		await vi.waitFor(() => expect(player.persistenceStatus).toBe('saved'), { timeout: 2000 });
+
+		expect(intentBodies).toHaveLength(2);
+		expect(intentBodies[1]).toMatchObject({
+			origin: 'halflight-now',
+			expectedRevision: 0,
+			operationId: intentBodies[0]?.operationId
+		});
+		expect(player.queueCommands).toHaveLength(0);
+		expectQueuedTracks(player, [sampleTrack2]);
+		expect(player.currentTrack?.id).toBe('track-1');
+		expect(player.currentTime).toBe(42);
+		expect(player.isPlaying).toBe(true);
+		expect(claimCalls).toBe(0);
+	});
+
 	it('refreshes a repeatedly conflicted queue without changing the audible track', async () => {
 		let intentWrites = 0;
 		const fetchSpy = vi.fn((url: string, init?: RequestInit) => {
@@ -1416,55 +1613,114 @@ describe('PlayerState', () => {
 		expect(player.floatingPos).toEqual({ x: 560, y: 800 - 460 - 8 });
 	});
 
-	it('bypasses Web Audio gain node creation when acting as Halflight Now on mobile', () => {
+	it('keeps mobile playback on native volume even above 100%', () => {
 		const player = new PlayerState();
 		player.origin = 'halflight-now';
-
 		const internal = player as unknown as {
-			audio: HTMLAudioElement;
-			gainNode: unknown;
+			engine: { applyVolume: (request: unknown) => void };
 			isMobilePlayback(): boolean;
-			applyVolume(): void;
 		};
+		const applyVolume = vi.spyOn(internal.engine, 'applyVolume');
 
 		expect(internal.isMobilePlayback()).toBe(true);
+		player.setVolume(1.2);
 
-		internal.audio = {
-			volume: 0,
+		expect(applyVolume).toHaveBeenLastCalledWith({
+			level: 1.2,
 			muted: false,
-			play: vi.fn(),
-			pause: vi.fn()
-		} as unknown as HTMLAudioElement;
-
-		player.setVolume(0.8);
-		expect(internal.gainNode).toBeNull();
-		expect(internal.audio.volume).toBe(0.8);
+			allowWebAudio: false
+		});
 	});
 
-	it('restores native volume after a desktop headroom graph is no longer needed', () => {
+	it('allows the desktop gain stage only for headroom above 100%', () => {
 		const player = new PlayerState();
-		const cancelScheduledValues = vi.fn();
-		const setTargetAtTime = vi.fn();
 		const internal = player as unknown as {
-			audio: HTMLAudioElement;
-			audioContext: AudioContext;
-			gainNode: GainNode;
+			engine: { applyVolume: (request: unknown) => void };
+			isMobilePlayback(): boolean;
 		};
-
-		internal.audio = {
-			volume: 1,
-			muted: false,
-			play: vi.fn(),
-			pause: vi.fn()
-		} as unknown as HTMLAudioElement;
-		internal.audioContext = { currentTime: 0 } as AudioContext;
-		internal.gainNode = {
-			gain: { cancelScheduledValues, setTargetAtTime }
-		} as unknown as GainNode;
+		vi.spyOn(internal, 'isMobilePlayback').mockReturnValue(false);
+		const applyVolume = vi.spyOn(internal.engine, 'applyVolume');
 
 		player.setVolume(0.5);
+		expect(applyVolume).toHaveBeenLastCalledWith({
+			level: 0.5,
+			muted: false,
+			allowWebAudio: false
+		});
 
-		expect(internal.audio.volume).toBe(0.5);
-		expect(setTargetAtTime).toHaveBeenCalledWith(1, 0, 0.015);
+		player.setVolume(1.2);
+		expect(applyVolume).toHaveBeenLastCalledWith({ level: 1.2, muted: false, allowWebAudio: true });
+	});
+
+	it('folds ReplayGain into the level when normalisation is on', () => {
+		const player = new PlayerState();
+		const internal = player as unknown as {
+			engine: { applyVolume: (request: unknown) => void };
+		};
+		const applyVolume = vi.spyOn(internal.engine, 'applyVolume');
+		player.trackReplayGain = -6;
+
+		player.setVolume(1);
+		const request = applyVolume.mock.lastCall?.[0] as { level: number };
+		expect(request.level).toBeCloseTo(0.501, 3);
+	});
+});
+
+describe('transport availability and deliberate commands', () => {
+	it('matches previous at the exact restart threshold and manual next with repeat-one', () => {
+		const state = new PlayerState();
+		state.currentTrack = sampleTrack1;
+		state.currentTime = 3;
+		expect(state.canGoPrevious).toBe(false);
+		state.currentTime = 3.01;
+		expect(state.canGoPrevious).toBe(true);
+		state.repeatMode = 'one';
+		expect(state.canGoNext).toBe(false);
+		state.repeatMode = 'all';
+		expect(state.canGoNext).toBe(true);
+		state.activeDevice = {
+			origin: 'halflight-now',
+			expiresAt: new Date(Date.now() + 45000).toISOString(),
+			isCurrent: false
+		};
+		expect(state.canGoNext).toBe(false);
+		expect(state.canGoPrevious).toBe(false);
+		state.duration = 200;
+		expect(state.canSeek).toBe(false);
+	});
+	it('ignores repeat Play while loading or already playing', () => {
+		const state = new PlayerState();
+		state.currentTrack = sampleTrack1;
+		state.isLoading = true;
+		const internal = state as unknown as { engine: { init(): void; pause(): void } };
+		const init = vi.spyOn(internal.engine, 'init').mockImplementation(() => {});
+		state.resumePlayback();
+		state.togglePlayPause();
+		expect(init).not.toHaveBeenCalled();
+		state.isLoading = false;
+		state.isPlaying = true;
+		state.resumePlayback();
+		expect(state.isPlaying).toBe(true);
+		expect(init).not.toHaveBeenCalled();
+		init.mockRestore();
+	});
+	it('an explicit OS pause cancels an in-flight start and stays paused', () => {
+		const state = new PlayerState();
+		state.currentTrack = sampleTrack1;
+		state.isLoading = true;
+		const controller = new AbortController();
+		const internal = state as unknown as {
+			streamLoadAbort: AbortController;
+			streamLoadGeneration: number;
+			engine: { pause(): void };
+		};
+		internal.streamLoadAbort = controller;
+		const generation = internal.streamLoadGeneration;
+		state.pausePlayback();
+		expect(controller.signal.aborted).toBe(true);
+		expect(internal.streamLoadGeneration).toBe(generation + 1);
+		expect(state.isPlaying).toBe(false);
+		expect(state.isLoading).toBe(false);
+		expect(state.currentTrack).toEqual(sampleTrack1);
 	});
 });

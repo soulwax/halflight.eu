@@ -98,9 +98,17 @@ let inFlightPlaybackRefresh: Promise<TidalTokenRecord> | null = null;
  * @throws {TidalAuthError} when the device refresh token is rejected
  */
 export async function getPlaybackToken(ctx: TidalRequestContext = {}): Promise<string> {
+	return (await getPlaybackTokenDetails(ctx)).accessToken;
+}
+
+/** Resolve token and market together so artwork needs only one token-row read. */
+export async function getPlaybackTokenDetails(
+	ctx: TidalRequestContext = {}
+): Promise<{ accessToken: string; countryCode?: string }> {
 	const record = await readPlaybackRecord(ctx.store);
 	if (!record) throw new TidalPlaybackNotLinkedError();
-	if (!isExpired(record)) return record.accessToken;
+	if (!isExpired(record))
+		return { accessToken: record.accessToken, countryCode: record.countryCode };
 
 	if (!inFlightPlaybackRefresh) {
 		inFlightPlaybackRefresh = (async () => {
@@ -115,7 +123,8 @@ export async function getPlaybackToken(ctx: TidalRequestContext = {}): Promise<s
 			inFlightPlaybackRefresh = null;
 		});
 	}
-	return (await inFlightPlaybackRefresh).accessToken;
+	const next = await inFlightPlaybackRefresh;
+	return { accessToken: next.accessToken, countryCode: next.countryCode };
 }
 
 /** Read the stored market for legacy API endpoints that require one. */

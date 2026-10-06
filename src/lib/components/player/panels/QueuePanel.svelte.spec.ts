@@ -43,15 +43,53 @@ describe('QueuePanel.svelte', () => {
 	});
 
 	it('lists the queued tracks as a table with remove controls', async () => {
-		player.queue = [entry('1', 'One'), entry('2', 'Two')];
-		render(QueuePanel);
+		player.queue = [
+			createQueueEntry({
+				...mk('1', 'One'),
+				album: { id: 'album-1', title: 'An entire album name' }
+			}),
+			entry('2', 'Two')
+		];
+		const { container } = render(QueuePanel);
 
 		await expect.element(page.getByRole('link', { name: 'One' })).toBeInTheDocument();
 		await expect.element(page.getByRole('link', { name: 'Two' })).toBeInTheDocument();
+		await expect
+			.element(page.getByRole('link', { name: 'An entire album name' }))
+			.toBeInTheDocument();
+		expect(container.textContent).not.toContain('—');
+		await expect
+			.element(page.getByRole('columnheader', { name: m.track_col_release() }))
+			.not.toBeInTheDocument();
 
 		const removes = page.getByRole('button', { name: m.player_remove_from_queue() });
 		(removes.first().element() as HTMLButtonElement).click();
 		expect(player.queue.map((t) => t.id)).toEqual(['2']);
+	});
+
+	it('keeps complete identity readable in a narrow queue without wide control gutters', async () => {
+		const title = 'A long recording title that needs more than one line';
+		const artist = 'An artist with a complete and very long name';
+		const album = 'An album title that must remain readable in the queue';
+		player.queue = [
+			createQueueEntry({
+				...mk('1', title),
+				artists: [{ id: 'artist-1', name: artist }],
+				album: { id: 'album-1', title: album }
+			})
+		];
+		const { container } = render(QueuePanel);
+		container.style.width = '320px';
+		container.style.containerType = 'inline-size';
+		for (const name of [title, artist, album]) {
+			await expect.element(page.getByRole('link', { name, exact: true })).toBeVisible();
+			const text = page.getByRole('link', { name, exact: true }).element();
+			expect(getComputedStyle(text.closest('.tt-main > span') ?? text).whiteSpace).toBe('normal');
+		}
+		const row = container.querySelector('.tt-row')!;
+		expect(row.scrollWidth).toBeLessThanOrEqual(row.clientWidth);
+		const controls = container.querySelector('.q-row-controls')!.getBoundingClientRect();
+		expect(controls.width).toBeLessThanOrEqual(52);
 	});
 
 	it('removes only the selected occurrence when a track is queued twice', async () => {
@@ -93,6 +131,8 @@ describe('QueuePanel.svelte', () => {
 		(
 			page.getByRole('button', { name: m.player_clear_queue() }).element() as HTMLButtonElement
 		).click();
+		expect(player.queue).toHaveLength(1);
+		await page.getByRole('dialog').getByRole('button', { name: m.player_clear_queue() }).click();
 		expect(player.queue).toEqual([]);
 	});
 

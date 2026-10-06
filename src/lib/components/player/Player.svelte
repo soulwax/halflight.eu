@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import PlaybackStatus from './PlaybackStatus.svelte';
+	import SessionSaveStatus from './SessionSaveStatus.svelte';
 	import { Disc, Play, SkipBack, SkipForward } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { player } from '#lib/player/player.svelte.js';
@@ -100,40 +102,7 @@
 			</div>
 			<PlayerActions {track} {floating} {isNarrow} {tidalUrl} />
 		</div>
-		{#if player.isPlaybackActiveElsewhere}
-			<div class="player-sync-status" role="status">
-				<span>{m.now_playing_elsewhere()}</span>
-				<button
-					class="player-sync-action"
-					type="button"
-					disabled={player.playbackClaimPending}
-					onclick={() => player.playHere()}
-				>
-					{m.now_play_here()}
-				</button>
-			</div>
-		{/if}
-		{#if player.persistenceStatus === 'conflict'}
-			<div class="player-sync-status" role="status">
-				<span>{m.player_sync_conflict()}</span>
-				<button
-					class="player-sync-action"
-					type="button"
-					onclick={() => player.refreshQueueFromServer()}
-				>
-					{m.player_sync_refresh()}
-				</button>
-			</div>
-		{:else if player.persistenceStatus === 'offline'}
-			<p class="player-sync-status" role="status">{m.player_sync_offline()}</p>
-		{:else if player.persistenceStatus === 'rejected'}
-			<p class="player-sync-status" role="status">{m.player_sync_rejected()}</p>
-		{:else if player.persistenceStatus === 'unauthenticated'}
-			<div class="player-sync-status" role="status">
-				<span>{m.player_sync_unauthenticated()}</span>
-				<a class="player-sync-action" href="/sign-in">{m.sign_in_button()}</a>
-			</div>
-		{/if}
+		<PlaybackStatus />
 
 		{#if player.isExpanded}
 			<PlayerPanel {track} {floating} onDragStart={startDrag} />
@@ -171,7 +140,7 @@
 					<span class="time">0:00</span>
 				</div>
 			</div>
-			<div class="actions"></div>
+			<div class="actions"><SessionSaveStatus /></div>
 		</div>
 	</section>
 {/if}

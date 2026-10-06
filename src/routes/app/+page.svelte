@@ -8,6 +8,8 @@
 	import SectionHeader from '#lib/components/ui/SectionHeader.svelte';
 	import ViewHeader from '#lib/components/ui/ViewHeader.svelte';
 	import SongCard from '#lib/components/music/SongCard.svelte';
+	import PlaybackStatus from '#lib/components/player/PlaybackStatus.svelte';
+	import SessionSaveStatus from '#lib/components/player/SessionSaveStatus.svelte';
 	import StateCard from '#lib/components/music/StateCard.svelte';
 	import type { PageData } from './$types';
 
@@ -16,6 +18,7 @@
 	const nowPlayingArtwork = $derived(
 		player.currentTrack?.imageUrl ?? player.currentTrack?.album?.imageUrl
 	);
+	let failedNowArtwork = $state<string | null>(null);
 	const savedSets = $derived(customPlaylists.playlists.slice(0, 4));
 
 	/**
@@ -42,12 +45,17 @@
 
 	{#if data.connection.connected}
 		<section
-			class:has-artwork={Boolean(nowPlayingArtwork)}
+			class:has-artwork={Boolean(nowPlayingArtwork && nowPlayingArtwork !== failedNowArtwork)}
 			class="continuation"
 			aria-labelledby="continue-title"
 		>
-			{#if nowPlayingArtwork}
-				<img class="continuation-artwork" src={nowPlayingArtwork} alt="" />
+			{#if nowPlayingArtwork && nowPlayingArtwork !== failedNowArtwork}
+				<img
+					class="continuation-artwork"
+					src={nowPlayingArtwork}
+					alt=""
+					onerror={() => (failedNowArtwork = nowPlayingArtwork)}
+				/>
 			{/if}
 
 			<div class="continuation-copy">
@@ -68,8 +76,22 @@
 
 			<div class="continuation-action">
 				{#if player.currentTrack}
-					<Button variant="primary" size="lg" onclick={() => player.togglePlayPause()}>
-						{#if player.isPlaying}
+					<Button
+						variant="primary"
+						size="lg"
+						disabled={player.isLoading ||
+							player.resumeStatus !== 'ready' ||
+							player.isPlaybackActiveElsewhere ||
+							player.playbackMode === 'embed'}
+						onclick={() => player.togglePlayPause()}
+					>
+						{#if player.resumeStatus === 'checking'}{m.player_check_pending()}
+						{:else if player.resumeStatus === 'unavailable'}{m.player_unavailable_track()}
+						{:else if player.resumeStatus === 'auth'}{m.player_source_link()}
+						{:else if player.resumeStatus === 'plan'}{m.player_plan_failure()}
+						{:else if player.resumeStatus === 'temporary'}{m.player_temporary_failure()}
+						{:else if player.isLoading}{m.player_loading()}
+						{:else if player.isPlaying}
 							<Pause size={17} fill="currentColor" />
 							{m.home_pause_action()}
 						{:else}
@@ -94,6 +116,8 @@
 				{/if}
 			</div>
 		</section>
+
+		{#if player.currentTrack}<PlaybackStatus /><SessionSaveStatus />{/if}
 
 		{#if !resumeIsGenerateInvitation}
 			<section class="generation" aria-labelledby="generation-title">

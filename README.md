@@ -1,5 +1,7 @@
 # Halflight
 
+[![CI](https://github.com/soulwax/halflight.eu/actions/workflows/ci.yml/badge.svg)](https://github.com/soulwax/halflight.eu/actions/workflows/ci.yml)
+
 A personal, single-user streaming service built on the owner's TIDAL account. See [`AGENTS.md`](AGENTS.md) for the stack,
 commands, and conventions.
 
@@ -23,6 +25,10 @@ pnpm build && pnpm preview              # production build
 ```
 
 ## Screenshots
+
+| Now playing on mobile                                                                                                | Compact now playing on mobile                                                                                                |
+| -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| ![Halflight mobile player showing the current track, playback controls, and lyrics](.github/screenshots/screen1.png) | ![Halflight compact mobile player showing the current track, playback controls, and lyrics](.github/screenshots/screen2.png) |
 
 | Sign in                                                                                | Mobile sign in                                                                       |
 | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |

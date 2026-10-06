@@ -19,6 +19,7 @@ afterEach(() => {
 	player.isPlaying = false;
 	player.currentTime = 0;
 	player.duration = 0;
+	player.persistenceStatus = 'saved';
 });
 
 describe('MiniPlayer.svelte', () => {
@@ -64,5 +65,21 @@ describe('MiniPlayer.svelte', () => {
 
 		player.isPlaying = true;
 		await expect.element(page.getByRole('button', { name: m.player_pause() })).toBeInTheDocument();
+	});
+
+	it('keeps track and transport space stable when a save needs attention', async () => {
+		player.currentTrack = track;
+		player.persistenceStatus = 'saved';
+		const { container } = render(MiniPlayer);
+		container.style.width = '320px';
+		const link = page.getByRole('link', { name: m.now_open_full_player() });
+		await expect.element(link).toBeInTheDocument();
+		const width = link.element().getBoundingClientRect().width;
+		player.persistenceStatus = 'offline';
+		const status = page.getByRole('button', { name: m.player_sync_local() });
+		await expect.element(status).toBeInTheDocument();
+		expect(status.element().closest('a')).toBeNull();
+		expect(link.element().getBoundingClientRect().width).toBe(width);
+		await expect.element(page.getByText(m.player_sync_local())).not.toBeInTheDocument();
 	});
 });

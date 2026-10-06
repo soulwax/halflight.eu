@@ -1,11 +1,20 @@
 <script lang="ts">
+	import { getContext } from 'svelte';
+	import { page } from '$app/state';
 	import { ChevronLeft } from '@lucide/svelte';
+	import {
+		MOBILE_DETAIL_NAVIGATION,
+		mobileScrollKey,
+		type MobileDetailNavigation
+	} from '#lib/mobile/navigation';
 
 	interface Props {
 		/** Where the back control returns to (usually the Now Playing root). */
 		backHref: string;
 		/** Accessible label for the back control. */
 		backLabel: string;
+		/** Use the browse scene that opened a catalogue detail, when known. */
+		contextualBack?: boolean;
 		/** The layered screen's name, rendered as the focus target `<h1>`. */
 		heading: string;
 		/** Optional single-line context — typically the current track title, truncated. */
@@ -16,11 +25,23 @@
 		headingId?: string;
 	}
 
-	let { backHref, backLabel, heading, subtitle, lead, headingId }: Props = $props();
+	let {
+		backHref,
+		backLabel,
+		contextualBack = false,
+		heading,
+		subtitle,
+		lead,
+		headingId
+	}: Props = $props();
+	const detailNavigation = getContext<MobileDetailNavigation | undefined>(MOBILE_DETAIL_NAVIGATION);
+	const destination = $derived(
+		(contextualBack && detailNavigation?.returnTargets.get(mobileScrollKey(page.url))) || backHref
+	);
 </script>
 
 <header class="mobile-subscreen-header">
-	<a class="back" href={backHref} aria-label={backLabel}>
+	<a class="back" href={destination} aria-label={backLabel}>
 		<ChevronLeft size={20} aria-hidden="true" />
 	</a>
 	<div class="copy">

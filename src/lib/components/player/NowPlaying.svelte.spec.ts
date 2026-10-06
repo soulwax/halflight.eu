@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import NowPlaying from './NowPlaying.svelte';
 import type { TrackSummary } from '#lib/tidal/models';
+import { m } from '#lib/paraglide/messages.js';
 
 const track: TrackSummary = {
 	kind: 'track',
@@ -18,14 +19,16 @@ const track: TrackSummary = {
 };
 
 describe('NowPlaying.svelte', () => {
-	it('shows linked track context without turning artwork into a second transport control', async () => {
+	it('opens player context from the title without linking to catalogue detail', async () => {
 		render(NowPlaying, { track });
 
-		const title = page.getByRole('link', { name: 'Bela Lugosi Is Dead' });
+		const title = page.getByRole('button', { name: m.player_now_playing() });
 		await expect.element(title).toBeInTheDocument();
-		expect(title.element().getAttribute('href')).toBe('/app/tracks/9');
+		await expect.element(title).toHaveTextContent('Bela Lugosi Is Dead');
 		await expect.element(page.getByText('Bauhaus')).toBeInTheDocument();
 		await expect.element(page.getByText('Press the Eject · 1982')).toBeInTheDocument();
-		await expect.element(page.getByRole('button')).not.toBeInTheDocument();
+		await expect
+			.element(page.getByRole('link', { name: 'Bela Lugosi Is Dead' }))
+			.not.toBeInTheDocument();
 	});
 });

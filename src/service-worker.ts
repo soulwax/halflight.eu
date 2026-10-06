@@ -7,7 +7,7 @@ import { assets, immutable } from '$app/manifest';
 import { version } from '$app/env';
 import {
 	isNavigationRequest,
-	isPrecacheCandidate,
+	buildPrecacheAssets,
 	OFFLINE_FALLBACK_URL,
 	shouldBypassServiceWorker
 } from '#lib/player/service-worker-policy.js';
@@ -17,13 +17,7 @@ declare const self: ServiceWorkerGlobalScope;
 const CACHE = `syn-cache-v${version}`;
 
 // Filter public client assets and the neutral offline page within the precache budget
-const ASSETS = Array.from(
-	new Set([
-		...immutable.filter((file) => isPrecacheCandidate(file)),
-		...assets.filter((file) => isPrecacheCandidate(file)),
-		OFFLINE_FALLBACK_URL
-	])
-);
+const ASSETS = buildPrecacheAssets([...immutable, ...assets]);
 
 self.addEventListener('install', (event) => {
 	// Precache public assets and offline fallback.

@@ -9,7 +9,133 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Private-music uploads now inspect actual audio bytes through the new `syn.js` submodule before
+- Rebrand the repository to `soulwax/halflight.eu` with homepage `https://halflight.eu`; the `syn` code name is unchanged.
+
+### Added
+
+- Full lyrics views (desktop panel and mobile screen) now follow the synced line as the song plays and pin the upcoming line as a smaller caption.
+
+- Add multi-tier lyrics resolution with eager fetching and community fallbacks:
+  cascades from TIDAL v1 API to LRCLIB (exact match, cleaned metadata match, fuzzy search)
+  and Lyrics.ovh for plain text. Supports instrumental tracks, metadata query hints,
+  L1 in-memory LRU and L2 Redis caching with single-flight deduplication, and exposes
+  provider attribution in player state and UI.
+- Rework the mobile fullscreen player in the image of Spotify: moody dark vertical atmospheric
+  gradient, Spotify-styled context header with provenance eyebrows, centered 8px rounded cover
+  with rich ambient shadow, bold left-aligned track identity with release metadata and quality pill,
+  prominent circular transport with tactile micro-interactions, a bottom utility row for track
+  info, credits, and queue count badge, and a signature Spotify Lyrics preview card linked to
+  synchronized lyrics.
+- Bring Spotify's Now Playing gestures to Halflight Now. Swiping the cover shows the
+  neighbouring track's artwork peeking in, stiffens where there is nothing to go to, and gives one
+  haptic tick at the point a release would commit. New artwork slides in from the side playback
+  moved to, whether from a swipe, the transport, or a queue pick. Pulling down from the cover
+  or the header now carries the whole sheet with it before closing.
+- Keep the Now Playing title on one line: a long title scrolls back and forth (pausing with
+  playback, static under reduced motion) instead of wrapping into the artwork's space. Add an
+  add-to-playlist button beside it, link the "playing from" album back to its page, and show the
+  utility row as icons only on narrow phones so its labels never wrap.
+- Document the navigation and listening recovery redesign after the iPhone report, including
+  mobile entry after sign-in, Now Playing identity taps, resume validation, recovery states,
+  content reset scope, and physical-device acceptance gates.
+
+### Fixed
+
+- Extend Halflight Now to the large viewport in standalone PWA mode so the
+  fullscreen player uses the space beneath the home indicator; regular mobile
+  browsers continue using the dynamic viewport around browser chrome.
+- Fit the mobile fullscreen player within the mobile viewport without vertical or horizontal
+  scrolling on standard phone dimensions, fluidly scale artwork to available space, eliminate
+  redundant safe-area padding in the fullscreen layout, and enable snappy touch response with
+  touch-action manipulation.
+- Remove browser-facing TIDAL token inspection so access and refresh tokens remain server-only.
+- Send narrow-screen sign-ins to Halflight Now, preserve safe return destinations, and make
+  mobile and desktop view selection explicit. Open the desktop player from its song title
+  while keeping track details as a labeled secondary action.
+- Check the restored recording before offering Resume, distinguish playback failures, and
+  prevent unknown upstream failures from appearing as permanently unavailable tracks.
+- Invalidate pre-reset local queue journals when the new player loads.
+- Keep desktop page scrolling within the listening panes above the docked player, with no outer
+  document scrolling or scroll chaining beneath it; preserve public and mobile page scrolling.
+- Retain queue edits through browser-storage failures, stalled requests, lost acknowledgements,
+  and long server outages; retry with stable operation IDs and buffer failed database intents in
+  Redis without declaring them committed. Keep save status in compact accessible cloud icons.
+- Keep mobile detail retries inside the app so playback survives refresh failures; return detail
+  Back controls to the original browse query and filters. Render repeated playlist recordings
+  safely, start the tapped occurrence, and retain other copies when shuffling.
+- Reduce artwork and metadata latency by resolving request permissions in one fresh database query,
+  sharing album artwork requests, reading playback token and market together, and avoiding metadata
+  refreshes for optional missing release dates. Retry the desktop cover after a prior image fails.
+- Verify TIDAL playback before reporting playlist imports successful; exclude confirmed defective
+  recordings from playlist JSON and editing views, pace validation, and stop safely on throttling.
+  Keep long import and pull responses active through production proxy timeouts.
+- Keep typed lint's extra file extensions consistent so checking mixed TypeScript and Svelte files
+  does not repeatedly reload the entire project.
+- Batch album/playlist queue additions into one durable operation, let off-screen artwork remain
+  lazy, request appropriately sized thumbnails, and prevent touch scrolling from starting a drag.
+- Center the desktop seek thumb vertically on the progress line in Chromium and WebKit.
+- Confirm track unavailability across quality tiers before excluding a recording, expire negative
+  playability records after 24 hours, and preserve the requested quality limit during fallback.
+- Refresh mobile library failures without reloading the player; isolate private-upload storage
+  failures from saved playlists and retain favorite-list context when starting a track.
+- Normalize SvelteKit manifest path records before filtering service-worker precache assets,
+  preventing a production registration failure while preserving public-only cache routing.
+
+### Added
+
+- Mobile saved-playlist search by playlist, track, album, or artist with URL-preserved pagination,
+  honest saved/available track counts, and clear feedback when unavailable tracks are skipped.
+- Labelled mobile Home/Search/Library/Now navigation, adaptive Now Playing controls, contextual
+  Close, transport on supporting screens, and a track-action sheet with queue feedback.
+- Shared playback and queue-save recovery notices, confirmed queue clearing, and named queue saving
+  with pending/error/success states and safe retries after a lost response.
+- Mobile full-playback setup with bounded polling, cancellation, and allowlisted OAuth return to
+  mobile Settings.
+- Overall product UX/UI and mobile playback-controls implementation plans, covering desktop and
+  mobile navigation, setup, transport, seeking, recovery, music actions, accessibility, and delivery.
+- Track the standalone `bragi-cli` source as the public `bragi/` submodule; its GitHub repository
+  owns the cross-platform release workflow.
+- The standalone `bragi-cli` package, with npm executables, setup, bounded inspection and
+  downloads, WAV/raw PCM tools, saved queues, and a bundled browser playback/conversion companion.
+  It has independent package checks and generated-fixture browser and HTTP integration tests.
+- An implementation plan for the standalone `bragi-cli` package, covering the
+  setup wizard, terminal commands, browser playback companion, library API coverage, and release gates.
+
+### Changed
+
+- Compact queue identity into wrapping title, artist and album lines; remove empty date/duration
+  gutters and dash placeholders, and group reorder/remove controls into a narrow column pair.
+- Rebuild the Halflight portrait icon from an editable SVG with high-contrast pale artwork,
+  a cyan music note, and a consistent dark surface; use a dedicated maskable icon and Apple touch size.
+- Make Home resume deliberate, reject duplicate pending starts, use explicit OS Play/Pause actions,
+  and align previous/next/seek availability with actual playback commands and mode.
+- Confirm playlist-dialog saves on the server before reporting success, and require explicit intent
+  for TIDAL publication when creating an owned playlist.
+- Preserve narrow layouts with enlarged text, enlarge dialog close targets, and respect reduced
+  motion for dialogs.
+- Distinguish playback-session service failures from network outages, keep pending edits, and offer
+  a translated retry action in the player.
+- Rebrand the audio package source submodule, imports, configuration, tests, documentation, and
+  GitHub links to `bragi-audio`; depend on the package directly.
+- Syn now consumes the published `bragi-audio@0.2.2` package directly,
+  pinned in the lockfile instead of depending on a local submodule during deployment.
+- Stream metadata loading and validation now run through `bragi-audio/player` for both direct playback
+  and look-ahead preloads. Skipping or closing playback cancels foreground stream requests and
+  stale responses cannot replace the current track's state.
+- HTTP range and retry helpers now come from `bragi-audio/delivery`. The package also provides bounded
+  streaming/download APIs and a separate PCM/WAV codec entry; TIDAL playback still proxies source
+  bytes through Syn's native streaming path.
+
+- The player's audio engine now lives in the `bragi-audio` submodule's new browser entry,
+  `bragi-audio/player`: `AudioEngine` (the `<audio>` element and headroom gain stage), queue identity and
+  conflict rebasing, the playback self-check, the next-track preloader, and Media Session wiring.
+  `#lib/player/*` keeps thin wrappers for Syn's types, copy, and endpoints. The unused duplicate
+  `audio-engine.ts` is gone; `player.svelte.ts` now drives the one engine instead of an inline
+  copy.
+- The player's length/quality warning ("Preview only — …", "Quality: asked …") and the lock-screen
+  "Unknown Artist" fallback are translated instead of always English.
+
+- Private-music uploads now inspect actual audio bytes through the new `bragi-audio` submodule before
   storage. Malformed, renamed, and MIME-mislabeled files are rejected before a bucket write, while
   the detected canonical media type is what Syn persists and serves.
 - The listening room's phone-width shell (`/app/**` below 64rem) drops the bottom tab bar, whose

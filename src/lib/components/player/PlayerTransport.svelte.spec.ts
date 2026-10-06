@@ -1,5 +1,5 @@
 import { page } from 'vitest/browser';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import PlayerTransport from './PlayerTransport.svelte';
 import { player } from '#lib/player/player.svelte.js';
@@ -14,8 +14,18 @@ const track: TrackSummary = {
 	artists: [{ id: 'artist-1', name: 'Artist One' }]
 };
 
+beforeEach(() => {
+	player.repeatMode = 'off';
+	player.isLoading = false;
+	player.playbackMode = 'direct';
+	player.activeDevice = null;
+});
+
 afterEach(() => {
 	player.isPlaying = false;
+	player.isLoading = false;
+	player.playbackMode = 'direct';
+	player.activeDevice = null;
 	player.shuffle = false;
 	player.repeatMode = 'off';
 	player.currentTrack = null;
@@ -32,7 +42,7 @@ describe('PlayerTransport.svelte', () => {
 			m.player_shuffle(),
 			m.player_previous(),
 			m.player_next(),
-			m.player_repeat()
+			m.player_repeat_off()
 		]) {
 			await expect.element(page.getByRole('button', { name })).toBeInTheDocument();
 		}
@@ -96,13 +106,11 @@ describe('PlayerTransport.svelte', () => {
 
 	it('cycles repeat mode through all, one, and off from the transport', async () => {
 		render(PlayerTransport);
-		const repeat = page.getByRole('button', { name: m.player_repeat() });
-
-		(repeat.element() as HTMLButtonElement).click();
+		await page.getByRole('button', { name: m.player_repeat_off() }).click();
 		expect(player.repeatMode).toBe('all');
-		(page.getByRole('button', { name: m.player_repeat() }).element() as HTMLButtonElement).click();
+		await page.getByRole('button', { name: m.player_repeat_all() }).click();
 		expect(player.repeatMode).toBe('one');
-		(page.getByRole('button', { name: m.player_repeat() }).element() as HTMLButtonElement).click();
+		await page.getByRole('button', { name: m.player_repeat_one() }).click();
 		expect(player.repeatMode).toBe('off');
 	});
 });

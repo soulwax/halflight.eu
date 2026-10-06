@@ -2,5 +2,6 @@ import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = (event) => {
-	redirect(302, event.locals.user && event.locals.isAdministrator ? '/app' : '/sign-in');
+	if (!event.locals.user || !event.locals.isAdministrator) redirect(302, '/sign-in?returnTo=/');
+	return {};
 };

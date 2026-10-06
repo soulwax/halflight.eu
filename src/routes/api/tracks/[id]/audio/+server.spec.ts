@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
 	resolveTrackStreamCached: vi.fn(),
 	getStreamingSettings: vi.fn(),
 	getRequestedStreamQuality: vi.fn(),
+	markTrackUnplayable: vi.fn(),
 	tidalSegmentCache: {
 		enabled: false,
 		head: vi.fn(),
@@ -22,7 +23,8 @@ vi.mock('#lib/server/tidal', async (importOriginal) => ({
 	...((await importOriginal()) as object),
 	resolveTrackStreamCached: mocks.resolveTrackStreamCached,
 	getRequestedStreamQuality: mocks.getRequestedStreamQuality,
-	tidalSegmentCache: mocks.tidalSegmentCache
+	tidalSegmentCache: mocks.tidalSegmentCache,
+	markTrackUnplayable: mocks.markTrackUnplayable
 }));
 
 import type { Cookies } from '@sveltejs/kit';
@@ -53,6 +55,7 @@ describe('GET /api/tracks/[id]/audio', () => {
 		mocks.resolveTrackStreamCached.mockReset();
 		mocks.getStreamingSettings.mockReset();
 		mocks.getRequestedStreamQuality.mockReset();
+		mocks.markTrackUnplayable.mockReset().mockResolvedValue(undefined);
 		fetchMock.mockReset();
 		vi.stubGlobal('fetch', fetchMock);
 		mocks.getStreamingSettings.mockResolvedValue({ preferredQuality: 'HIGH' });
@@ -152,6 +155,11 @@ describe('GET /api/tracks/[id]/audio', () => {
 		);
 
 		await expect(GET(event())).rejects.toMatchObject({ status: 404 });
+	});
+
+	it('reports an upstream failure as temporary', async () => {
+		mocks.resolveTrackStreamCached.mockRejectedValueOnce(new Error('upstream unavailable'));
+		await expect(GET(event())).rejects.toMatchObject({ status: 502 });
 	});
 
 	describe('segmented (HiRes DASH) delivery', () => {

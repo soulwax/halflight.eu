@@ -5,7 +5,7 @@ import {
 	clearTokenCookie,
 	invalidateStreamCache
 } from '#lib/server/tidal';
-import { clearOAuthCookie } from '../oauth-cookie';
+import { clearOAuthCookie, tidalReturnTo } from '../oauth-cookie';
 import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async (event) => {
@@ -18,5 +18,5 @@ export const POST: RequestHandler = async (event) => {
 	clearTokenCookie(event.cookies);
 	clearOAuthCookie(event.cookies);
 
-	redirect(303, '/app/settings/tidal?disconnected=1');
+	redirect(303, `${tidalReturnTo(event.url.searchParams.get('returnTo'))}?disconnected=1`);
 };

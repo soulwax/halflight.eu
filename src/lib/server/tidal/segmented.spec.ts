@@ -70,6 +70,21 @@ describe('parseByteRange', () => {
 });
 
 describe('streamSegmentedAudio', () => {
+	it('falls back to assembly when a successful HEAD omits Content-Length', async () => {
+		const f = vi.fn(
+			async (_url: string, init?: RequestInit) =>
+				new Response(init?.method === 'HEAD' ? null : new Uint8Array([1, 2, 3]))
+		) as unknown as typeof fetch;
+		const res = await streamSegmentedAudio({
+			key: 'track-no-length',
+			urls: urls(2),
+			mimeType: 'audio/mp4',
+			fetchImpl: f
+		});
+
+		expect(res.headers.get('Content-Length')).toBe('6');
+		expect(await body(res)).toEqual(new Uint8Array([1, 2, 3, 1, 2, 3]));
+	});
 	it('downloads every fragment once and concatenates them in order', async () => {
 		const f = fragmentFetch();
 		const res = await streamSegmentedAudio({

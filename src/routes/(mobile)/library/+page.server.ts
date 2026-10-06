@@ -25,11 +25,20 @@ export const load: PageServerLoad = async (event): Promise<MobileLibraryData> =>
 
 	const tabParam = event.url.searchParams.get('tab');
 	const tab = tabParam === 'private' || tabParam === 'tracks' ? tabParam : 'saved';
-	const files = await dbPrivateMusicStore.list(event.locals.user.id);
+	const query = (event.url.searchParams.get('q') ?? '').trim().slice(0, 120);
+	let files: Awaited<ReturnType<typeof dbPrivateMusicStore.list>> = [];
+	let privateUnavailable = false;
+	if (tab === 'private') {
+		try {
+			files = await dbPrivateMusicStore.list(event.locals.user.id);
+		} catch {
+			privateUnavailable = true;
+		}
+	}
 	const usedBytes = files.reduce((total, file) => total + file.sizeBytes, 0);
 	const result: MobileLibraryData = {
 		tab,
-		status: 'ready',
+		status: privateUnavailable ? 'unavailable' : 'ready',
 		privateMusic: {
 			enabled: privateMusicBucket.enabled,
 			formats: PRIVATE_MUSIC_FORMATS.map(({ label, contentType, extensions }) => ({
@@ -57,13 +66,28 @@ export const load: PageServerLoad = async (event): Promise<MobileLibraryData> =>
 		tracks: [],
 		previousQuery: null,
 		nextQuery: null,
-		hasMore: false
+		hasMore: false,
+		query,
+		hiddenTrackCount: 0
 	};
 
 	try {
 		if (tab === 'private') return result;
 		if (tab === 'saved') {
-			const playlists = await getUserPlaylists(event.locals.user.id);
+			const ownedPlaylists = await getUserPlaylists(event.locals.user.id);
+			const needle = query.toLocaleLowerCase();
+			const playlists = needle
+				? ownedPlaylists.filter((playlist) =>
+						[
+							playlist.title,
+							...playlist.items.flatMap((track) => [
+								track.title,
+								track.album?.title ?? '',
+								...track.artists.map((artist) => artist.name)
+							])
+						].some((text) => text.toLocaleLowerCase().includes(needle))
+					)
+				: ownedPlaylists;
 			const requestedPage = Number(event.url.searchParams.get('page') ?? 1);
 			const lastPage = Math.max(1, Math.ceil(playlists.length / PAGE_SIZE));
 			const page =
@@ -78,10 +102,22 @@ export const load: PageServerLoad = async (event): Promise<MobileLibraryData> =>
 			);
 			result.playlists = pagePlaylists.map((playlist) => ({
 				...playlist,
+				totalTrackCount: playlist.items.length,
 				items: playlist.items.filter((item) => !unplayable.has(item.id))
 			}));
-			result.previousQuery = page > 1 ? `tab=saved&page=${page - 1}` : null;
-			result.nextQuery = page < lastPage ? `tab=saved&page=${page + 1}` : null;
+			result.hiddenTrackCount = result.playlists.reduce(
+				(count, playlist) =>
+					count + (playlist.totalTrackCount ?? playlist.items.length) - playlist.items.length,
+				0
+			);
+			const pageQuery = (target: number) =>
+				new URLSearchParams({
+					tab: 'saved',
+					page: String(target),
+					...(query ? { q: query } : {})
+				}).toString();
+			result.previousQuery = page > 1 ? pageQuery(page - 1) : null;
+			result.nextQuery = page < lastPage ? pageQuery(page + 1) : null;
 			return result;
 		}
 
@@ -99,6 +135,7 @@ export const load: PageServerLoad = async (event): Promise<MobileLibraryData> =>
 		);
 		const collection = normaliseCollectionPage(document);
 		result.tracks = await filterPlayableTracks(collection.tracks);
+		result.hiddenTrackCount = collection.tracks.length - result.tracks.length;
 		result.hasMore = collection.hasMore;
 		result.previousQuery = cursor ? 'tab=tracks' : null;
 		// Only forward an opaque cursor to the fixed collection endpoint. Provider

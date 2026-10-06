@@ -6,6 +6,9 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('#lib/server/playback-state', () => mocks);
+vi.mock('#lib/server/playback-buffer', () => ({
+	applyBufferedPlaybackIntent: mocks.applyPlaybackIntent
+}));
 
 import { POST } from './+server';
 
@@ -89,5 +92,12 @@ describe('POST /api/playback-state/intents', () => {
 		const response = await POST(event());
 		expect(response.status).toBe(409);
 		expect(await response.json()).toEqual(state);
+	});
+	it('reports a Redis-buffered edit without pretending the database acknowledged it', async () => {
+		mocks.applyPlaybackIntent.mockResolvedValue({ buffered: true });
+		const response = await POST(event());
+		expect(response.status).toBe(202);
+		expect(await response.json()).toEqual({ buffered: true });
+		expect(response.headers.get('cache-control')).toBe('private, no-store');
 	});
 });

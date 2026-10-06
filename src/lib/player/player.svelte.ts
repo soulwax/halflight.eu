@@ -1,6 +1,8 @@
 import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 import type { TrackSummary } from '#lib/tidal/models.js';
+import { trackArtworkUrl } from '#lib/tidal/artwork';
 import { qualityTier, type QualityTier } from '#lib/format';
+import { AudioEngine, replayGainToLinear } from 'bragi-audio/player';
 import { assessPlayback, type PlaybackAssessment } from './playback-assessment.js';
 import {
 	setupMediaSessionHandlers,
@@ -16,7 +18,12 @@ import {
 	toDisplayTrack,
 	type QueueEntry
 } from './queue-entry.js';
-import { streamPreloader, type PreloadedStreamData } from './stream-preloader.js';
+import {
+	getOrAwaitPreloadedStreamData,
+	streamLoader,
+	streamPreloader,
+	type PreloadedStreamData
+} from './stream-preloader.js';
 import {
 	PlaybackSessionCoordinator,
 	isTrackSummary,
@@ -54,7 +61,8 @@ const PLAYBACK_DEVICE_KEY = 'syn:player:device-id';
  * by the server; only unacknowledged operations are rebased onto it.
  */
 const QUEUE_CACHE_KEY = 'syn:player:queue-cache';
-const QUEUE_CACHE_VERSION = 2;
+// The production content reset invalidated journals written by older builds.
+const QUEUE_CACHE_VERSION = 3;
 /** Bounded retry for a transient metadata-hydration failure (a dropped
  *  connection, an upstream blip) — a real 404 is never retried. */
 const MAX_METADATA_ATTEMPTS = 3;
@@ -79,8 +87,7 @@ function needsTrackMetadata(track: TrackSummary): boolean {
 		track.artists.length === 0 ||
 		track.artists.some((artist) => Boolean(artist.id) && artist.name === artist.id) ||
 		!track.album ||
-		track.album.title === track.album.id ||
-		!track.album.releaseDate
+		track.album.title === track.album.id
 	);
 }
 
@@ -134,6 +141,7 @@ export class PlayerState {
 	origin = $state<PlaybackOrigin>('listening-room');
 	/** Whether the current in-memory session has reached the authoritative server state. */
 	persistenceStatus = $state<PlaybackPersistenceStatus>('saved');
+	localQueueSaved = $state(true);
 	/** Server-projected active playback lease; it contains no device identifier. */
 	activeDevice = $state<PlaybackDeviceStatus | null>(null);
 	playbackClaimPending = $state(false);
@@ -177,19 +185,68 @@ export class PlayerState {
 	hasMediaMetadata = $state(false);
 	/** Diagnostic for the last failed direct-stream attempt (e.g. `not_linked`). */
 	playbackReason = $state<string | null>(null);
+	/** A single bounded stream check for the restored song; it never starts audio. */
+	resumeStatus = $state<'checking' | 'ready' | 'unavailable' | 'auth' | 'plan' | 'temporary'>(
+		'ready'
+	);
+	private resumeCheckGeneration = 0;
 
 	// Synchronized Lyrics state
 	lyrics = $state<string | null>(null);
 	lyricsCues = $state<Array<{ time: number; text: string }>>([]);
+	lyricsProvider = $state<string | null>(null);
 	isLyricsLoading = $state(false);
 	isLyricsOpen = $derived(this.isExpanded && this.panel === 'lyrics');
 
-	private audio: HTMLAudioElement | null = null;
-	private audioContext: AudioContext | null = null;
-	private mediaSourceNode: MediaElementAudioSourceNode | null = null;
-	private gainNode: GainNode | null = null;
+	private readonly engine = new AudioEngine({
+		onTimeUpdate: (currentTime) => this.onTimeUpdate(currentTime),
+		onDuration: (duration) => {
+			this.duration = duration;
+			this.hasMediaMetadata = true;
+			this.updateBuffer();
+		},
+		onProgress: () => this.updateBuffer(),
+		onWaiting: () => {
+			this.isBuffering = true;
+		},
+		onPlaying: () => {
+			this.isBuffering = false;
+			this.isPlaying = true;
+			updatePlaybackState(true);
+		},
+		onPlay: () => {
+			this.isPlaying = true;
+			updatePlaybackState(true);
+			this.reportNowPlaying();
+		},
+		onPause: () => {
+			this.isPlaying = false;
+			updatePlaybackState(false);
+		},
+		onEnded: () => {
+			this.next(true);
+		},
+		onError: () => {
+			// Fall back to embed if direct stream encounters an error
+			this.playbackReason = 'audio_failed';
+			this.playbackMode = 'embed';
+			this.isPlaying = false;
+			this.isLoading = false;
+			this.isBuffering = false;
+			updatePlaybackState(false);
+		},
+		onWake: () => {
+			// Re-sync the lock-screen controls the OS may have dropped while hidden.
+			if (this.currentTrack) {
+				updateMediaMetadata(this.currentTrack);
+				updatePlaybackState(this.isPlaying);
+				updatePositionState({ duration: this.duration, position: this.currentTime });
+			}
+		}
+	});
 	/** Invalidates stream work started for a track that is no longer current. */
 	private streamLoadGeneration = 0;
+	private streamLoadAbort: AbortController | null = null;
 	/** A local player adjustment must survive shell data hydration. */
 	private hasLocalVolumePreference = false;
 	private hasRestoredPlaybackState = false;
@@ -263,18 +320,27 @@ export class PlayerState {
 				history: this.history,
 				currentTime: this.currentTime,
 				isPlaying: this.isPlaying,
-				hasLocalMedia: Boolean(this.streamUrl || this.audio?.currentSrc)
+				hasLocalMedia: Boolean(this.streamUrl || this.engine.currentSrc)
 			}),
 			onApplyQueue: (queue) => {
 				this.queue = queue;
 				this.writeLocalQueueCache();
 			},
 			onApplySession: (state) => {
+				const previousTrackId = this.currentTrack?.id;
 				this.currentTrack = state.currentTrack;
+				if (!state.currentTrack) this.resumeStatus = 'ready';
+				else if (!this.isPlaying && !this.streamUrl && previousTrackId !== state.currentTrack.id) {
+					this.resumeStatus = 'checking';
+					void this.checkResumeAvailability(state.currentTrack.id);
+				}
 				this.history = state.history.slice(-MAX_HISTORY_LENGTH);
 				this.currentTime = Math.max(0, Math.floor(state.currentTime));
 				this.duration = state.currentTrack?.duration ?? 0;
-				if (this.currentTrack) void this.resolveCover(this.currentTrack);
+				if (this.currentTrack) {
+					void this.resolveCover(this.currentTrack);
+					void this.loadLyrics(this.currentTrack.id, this.currentTrack);
+				}
 				this.hydrateTrackMetadata(
 					[...(this.currentTrack ? [this.currentTrack] : []), ...this.history],
 					MAX_INITIAL_METADATA_HYDRATION
@@ -301,7 +367,7 @@ export class PlayerState {
 		if (isBrowser) {
 			this.loadLocalQueueCache();
 			this.loadPrefs();
-			this.initAudio();
+			this.engine.init();
 			this.setupMediaSession();
 		}
 	}
@@ -318,8 +384,8 @@ export class PlayerState {
 
 	private setupMediaSession(): void {
 		setupMediaSessionHandlers({
-			onPlay: () => this.togglePlayPause(),
-			onPause: () => this.togglePlayPause(),
+			onPlay: () => this.resumePlayback(),
+			onPause: () => this.pausePlayback(),
 			onPrevious: () => this.previous(),
 			onNext: () => this.next(),
 			onSeekBackward: (sec) => this.seekBy(-sec),
@@ -327,35 +393,6 @@ export class PlayerState {
 			onSeekTo: (sec) => this.seek(sec),
 			onStop: () => this.close()
 		});
-	}
-
-	private ensureAudioGraph(): void {
-		if (!isBrowser || !this.audio || this.gainNode) return;
-		try {
-			const AudioCtx =
-				window.AudioContext ||
-				(window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-			if (!AudioCtx) return;
-			if (!this.audioContext) {
-				this.audioContext = new AudioCtx();
-			}
-			if (!this.mediaSourceNode) {
-				this.mediaSourceNode = this.audioContext.createMediaElementSource(this.audio);
-			}
-			if (!this.gainNode) {
-				this.gainNode = this.audioContext.createGain();
-				this.mediaSourceNode.connect(this.gainNode);
-				this.gainNode.connect(this.audioContext.destination);
-			}
-		} catch {
-			// Web Audio API initialization is best-effort fallback to standard audio.volume
-		}
-	}
-
-	private resumeAudioContext(): void {
-		if (this.audioContext && this.audioContext.state === 'suspended') {
-			void this.audioContext.resume().catch(() => {});
-		}
 	}
 
 	private getDeviceId(): string | null {
@@ -397,8 +434,14 @@ export class PlayerState {
 
 	/** Start the current track locally while deliberately taking shared control. */
 	playHere(): void {
+		if (!this.currentTrack || this.isLoading || this.playbackClaimPending) return;
 		void this.takePlaybackControl();
-		this.togglePlayPause();
+		if (this.playbackMode === 'embed') {
+			this.playbackMode = 'direct';
+			this.streamUrl = null;
+			this.playbackReason = null;
+		}
+		this.resumePlayback();
 	}
 
 	private claimPlaybackControlForIntent(): void {
@@ -478,7 +521,10 @@ export class PlayerState {
 				currentTime?: unknown;
 				queueCommands?: unknown;
 			};
-			if (parsed.version !== 1 && parsed.version !== QUEUE_CACHE_VERSION) return;
+			if (parsed.version !== QUEUE_CACHE_VERSION) {
+				localStorage.removeItem(QUEUE_CACHE_KEY);
+				return;
+			}
 
 			const currentTrack = isTrackSummary(parsed.currentTrack) ? parsed.currentTrack : null;
 			const queue = Array.isArray(parsed.queue)
@@ -524,6 +570,7 @@ export class PlayerState {
 				this.queueCommands.length === 0
 			) {
 				localStorage.removeItem(QUEUE_CACHE_KEY);
+				this.localQueueSaved = true;
 				return;
 			}
 			localStorage.setItem(
@@ -537,103 +584,16 @@ export class PlayerState {
 					queueCommands: this.queueCommands
 				})
 			);
+			this.localQueueSaved = true;
 		} catch {
-			// Storage may be unavailable (private mode, quota) — this cache is a
-			// convenience for instant paint, never a source of truth.
+			this.localQueueSaved = false;
+			// Server persistence continues even if the browser rejects this copy.
 		}
-	}
-
-	private initAudio(): void {
-		if (!isBrowser || typeof Audio === 'undefined') return;
-		if (this.audio) return;
-
-		this.audio = new Audio();
-		this.audio.preload = 'auto';
-		this.audio.setAttribute('playsinline', 'true');
-		this.audio.setAttribute('webkit-playsinline', 'true');
-
-		this.audio.addEventListener('timeupdate', () => this.onTimeUpdate());
-
-		const onMeta = () => {
-			if (this.audio && !isNaN(this.audio.duration) && this.audio.duration > 0) {
-				this.duration = this.audio.duration;
-				this.hasMediaMetadata = true;
-				this.updateBuffer();
-			}
-		};
-		this.audio.addEventListener('durationchange', onMeta);
-		this.audio.addEventListener('loadedmetadata', onMeta);
-		this.audio.addEventListener('progress', () => this.updateBuffer());
-
-		this.audio.addEventListener('waiting', () => {
-			this.isBuffering = true;
-		});
-
-		this.audio.addEventListener('playing', () => {
-			this.isBuffering = false;
-			this.isPlaying = true;
-			updatePlaybackState(true);
-		});
-
-		this.audio.addEventListener('play', () => {
-			this.isPlaying = true;
-			updatePlaybackState(true);
-			this.reportNowPlaying();
-		});
-
-		this.audio.addEventListener('pause', () => {
-			this.isPlaying = false;
-			updatePlaybackState(false);
-		});
-
-		this.audio.addEventListener('ended', () => {
-			this.next(true);
-		});
-
-		this.audio.addEventListener('error', () => {
-			// Fall back to embed if direct stream encounters an error
-			this.playbackMode = 'embed';
-			this.isPlaying = false;
-			this.isLoading = false;
-			this.isBuffering = false;
-			updatePlaybackState(false);
-		});
-
-		// Auto-reconnect audio context and re-sync media session on tab wake or connection restore
-		document.addEventListener('visibilitychange', () => {
-			if (document.visibilityState === 'visible') {
-				this.resumeAudioContext();
-				if (this.currentTrack) {
-					updateMediaMetadata(this.currentTrack);
-					updatePlaybackState(this.isPlaying);
-					updatePositionState({ duration: this.duration, position: this.currentTime });
-				}
-			}
-		});
-		window.addEventListener('online', () => {
-			this.resumeAudioContext();
-		});
 	}
 
 	private updateBuffer(): void {
-		if (!this.audio || !this.audio.duration || Number.isNaN(this.audio.duration)) return;
-		const buffered = this.audio.buffered;
-		if (buffered.length === 0) {
-			this.bufferedPercent = 0;
-			return;
-		}
-		const current = this.audio.currentTime;
-		for (let i = 0; i < buffered.length; i++) {
-			if (buffered.start(i) <= current && current <= buffered.end(i)) {
-				this.bufferedPercent = Math.min(
-					100,
-					Math.max(0, (buffered.end(i) / this.audio.duration) * 100)
-				);
-				return;
-			}
-		}
-		const lastEnd = buffered.end(buffered.length - 1);
-		this.bufferedPercent = Math.min(100, Math.max(0, (lastEnd / this.audio.duration) * 100));
+		const percent = this.engine.bufferedPercent();
+		if (percent !== null) this.bufferedPercent = percent;
 	}
 
 	/**
@@ -642,11 +602,10 @@ export class PlayerState {
 	 * the async metadata fetch, and letting it write `currentTime` makes the next
 	 * track inherit the old progress.
 	 */
-	private onTimeUpdate(): void {
+	private onTimeUpdate(currentTime = this.engine.currentTime): void {
 		if (this.isLoading) return;
-		const audio = this.audio;
-		if (!audio || Number.isNaN(audio.currentTime)) return;
-		this.currentTime = audio.currentTime;
+		if (Number.isNaN(currentTime)) return;
+		this.currentTime = currentTime;
 		this.updateBuffer();
 		updatePositionState({ duration: this.duration, position: this.currentTime });
 
@@ -667,6 +626,24 @@ export class PlayerState {
 
 	hasNext = $derived(this.queue.length > 0);
 	hasPrevious = $derived(this.history.length > 0);
+	canGoPrevious = $derived(
+		Boolean(this.currentTrack) &&
+			!this.isPlaybackActiveElsewhere &&
+			(this.hasPrevious || this.currentTime > 3)
+	);
+	canGoNext = $derived(
+		!this.isPlaybackActiveElsewhere &&
+			(this.hasNext ||
+				(this.repeatMode === 'all' && Boolean(this.currentTrack || this.history.length)))
+	);
+	canSeek = $derived(
+		Boolean(this.currentTrack) &&
+			this.playbackMode === 'direct' &&
+			!this.isLoading &&
+			!this.isPlaybackActiveElsewhere &&
+			Number.isFinite(this.duration) &&
+			this.duration > 0
+	);
 	queueCount = $derived(this.queue.length);
 	qualityLabel = $derived.by(() => {
 		if (!this.audioQuality) return null;
@@ -713,7 +690,12 @@ export class PlayerState {
 		return 0;
 	});
 
-	play(track: TrackSummary, contextTracks?: TrackSummary[], provenance?: string): void {
+	play(
+		track: TrackSummary,
+		contextTracks?: TrackSummary[],
+		provenance?: string,
+		contextIndex?: number
+	): void {
 		this.claimPlaybackControlForIntent();
 		const selectedTrack = this.withProvenance(track, provenance);
 		const contextualTracks = contextTracks?.map((candidate) =>
@@ -725,12 +707,22 @@ export class PlayerState {
 		}
 
 		if (contextualTracks && contextualTracks.length > 0) {
+			// A playlist can contain the same recording more than once. Use the
+			// tapped row's position, then object identity, before falling back to ID.
+			const referenceIndex = contextTracks?.indexOf(track) ?? -1;
+			const at =
+				contextIndex !== undefined &&
+				Number.isInteger(contextIndex) &&
+				contextualTracks[contextIndex]?.id === track.id
+					? contextIndex
+					: referenceIndex >= 0
+						? referenceIndex
+						: contextualTracks.findIndex((candidate) => candidate.id === track.id);
 			if (this.shuffle) {
 				this.queue = createQueueEntries(
-					shuffled(contextualTracks.filter((candidate) => candidate.id !== track.id))
+					shuffled(contextualTracks.filter((_, index) => index !== at))
 				);
 			} else {
-				const at = contextualTracks.findIndex((candidate) => candidate.id === track.id);
 				this.queue = createQueueEntries(
 					at === -1 ? [...contextualTracks] : contextualTracks.slice(at + 1)
 				);
@@ -753,11 +745,14 @@ export class PlayerState {
 	 */
 	private switchToTrack(track: TrackSummary): void {
 		this.streamLoadGeneration += 1;
+		this.streamLoadAbort?.abort();
 		// A direct track choice is a deliberate session change, so subsequent
 		// persistence may use its local current-track/history fields again.
 		this.reconciliationBase = null;
 		this.recordQueueReplacement();
 		this.currentTrack = track;
+		this.resumeCheckGeneration += 1;
+		this.resumeStatus = 'ready';
 		this.currentTime = 0;
 		// A scrub preview belongs to the track being dragged. If playback advances
 		// before the pointer is released, drop it rather than committing the old
@@ -780,6 +775,7 @@ export class PlayerState {
 		this.trackReplayGain = null;
 		this.lyrics = null;
 		this.lyricsCues = [];
+		this.lyricsProvider = null;
 		this.playbackMode = 'direct';
 		this.playbackReason = null;
 		this.requiresFullAuth = false;
@@ -792,7 +788,7 @@ export class PlayerState {
 
 		if (isBrowser) {
 			void this.loadAndPlayStream(track.id);
-			void this.loadLyrics(track.id);
+			void this.loadLyrics(track.id, track);
 			void this.resolveCover(track);
 			void this.resolveTrackMetadata(track);
 		}
@@ -850,8 +846,6 @@ export class PlayerState {
 			// The next playback is independent of a temporary Last.fm outage.
 		});
 	}
-
-	private coverCache = new SvelteMap<string, string>();
 
 	/**
 	 * Restore current-track identity from TIDAL when a resumable session only
@@ -986,22 +980,10 @@ export class PlayerState {
 	 * (search results, the resumed queue). Patches every copy of the track in
 	 * player state so the mini-bar, large cover and queue row all update.
 	 */
-	private async resolveCover(track: TrackSummary): Promise<void> {
-		if (!isBrowser || track.imageUrl) return;
-		let url = this.coverCache.get(track.id) ?? null;
-		if (!url) {
-			try {
-				const res = await fetch(`/api/tracks/${encodeURIComponent(track.id)}/cover`);
-				const data = res.ok
-					? ((await res.json().catch(() => null)) as { imageUrl?: string | null } | null)
-					: null;
-				url = data?.imageUrl ?? null;
-			} catch {
-				url = null;
-			}
-		}
+	private resolveCover(track: TrackSummary): void {
+		if (!isBrowser || track.imageUrl || track.album?.imageUrl || !/^\d+$/.test(track.id)) return;
+		const url = trackArtworkUrl(track);
 		if (!url) return;
-		this.coverCache.set(track.id, url);
 
 		const patched = (t: TrackSummary): TrackSummary =>
 			t.id === track.id && !t.imageUrl ? { ...t, imageUrl: url } : t;
@@ -1012,27 +994,56 @@ export class PlayerState {
 		this.history = this.history.map(patched);
 	}
 
-	async loadLyrics(trackId: string): Promise<void> {
+	async loadLyrics(trackId: string, trackHint?: TrackSummary | null): Promise<void> {
+		if (!isBrowser) return;
 		this.isLyricsLoading = true;
 		try {
-			const res = await fetch(`/api/tracks/${encodeURIComponent(trackId)}/lyrics`).catch(
+			const track = trackHint ?? (this.currentTrack?.id === trackId ? this.currentTrack : null);
+			const queryParts: string[] = [];
+			if (track) {
+				if (track.title) queryParts.push(`title=${encodeURIComponent(track.title)}`);
+				const artist = track.artists?.[0]?.name;
+				if (artist) queryParts.push(`artist=${encodeURIComponent(artist)}`);
+				if (track.album?.title) queryParts.push(`album=${encodeURIComponent(track.album.title)}`);
+				if (track.duration)
+					queryParts.push(`duration=${encodeURIComponent(String(Math.round(track.duration)))}`);
+			}
+			const query = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
+			const res = await fetch(`/api/tracks/${encodeURIComponent(trackId)}/lyrics${query}`).catch(
 				() => null
 			);
+
+			// Discard late response if track changed while fetching
+			if (this.currentTrack?.id !== trackId) return;
+
 			if (res && res.ok) {
 				const data = (await res.json().catch(() => null)) as {
 					lyrics?: string;
+					subtitles?: string;
 					cues?: Array<{ time: number; text: string }>;
+					lyricsProvider?: string;
 				} | null;
 
 				if (data) {
 					this.lyrics = data.lyrics || null;
 					this.lyricsCues = data.cues || [];
+					this.lyricsProvider = data.lyricsProvider || null;
+					return;
 				}
 			}
+			this.lyrics = null;
+			this.lyricsCues = [];
+			this.lyricsProvider = null;
 		} catch {
-			// Lyrics unavailable
+			if (this.currentTrack?.id === trackId) {
+				this.lyrics = null;
+				this.lyricsCues = [];
+				this.lyricsProvider = null;
+			}
 		} finally {
-			this.isLyricsLoading = false;
+			if (this.currentTrack?.id === trackId) {
+				this.isLyricsLoading = false;
+			}
 		}
 	}
 
@@ -1051,7 +1062,7 @@ export class PlayerState {
 		this.panel = panel;
 		this.isExpanded = true;
 		if (panel === 'lyrics' && !this.lyrics && this.currentTrack) {
-			void this.loadLyrics(this.currentTrack.id);
+			void this.loadLyrics(this.currentTrack.id, this.currentTrack);
 		}
 		if (save) this.savePrefs();
 	}
@@ -1110,56 +1121,31 @@ export class PlayerState {
 	}
 
 	private applyVolume(): void {
-		if (!this.audio) return;
-
-		let effVol = this.volume;
+		let level = this.volume;
 		if (this.isNormalizationEnabled && this.trackReplayGain != null) {
-			// Convert ReplayGain dB to linear multiplier: 10^(dB/20)
-			const multiplier = Math.pow(10, this.trackReplayGain / 20);
-			effVol = Math.max(0, this.volume * multiplier);
+			level = Math.max(0, this.volume * replayGainToLinear(this.trackReplayGain));
 		}
-
-		// Mobile devices and ordinary playback use native <audio> volume directly.
-		// Connecting Web Audio via createMediaElementSource causes iOS WebKit to
-		// classify playback as ambient Web Audio, which iOS suspends when the screen
-		// locks or apps switch. Headroom is also needed when ReplayGain pushes the
-		// effective level above the native 0..1 range.
-		const allowWebAudio = !this.isMobilePlayback() && this.isHeadroomEnabled && effVol > 1.0;
-		if (allowWebAudio) this.ensureAudioGraph();
-
-		if (this.isMuted) {
-			if (this.gainNode && this.audioContext) {
-				const time = this.audioContext.currentTime;
-				this.gainNode.gain.cancelScheduledValues(time);
-				this.gainNode.gain.setTargetAtTime(0, time, 0.015);
-			}
-			this.audio.volume = 0;
-			this.audio.muted = true;
-			return;
-		}
-
-		if (this.gainNode && this.audioContext) {
-			// A graph can have been created for a previous >100% value. When the
-			// user comes back below headroom, restore native volume instead of
-			// leaving the element looking (and sounding) fixed at 100%.
-			this.audio.volume = allowWebAudio ? 1 : Math.min(1, effVol);
-			this.audio.muted = false;
-			const time = this.audioContext.currentTime;
-			this.gainNode.gain.cancelScheduledValues(time);
-			this.gainNode.gain.setTargetAtTime(allowWebAudio ? effVol : 1, time, 0.015);
-		} else {
-			this.audio.volume = Math.max(0, Math.min(1, effVol));
-			this.audio.muted = false;
-		}
+		// Mobile keeps native <audio> volume: Web Audio gets suspended by iOS on
+		// screen lock. Elsewhere the gain stage only carries headroom above 100%.
+		this.engine.applyVolume({
+			level,
+			muted: this.isMuted,
+			allowWebAudio: !this.isMobilePlayback() && this.isHeadroomEnabled && level > 1
+		});
 	}
 
 	private async loadAndPlayStream(trackId: string): Promise<void> {
+		this.streamLoadAbort?.abort();
+		const abort = new AbortController();
+		this.streamLoadAbort = abort;
 		const generation = this.streamLoadGeneration;
 		const isCurrentLoad = () =>
-			generation === this.streamLoadGeneration && this.currentTrack?.id === trackId;
+			generation === this.streamLoadGeneration &&
+			this.currentTrack?.id === trackId &&
+			!abort.signal.aborted;
 
-		this.initAudio();
-		this.resumeAudioContext();
+		this.engine.init();
+		this.engine.resume();
 		const startAt = this.currentTime;
 		this.isLoading = true;
 
@@ -1171,24 +1157,23 @@ export class PlayerState {
 			// If not yet preloaded, check if a preload is inflight or fetch directly.
 			// Do not pause the audio before we have the next source, to preserve the
 			// iOS WebKit background continuation token during queue handover.
-			data = await streamPreloader.getOrAwait(trackId);
+			data = await getOrAwaitPreloadedStreamData(trackId, abort.signal);
+			if (!isCurrentLoad()) return;
 			if (!data) {
-				try {
-					const res = await fetch(`/api/tracks/${encodeURIComponent(trackId)}/stream`).catch(
-						() => null
-					);
-					if (res && res.ok) {
-						data = (await res.json().catch(() => null)) as PreloadedStreamData | null;
-					} else if (res) {
-						const errData = (await res.json().catch(() => ({}))) as {
-							requiresFullAuth?: boolean;
-							reason?: string;
-						};
-						this.requiresFullAuth = errData.requiresFullAuth ?? res.status === 403;
-						this.playbackReason = errData.reason ?? `http_${res.status}`;
-					}
-				} catch {
-					this.playbackReason = 'network_error';
+				const result = await streamLoader.load(trackId, abort.signal);
+				if (!isCurrentLoad()) return;
+				if (result.ok) data = result.data;
+				else {
+					this.requiresFullAuth = result.requiresAuth;
+					this.playbackReason = result.reason;
+					this.resumeStatus =
+						result.reason === 'track_unavailable'
+							? 'unavailable'
+							: result.reason === 'plan_no_streaming'
+								? 'plan'
+								: result.requiresAuth || result.reason === 'not_connected'
+									? 'auth'
+									: 'temporary';
 				}
 			}
 		}
@@ -1197,7 +1182,8 @@ export class PlayerState {
 		// Never let the old response replace the new track's source or state.
 		if (!isCurrentLoad()) return;
 
-		if (data && this.audio) {
+		if (data && this.engine.hasElement) {
+			this.resumeStatus = 'ready';
 			// Store metadata
 			this.streamUrl = `/api/tracks/${encodeURIComponent(trackId)}/audio`;
 			this.audioQuality = data.audioQuality || data.audioMode || 'HIGH';
@@ -1212,20 +1198,12 @@ export class PlayerState {
 
 			// Syn proxies the authenticated CDN response so the browser never sees a
 			// provider URL or bearer credential.
-			this.audio.src = this.streamUrl;
-			if (startAt > 0) {
-				try {
-					this.audio.currentTime = startAt;
-				} catch {
-					// The stream may not be seekable until metadata arrives.
-				}
-			}
+			this.engine.load(this.streamUrl, startAt);
 			this.applyVolume();
-			await this.audio.play().catch(() => {
-				if (isCurrentLoad()) this.playbackMode = 'embed';
-			});
+			const started = await this.engine.play();
 			if (!isCurrentLoad()) return;
-			this.isPlaying = !this.audio.paused;
+			if (!started) this.playbackMode = 'embed';
+			this.isPlaying = !this.engine.paused;
 			this.isLoading = false;
 
 			// Immediately preload the next track in queue
@@ -1244,8 +1222,16 @@ export class PlayerState {
 	}
 
 	togglePlayPause(): void {
-		this.initAudio();
-		this.resumeAudioContext();
+		if (!this.currentTrack || this.isLoading) return;
+		if (this.isPlaying) this.pausePlayback();
+		else this.resumePlayback();
+	}
+
+	/** Idempotent start for Resume and OS Play; never turns a delayed Play into Pause. */
+	resumePlayback(): void {
+		if (!this.currentTrack || this.isLoading || this.isPlaying) return;
+		this.engine.init();
+		this.engine.resume();
 
 		if (this.playbackMode === 'embed') {
 			// The TIDAL embed iframe owns its own transport; just make sure it is
@@ -1253,21 +1239,53 @@ export class PlayerState {
 			this.isExpanded = true;
 			return;
 		}
-		if (!this.isPlaying) this.claimPlaybackControlForIntent();
+		this.claimPlaybackControlForIntent();
 
 		if (this.currentTrack && !this.streamUrl) {
 			void this.loadAndPlayStream(this.currentTrack.id);
-		} else if (this.audio && this.streamUrl) {
-			if (this.isPlaying) {
-				this.audio.pause();
-			} else {
-				this.audio.play().catch(() => {
-					this.playbackMode = 'embed';
-					this.isExpanded = true;
-				});
+			if (!this.lyrics && !this.lyricsCues.length && !this.isLyricsLoading) {
+				void this.loadLyrics(this.currentTrack.id, this.currentTrack);
 			}
+		} else if (this.engine.hasElement && this.streamUrl) {
+			this.isLoading = true;
+			const generation = this.streamLoadGeneration;
+			void this.engine.play().then((started) => {
+				if (generation !== this.streamLoadGeneration) return;
+				this.isLoading = false;
+				if (started) {
+					this.isPlaying = !this.engine.paused;
+					return;
+				}
+				this.playbackMode = 'embed';
+				this.isExpanded = true;
+			});
 		} else {
-			this.isPlaying = !this.isPlaying;
+			this.playbackMode = 'embed';
+			this.isPlaying = false;
+			this.isExpanded = true;
+		}
+	}
+
+	/** OS Pause and UI Pause are explicit actions, never a toggle. */
+	pausePlayback(): void {
+		if (this.playbackMode !== 'direct') return;
+		this.streamLoadAbort?.abort();
+		this.streamLoadGeneration += 1;
+		this.isLoading = false;
+		this.engine.pause();
+		this.isPlaying = false;
+		updatePlaybackState(false);
+	}
+
+	/** A deliberate retry keeps the selected track, position, history and queue. */
+	retryPlayback(): void {
+		if (!this.currentTrack || this.isLoading || this.isPlaybackActiveElsewhere) return;
+		this.playbackMode = 'direct';
+		this.playbackReason = null;
+		this.claimPlaybackControlForIntent();
+		void this.loadAndPlayStream(this.currentTrack.id);
+		if (!this.lyrics && !this.lyricsCues.length && !this.isLyricsLoading) {
+			void this.loadLyrics(this.currentTrack.id, this.currentTrack);
 		}
 	}
 
@@ -1301,9 +1319,7 @@ export class PlayerState {
 	seek(seconds: number): void {
 		const target = this.clampToTrack(seconds);
 		this.currentTime = target;
-		if (this.audio && !isNaN(target)) {
-			this.audio.currentTime = target;
-		}
+		this.engine.seek(target);
 		this.lastPersistedPosition = target;
 		this.schedulePersistence();
 	}
@@ -1371,10 +1387,15 @@ export class PlayerState {
 		streamPreloader.preload(queuedTrack.id);
 	}
 
-	addMultipleToQueue(tracks: TrackSummary[]): void {
-		const entries = createQueueEntries(tracks);
+	addMultipleToQueue(tracks: TrackSummary[], provenance?: string): void {
+		if (!tracks.length) return;
+		const wasEmpty = this.queue.length === 0;
+		const entries = createQueueEntries(
+			tracks.map((track) => this.withProvenance(track, provenance))
+		);
 		this.queue.push(...entries);
 		this.coordinator.recordCommand({ type: 'append', entries });
+		if (wasEmpty) streamPreloader.preload(entries[0].id);
 	}
 
 	/** Remove one queue occurrence by its stable entry identity. */
@@ -1489,10 +1510,8 @@ export class PlayerState {
 
 	close(): void {
 		this.streamLoadGeneration += 1;
-		if (this.audio) {
-			this.audio.pause();
-			this.audio.src = '';
-		}
+		this.streamLoadAbort?.abort();
+		this.engine.unload();
 		this.currentTrack = null;
 		this.queue = [];
 		this.history = [];
@@ -1500,6 +1519,8 @@ export class PlayerState {
 		this.recordQueueReplacement();
 		this.isExpanded = false;
 		this.isPlaying = false;
+		this.isLoading = false;
+		this.scrubPosition = null;
 		this.currentTime = 0;
 		this.duration = 0;
 		this.bufferedPercent = 0;
@@ -1512,7 +1533,7 @@ export class PlayerState {
 	}
 
 	/** Restore a server-saved queue once per browser session without auto-playing it. */
-	restorePlaybackState(state: SavedPlaybackState): void {
+	restorePlaybackState(state: SavedPlaybackState, knownUnavailableIds: string[] = []): void {
 		// State seeded by `loadLocalQueueCache` is optimistic only, never a
 		// reason to skip the authoritative restore — only genuine pre-restore
 		// user activity (this flag false, and something already playing/queued)
@@ -1524,6 +1545,14 @@ export class PlayerState {
 		this.hasRestoredPlaybackState = true;
 		this.hasHydratedFromLocalCache = false;
 		this.currentTrack = state.currentTrack;
+		const knownUnavailable = Boolean(
+			state.currentTrack && knownUnavailableIds.includes(state.currentTrack.id)
+		);
+		this.resumeStatus = knownUnavailable
+			? 'unavailable'
+			: state.currentTrack
+				? 'checking'
+				: 'ready';
 		this.queue = state.queue.slice(0, MAX_QUEUE_LENGTH);
 		this.history = state.history.slice(-MAX_HISTORY_LENGTH);
 		this.currentTime = Math.max(0, Math.floor(state.currentTime));
@@ -1541,10 +1570,35 @@ export class PlayerState {
 		}
 
 		if (this.currentTrack) void this.resolveCover(this.currentTrack);
+		if (this.currentTrack && !knownUnavailable)
+			void this.checkResumeAvailability(this.currentTrack.id);
 		this.hydrateTrackMetadata(
 			[...(this.currentTrack ? [this.currentTrack] : []), ...this.queue, ...this.history],
 			MAX_INITIAL_METADATA_HYDRATION
 		);
+	}
+
+	private async checkResumeAvailability(trackId: string): Promise<void> {
+		if (!isBrowser) return;
+		const generation = ++this.resumeCheckGeneration;
+		const result = await streamLoader.load(trackId);
+		if (
+			generation !== this.resumeCheckGeneration ||
+			this.currentTrack?.id !== trackId ||
+			this.isPlaying ||
+			this.isLoading
+		)
+			return;
+		this.resumeStatus = result.ok
+			? 'ready'
+			: result.reason === 'track_unavailable'
+				? 'unavailable'
+				: result.reason === 'plan_no_streaming'
+					? 'plan'
+					: result.requiresAuth || result.reason === 'not_connected'
+						? 'auth'
+						: 'temporary';
+		if (!result.ok) this.playbackReason = result.reason;
 	}
 
 	/**
@@ -1599,6 +1653,10 @@ export class PlayerState {
 	flushPersistence(): void {
 		this.writeLocalQueueCache();
 		this.coordinator.flushPersistence();
+	}
+
+	retryPersistence(): void {
+		this.coordinator.retryAfterServerError();
 	}
 
 	private async persistPlaybackState(): Promise<void> {

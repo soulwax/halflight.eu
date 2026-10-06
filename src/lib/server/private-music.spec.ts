@@ -27,7 +27,7 @@ describe('private music upload parsing', () => {
 		});
 	});
 
-	it('derives its advertised formats from syn.js', () => {
+	it('derives its advertised formats from bragi-audio', () => {
 		expect(PRIVATE_MUSIC_CONTENT_TYPES).toEqual(
 			new Set([
 				'audio/mpeg',

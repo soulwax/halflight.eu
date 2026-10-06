@@ -43,7 +43,7 @@
 		// SPA navigation returns to the desktop listening room.
 		player.origin = 'listening-room';
 		player.applyStreamingSettings(data.streamingSettings);
-		player.restorePlaybackState(data.playbackState);
+		player.restorePlaybackState(data.playbackState, data.knownUnavailableIds);
 	});
 
 	onMount(() => {

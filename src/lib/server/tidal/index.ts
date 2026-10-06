@@ -104,7 +104,7 @@ export {
 	type TidalSegmentCache,
 	type TidalSegmentCacheConfig
 } from './segment-cache-bucket';
-export { getTrackCoverId, tidalArtworkUrl, resetArtworkCache } from './artwork';
+export { getTrackCoverId, getAlbumCoverId, tidalArtworkUrl, resetArtworkCache } from './artwork';
 export {
 	markTrackUnplayable,
 	getUnplayableTrackIds,
@@ -126,10 +126,20 @@ export {
 } from './device-auth';
 export {
 	fetchTrackLyrics,
+	resolveTrackLyrics,
+	resolveLyricsFallbacks,
+	fetchLrclibLyrics,
+	fetchLyricsOvh,
 	parseLrc,
+	stripLrc,
+	cleanTrackTitle,
+	cleanArtistName,
+	__resetLyricsCache,
 	type LyricCue,
 	type TrackLyricsResponse,
-	type ParsedTrackLyrics
+	type ParsedTrackLyrics,
+	type FallbackLyricsOptions,
+	type ResolveTrackLyricsOptions
 } from './lyrics';
 export {
 	fetchAlbumReview,

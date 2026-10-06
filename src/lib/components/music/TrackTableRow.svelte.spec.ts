@@ -1,5 +1,5 @@
 import { page } from 'vitest/browser';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { createRawSnippet } from 'svelte';
 import TrackTableRow from './TrackTableRow.svelte';
@@ -15,7 +15,16 @@ const track: TrackSummary = {
 	album: { id: 'al1', title: 'Random Access Memories', releaseDate: '2013-05-17' }
 };
 
+afterEach(() => vi.unstubAllGlobals());
+
 describe('TrackTableRow.svelte', () => {
+	it('renders a missing cover without starting a separate metadata fetch', async () => {
+		const lookup = vi.fn(() => Promise.reject(new Error('offline')));
+		vi.stubGlobal('fetch', lookup);
+		render(TrackTableRow, { track, columns: ['duration'], onActivate: () => {} });
+		await expect.element(page.getByRole('link', { name: track.title })).toBeInTheDocument();
+		expect(lookup).not.toHaveBeenCalled();
+	});
 	it('shows the title, artist, album, release year and duration', () => {
 		render(TrackTableRow, { track, columns: ['album', 'date', 'duration'], onActivate: () => {} });
 

@@ -14,6 +14,7 @@ function makeEvent(user: { id: string } | null = { id: 'owner-1' }, isAdministra
 	return {
 		locals: { user, isAdministrator },
 		params: { id: '12345' },
+		url: new URL('https://halflight.test/api/tracks/12345/artwork'),
 		fetch: vi.fn(),
 		cookies: {} as unknown as Cookies
 	} as unknown as Parameters<typeof GET>[0];
@@ -34,6 +35,27 @@ describe('GET /api/tracks/[id]/artwork', () => {
 		await expect(GET(makeEvent({ id: 'someone-else' }, false))).rejects.toMatchObject({
 			status: 401
 		});
+	});
+	it('requests the bounded thumbnail size from the CDN', async () => {
+		mocks.getTrackCoverId.mockResolvedValue('a0b1c2d3-e4f5-6789-abcd-ef0123456789');
+		mocks.tidalArtworkUrl.mockReturnValue('https://resources.tidal.com/images/cover/80x80.jpg');
+		vi.mocked(fetch).mockResolvedValue(
+			new Response('image', { headers: { 'content-type': 'image/jpeg' } })
+		);
+		const event = makeEvent();
+		event.url.searchParams.set('size', '80');
+		const response = await GET(event);
+		expect(response.status).toBe(200);
+		expect(mocks.tidalArtworkUrl).toHaveBeenCalledWith(
+			'a0b1c2d3-e4f5-6789-abcd-ef0123456789',
+			'80x80'
+		);
+	});
+	it('rejects arbitrary sizes before resolving provider metadata', async () => {
+		const event = makeEvent();
+		event.url.searchParams.set('size', '../other');
+		await expect(GET(event)).rejects.toMatchObject({ status: 400 });
+		expect(mocks.getTrackCoverId).not.toHaveBeenCalled();
 	});
 
 	it('proxies a valid image without exposing the CDN to the resolver response', async () => {

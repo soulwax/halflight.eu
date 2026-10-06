@@ -10,6 +10,12 @@
 export const PRECACHE_BUDGET_BYTES = 2 * 1024 * 1024; // 2 MiB budget
 export const OFFLINE_FALLBACK_URL = '/offline';
 
+/** SvelteKit's manifest contains relative path records, not URL strings. */
+export function buildPrecacheAssets(entries: ReadonlyArray<{ path: string }>): string[] {
+	const paths = entries.map(({ path }) => (path.startsWith('/') ? path : `/${path}`));
+	return [...new Set([...paths.filter(isPrecacheCandidate), OFFLINE_FALLBACK_URL])];
+}
+
 /**
  * Determines if an incoming HTTP request must bypass the service worker entirely.
  * Bypassed requests fall through to the native network stack without caching.

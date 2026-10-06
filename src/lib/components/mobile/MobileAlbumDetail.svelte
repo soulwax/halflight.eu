@@ -7,6 +7,7 @@
 	import type { AlbumDetail } from '#lib/tidal/models';
 	import type { TidalPageState } from '#lib/tidal/page-state';
 	import MobileSubScreenHeader from './MobileSubScreenHeader.svelte';
+	import MobileDetailRetry from './MobileDetailRetry.svelte';
 	import MobileTrackRow from './MobileTrackRow.svelte';
 
 	let { album, state }: { album: AlbumDetail | null; state: TidalPageState | null } = $props();
@@ -30,11 +31,12 @@
 	function shuffleAll(): void {
 		if (!items.length) return;
 		player.shuffle = true;
-		player.play(items[Math.floor(Math.random() * items.length)], items, provenance);
+		const index = Math.floor(Math.random() * items.length);
+		player.play(items[index], items, provenance, index);
 	}
 
 	function queueAll(): void {
-		for (const track of items) player.addToQueue(track, provenance);
+		player.addMultipleToQueue(items, provenance);
 	}
 </script>
 
@@ -42,6 +44,7 @@
 	<section class="album-detail" aria-labelledby="album-detail-title">
 		<MobileSubScreenHeader
 			backHref={homeHref}
+			contextualBack
 			backLabel={m.now_detail_back()}
 			heading={album.title}
 			subtitle={artistLine}
@@ -78,9 +81,9 @@
 			</div>
 
 			<ul class="album-tracks">
-				{#each items as track (track.id)}
+				{#each items as track, index (`${track.id}:${index}`)}
 					<li>
-						<MobileTrackRow {track} onActivate={() => player.play(track, items, provenance)}>
+						<MobileTrackRow {track} onActivate={() => player.play(track, items, provenance, index)}>
 							{#snippet actions()}
 								<button
 									type="button"
@@ -113,6 +116,7 @@
 	<section class="album-detail" aria-labelledby="album-detail-title">
 		<MobileSubScreenHeader
 			backHref={homeHref}
+			contextualBack
 			backLabel={m.now_detail_back()}
 			heading={m.album_label()}
 			headingId="album-detail-title"
@@ -130,9 +134,7 @@
 		{:else}
 			<div class="notice" role="alert">
 				<p>{m.now_album_unavailable()}</p>
-				<button type="button" class="notice-action" onclick={() => window.location.reload()}>
-					{m.track_retry()}
-				</button>
+				<MobileDetailRetry />
 			</div>
 		{/if}
 	</section>

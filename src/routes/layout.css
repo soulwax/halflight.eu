@@ -719,7 +719,7 @@
 	}
 
 	body {
-		min-width: 20rem;
+		min-width: 320px;
 		margin: 0;
 		background: var(--surface-canvas);
 		color: var(--text-primary);
