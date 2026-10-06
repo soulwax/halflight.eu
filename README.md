@@ -1,6 +1,6 @@
 # Halflight
 
-[![CI](https://github.com/soulwax/Syn/actions/workflows/ci.yml/badge.svg)](https://github.com/soulwax/Syn/actions/workflows/ci.yml)
+[![CI](https://github.com/soulwax/halflight.eu/actions/workflows/ci.yml/badge.svg)](https://github.com/soulwax/halflight.eu/actions/workflows/ci.yml)
 
 A personal, single-user streaming service built on the owner's TIDAL account. See [`AGENTS.md`](AGENTS.md) for the stack,
 commands, and conventions.

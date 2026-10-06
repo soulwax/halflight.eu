@@ -312,7 +312,7 @@ export async function fetchLrclibLyrics(
 	if (!title || !artist) return null;
 
 	const headers = {
-		'User-Agent': 'Syn Music Player (https://github.com/soulwax/Syn)',
+		'User-Agent': 'Halflight Music Player (https://github.com/soulwax/halflight.eu)',
 		accept: 'application/json'
 	};
 

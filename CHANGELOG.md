@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Rebrand the repository to `soulwax/halflight.eu` with homepage `https://halflight.eu`; the `syn` code name is unchanged.
+
 ### Added
 
 - Full lyrics views (desktop panel and mobile screen) now follow the synced line as the song plays and pin the upcoming line as a smaller caption.
