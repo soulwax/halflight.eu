@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import NowPlayingScreen from './NowPlayingScreen.svelte';
 import { player } from '#lib/player/player.svelte.js';
+import { customPlaylists } from '#lib/player/customPlaylists.svelte.js';
+import { createQueueEntry } from '#lib/player/queue-entry.js';
 import { m } from '#lib/paraglide/messages.js';
 import type { TrackSummary } from '#lib/tidal/models';
 
@@ -73,7 +75,7 @@ describe('NowPlayingScreen.svelte', () => {
 			.toBeInTheDocument();
 		await expect.element(page.getByRole('button', { name: m.player_next() })).toBeInTheDocument();
 		await expect
-			.element(page.getByRole('button', { name: m.player_play_track() }))
+			.element(page.getByRole('button', { name: m.player_play_track(), exact: true }))
 			.toBeInTheDocument();
 		await expect
 			.element(page.getByRole('link', { name: m.now_lyrics_open() }))
@@ -179,7 +181,7 @@ describe('mobile Now layout and recovery', () => {
 			title: 'A very long track title that should wrap without pushing the controls out of view'
 		};
 		await render(NowPlayingScreen);
-		const play = page.getByRole('button', { name: m.player_play_track() });
+		const play = page.getByRole('button', { name: m.player_play_track(), exact: true });
 		await expect.element(play).toBeInTheDocument();
 		for (const name of [
 			m.player_shuffle(),
@@ -188,7 +190,10 @@ describe('mobile Now layout and recovery', () => {
 			m.player_next(),
 			m.player_repeat_off()
 		]) {
-			const rect = page.getByRole('button', { name }).element().getBoundingClientRect();
+			const rect = page
+				.getByRole('button', { name, exact: true })
+				.element()
+				.getBoundingClientRect();
 			expect(rect.width).toBeGreaterThanOrEqual(name === m.player_play_track() ? 64 : 48);
 			expect(rect.height).toBeGreaterThanOrEqual(48);
 			expect(rect.left).toBeGreaterThanOrEqual(0);
@@ -224,7 +229,10 @@ describe('mobile Now layout and recovery', () => {
 				m.player_next(),
 				m.player_repeat_off()
 			]) {
-				const rect = page.getByRole('button', { name }).element().getBoundingClientRect();
+				const rect = page
+					.getByRole('button', { name, exact: true })
+					.element()
+					.getBoundingClientRect();
 				expect(rect.top).toBeGreaterThanOrEqual(0);
 				expect(rect.bottom).toBeLessThanOrEqual(height);
 				expect(rect.left).toBeGreaterThanOrEqual(0);
@@ -251,11 +259,125 @@ describe('mobile Now layout and recovery', () => {
 		player.duration = 200;
 		player.requiresFullAuth = false;
 		await render(NowPlayingScreen);
-		await expect.element(page.getByRole('button', { name: m.player_play_track() })).toBeDisabled();
+		await expect
+			.element(page.getByRole('button', { name: m.player_play_track(), exact: true }))
+			.toBeDisabled();
 		await expect.element(page.getByRole('slider', { name: m.player_seek() })).toBeDisabled();
 		await expect
 			.element(page.getByRole('link', { name: m.action_open_in_tidal() }))
 			.toHaveAttribute('href', 'https://tidal.com/browse/track/9');
 		expect(player.currentTrack?.id).toBe('9');
+	});
+});
+
+function pointer(target: Element, type: string, x: number, y: number) {
+	target.dispatchEvent(
+		new PointerEvent(type, {
+			pointerId: 7,
+			isPrimary: true,
+			pointerType: 'touch',
+			clientX: x,
+			clientY: y,
+			bubbles: true
+		})
+	);
+}
+
+describe('Now Playing gestures and Spotify-style affordances', () => {
+	const nextTrack: TrackSummary = {
+		...track,
+		id: '10',
+		title: 'Stigmata Martyr',
+		album: { ...track.album!, id: 'al2' }
+	};
+
+	afterEach(() => {
+		customPlaylists.closeAddToPlaylist();
+	});
+
+	it('offers add-to-playlist beside the title', async () => {
+		player.currentTrack = track;
+		await render(NowPlayingScreen);
+		await page.getByRole('button', { name: m.track_action_add_to_playlist() }).click();
+		expect(customPlaylists.selectedTrackForPlaylist?.id).toBe('9');
+	});
+
+	it('links the playing-from context back to the album', async () => {
+		player.currentTrack = track;
+		await render(NowPlayingScreen);
+		await expect
+			.element(page.getByRole('link', { name: 'Press the Eject', exact: true }))
+			.toHaveAttribute('href', '/albums/al1');
+	});
+
+	it('keeps a long title on one line and scrolls it instead of wrapping', async () => {
+		await page.viewport(320, 640);
+		player.currentTrack = {
+			...track,
+			title: 'A very long track title that cannot possibly fit on one narrow phone line'
+		};
+		await render(NowPlayingScreen);
+		const title = document.querySelector<HTMLElement>('.now-track-title');
+		await expect.poll(() => title?.classList.contains('marquee')).toBe(true);
+		const lineHeight = parseFloat(getComputedStyle(title!).lineHeight);
+		expect(title!.getBoundingClientRect().height).toBeLessThan(lineHeight * 1.5);
+		await page.viewport(1280, 900);
+	});
+
+	it('swipes to the next track, peeking at its cover while dragging', async () => {
+		player.currentTrack = track;
+		player.queue = [createQueueEntry(nextTrack, 'entry-next')];
+		await render(NowPlayingScreen);
+		const art = document.querySelector('.now-artwork-wrap')!;
+
+		pointer(art, 'pointerdown', 300, 300);
+		pointer(art, 'pointermove', 280, 302);
+		pointer(art, 'pointermove', 180, 304);
+		await expect.poll(() => document.querySelector('.now-peek.next img')).toBeTruthy();
+
+		pointer(art, 'pointerup', 180, 304);
+		expect(player.currentTrack?.id).toBe('10');
+		await expect.poll(() => document.querySelector('.now-peek')).toBeNull();
+	});
+
+	it('resists a swipe towards a side with nothing to play', async () => {
+		player.currentTrack = track;
+		player.queue = [];
+		await render(NowPlayingScreen);
+		const art = document.querySelector('.now-artwork-wrap')!;
+
+		pointer(art, 'pointerdown', 300, 300);
+		pointer(art, 'pointermove', 100, 300);
+		const shift = parseFloat(
+			(document.querySelector('.now-artwork') as HTMLElement).style.getPropertyValue('--drag-x')
+		);
+		expect(Math.abs(shift)).toBeLessThanOrEqual(36);
+		expect(document.querySelector('.now-peek')).toBeNull();
+		pointer(art, 'pointerup', 100, 300);
+		expect(player.currentTrack?.id).toBe('9');
+	});
+
+	it('closes when the header is pulled down, without stealing taps from its links', async () => {
+		player.currentTrack = track;
+		await render(NowPlayingScreen);
+		const clicked: string[] = [];
+		const intercept = (event: MouseEvent) => {
+			const link = (event.target as Element).closest('a');
+			if (link) {
+				clicked.push(link.getAttribute('aria-label') ?? link.textContent ?? '');
+				event.preventDefault();
+			}
+		};
+		document.addEventListener('click', intercept, true);
+		try {
+			const header = document.querySelector('.now-header')!;
+			pointer(header, 'pointerdown', 200, 40);
+			pointer(header, 'pointermove', 202, 60);
+			pointer(header, 'pointermove', 204, 220);
+			pointer(header, 'pointerup', 204, 220);
+			expect(clicked).toEqual([m.now_close_player()]);
+		} finally {
+			document.removeEventListener('click', intercept, true);
+		}
 	});
 });

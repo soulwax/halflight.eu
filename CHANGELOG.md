@@ -20,6 +20,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   prominent circular transport with tactile micro-interactions, a bottom utility row for track
   info, credits, and queue count badge, and a signature Spotify Lyrics preview card linked to
   synchronized lyrics.
+- Bring Spotify's Now Playing gestures to Halflight Now. Swiping the cover shows the
+  neighbouring track's artwork peeking in, stiffens where there is nothing to go to, and gives one
+  haptic tick at the point a release would commit. New artwork slides in from the side playback
+  moved to, whether from a swipe, the transport, or a queue pick. Pulling down from the cover
+  or the header now carries the whole sheet with it before closing.
+- Keep the Now Playing title on one line: a long title scrolls back and forth (pausing with
+  playback, static under reduced motion) instead of wrapping into the artwork's space. Add an
+  add-to-playlist button beside it, link the "playing from" album back to its page, and show the
+  utility row as icons only on narrow phones so its labels never wrap.
 - Document the navigation and listening recovery redesign after the iPhone report, including
   mobile entry after sign-in, Now Playing identity taps, resume validation, recovery states,
   content reset scope, and physical-device acceptance gates.

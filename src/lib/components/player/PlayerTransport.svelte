@@ -50,7 +50,7 @@
 		title={m.player_previous()}
 		aria-label={m.player_previous()}
 	>
-		<SkipBack size={16} />
+		<SkipBack size={16} fill={mobile ? 'currentColor' : 'none'} />
 	</button>
 	<button
 		type="button"
@@ -81,7 +81,7 @@
 		title={m.player_next()}
 		aria-label={m.player_next()}
 	>
-		<SkipForward size={16} />
+		<SkipForward size={16} fill={mobile ? 'currentColor' : 'none'} />
 	</button>
 	<button
 		type="button"
@@ -100,7 +100,7 @@
 	.mobile {
 		display: grid;
 		width: 100%;
-		grid-template-columns: 48px 48px 64px 48px 48px;
+		grid-template-columns: 48px 56px 68px 56px 48px;
 		justify-content: space-between;
 		align-items: center;
 		gap: 0;
@@ -112,6 +112,7 @@
 		height: 48px;
 		min-width: 48px;
 		place-items: center;
+		justify-self: center;
 		padding: 0;
 		border: 0;
 		border-radius: var(--radius-full);
@@ -124,24 +125,41 @@
 		transition:
 			transform var(--dur-fast) ease,
 			color var(--dur-fast) ease,
+			background-color var(--dur-fast) ease,
 			opacity var(--dur-fast) ease;
 	}
+	/* Previous / next carry more weight than the mode toggles. */
+	.mobile .t-btn:nth-child(2),
+	.mobile .t-btn:nth-child(4) {
+		width: 56px;
+		height: 56px;
+		color: var(--text-primary);
+	}
+	.mobile .t-btn:hover:not(:disabled):not(.play) {
+		background: color-mix(in oklab, var(--text-primary) 9%, transparent);
+	}
 	.mobile .t-btn:active:not(:disabled) {
-		transform: scale(0.9);
+		transform: scale(0.88);
 	}
 	.mobile .play {
-		width: 64px;
-		height: 64px;
-		background: var(--action);
-		color: var(--action-contrast);
-		box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+		width: 68px;
+		height: 68px;
+		background: var(--text-primary);
+		color: var(--surface-canvas);
+		box-shadow:
+			0 10px 28px -8px rgb(0 0 0 / 0.55),
+			0 0 0 1px color-mix(in oklab, var(--text-primary) 20%, transparent);
 		transition:
-			transform var(--dur-fast) ease,
-			box-shadow var(--dur-fast) ease;
+			transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1),
+			box-shadow var(--dur-fast) ease,
+			opacity var(--dur-fast) ease;
+	}
+	.mobile .play:hover:not(:disabled) {
+		transform: scale(1.04);
 	}
 	.mobile .play:active:not(:disabled) {
-		transform: scale(0.94);
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+		transform: scale(0.92);
+		box-shadow: 0 4px 12px -4px rgb(0 0 0 / 0.45);
 	}
 	.mobile .t-btn.on {
 		color: var(--action);
@@ -149,14 +167,14 @@
 	.mobile .t-btn.on::after {
 		content: '';
 		position: absolute;
-		bottom: 2px;
+		bottom: 4px;
 		width: 4px;
 		height: 4px;
 		border-radius: var(--radius-full);
 		background: currentColor;
 	}
 	.mobile .t-btn:disabled {
-		opacity: 0.45;
+		opacity: 0.38;
 		cursor: default;
 	}
 	.mobile .t-btn:focus-visible {
@@ -164,11 +182,30 @@
 		outline-offset: 2px;
 	}
 	.mobile :global(svg) {
-		width: 23px;
-		height: 23px;
+		width: 22px;
+		height: 22px;
 	}
-	.mobile .play :global(svg) {
+	.mobile .t-btn:nth-child(2) :global(svg),
+	.mobile .t-btn:nth-child(4) :global(svg) {
 		width: 28px;
 		height: 28px;
+	}
+	.mobile .play :global(svg) {
+		width: 30px;
+		height: 30px;
+	}
+	@media (orientation: landscape) and (max-height: 34rem) {
+		.mobile {
+			grid-template-columns: 48px 48px 60px 48px 48px;
+		}
+		.mobile .t-btn:nth-child(2),
+		.mobile .t-btn:nth-child(4) {
+			width: 48px;
+			height: 48px;
+		}
+		.mobile .play {
+			width: 60px;
+			height: 60px;
+		}
 	}
 </style>

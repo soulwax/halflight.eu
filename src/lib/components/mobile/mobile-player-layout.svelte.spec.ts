@@ -44,7 +44,7 @@ it.each([
 		player.persistenceStatus = 'saved';
 		await render(NowPlayingScreen);
 		await expect
-			.element(page.getByRole('button', { name: m.player_play_track() }))
+			.element(page.getByRole('button', { name: m.player_play_track(), exact: true }))
 			.toBeInTheDocument();
 		for (const name of [
 			m.player_shuffle(),
@@ -53,7 +53,10 @@ it.each([
 			m.player_next(),
 			m.player_repeat_off()
 		]) {
-			const rect = page.getByRole('button', { name }).element().getBoundingClientRect();
+			const rect = page
+				.getByRole('button', { name, exact: true })
+				.element()
+				.getBoundingClientRect();
 			expect(rect.width).toBeGreaterThanOrEqual(48);
 			expect(rect.height).toBeGreaterThanOrEqual(48);
 			expect(rect.left).toBeGreaterThanOrEqual(0);
