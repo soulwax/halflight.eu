@@ -12,6 +12,7 @@
 	import { haptics } from '#lib/player/haptics';
 	import PlayerTransport from '#lib/components/player/PlayerTransport.svelte';
 	import PlayerSeekBar from '#lib/components/player/PlayerSeekBar.svelte';
+	import { nextLyricText } from '#lib/player/lyrics-follow.js';
 	import PlaybackStatus from '#lib/components/player/PlaybackStatus.svelte';
 	import TrackActionMenu from '#lib/components/music/TrackActionMenu.svelte';
 	import { MOBILE_PLAYER_NAVIGATION, type MobilePlayerNavigation } from '#lib/mobile/navigation';
@@ -58,12 +59,12 @@
 	});
 
 	// Synced lyrics: show the line being sung and a quieter preview of the next.
-	const syncedIndex = $derived(Math.max(0, player.activeLyricIndex));
+	const syncedIndex = $derived(player.activeLyricIndex);
 	const currentLyric = $derived(
-		player.lyricsCues.length ? player.lyricsCues[syncedIndex]?.text.trim() || '♪' : ''
+		syncedIndex >= 0 ? player.lyricsCues[syncedIndex]?.text.trim() || '♪' : ''
 	);
 	const nextLyric = $derived(
-		player.lyricsCues.length ? (player.lyricsCues[syncedIndex + 1]?.text.trim() ?? '') : ''
+		player.lyricsCues.length ? nextLyricText(player.lyricsCues, syncedIndex) : ''
 	);
 
 	// --- long titles scroll (Spotify-style) instead of wrapping and eating artwork height ---

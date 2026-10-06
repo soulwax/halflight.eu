@@ -4,6 +4,8 @@ import { trackArtworkUrl } from '#lib/tidal/artwork';
 import { qualityTier, type QualityTier } from '#lib/format';
 import { AudioEngine, replayGainToLinear } from 'bragi-audio/player';
 import { assessPlayback, type PlaybackAssessment } from './playback-assessment.js';
+import { activeLyricIndexAt } from './lyrics-follow.js';
+import { lastfmScrobbleThreshold } from './scrobble-policy.js';
 import {
 	setupMediaSessionHandlers,
 	updateMediaMetadata,
@@ -194,9 +196,11 @@ export class PlayerState {
 	// Synchronized Lyrics state
 	lyrics = $state<string | null>(null);
 	lyricsCues = $state<Array<{ time: number; text: string }>>([]);
+	private lyricTime = $state(0);
 	lyricsProvider = $state<string | null>(null);
 	isLyricsLoading = $state(false);
 	isLyricsOpen = $derived(this.isExpanded && this.panel === 'lyrics');
+	private lyricAnimationFrame: number | null = null;
 
 	private readonly engine = new AudioEngine({
 		onTimeUpdate: (currentTime) => this.onTimeUpdate(currentTime),
@@ -204,6 +208,7 @@ export class PlayerState {
 			this.duration = duration;
 			this.hasMediaMetadata = true;
 			this.updateBuffer();
+			this.reportScrobbleWhenEligible();
 		},
 		onProgress: () => this.updateBuffer(),
 		onWaiting: () => {
@@ -212,15 +217,23 @@ export class PlayerState {
 		onPlaying: () => {
 			this.isBuffering = false;
 			this.isPlaying = true;
+			this.startLyricClock();
 			updatePlaybackState(true);
 		},
 		onPlay: () => {
 			this.isPlaying = true;
+			if (!this.trackStartedAt) {
+				this.trackStartedAt = Date.now();
+				this.lastObservedPlaybackTime = this.engine.currentTime;
+			}
+			this.startLyricClock();
 			updatePlaybackState(true);
 			this.reportNowPlaying();
 		},
 		onPause: () => {
 			this.isPlaying = false;
+			this.updateSyncedLyricTime(this.engine.currentTime);
+			this.stopLyricClock();
 			updatePlaybackState(false);
 		},
 		onEnded: () => {
@@ -231,6 +244,7 @@ export class PlayerState {
 			this.playbackReason = 'audio_failed';
 			this.playbackMode = 'embed';
 			this.isPlaying = false;
+			this.stopLyricClock();
 			this.isLoading = false;
 			this.isBuffering = false;
 			updatePlaybackState(false);
@@ -238,6 +252,8 @@ export class PlayerState {
 		onWake: () => {
 			// Re-sync the lock-screen controls the OS may have dropped while hidden.
 			if (this.currentTrack) {
+				this.updateSyncedLyricTime(this.engine.currentTime);
+				this.startLyricClock();
 				updateMediaMetadata(this.currentTrack);
 				updatePlaybackState(this.isPlaying);
 				updatePositionState({ duration: this.duration, position: this.currentTime });
@@ -300,7 +316,7 @@ export class PlayerState {
 	private lastObservedPlaybackTime = 0;
 	private listenedSeconds = 0;
 	private reportedNowPlaying = false;
-	private scrobbledCurrentTrack = false;
+	private scrobbleSubmittedCurrentTrack = false;
 	private metadataCache = new SvelteMap<string, TrackSummary>();
 	private metadataRequests = new SvelteMap<string, Promise<void>>();
 	/** Attempts spent on a transient failure; absent/0 means "not yet tried". */
@@ -596,6 +612,39 @@ export class PlayerState {
 		if (percent !== null) this.bufferedPercent = percent;
 	}
 
+	private updateSyncedLyricTime(time: number): void {
+		if (!Number.isFinite(time)) return;
+		const currentIndex = activeLyricIndexAt(this.lyricsCues, this.lyricTime);
+		if (activeLyricIndexAt(this.lyricsCues, time) !== currentIndex) this.lyricTime = time;
+	}
+
+	private startLyricClock(): void {
+		if (
+			!isBrowser ||
+			typeof requestAnimationFrame !== 'function' ||
+			!this.isPlaying ||
+			!this.lyricsCues.length ||
+			this.lyricAnimationFrame !== null
+		) {
+			return;
+		}
+		const tick = () => {
+			this.lyricAnimationFrame = null;
+			if (!this.isPlaying || !this.lyricsCues.length) return;
+			this.updateSyncedLyricTime(this.engine.currentTime);
+			this.lyricAnimationFrame = requestAnimationFrame(tick);
+		};
+		this.lyricAnimationFrame = requestAnimationFrame(tick);
+	}
+
+	private stopLyricClock(): void {
+		if (this.lyricAnimationFrame === null) return;
+		if (typeof cancelAnimationFrame === 'function') {
+			cancelAnimationFrame(this.lyricAnimationFrame);
+		}
+		this.lyricAnimationFrame = null;
+	}
+
 	/**
 	 * Mirror the `<audio>` position into reactive state — but never while a new
 	 * track is still loading. The outgoing track keeps firing `timeupdate` during
@@ -606,6 +655,7 @@ export class PlayerState {
 		if (this.isLoading) return;
 		if (Number.isNaN(currentTime)) return;
 		this.currentTime = currentTime;
+		this.updateSyncedLyricTime(currentTime);
 		this.updateBuffer();
 		updatePositionState({ duration: this.duration, position: this.currentTime });
 
@@ -615,7 +665,7 @@ export class PlayerState {
 		}
 
 		const elapsed = this.currentTime - this.lastObservedPlaybackTime;
-		if (elapsed > 0 && elapsed <= 5) this.listenedSeconds += elapsed;
+		if (this.isPlaying && elapsed > 0 && elapsed <= 5) this.listenedSeconds += elapsed;
 		this.lastObservedPlaybackTime = this.currentTime;
 		this.reportScrobbleWhenEligible();
 		if (Math.abs(this.currentTime - this.lastPersistedPosition) >= 15) {
@@ -681,14 +731,7 @@ export class PlayerState {
 		})
 	);
 
-	activeLyricIndex = $derived.by(() => {
-		if (!this.lyricsCues.length) return -1;
-		const time = this.currentTime;
-		for (let i = this.lyricsCues.length - 1; i >= 0; i--) {
-			if (time >= this.lyricsCues[i].time) return i;
-		}
-		return 0;
-	});
+	activeLyricIndex = $derived(activeLyricIndexAt(this.lyricsCues, this.lyricTime));
 
 	play(
 		track: TrackSummary,
@@ -754,15 +797,17 @@ export class PlayerState {
 		this.resumeCheckGeneration += 1;
 		this.resumeStatus = 'ready';
 		this.currentTime = 0;
+		this.lyricTime = 0;
+		this.stopLyricClock();
 		// A scrub preview belongs to the track being dragged. If playback advances
 		// before the pointer is released, drop it rather than committing the old
 		// position against the incoming track.
 		this.scrubPosition = null;
-		this.trackStartedAt = Date.now();
+		this.trackStartedAt = 0;
 		this.lastObservedPlaybackTime = 0;
 		this.listenedSeconds = 0;
 		this.reportedNowPlaying = false;
-		this.scrobbledCurrentTrack = false;
+		this.scrobbleSubmittedCurrentTrack = false;
 		this.duration = track.duration || 0;
 		this.hasMediaMetadata = false;
 		this.streamUrl = null;
@@ -804,7 +849,9 @@ export class PlayerState {
 			artist,
 			track: track.title,
 			...(track.album?.title ? { album: track.album.title } : {}),
-			...(track.duration ? { duration: track.duration } : {}),
+			...((track.duration || this.duration) > 0
+				? { duration: track.duration || this.duration }
+				: {}),
 			...(track.trackNumber ? { trackNumber: track.trackNumber } : {})
 		};
 	}
@@ -825,26 +872,39 @@ export class PlayerState {
 
 	private reportScrobbleWhenEligible(): void {
 		const track = this.currentTrack;
-		if (
-			!isBrowser ||
-			!track ||
-			this.scrobbledCurrentTrack ||
-			!track.duration ||
-			track.duration <= 30
-		) {
+		const threshold = lastfmScrobbleThreshold(track?.duration || this.duration);
+		if (!isBrowser || !track || this.scrobbleSubmittedCurrentTrack || threshold === null) {
 			return;
 		}
-		if (this.listenedSeconds < Math.min(track.duration / 2, 4 * 60)) return;
+		if (this.listenedSeconds < threshold) return;
 		const payload = this.lastfmPayload();
 		if (!payload) return;
-		this.scrobbledCurrentTrack = true;
-		void fetch('/api/lastfm/scrobble', {
-			method: 'POST',
-			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({ ...payload, playedAt: this.trackStartedAt })
-		}).catch(() => {
-			// The next playback is independent of a temporary Last.fm outage.
-		});
+		this.scrobbleSubmittedCurrentTrack = true;
+		void this.sendLastfmScrobble(
+			JSON.stringify({ ...payload, playedAt: this.trackStartedAt || Date.now() })
+		);
+	}
+
+	private async sendLastfmScrobble(body: string, retry = 0): Promise<void> {
+		try {
+			const response = await fetch('/api/lastfm/scrobble', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body
+			});
+			if (response.status === 503 && retry === 0) {
+				// Retry one explicit temporary provider failure. A lost browser
+				// response is ambiguous, so it is not blindly replayed.
+				setTimeout(() => void this.sendLastfmScrobble(body, 1), 5000);
+				return;
+			}
+			if (!response.ok) return;
+			const result = (await response.json().catch(() => null)) as { ok?: boolean } | null;
+			if (result?.ok !== true) return;
+		} catch {
+			// The upstream outcome is unknown after a network failure; don't risk a
+			// duplicate scrobble by replaying a request that may have succeeded.
+		}
 	}
 
 	/**
@@ -1027,17 +1087,21 @@ export class PlayerState {
 				if (data) {
 					this.lyrics = data.lyrics || null;
 					this.lyricsCues = data.cues || [];
+					this.lyricTime = this.engine.currentTime;
 					this.lyricsProvider = data.lyricsProvider || null;
+					this.startLyricClock();
 					return;
 				}
 			}
 			this.lyrics = null;
 			this.lyricsCues = [];
+			this.stopLyricClock();
 			this.lyricsProvider = null;
 		} catch {
 			if (this.currentTrack?.id === trackId) {
 				this.lyrics = null;
 				this.lyricsCues = [];
+				this.stopLyricClock();
 				this.lyricsProvider = null;
 			}
 		} finally {

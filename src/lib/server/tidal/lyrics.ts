@@ -129,6 +129,12 @@ export function parseLrc(lrcContent: string | null | undefined): LyricCue[] {
 
 	const lines = lrcContent.split(/\r?\n/);
 	const cues: LyricCue[] = [];
+	const offsetMatch = lrcContent.match(/\[offset:\s*([+-]?\d+)\]/i);
+	const offsetMilliseconds = offsetMatch ? Number(offsetMatch[1]) : 0;
+	const offsetSeconds =
+		Number.isFinite(offsetMilliseconds) && Math.abs(offsetMilliseconds) <= 600_000
+			? offsetMilliseconds / 1000
+			: 0;
 
 	// Match timestamp tag: [mm:ss.xx] or [mm:ss.xxx] or [m:s.xx]
 	const tagRegex = /\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?\]/g;
@@ -149,10 +155,13 @@ export function parseLrc(lrcContent: string | null | undefined): LyricCue[] {
 				else if (match[3].length === 2) ms = parseInt(match[3], 10) * 10;
 				else ms = parseInt(match[3].slice(0, 3), 10);
 			}
-			timestamps.push(minutes * 60 + seconds + ms / 1000);
+			timestamps.push(Math.max(0, minutes * 60 + seconds + ms / 1000 + offsetSeconds));
 		}
 
-		const text = trimmed.replace(tagRegex, '').trim();
+		const text = trimmed
+			.replace(/\[offset:\s*[+-]?\d+\]/i, '')
+			.replace(tagRegex, '')
+			.trim();
 		for (const time of timestamps) {
 			cues.push({ time, text });
 		}

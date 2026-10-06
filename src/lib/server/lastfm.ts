@@ -31,6 +31,11 @@ interface LastfmConnectionRecord {
 	lastScrobbledAt: Date | null;
 }
 
+export type LastfmScrobbleResult =
+	| { status: 'accepted'; accepted: number; ignored: number }
+	| { status: 'ignored'; accepted: number; ignored: number; ignoredCode?: number }
+	| { status: 'disabled'; accepted: 0; ignored: 0 };
+
 export class LastfmError extends Error {
 	constructor(
 		message: string,
@@ -165,6 +170,39 @@ export async function disconnectLastfm(userId: string): Promise<void> {
 	await db.delete(lastfmConnection).where(eq(lastfmConnection.userId, userId));
 }
 
+/** Last.fm returns successful HTTP responses even when it filters a scrobble. */
+export function parseLastfmScrobbleResult(payload: unknown): LastfmScrobbleResult {
+	if (!payload || typeof payload !== 'object' || !('scrobbles' in payload)) {
+		throw new LastfmError('Last.fm did not confirm the scrobble.');
+	}
+	const scrobbles = (payload as { scrobbles?: { '@attr'?: unknown; scrobble?: unknown } })
+		.scrobbles;
+	const attributes = scrobbles?.['@attr'];
+	if (!attributes || typeof attributes !== 'object') {
+		throw new LastfmError('Last.fm did not confirm the scrobble.');
+	}
+	const counts = attributes as { accepted?: unknown; ignored?: unknown };
+	const accepted = Number(counts.accepted);
+	const ignored = Number(counts.ignored);
+	if (!Number.isInteger(accepted) || accepted < 0 || !Number.isInteger(ignored) || ignored < 0) {
+		throw new LastfmError('Last.fm returned an invalid scrobble result.');
+	}
+	if (accepted > 0) return { status: 'accepted', accepted, ignored };
+
+	const scrobble = scrobbles?.scrobble;
+	const ignoredMessage =
+		scrobble && typeof scrobble === 'object'
+			? (scrobble as { ignoredMessage?: { code?: unknown } }).ignoredMessage
+			: undefined;
+	const ignoredCode = Number(ignoredMessage?.code);
+	return {
+		status: 'ignored',
+		accepted,
+		ignored,
+		...(Number.isInteger(ignoredCode) && ignoredCode > 0 ? { ignoredCode } : {})
+	};
+}
+
 export async function reportNowPlaying(userId: string, input: LastfmTrackInput): Promise<void> {
 	const connected = await sessionKeyForUser(userId);
 	if (!connected?.row.nowPlayingEnabled) return;
@@ -182,9 +220,12 @@ export async function reportNowPlaying(userId: string, input: LastfmTrackInput):
 	}
 }
 
-export async function scrobble(userId: string, input: LastfmTrackInput): Promise<void> {
+export async function scrobble(
+	userId: string,
+	input: LastfmTrackInput
+): Promise<LastfmScrobbleResult> {
 	const connected = await sessionKeyForUser(userId);
-	if (!connected?.row.scrobbleEnabled) return;
+	if (!connected?.row.scrobbleEnabled) return { status: 'disabled', accepted: 0, ignored: 0 };
 	const artist = cleanText(input.artist, 'Artist');
 	const track = cleanText(input.track, 'Track');
 	const playedAt = Number(input.playedAt);
@@ -205,9 +246,15 @@ export async function scrobble(userId: string, input: LastfmTrackInput): Promise
 	if (input.duration && input.duration > 0) params.duration = String(Math.floor(input.duration));
 	if (input.trackNumber && input.trackNumber > 0)
 		params.trackNumber = String(Math.floor(input.trackNumber));
-	await signedPost('track.scrobble', params);
-	await db
-		.update(lastfmConnection)
-		.set({ lastScrobbledAt: new Date(), updatedAt: new Date() })
-		.where(eq(lastfmConnection.userId, userId));
+	const result = parseLastfmScrobbleResult(await signedPost<unknown>('track.scrobble', params));
+	if (result.status === 'accepted') {
+		// This timestamp is informational only. A successful upstream scrobble must
+		// remain successful even if this best-effort settings update is unavailable.
+		await db
+			.update(lastfmConnection)
+			.set({ lastScrobbledAt: new Date(), updatedAt: new Date() })
+			.where(eq(lastfmConnection.userId, userId))
+			.catch(() => undefined);
+	}
+	return result;
 }

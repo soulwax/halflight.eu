@@ -14,8 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Per-listener request budgets (`429` with `Retry-After`): tighter for search, stream
   metadata, playlist import/sync and taste generation, generous for audio Range requests,
   so one listener cannot exhaust the shared TIDAL app's quota.
+- Lyrics now select the active cue against the media clock at cue boundaries, including
+  offset-adjusted LRC timestamps and the first upcoming line before lyrics begin.
 
 ### Changed
+
+- Last.fm scrobbles now use the media duration when catalogue duration is absent, count only
+  actual playback time, and return whether Last.fm accepted or filtered each submission.
 
 - Export hand-off objects are stored under the owner's prefix, so one listener can never
   fetch or delete another's export even with its id.

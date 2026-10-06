@@ -67,6 +67,16 @@ describe('lyrics parser and client (translated from tiddl)', () => {
 		expect(cues[2]).toEqual({ time: 60, text: 'Line at one minute' });
 	});
 
+	it('applies LRC millisecond offsets before sorting cues', () => {
+		expect(parseLrc('[offset:+1500]\n[00:02.00] later\n[00:01.00] earlier')).toEqual([
+			{ time: 2.5, text: 'earlier' },
+			{ time: 3.5, text: 'later' }
+		]);
+		expect(parseLrc('[offset:-2500]\n[00:01.00] begins at zero')).toEqual([
+			{ time: 0, text: 'begins at zero' }
+		]);
+	});
+
 	it('fetches track lyrics and parses cues', async () => {
 		const mockApiResponse = {
 			trackId: 12345,

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PlayerState } from './player.svelte';
+import { lastfmScrobbleThreshold } from './scrobble-policy';
 import type { TrackSummary } from '#lib/tidal/models';
 import type { QueueEntry } from './queue-entry';
 
@@ -1567,8 +1568,10 @@ describe('PlayerState', () => {
 		});
 	});
 
-	it('scrobbles once after enough continuous listening time', async () => {
-		const fetchSpy = vi.fn(() => Promise.resolve(new Response(JSON.stringify({ ok: true }))));
+	it('submits one scrobble once Last.fm eligibility is reached', async () => {
+		const fetchSpy = vi.fn(() =>
+			Promise.resolve(new Response(JSON.stringify({ ok: true, status: 'accepted' })))
+		);
 		vi.stubGlobal('fetch', fetchSpy);
 		const player = new PlayerState();
 		player.currentTrack = {
@@ -1579,6 +1582,7 @@ describe('PlayerState', () => {
 		const internal = player as unknown as {
 			listenedSeconds: number;
 			trackStartedAt: number;
+			scrobbleSubmittedCurrentTrack: boolean;
 			reportScrobbleWhenEligible: () => void;
 		};
 		internal.listenedSeconds = 50;
@@ -1592,6 +1596,64 @@ describe('PlayerState', () => {
 			)
 		);
 		expect(fetchSpy).toHaveBeenCalledOnce();
+		expect(internal.scrobbleSubmittedCurrentTrack).toBe(true);
+	});
+
+	it('uses the media duration when catalogue duration is missing', async () => {
+		const fetchSpy = vi.fn(() =>
+			Promise.resolve(new Response(JSON.stringify({ ok: true, status: 'accepted' })))
+		);
+		vi.stubGlobal('fetch', fetchSpy);
+		const player = new PlayerState();
+		player.currentTrack = sampleTrack1;
+		player.duration = 100;
+		const internal = player as unknown as {
+			listenedSeconds: number;
+			reportScrobbleWhenEligible: () => void;
+		};
+		internal.listenedSeconds = 50;
+
+		internal.reportScrobbleWhenEligible();
+		await vi.waitFor(() => expect(fetchSpy).toHaveBeenCalledOnce());
+		expect(fetchSpy).toHaveBeenCalledWith(
+			'/api/lastfm/scrobble',
+			expect.objectContaining({ method: 'POST' })
+		);
+	});
+
+	it('does not count paused position changes as listening time', () => {
+		const player = new PlayerState();
+		const internal = player as unknown as {
+			listenedSeconds: number;
+			onTimeUpdate: (time: number) => void;
+		};
+		player.isPlaying = false;
+		internal.onTimeUpdate(20);
+		expect(internal.listenedSeconds).toBe(0);
+	});
+
+	it('enforces Last.fm track-length and listen-time thresholds', () => {
+		expect(lastfmScrobbleThreshold(30)).toBeNull();
+		expect(lastfmScrobbleThreshold(45)).toBe(30.001);
+		expect(lastfmScrobbleThreshold(120)).toBe(60);
+		expect(lastfmScrobbleThreshold(600)).toBe(240);
+		expect(lastfmScrobbleThreshold(Number.NaN)).toBeNull();
+	});
+
+	it('updates the active lyric from media timestamps and follows rewinds', () => {
+		const player = new PlayerState();
+		player.lyricsCues = [
+			{ time: 1, text: 'First line' },
+			{ time: 2, text: 'Second line' }
+		];
+		const updateTime = (player as unknown as { onTimeUpdate: (time: number) => void }).onTimeUpdate;
+
+		updateTime.call(player, 1.5);
+		expect(player.activeLyricIndex).toBe(0);
+		updateTime.call(player, 2);
+		expect(player.activeLyricIndex).toBe(1);
+		updateTime.call(player, 0.5);
+		expect(player.activeLyricIndex).toBe(-1);
 	});
 
 	it('dragTo clamps the floating window inside the viewport', () => {
