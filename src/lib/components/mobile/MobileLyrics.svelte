@@ -4,6 +4,8 @@
 	import { m } from '#lib/paraglide/messages.js';
 	import { formatClock } from '#lib/format';
 	import { player } from '#lib/player/player.svelte.js';
+	import { followActiveLyric } from '#lib/player/lyrics-follow.js';
+	import LyricsNextCaption from '#lib/components/player/LyricsNextCaption.svelte';
 	import MobileSubScreenHeader from './MobileSubScreenHeader.svelte';
 
 	const track = $derived(player.currentTrack);
@@ -32,6 +34,7 @@
 				<button
 					type="button"
 					class:active={player.activeLyricIndex === index}
+					use:followActiveLyric={player.activeLyricIndex === index}
 					onclick={() => player.seek(cue.time)}
 				>
 					<span>{formatClock(cue.time)}</span>{cue.text || '♪'}
@@ -41,6 +44,7 @@
 		{#if player.lyricsProvider}
 			<p class="provider">{m.player_lyrics_provider({ provider: player.lyricsProvider })}</p>
 		{/if}
+		<LyricsNextCaption />
 	{:else if player.lyrics}
 		<div class="plain">
 			{#each player.lyrics.split('\n') as line, index (index)}<p>{line || ' '}</p>{/each}

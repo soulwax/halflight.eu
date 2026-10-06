@@ -525,6 +525,7 @@
 	"player_no_lyrics": "Kein Songtext für diesen Titel gefunden.",
 	"player_lyrics_provider": "Songtext via {provider}",
 	"player_lyrics_instrumental": "Instrumentalstück — kein Songtext",
+	"player_lyrics_next": "Nächste Zeile",
 	"player_idle": "Nichts wird abgespielt",
 	"player_idle_cta": "Etwas zum Abspielen finden",
 	"player_source_tidal": "Wiedergabe über TIDAL.",

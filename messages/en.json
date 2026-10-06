@@ -525,6 +525,7 @@
 	"player_no_lyrics": "No lyrics found for this track.",
 	"player_lyrics_provider": "Lyrics via {provider}",
 	"player_lyrics_instrumental": "Instrumental track — no lyrics",
+	"player_lyrics_next": "Next line",
 	"player_idle": "Nothing playing",
 	"player_idle_cta": "Find something to play",
 	"player_source_tidal": "Playing via TIDAL.",
