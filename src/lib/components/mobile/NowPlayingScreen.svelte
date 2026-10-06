@@ -13,7 +13,6 @@
 	import PlayerTransport from '#lib/components/player/PlayerTransport.svelte';
 	import PlayerSeekBar from '#lib/components/player/PlayerSeekBar.svelte';
 	import PlaybackStatus from '#lib/components/player/PlaybackStatus.svelte';
-	import SessionSaveStatus from '#lib/components/player/SessionSaveStatus.svelte';
 	import TrackActionMenu from '#lib/components/music/TrackActionMenu.svelte';
 	import { MOBILE_PLAYER_NAVIGATION, type MobilePlayerNavigation } from '#lib/mobile/navigation';
 	import {
@@ -311,7 +310,6 @@
 
 		{#if track}
 			<div class="now-header-actions">
-				<SessionSaveStatus mobile />
 				<TrackActionMenu {track} mobile />
 			</div>
 		{:else}

@@ -70,7 +70,10 @@
 
 	<div class="flex items-center justify-between border-b border-(--border-subtle) pb-2">
 		<span class="text-xs tracking-wide text-(--text-muted) uppercase">{m.player_next_up()}</span>
-		<div class="queue-toolbar-actions"><SessionSaveStatus mobile /><QueueActions /></div>
+		<div class="queue-toolbar-actions">
+			<SessionSaveStatus mobile compactText />
+			<QueueActions />
+		</div>
 	</div>
 
 	{#if items.length === 0}

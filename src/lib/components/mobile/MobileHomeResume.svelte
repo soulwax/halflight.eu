@@ -5,7 +5,6 @@
 	import { player } from '#lib/player/player.svelte.js';
 	import { trackArtworkUrl } from '#lib/tidal/artwork';
 	import MobileScreenHeader from './MobileScreenHeader.svelte';
-	import SessionSaveStatus from '#lib/components/player/SessionSaveStatus.svelte';
 
 	const track = $derived(player.currentTrack);
 	const cover = $derived(trackArtworkUrl(track, 320));
@@ -61,7 +60,6 @@
 					<a class="resume-open" href={resolve('/(mobile)/now')}>{m.now_open_full_player()}</a>
 				</span>
 			</div>
-			<div class="resume-status"><SessionSaveStatus mobile /></div>
 		</section>
 	{:else}
 		<section class="empty-state" aria-label={m.now_home_continue_heading()}>
@@ -207,10 +205,6 @@
 		outline: 2px solid var(--focus-ring);
 		outline-offset: 3px;
 	}
-	.resume-status {
-		margin-top: 0.75rem;
-	}
-
 	.empty-state {
 		display: grid;
 		justify-items: start;

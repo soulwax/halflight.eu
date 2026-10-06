@@ -10,8 +10,8 @@
 	import MiniPlayer from '#lib/components/mobile/MiniPlayer.svelte';
 	import MobileNavigationMenu from '#lib/components/mobile/MobileNavigationMenu.svelte';
 	import NowTabBar from '#lib/components/mobile/NowTabBar.svelte';
+	import MobileRecovery from '#lib/components/mobile/MobileRecovery.svelte';
 	import PlaylistDialog from '#lib/components/music/PlaylistDialog.svelte';
-	import PlaybackStatus from '#lib/components/player/PlaybackStatus.svelte';
 	import {
 		managesMobileScroll,
 		mobileScrollKey,
@@ -99,6 +99,7 @@
 	const isFullNowPlaying = $derived(
 		page.route.id === '/(mobile)/now' && Boolean(player.currentTrack)
 	);
+	const isQueueRoute = $derived(page.route.id === '/(mobile)/now/queue');
 	const showChrome = $derived(!isOnNowRoute || !player.currentTrack);
 </script>
 
@@ -111,9 +112,7 @@
 			</a>
 		</header>
 	{/if}
-	{#if !isFullNowPlaying}
-		<PlaybackStatus mobile attentionOnly />
-	{/if}
+	<MobileRecovery includePlayback={!isFullNowPlaying} includeQueueSync={!isQueueRoute} />
 	<main
 		bind:this={mainElement}
 		id="main-content"

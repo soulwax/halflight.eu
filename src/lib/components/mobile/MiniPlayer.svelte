@@ -5,7 +5,6 @@
 	import { player } from '#lib/player/player.svelte.js';
 	import { haptics } from '#lib/player/haptics.js';
 	import { trackArtworkUrl } from '#lib/tidal/artwork';
-	import SessionSaveStatus from '#lib/components/player/SessionSaveStatus.svelte';
 
 	let { safeArea = false }: { safeArea?: boolean } = $props();
 	const track = $derived(player.currentTrack);
@@ -76,9 +75,6 @@
 				{/if}
 			</span>
 		</a>
-		{#if player.persistenceStatus !== 'saved'}
-			<div class="mini-save-status"><SessionSaveStatus mobile /></div>
-		{/if}
 		<button
 			type="button"
 			class="flex h-12 w-12 shrink-0 items-center justify-center text-(--text-primary)"
@@ -122,14 +118,6 @@
 		background: color-mix(in oklab, var(--surface-raised) 88%, transparent);
 		backdrop-filter: blur(18px) saturate(1.3);
 		-webkit-backdrop-filter: blur(18px) saturate(1.3);
-	}
-	.mini-save-status {
-		position: absolute;
-		z-index: 1;
-		left: 2rem;
-		top: 0.25rem;
-		border-radius: var(--radius-full);
-		background: var(--surface-raised);
 	}
 	.mobile-mini-player a {
 		min-height: 48px;

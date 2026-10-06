@@ -276,3 +276,16 @@ Server tests cover local-save defaults, retry identity and OAuth return boundari
 Still open: physical iOS/Android sound, browser/PWA safe areas and keyboards, lock-screen commands,
 and a complete contrast/screen-reader/theme review. Swipe gestures and optional effects remain
 outside the initial delivery. The broader screen-by-screen polish is tracked in the parent plan.
+
+## Cross-screen playback recovery — 2026-10-06
+
+Playback errors now remain actionable in the shared Halflight Now shell while moving between Home,
+Search, Library, details, queue, lyrics, and credits. The recovery strip carries the relevant action
+for an unavailable track, expired or missing playback access, a TIDAL plan restriction, a temporary
+stream failure, embed fallback, or playback owned by another device. Queue-save recovery appears
+beside playback recovery in the shared shell, remains available without a current track, and keeps
+its existing detail/retry dialog separate from audio status.
+Home no longer repeats the same playback alert beneath its Resume card, and the mini player's
+transport yields to the shared recovery action when playback needs intervention. Full-screen Now
+Playing keeps its detailed in-context status. Automated checks pass; physical-device acceptance
+remains open.

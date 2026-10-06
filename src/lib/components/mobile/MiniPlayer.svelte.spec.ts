@@ -67,7 +67,7 @@ describe('MiniPlayer.svelte', () => {
 		await expect.element(page.getByRole('button', { name: m.player_pause() })).toBeInTheDocument();
 	});
 
-	it('keeps track and transport space stable when a save needs attention', async () => {
+	it('keeps track and transport space stable while queue recovery lives in the shell', async () => {
 		player.currentTrack = track;
 		player.persistenceStatus = 'saved';
 		const { container } = render(MiniPlayer);
@@ -76,10 +76,9 @@ describe('MiniPlayer.svelte', () => {
 		await expect.element(link).toBeInTheDocument();
 		const width = link.element().getBoundingClientRect().width;
 		player.persistenceStatus = 'offline';
-		const status = page.getByRole('button', { name: m.player_sync_local() });
-		await expect.element(status).toBeInTheDocument();
-		expect(status.element().closest('a')).toBeNull();
+		await expect
+			.element(page.getByRole('button', { name: m.player_sync_local() }))
+			.not.toBeInTheDocument();
 		expect(link.element().getBoundingClientRect().width).toBe(width);
-		await expect.element(page.getByText(m.player_sync_local())).not.toBeInTheDocument();
 	});
 });

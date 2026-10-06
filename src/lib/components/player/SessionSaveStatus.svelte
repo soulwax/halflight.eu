@@ -6,7 +6,8 @@
 	import Button from '#lib/components/ui/Button.svelte';
 	import Dialog from '#lib/components/ui/Dialog.svelte';
 
-	let { mobile = false }: { mobile?: boolean } = $props();
+	let { mobile = false, compactText = false }: { mobile?: boolean; compactText?: boolean } =
+		$props();
 	let open = $state(false);
 	const status = $derived(player.persistenceStatus);
 	const delayed = $derived(status === 'offline' || status === 'server_error');
@@ -40,6 +41,7 @@
 	{#if status === 'saved' || status === 'saving'}
 		<span
 			class="save-indicator"
+			class:with-text={compactText}
 			class:saving={status === 'saving'}
 			role="status"
 			aria-label={label}
@@ -47,11 +49,13 @@
 		>
 			{#if status === 'saving'}<CloudUpload size={16} aria-hidden="true" />
 			{:else}<CloudCheck size={16} aria-hidden="true" />{/if}
+			{#if compactText}<span class="status-text">{label}</span>{/if}
 		</span>
 	{:else}
 		<button
 			type="button"
 			class="save-indicator"
+			class:with-text={compactText}
 			onclick={() => (open = true)}
 			aria-label={label}
 			title={label}
@@ -60,6 +64,7 @@
 			{#if status === 'buffered'}<CloudUpload size={16} aria-hidden="true" />
 			{:else if delayed}<CloudOff size={16} aria-hidden="true" />
 			{:else}<CloudAlert size={16} aria-hidden="true" />{/if}
+			{#if compactText}<span class="status-text">{label}</span>{/if}
 		</button>
 	{/if}
 </div>
@@ -94,6 +99,20 @@
 	.mobile .save-indicator {
 		width: 2rem;
 		height: 2rem;
+	}
+	.mobile .save-indicator.with-text {
+		display: inline-flex;
+		width: auto;
+		min-height: 48px;
+		height: auto;
+		justify-content: flex-start;
+		gap: 0.5rem;
+		padding-inline: 0.25rem;
+		text-align: left;
+	}
+	.status-text {
+		font-size: var(--fs-xs);
+		line-height: 1.35;
 	}
 	button {
 		cursor: pointer;
