@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Export hand-off objects are stored under the owner's prefix, so one listener can never
+  fetch or delete another's export even with its id.
+- `AGENTS.md`, `CLAUDE.md`, `MASTERPLAN.md` and the README now describe Halflight as an open,
+  multi-listener service with per-user isolation.
 - Product routes, API handlers and the TIDAL/Last.fm connection flows are now open to every
   signed-in, active user (`locals.isListener`); only `/app/admin` still requires an
   administrator. Each listener uses their own TIDAL connection and data.

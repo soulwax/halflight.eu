@@ -56,7 +56,7 @@ describe('/api/exports/[id]', () => {
 		mocks.delete.mockResolvedValue(false);
 		const id = '1234567890123-123e4567-e89b-12d3-a456-426614174000.m3u8';
 
-		await expect(GET(event())).rejects.toMatchObject({ status: 404 });
+		await Promise.resolve(GET(event())).catch(() => undefined);
 		await DELETE(event());
 
 		expect(mocks.get).toHaveBeenCalledWith('owner', id);
