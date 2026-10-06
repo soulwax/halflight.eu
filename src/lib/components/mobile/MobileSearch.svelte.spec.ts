@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { m } from '#lib/paraglide/messages.js';
 import { player } from '#lib/player/player.svelte.js';
+import { MobileSearchSession, MOBILE_SEARCH_SESSION } from '#lib/mobile/search-session.svelte.js';
 import MobileSearch from './MobileSearch.svelte';
 
 const mocks = vi.hoisted(() => ({ goto: vi.fn() }));
@@ -73,6 +74,35 @@ describe('MobileSearch.svelte', () => {
 		screen.unmount();
 		window.history.replaceState(window.history.state, '', originalUrl);
 		expect(mocks.goto).not.toHaveBeenCalled();
+	});
+
+	it('shows the last successful results when the search field is cleared', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockImplementation(resultsResponse));
+		render(MobileSearch);
+		const input = page.getByRole('searchbox');
+		await input.fill('previous search');
+		await expect.element(page.getByText(track.title)).toBeInTheDocument();
+
+		await input.fill('');
+		await expect
+			.element(page.getByText(m.now_search_last_results({ query: 'previous search' })))
+			.toBeInTheDocument();
+		await expect.element(page.getByText(track.title)).toBeInTheDocument();
+	});
+
+	it('restores the last results when returning to Search after a mobile route change', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockImplementation(resultsResponse));
+		const context = new Map([[MOBILE_SEARCH_SESSION, new MobileSearchSession()]]);
+		const firstVisit = render(MobileSearch, { context });
+		await page.getByRole('searchbox').fill('return path');
+		await expect.element(page.getByText(track.title)).toBeInTheDocument();
+		await firstVisit.unmount();
+
+		render(MobileSearch, { context });
+		await expect
+			.element(page.getByText(m.now_search_last_results({ query: 'return path' })))
+			.toBeInTheDocument();
+		await expect.element(page.getByText(track.title)).toBeInTheDocument();
 	});
 
 	it('turns a stalled search into a retryable failure', async () => {

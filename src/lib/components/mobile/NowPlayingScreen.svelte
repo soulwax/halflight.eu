@@ -511,8 +511,9 @@
 		isolation: isolate;
 		display: flex;
 		flex-direction: column;
+		/* Exactly the shell's height; a viewport unit here could disagree with it. */
 		height: 100%;
-		max-height: 100dvh;
+		max-height: 100%;
 		min-height: 100%;
 		box-sizing: border-box;
 		/* Close sits a few px below the status bar / Dynamic Island, not flush with it. */

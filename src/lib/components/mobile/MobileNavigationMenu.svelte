@@ -120,11 +120,12 @@
 
 	:global(.dialog-content.mobile-menu-sheet) {
 		top: 0;
+		bottom: 0;
 		left: 0;
 		width: min(21rem, calc(100% - 3rem));
 		max-width: none;
-		max-height: 100dvh;
-		height: 100dvh;
+		max-height: none;
+		height: auto;
 		transform: none;
 		border-width: 0 1px 0 0;
 		border-radius: 0;

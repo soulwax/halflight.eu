@@ -680,6 +680,7 @@
 	"now_search_label": "Search your music",
 	"now_search_placeholder": "Artist, album, track, or playlist",
 	"now_search_prompt": "Search for something to play.",
+	"now_search_last_results": "Last search · {query}",
 	"now_search_unavailable": "Search is unavailable. Try again.",
 	"now_search_provenance": "Search · {query}",
 	"now_queue_open": "Open queue",

@@ -14,6 +14,8 @@
 	import NowTabBar from '#lib/components/mobile/NowTabBar.svelte';
 	import MobileRecovery from '#lib/components/mobile/MobileRecovery.svelte';
 	import PlaylistDialog from '#lib/components/music/PlaylistDialog.svelte';
+	import { MobileSearchSession, MOBILE_SEARCH_SESSION } from '#lib/mobile/search-session.svelte.js';
+	import { readMobileViewportBox, setMobileViewportBox } from '#lib/mobile/viewport-height.js';
 	import {
 		managesMobileScroll,
 		mobileScrollKey,
@@ -29,11 +31,13 @@
 
 	let { data, children }: { data: LayoutData; children: Snippet } = $props();
 	let mainElement: HTMLElement;
+	let shellElement: HTMLElement;
 	const scrollPositions = new SvelteMap<string, number>();
 	const playerNavigation = $state<MobilePlayerNavigation>({ returnTo: resolve('/(mobile)/home') });
 	setContext(MOBILE_PLAYER_NAVIGATION, playerNavigation);
 	const detailReturnTargets = new SvelteMap<string, string>();
 	setContext(MOBILE_DETAIL_NAVIGATION, { returnTargets: detailReturnTargets });
+	setContext(MOBILE_SEARCH_SESSION, new MobileSearchSession());
 
 	// Halflight Now writes are attributed separately from the desktop Listening
 	// Room (see player.svelte.ts's `origin` field / MASTERPLAN's session
@@ -46,7 +50,27 @@
 
 	onMount(() => {
 		player.startSessionSync();
-		return () => player.flushPersistence();
+		const visualViewport = window.visualViewport;
+		const syncViewportHeight = () => {
+			setMobileViewportBox(
+				shellElement,
+				readMobileViewportBox(window.visualViewport, window.innerHeight)
+			);
+		};
+		syncViewportHeight();
+		visualViewport?.addEventListener('resize', syncViewportHeight);
+		visualViewport?.addEventListener('scroll', syncViewportHeight);
+		window.addEventListener('resize', syncViewportHeight);
+		window.addEventListener('orientationchange', syncViewportHeight);
+		window.addEventListener('pageshow', syncViewportHeight);
+		return () => {
+			visualViewport?.removeEventListener('resize', syncViewportHeight);
+			visualViewport?.removeEventListener('scroll', syncViewportHeight);
+			window.removeEventListener('resize', syncViewportHeight);
+			window.removeEventListener('orientationchange', syncViewportHeight);
+			window.removeEventListener('pageshow', syncViewportHeight);
+			player.flushPersistence();
+		};
 	});
 
 	// "The mini player grows into Now Playing" (MASTERPLAN.md). Scoped to this
@@ -115,6 +139,7 @@
 </script>
 
 <div
+	bind:this={shellElement}
 	class="mobile-shell flex flex-col bg-(--surface-canvas) text-(--text-primary)"
 	onfocusout={resetWindowScroll}
 >
@@ -162,13 +187,16 @@
 	}
 
 	.mobile-shell {
-		--mobile-shell-height: 100vh;
 		/* Header controls sit this far below the safe area, not flush against it. */
 		--mobile-header-offset: 0.375rem;
+		/* JS refreshes these from visualViewport as browser chrome, keyboard and
+		   orientation change. Viewport units are only the pre-hydration fallback;
+		   some iOS standalone versions report a stale 100dvh/100lvh value. */
 		position: fixed;
-		inset: 0 0 auto;
-		height: var(--mobile-shell-height);
-		min-height: var(--mobile-shell-height);
+		top: var(--mobile-viewport-top, 0px);
+		inset-inline: 0;
+		height: var(--mobile-viewport-height, 100vh);
+		min-height: 0;
 		overflow: hidden;
 		/* No double-tap zoom; pinch zoom stays available. */
 		touch-action: manipulation;
@@ -186,15 +214,7 @@
 
 	@supports (height: 100dvh) {
 		.mobile-shell {
-			--mobile-shell-height: 100dvh;
-		}
-	}
-
-	@supports (height: 100lvh) {
-		@media (display-mode: standalone) {
-			.mobile-shell {
-				--mobile-shell-height: 100lvh;
-			}
+			height: var(--mobile-viewport-height, 100dvh);
 		}
 	}
 
@@ -238,9 +258,10 @@
 		overflow-x: hidden;
 	}
 
-	/* Now's queue, lyrics and credits hide the app header, so they own the safe area. */
+	/* Now's queue, lyrics and credits hide the app header, so they own the safe area;
+	   their own top padding already spaces the back control below it. */
 	.mobile-scroll-region.no-chrome {
-		padding-top: calc(env(safe-area-inset-top) + var(--mobile-header-offset));
+		padding-top: env(safe-area-inset-top);
 	}
 
 	.mobile-scroll-region.full-now {

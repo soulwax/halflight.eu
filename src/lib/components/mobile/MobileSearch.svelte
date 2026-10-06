@@ -2,9 +2,10 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { Album, Loader2, Search, UserRound } from '@lucide/svelte';
-	import { onDestroy, onMount } from 'svelte';
+	import { getContext, onDestroy, onMount } from 'svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { player } from '#lib/player/player.svelte.js';
+	import { MobileSearchSession, MOBILE_SEARCH_SESSION } from '#lib/mobile/search-session.svelte.js';
 	import MobileScreenHeader from './MobileScreenHeader.svelte';
 	import MobileTrackRow from './MobileTrackRow.svelte';
 
@@ -17,6 +18,8 @@
 	} from '#lib/tidal/models';
 
 	const MINIMUM_QUERY_LENGTH = 2;
+	const searchSession =
+		getContext<MobileSearchSession | undefined>(MOBILE_SEARCH_SESSION) ?? new MobileSearchSession();
 	const EMPTY_RESULTS: SearchResultGroups = {
 		tracks: [],
 		albums: [],
@@ -38,13 +41,18 @@
 	let requestVersion = 0;
 
 	const trimmedQuery = $derived(query.trim());
-	const hasResults = $derived(
+	const showingLastSearch = $derived(
+		trimmedQuery.length < MINIMUM_QUERY_LENGTH && searchSession.lastResults !== null
+	);
+	const visibleResults = $derived(showingLastSearch ? searchSession.lastResults : results);
+	const visibleQuery = $derived(showingLastSearch ? searchSession.lastQuery : trimmedQuery);
+	const hasVisibleResults = $derived(
 		Boolean(
-			results &&
-			(results.tracks.length ||
-				results.albums.length ||
-				results.artists.length ||
-				results.playlists.length)
+			visibleResults &&
+			(visibleResults.tracks.length ||
+				visibleResults.albums.length ||
+				visibleResults.artists.length ||
+				visibleResults.playlists.length)
 		)
 	);
 
@@ -72,7 +80,7 @@
 	}
 
 	function searchFromQuery(searchQuery: string, delay = 250): void {
-		results = null;
+		results = searchSession.lastQuery === searchQuery ? searchSession.lastResults : null;
 		error = null;
 		cancelSearch();
 		if (searchQuery.length < MINIMUM_QUERY_LENGTH) return;
@@ -141,7 +149,9 @@
 			const body = (await response.json()) as { results?: SearchResultGroups };
 			signal.throwIfAborted();
 			if (version === requestVersion) {
-				results = body.results ?? EMPTY_RESULTS;
+				const nextResults = body.results ?? EMPTY_RESULTS;
+				results = nextResults;
+				searchSession.remember(searchQuery, nextResults);
 			}
 		} catch (cause) {
 			if (
@@ -160,7 +170,7 @@
 
 	function play(track: TrackSummary): void {
 		cancelRadio();
-		player.play(track, results?.tracks, m.now_search_provenance({ query: trimmedQuery }));
+		player.play(track, visibleResults?.tracks, m.now_search_provenance({ query: visibleQuery }));
 	}
 
 	async function startRadio(track: TrackSummary): Promise<void> {
@@ -240,7 +250,13 @@
 		</div>
 	</form>
 
-	{#if trimmedQuery.length < MINIMUM_QUERY_LENGTH}
+	{#if showingLastSearch}
+		<p class="last-search-label" role="status">
+			{m.now_search_last_results({ query: searchSession.lastQuery })}
+		</p>
+	{/if}
+
+	{#if trimmedQuery.length < MINIMUM_QUERY_LENGTH && !showingLastSearch}
 		<p class="state-message">{m.now_search_prompt()}</p>
 	{:else if error === 'not_connected'}
 		<p class="state-message" role="status">{m.search_not_connected_title()}</p>
@@ -250,21 +266,21 @@
 	{:else if error === 'unavailable'}
 		<p class="state-message" role="alert">{m.now_search_unavailable()}</p>
 		<button class="recovery-action" type="button" onclick={submit}>{m.track_retry()}</button>
-	{:else if isSearching}
+	{:else if isSearching && !visibleResults}
 		<p class="state-message" role="status">{m.search_live_searching()}</p>
-	{:else if !isSearching && results && !hasResults}
-		<p class="state-message" role="status">{m.search_no_results_title({ query: trimmedQuery })}</p>
-	{:else if results}
+	{:else if !isSearching && visibleResults && !hasVisibleResults}
+		<p class="state-message" role="status">{m.search_no_results_title({ query: visibleQuery })}</p>
+	{:else if visibleResults}
 		<div class="result-groups">
-			{#if results.tracks.length}
+			{#if visibleResults.tracks.length}
 				<section aria-labelledby="mobile-search-tracks">
 					<h2 id="mobile-search-tracks">{m.search_tracks()}</h2>
 					<div class="track-list">
-						{#each results.tracks as track (track.id)}
+						{#each visibleResults.tracks as track (track.id)}
 							<MobileTrackRow
 								{track}
-								contextTracks={results.tracks}
-								provenance={m.now_search_provenance({ query: trimmedQuery })}
+								contextTracks={visibleResults.tracks}
+								provenance={m.now_search_provenance({ query: visibleQuery })}
 								onActivate={() => play(track)}
 								onStartRadio={() => startRadio(track)}
 								radioDisabled={startingRadioId !== null}
@@ -274,23 +290,23 @@
 				</section>
 			{/if}
 
-			{#if results.albums.length || results.artists.length || results.playlists.length}
+			{#if visibleResults.albums.length || visibleResults.artists.length || visibleResults.playlists.length}
 				<section aria-labelledby="mobile-search-catalogue">
 					<h2 id="mobile-search-catalogue">{m.search_title()}</h2>
 					<div class="catalogue-list">
-						{#each results.albums as album (album.id)}
+						{#each visibleResults.albums as album (album.id)}
 							<a href={resultHref(album)} class="catalogue-result">
 								<Album size={18} aria-hidden="true" />
 								<span><strong>{album.title}</strong><small>{artistLine(album)}</small></span>
 							</a>
 						{/each}
-						{#each results.artists as artist (artist.id)}
+						{#each visibleResults.artists as artist (artist.id)}
 							<a href={resultHref(artist)} class="catalogue-result">
 								<UserRound size={18} aria-hidden="true" />
 								<span><strong>{artist.name}</strong><small>{m.search_artists()}</small></span>
 							</a>
 						{/each}
-						{#each results.playlists as playlist (playlist.id)}
+						{#each visibleResults.playlists as playlist (playlist.id)}
 							<a href={resultHref(playlist)} class="catalogue-result">
 								<Album size={18} aria-hidden="true" />
 								<span
@@ -357,6 +373,12 @@
 		padding: 2.5rem 0.25rem;
 		color: var(--text-muted);
 		text-align: center;
+	}
+	.last-search-label {
+		margin-top: 1.1rem;
+		padding-inline: 0.25rem;
+		color: var(--text-muted);
+		font-size: var(--fs-sm);
 	}
 	.result-groups {
 		display: grid;
