@@ -515,7 +515,8 @@
 		max-height: 100dvh;
 		min-height: 100%;
 		box-sizing: border-box;
-		padding: calc(0.35rem + env(safe-area-inset-top)) max(1.25rem, env(safe-area-inset-right))
+		/* Close sits a few px below the status bar / Dynamic Island, not flush with it. */
+		padding: calc(0.75rem + env(safe-area-inset-top)) max(1.25rem, env(safe-area-inset-right))
 			calc(0.5rem + env(safe-area-inset-bottom)) max(1.25rem, env(safe-area-inset-left));
 		overflow-x: hidden;
 		overflow-y: auto;
@@ -1258,7 +1259,7 @@
 	@media (orientation: landscape) and (max-height: 34rem),
 		(min-width: 40rem) and (max-height: 34rem) {
 		.now-screen {
-			padding: calc(0.2rem + env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right))
+			padding: calc(0.45rem + env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right))
 				calc(0.25rem + env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left));
 		}
 

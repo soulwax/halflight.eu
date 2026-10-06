@@ -97,6 +97,15 @@
 		});
 	});
 
+	// The shell is pinned to the viewport and only <main> scrolls, but iOS Safari
+	// still scrolls the window to reveal a focused field and can leave it offset
+	// once the keyboard closes. Snap it back so the app never sits shifted.
+	function resetWindowScroll() {
+		requestAnimationFrame(() => {
+			if (window.scrollX || window.scrollY) window.scrollTo(0, 0);
+		});
+	}
+
 	const isOnNowRoute = $derived(isNowRoute(page.url.pathname));
 	const isFullNowPlaying = $derived(
 		page.route.id === '/(mobile)/now' && Boolean(player.currentTrack)
@@ -105,7 +114,10 @@
 	const showChrome = $derived(!isOnNowRoute || !player.currentTrack);
 </script>
 
-<div class="mobile-shell flex flex-col bg-(--surface-canvas) text-(--text-primary)">
+<div
+	class="mobile-shell flex flex-col bg-(--surface-canvas) text-(--text-primary)"
+	onfocusout={resetWindowScroll}
+>
 	{#if showChrome}
 		<header class="mobile-app-header flex shrink-0 items-center gap-1">
 			<MobileNavigationMenu currentPath={page.url.pathname} />
@@ -120,6 +132,7 @@
 		id="main-content"
 		class="mobile-scroll-region min-h-0 flex-1 overflow-y-auto"
 		class:full-now={isFullNowPlaying}
+		class:no-chrome={!showChrome && !isFullNowPlaying}
 	>
 		{#if !isFullNowPlaying}
 			<ConnectTidalNotice
@@ -139,11 +152,28 @@
 <PlaylistDialog />
 
 <style>
+	/* No leeway: the document itself never scrolls, bounces or pans. Only <main>
+	   (and sheets) scroll, and they don't chain their overscroll into the page. */
+	:global(html:has(.mobile-shell)),
+	:global(body:has(.mobile-shell)) {
+		height: 100%;
+		overflow: hidden;
+		overscroll-behavior: none;
+	}
+
 	.mobile-shell {
 		--mobile-shell-height: 100vh;
+		/* Header controls sit this far below the safe area, not flush against it. */
+		--mobile-header-offset: 0.375rem;
+		position: fixed;
+		inset: 0 0 auto;
 		height: var(--mobile-shell-height);
 		min-height: var(--mobile-shell-height);
 		overflow: hidden;
+		/* No double-tap zoom; pinch zoom stays available. */
+		touch-action: manipulation;
+		-webkit-text-size-adjust: 100%;
+		text-size-adjust: 100%;
 		background:
 			radial-gradient(
 				120% 44% at 50% -8%,
@@ -168,14 +198,20 @@
 		}
 	}
 
+	/* iOS zooms the page into any focused field under 16px. */
+	.mobile-shell :global(:is(input:not([type='range']), textarea, select)) {
+		font-size: max(1rem, 16px);
+	}
+
 	.mobile-app-header {
-		min-height: calc(3.25rem + env(safe-area-inset-top));
-		padding-top: env(safe-area-inset-top);
+		min-height: calc(3.25rem + var(--mobile-header-offset) + env(safe-area-inset-top));
+		padding-top: calc(env(safe-area-inset-top) + var(--mobile-header-offset));
+		padding-right: max(0.4rem, env(safe-area-inset-right));
+		padding-left: max(0.4rem, env(safe-area-inset-left));
 		border-bottom: 1px solid color-mix(in oklab, var(--border-subtle) 82%, transparent);
 		background: color-mix(in oklab, var(--surface-raised) 84%, transparent);
 		backdrop-filter: blur(18px) saturate(1.35);
 		-webkit-backdrop-filter: blur(18px) saturate(1.35);
-		padding-inline: 0.4rem;
 	}
 
 	.mobile-brand {
@@ -197,10 +233,14 @@
 
 	.mobile-scroll-region {
 		padding-bottom: env(safe-area-inset-bottom);
-		overscroll-behavior-y: contain;
-		-webkit-overflow-scrolling: touch;
+		overscroll-behavior: contain;
 		scrollbar-width: none;
 		overflow-x: hidden;
+	}
+
+	/* Now's queue, lyrics and credits hide the app header, so they own the safe area. */
+	.mobile-scroll-region.no-chrome {
+		padding-top: calc(env(safe-area-inset-top) + var(--mobile-header-offset));
 	}
 
 	.mobile-scroll-region.full-now {
