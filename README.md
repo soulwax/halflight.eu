@@ -2,8 +2,9 @@
 
 [![CI](https://github.com/soulwax/halflight.eu/actions/workflows/ci.yml/badge.svg)](https://github.com/soulwax/halflight.eu/actions/workflows/ci.yml)
 
-Halflight ([halflight.eu](https://halflight.eu)) is a personal, single-user listening room built on the owner's own
-TIDAL account. The player and its listening session (now playing, queue, history and resume position) are the
+Halflight ([halflight.eu](https://halflight.eu)) is a listening room built around TIDAL. Anyone can deploy their own
+copy, and the goal for the hosted site is that anyone can sign in at halflight.eu with a free TIDAL account and
+start listening. The player and its listening session (now playing, queue, history and resume position) are the
 product; every route exists to feed it. _Syn_ is the code name, so the package, tables, env vars and API paths keep
 `syn`.
 
@@ -13,6 +14,9 @@ product; every route exists to feed it. _Syn_ is the code name, so the package, 
 
 ## Features
 
+- **Open to everyone (in progress)** — self-hosting is supported today. Multi-user sign-in on halflight.eu with each
+  listener's own TIDAL account is the direction, not yet the behaviour: the TIDAL connection and product routes are
+  currently tied to a single owner (see below).
 - **Two sites, one session** — a desktop Listening Room (`/app`) and a mobile PWA, Halflight Now, sharing one
   player and one server-authoritative playback session (queue, history and position survive reloads and devices).
 - **Direct playback** — audio is proxied through the server, with Range support and automatic quality fallback
@@ -41,8 +45,8 @@ pnpm db:migrate
 pnpm dev                 # port per ORIGIN in .env, default :3000
 ```
 
-Sign-up is open but privilege is not: the account matching `ADMIN_USERNAME` becomes the owner, and only
-administrators can use the product routes.
+Sign-up is open. Today the account matching `ADMIN_USERNAME` becomes the owner, and only administrators can use
+the product routes; opening them to every signed-in listener is the planned change.
 
 ### Commands
 
@@ -63,7 +67,8 @@ lint, unit tests, Storybook tests and a build on every push and pull request.
 
 ## TIDAL connection
 
-Halflight keeps two independent, encrypted, auto-refreshing TIDAL tokens in the single-row `tidal_auth` table. All
+Halflight keeps two independent, encrypted, auto-refreshing TIDAL tokens, currently in the single-row `tidal_auth`
+table (one TIDAL account per deployment; per-listener storage is the planned change). All
 token logic lives under [`src/lib/server/tidal/`](src/lib/server/tidal) and never reaches the browser.
 
 | Token    | Flow                                             | Used for                               |
