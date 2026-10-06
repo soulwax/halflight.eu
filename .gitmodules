@@ -1,6 +1,0 @@
-[submodule "bragi-audio"]
-	path = bragi-audio
-	url = https://github.com/soulwax/bragi-audio.git
-[submodule "bragi"]
-	path = bragi
-	url = https://github.com/soulwax/bragi-cli.git
