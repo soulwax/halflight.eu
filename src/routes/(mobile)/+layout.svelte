@@ -15,7 +15,11 @@
 	import MobileRecovery from '#lib/components/mobile/MobileRecovery.svelte';
 	import PlaylistDialog from '#lib/components/music/PlaylistDialog.svelte';
 	import { MobileSearchSession, MOBILE_SEARCH_SESSION } from '#lib/mobile/search-session.svelte.js';
-	import { readMobileViewportBox, setMobileViewportBox } from '#lib/mobile/viewport-height.js';
+	import {
+		readMobileViewportBox,
+		setMobileViewportBox,
+		standaloneBottomInset
+	} from '#lib/mobile/viewport-height.js';
 	import {
 		managesMobileScroll,
 		mobileScrollKey,
@@ -55,6 +59,21 @@
 			window.matchMedia('(display-mode: standalone)').matches ||
 			(window.navigator as Navigator & { standalone?: boolean }).standalone === true;
 		if (standalone) document.documentElement.classList.add('mobile-standalone');
+		// env() is only readable through layout, so a hidden probe reports the inset.
+		const insetProbe = document.createElement('div');
+		insetProbe.setAttribute('aria-hidden', 'true');
+		insetProbe.style.cssText =
+			'position:fixed;left:0;bottom:0;width:0;height:0;visibility:hidden;pointer-events:none;padding-bottom:env(safe-area-inset-bottom,0px)';
+		if (standalone) document.body.append(insetProbe);
+		const syncBottomInset = () => {
+			if (!standalone) return;
+			const safeBottom = Number.parseFloat(getComputedStyle(insetProbe).paddingBottom) || 0;
+			const inset = standaloneBottomInset(safeBottom, window.screen, {
+				width: window.innerWidth,
+				height: window.innerHeight
+			});
+			shellElement.style.setProperty('--mobile-bottom-inset', `${inset}px`);
+		};
 		const syncViewportHeight = () => {
 			const activeElement = document.activeElement;
 			const hasEditableFocus =
@@ -76,6 +95,7 @@
 					keyboardOpen
 				})
 			);
+			syncBottomInset();
 		};
 		syncViewportHeight();
 		visualViewport?.addEventListener('resize', syncViewportHeight);
@@ -85,6 +105,7 @@
 		window.addEventListener('pageshow', syncViewportHeight);
 		return () => {
 			document.documentElement.classList.remove('mobile-standalone');
+			insetProbe.remove();
 			visualViewport?.removeEventListener('resize', syncViewportHeight);
 			visualViewport?.removeEventListener('scroll', syncViewportHeight);
 			window.removeEventListener('resize', syncViewportHeight);
@@ -218,6 +239,11 @@
 	.mobile-shell {
 		/* Header controls sit this far below the safe area, not flush against it. */
 		--mobile-header-offset: 0.375rem;
+		/* What the tab bar and mini player pad below themselves. The browser keeps
+		   the whole home-indicator inset; the installed app drops whatever part of
+		   it the window already ends above (see standaloneBottomInset), so the
+		   navigation sits at the bottom edge instead of floating over spare space. */
+		--mobile-bottom-inset: env(safe-area-inset-bottom, 0px);
 		/* JS refreshes these from visualViewport as browser chrome, keyboard and
 		   orientation change. Viewport units are only the pre-hydration fallback;
 		   some iOS standalone versions report a stale 100dvh/100lvh value. */
@@ -281,7 +307,7 @@
 	}
 
 	.mobile-scroll-region {
-		padding-bottom: env(safe-area-inset-bottom);
+		padding-bottom: var(--mobile-bottom-inset);
 		overscroll-behavior: contain;
 		scrollbar-width: none;
 		overflow-x: hidden;

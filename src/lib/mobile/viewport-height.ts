@@ -43,3 +43,28 @@ export function setMobileViewportBox(element: HTMLElement, box: MobileViewportBo
 	element.style.setProperty('--mobile-viewport-height', `${height}px`);
 	element.style.setProperty('--mobile-viewport-top', `${offsetTop}px`);
 }
+
+/**
+ * Bottom padding the installed app's tab bar and mini player still need.
+ *
+ * In the browser the bottom chrome pads by the whole `safe-area-inset-bottom`.
+ * An installed iOS app can instead end its window above the home-indicator
+ * strip (that strip is painted to match the navigation), so padding by the full
+ * inset as well counts the same space twice and floats the navigation high
+ * above the bottom edge. Subtract whatever the screen already leaves below the
+ * window. iOS keeps `screen` in portrait axes, so compare against the side that
+ * matches the current orientation.
+ */
+export function standaloneBottomInset(
+	safeAreaBottom: number,
+	screen: Pick<Screen, 'width' | 'height'>,
+	viewport: { width: number; height: number }
+): number {
+	if (!Number.isFinite(safeAreaBottom) || safeAreaBottom <= 0) return 0;
+	const long = Math.max(screen.width, screen.height);
+	const short = Math.min(screen.width, screen.height);
+	const screenExtent = viewport.width > viewport.height ? short : long;
+	if (!Number.isFinite(screenExtent) || screenExtent <= 0) return safeAreaBottom;
+	const stripBelowWindow = Math.max(0, screenExtent - viewport.height);
+	return Math.max(0, safeAreaBottom - stripBelowWindow);
+}

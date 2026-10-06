@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import { readMobileViewportBox, setMobileViewportBox } from './viewport-height';
+import {
+	readMobileViewportBox,
+	setMobileViewportBox,
+	standaloneBottomInset
+} from './viewport-height';
 
 describe('readMobileViewportBox', () => {
 	it('prefers the visible viewport and retains its offset', () => {
@@ -47,5 +51,30 @@ describe('setMobileViewportBox', () => {
 		});
 		expect(setProperty).toHaveBeenNthCalledWith(1, '--mobile-viewport-height', '640.44px');
 		expect(setProperty).toHaveBeenNthCalledWith(2, '--mobile-viewport-top', '11.56px');
+	});
+});
+
+describe('standaloneBottomInset', () => {
+	const iPhone15 = { width: 393, height: 852 };
+
+	it('drops the padding when the window already ends above the home indicator', () => {
+		expect(standaloneBottomInset(34, iPhone15, { width: 393, height: 818 })).toBe(0);
+	});
+
+	it('keeps the controls clear of the indicator when the window covers it', () => {
+		expect(standaloneBottomInset(34, iPhone15, { width: 393, height: 852 })).toBe(34);
+		expect(standaloneBottomInset(34, iPhone15, { width: 393, height: 840 })).toBe(22);
+	});
+
+	it('measures landscape against the short side, as iOS keeps screen in portrait', () => {
+		expect(standaloneBottomInset(21, iPhone15, { width: 852, height: 393 })).toBe(21);
+		expect(standaloneBottomInset(21, iPhone15, { width: 852, height: 372 })).toBe(0);
+	});
+
+	it('needs no padding without a bottom inset and keeps it when the screen is unknown', () => {
+		expect(standaloneBottomInset(0, iPhone15, { width: 393, height: 818 })).toBe(0);
+		expect(standaloneBottomInset(34, { width: 0, height: 0 }, { width: 393, height: 818 })).toBe(
+			34
+		);
 	});
 });

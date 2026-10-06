@@ -62,7 +62,8 @@
 		font-weight: 700;
 	}
 	.mobile-tab-bar {
-		padding-bottom: env(safe-area-inset-bottom);
+		/* Set by the mobile shell: the full inset in a browser, less in the PWA. */
+		padding-bottom: var(--mobile-bottom-inset, env(safe-area-inset-bottom));
 		/* Landscape: keep the outer tabs clear of the notch / Dynamic Island. */
 		padding-inline: env(safe-area-inset-left) env(safe-area-inset-right);
 		border-top: 1px solid var(--border-subtle);

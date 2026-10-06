@@ -81,6 +81,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- In the installed mobile app the tab bar and the mini player above it sit at the bottom edge
+  instead of floating over unused space. Where iOS already ends the app window above the
+  home-indicator strip, they no longer pad by the safe-area inset a second time; in the browser
+  they keep the full inset.
 - The full-screen player no longer reloads its artwork and re-fades the backdrop shortly after a
   track starts. A track's artwork URL is now canonical: once a track enters playback its
   `imageUrl` is used verbatim, late metadata no longer re-addresses it, and `trackArtworkUrl` no
