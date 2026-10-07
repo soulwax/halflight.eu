@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getContext } from 'svelte';
+	import { getContext, type Snippet } from 'svelte';
 	import { page } from '$app/state';
 	import { ChevronLeft } from '@lucide/svelte';
 	import {
@@ -23,6 +23,10 @@
 		lead?: string;
 		/** Wires up an external `aria-labelledby`. */
 		headingId?: string;
+		/** Controls aligned to the end of the header row (icon buttons). */
+		actions?: Snippet;
+		/** Tighter spacing below the header, for dense list screens. */
+		dense?: boolean;
 	}
 
 	let {
@@ -32,7 +36,9 @@
 		heading,
 		subtitle,
 		lead,
-		headingId
+		headingId,
+		actions,
+		dense = false
 	}: Props = $props();
 	const detailNavigation = getContext<MobileDetailNavigation | undefined>(MOBILE_DETAIL_NAVIGATION);
 	const destination = $derived(
@@ -40,7 +46,7 @@
 	);
 </script>
 
-<header class="mobile-subscreen-header">
+<header class="mobile-subscreen-header" class:dense>
 	<a class="back" href={destination} aria-label={backLabel}>
 		<ChevronLeft size={20} aria-hidden="true" />
 	</a>
@@ -52,6 +58,9 @@
 			<p class="lead">{lead}</p>
 		{/if}
 	</div>
+	{#if actions}
+		<div class="actions">{@render actions()}</div>
+	{/if}
 </header>
 
 <style>
@@ -78,8 +87,21 @@
 		outline-offset: -3px;
 	}
 
+	.mobile-subscreen-header.dense {
+		margin-bottom: 0.5rem;
+	}
+
 	.copy {
 		min-width: 0;
+		flex: 1;
+	}
+
+	.actions {
+		display: flex;
+		flex: none;
+		align-items: center;
+		gap: 0.125rem;
+		margin-right: -0.5rem;
 	}
 
 	h1 {

@@ -57,7 +57,7 @@ describe('QueueScene.svelte', () => {
 		expect(player.currentTrack?.id).toBe('2');
 	});
 
-	it('keeps complete names readable at phone width with compact controls', async () => {
+	it("keeps dense two-line rows at phone width with names in each row's accessible name", async () => {
 		const title = 'A long recording title that needs more than one line';
 		const artist = 'An artist with a complete and very long name';
 		const album = 'An album title that must remain readable in the queue';
@@ -66,36 +66,36 @@ describe('QueueScene.svelte', () => {
 				...mk('1', title),
 				artists: [{ id: 'artist-1', name: artist }],
 				album: { id: 'album-1', title: album }
-			})
+			}),
+			entry('2', 'Two')
 		];
 		const { container } = await render(QueueScene);
 		container.style.width = '320px';
-		for (const name of [title, artist, album]) {
-			await expect.element(page.getByText(name, { exact: true })).toBeVisible();
-			const text = page.getByText(name, { exact: true }).element();
-			expect(getComputedStyle(text).whiteSpace).toBe('normal');
-			expect(text.scrollWidth).toBeLessThanOrEqual(text.clientWidth);
-		}
+		const play = page.getByRole('button', { name: new RegExp(`^${title}`) });
+		await expect.element(play).toBeInTheDocument();
+		// Truncated visually, complete for assistive technology.
+		expect(play.element().textContent).toContain(artist);
+		expect(play.element().textContent).toContain(album);
 		const row = container.querySelector('.mobile-track-row')!;
+		expect(row.getBoundingClientRect().height).toBeLessThanOrEqual(60);
 		expect(row.scrollWidth).toBeLessThanOrEqual(row.clientWidth);
-		expect(
-			container.querySelector('.queue-row-controls')!.getBoundingClientRect().width
-		).toBeLessThanOrEqual(68);
-		const up = page
-			.getByRole('button', { name: m.player_move_up() })
-			.element()
-			.getBoundingClientRect();
-		expect(up.width).toBeGreaterThanOrEqual(32);
-		expect(up.height).toBeGreaterThanOrEqual(32);
+		for (const name of [m.player_move_up(), m.player_move_down(), m.player_remove_from_queue()]) {
+			const rect = page.getByRole('button', { name }).first().element().getBoundingClientRect();
+			expect(rect.width).toBeGreaterThanOrEqual(24);
+			expect(rect.height).toBeGreaterThanOrEqual(24);
+		}
 	});
 
 	it('shows the current track separately from the upcoming queue', async () => {
-		player.currentTrack = mk('current', 'Now playing');
-		player.queue = [entry('next', 'Up next')];
+		player.currentTrack = mk('current', 'Current song');
+		player.queue = [entry('next', 'Queued song')];
 		await render(QueueScene);
 
-		await expect.element(page.getByText('Now playing', { exact: true })).toBeInTheDocument();
-		await expect.element(page.getByText('Up next', { exact: true })).toBeInTheDocument();
+		await expect.element(page.getByText('Current song', { exact: true })).toBeInTheDocument();
+		await expect
+			.element(page.getByRole('heading', { name: m.player_now_playing() }))
+			.toBeInTheDocument();
+		await expect.element(page.getByText('Queued song', { exact: true })).toBeInTheDocument();
 		expect(player.currentTrack?.id).toBe('current');
 	});
 

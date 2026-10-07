@@ -24,7 +24,7 @@
 		provenance?: string;
 		onStartRadio?: () => void | Promise<void>;
 		radioDisabled?: boolean;
-		/** Queue rows show full identity while leaving a narrow control column. */
+		/** Dense queue rows: two single lines, with the album beside the artist. */
 		compact?: boolean;
 		actions?: Snippet;
 	} = $props();
@@ -62,11 +62,13 @@
 		</span>
 		<span class="mobile-track-copy">
 			<span class="mobile-track-title">{title}</span>
-			{#if artistLine}
-				<span class="mobile-track-artist">{artistLine}</span>
-			{/if}
-			{#if compact && albumTitle}
-				<span class="mobile-track-album">{albumTitle}</span>
+			{#if artistLine || (compact && albumTitle)}
+				<span class="mobile-track-artist"
+					>{artistLine}{#if compact && albumTitle}{#if artistLine}<span
+								class="mobile-track-sep"
+								aria-hidden="true">·</span
+							>{/if}<span class="mobile-track-album">{albumTitle}</span>{/if}</span
+				>
 			{/if}
 		</span>
 	</button>
@@ -154,33 +156,19 @@
 		white-space: nowrap;
 	}
 
+	/* 56px: the queue's stacked controls set the height, so no vertical padding. */
 	.compact {
-		padding: 0.25rem;
+		min-height: 3.5rem;
+		padding: 0 0 0 0.25rem;
 	}
 
-	.compact .mobile-track-primary {
-		gap: 0.5rem;
+	.mobile-track-sep {
+		margin-inline: 0.35em;
 	}
 
 	.compact .mobile-track-art {
-		width: 2rem;
-		height: 2rem;
-	}
-
-	.compact .mobile-track-title,
-	.compact .mobile-track-artist,
-	.mobile-track-album {
-		white-space: normal;
-		overflow: visible;
-		overflow-wrap: anywhere;
-		line-height: 1.3;
-	}
-
-	.mobile-track-album {
-		display: block;
-		margin-top: 0.14rem;
-		font-size: 0.75rem;
-		color: var(--text-muted);
+		width: 2.5rem;
+		height: 2.5rem;
 	}
 
 	.mobile-track-title {

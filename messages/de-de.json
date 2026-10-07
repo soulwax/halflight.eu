@@ -778,5 +778,6 @@
 	"now_library_available_count": "{count} Titel abspielbar",
 	"now_error_description": "Dieser Bildschirm konnte nicht geladen werden. Deine Musik läuft weiter.",
 	"now_error_not_found": "Diese Seite gibt es nicht. Deine Musik läuft weiter.",
-	"now_error_home": "Zurück zur Startseite"
+	"now_error_home": "Zurück zur Startseite",
+	"now_queue_count": "{count} Titel"
 }

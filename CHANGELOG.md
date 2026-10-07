@@ -22,6 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The mobile queue is denser and clearer: one header row (back, title, save status, save as
+  playlist), the current track pinned as a highlighted "Now playing" row, a "Next up" heading with
+  the track count and a quiet Clear queue action, and 56px rows showing the title and
+  "artist · album" on one line each, with remove and a stacked move up/down pair. About ten
+  upcoming tracks now fit where seven did; full names stay in each row's accessible name.
 - Last.fm scrobbles now use the media duration when catalogue duration is absent, count only
   actual playback time, and return whether Last.fm accepted or filtered each submission.
 
