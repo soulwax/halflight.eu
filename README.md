@@ -93,6 +93,11 @@ these redirect URIs exactly:
 
 - `http://localhost:3000/tidal/callback` for development
 - `https://<your-domain>/tidal/callback` for production
+- `http://localhost:3000/api/auth/callback/tidal` and `https://<your-domain>/api/auth/callback/tidal` for
+  **Continue with TIDAL** on the sign-in page
+
+The same app powers sign-in: a listener who signs in with TIDAL gets the browse token stored immediately and
+lands on **Settings → TIDAL** to pair playback. GitHub and email remain available as secondary sign-in options.
 
 The default scope request is read-only: `user.read entitlements.read collection.read playlists.read
 recommendations.read search.read`. Some scopes need approval from TIDAL.
@@ -138,3 +143,11 @@ pnpm pm2:reload          # migrate, build, reload with updated env
 
 Production has no durable local filesystem: owned state lives in Postgres, and optional buckets handle exports,
 private music and the hi-res segment cache.
+
+### Listening taste profile
+
+The player contributes artist and genre evidence only after **more than 30 seconds of actual playback**. Pauses, buffering, seeks, and events from the previous audio source do not qualify. Each listening event has an opaque receipt so repeated delivery cannot add credit twice. Collaborating artists share one play's credit; genre tags share that same credit. Daily artist repeats receive diminishing credit and stop adding weight after six observations, with a 90-day half-life for older evidence.
+
+Connected Last.fm recent scrobbles provide a weaker prior. The latest 200 observations are deduplicated by recording MBID, or full title and artist when unavailable. Repeat interest is `min(2, 1 + 0.25 × log2(repeats))`, with the same age decay. Current “now playing” entries are excluded. Last.fm timestamps do not establish exact listening duration, so these are separate from app-qualified plays. Genre evidence uses recognized Last.fm genre tags; missing tags stay unknown. Stored evidence contains artist IDs, genre weights, counters, and opaque receipts rather than a second song history. Profile reset clears these aggregates.
+
+Apply migration `0029_qualified_listening_evidence.sql` before deploying this change. Playlist editing supports adding, removing, reordering, undoing, and duplicating local playlists with revision checks. Locally edited imports are protected from bulk refresh overwrites. Covers combine the first four distinct albums; playlists with fewer albums use their first album.

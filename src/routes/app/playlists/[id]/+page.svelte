@@ -176,7 +176,7 @@
 				{/if}
 			</div>
 
-			{#snippet cover()}<PlaylistCover tracks={data.playlist.items} />{/snippet}
+			{#snippet cover()}<PlaylistCover tracks={data.playlist.items} size={640} />{/snippet}
 			{#snippet actions()}
 				{#if data.playlist?.items.length}
 					<Button
@@ -223,7 +223,7 @@
 						title={data.playlist.title}
 						description={data.playlist.description}
 						tracks={data.editTracks ?? data.playlist.items}
-						version={data.localPlaylist!.updatedAt}
+						version={data.editVersion!}
 					/>
 
 					<Button

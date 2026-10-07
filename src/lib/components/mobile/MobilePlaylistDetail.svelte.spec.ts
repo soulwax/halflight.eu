@@ -6,7 +6,7 @@ import { player } from '#lib/player/player.svelte.js';
 import { m } from '#lib/paraglide/messages.js';
 import type { PlaylistDetail } from '#lib/tidal/models';
 
-const navigation = vi.hoisted(() => ({ invalidateAll: vi.fn() }));
+const navigation = vi.hoisted(() => ({ invalidateAll: vi.fn(), goto: vi.fn() }));
 vi.mock('$app/navigation', () => navigation);
 beforeEach(() => {
 	navigation.invalidateAll.mockReset().mockResolvedValue(undefined);

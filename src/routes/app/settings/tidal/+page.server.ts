@@ -20,6 +20,7 @@ export const load: PageServerLoad = async (event) => {
 		streamingSettings,
 		notice: {
 			connected: event.url.searchParams.has('connected'),
+			welcome: event.url.searchParams.has('welcome'),
 			disconnected: event.url.searchParams.has('disconnected'),
 			error: event.url.searchParams.get('error')
 		}

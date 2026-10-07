@@ -1,3 +1,4 @@
+import { EngagedListenTracker } from '#lib/taste/engaged-listen';
 import { SvelteMap, SvelteSet, SvelteURL } from 'svelte/reactivity';
 import type { TrackSummary } from '#lib/tidal/models.js';
 import { trackArtworkUrl } from '#lib/tidal/artwork';
@@ -224,6 +225,7 @@ export class PlayerState {
 			this.isBuffering = true;
 		},
 		onPlaying: () => {
+			this.tasteListen.rebase(this.engine.currentTime);
 			this.isBuffering = false;
 			this.isPlaying = true;
 			this.startLyricClock();
@@ -240,6 +242,7 @@ export class PlayerState {
 			this.reportNowPlaying();
 		},
 		onPause: () => {
+			this.tasteListen.rebase(this.engine.currentTime);
 			this.isPlaying = false;
 			this.updateSyncedLyricTime(this.engine.currentTime);
 			this.stopLyricClock();
@@ -324,6 +327,45 @@ export class PlayerState {
 	private trackStartedAt = 0;
 	private lastObservedPlaybackTime = 0;
 	private listenedSeconds = 0;
+	private tasteListen = new EngagedListenTracker();
+	private tasteEventId: string | null = null;
+	private tasteSubmitted = false;
+	private resetTasteListen(): void {
+		this.tasteListen.reset();
+		this.tasteEventId = isBrowser ? crypto.randomUUID() : null;
+		this.tasteSubmitted = false;
+	}
+	private reportTasteListen(currentTime: number): void {
+		const track = this.currentTrack;
+		const sourceMatches = Boolean(
+			isBrowser &&
+			track &&
+			this.engine.currentSrc &&
+			new SvelteURL(this.engine.currentSrc, window.location.href).pathname ===
+				`/api/tracks/${encodeURIComponent(track.id)}/audio`
+		);
+		const seconds = this.tasteListen.observe(
+			currentTime,
+			this.isPlaying && !this.isBuffering,
+			sourceMatches
+		);
+		if (!track || seconds <= 30 || this.tasteSubmitted || !sourceMatches) return;
+		this.tasteEventId ??= crypto.randomUUID();
+		this.tasteSubmitted = true;
+		const payload = {
+			eventId: this.tasteEventId,
+			trackId: track.id,
+			listenedSeconds: seconds,
+			observedAt: Date.now()
+		};
+		void fetch('/api/taste/listen', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(payload),
+			signal: AbortSignal.timeout(15_000)
+		}).catch(() => {});
+	}
+
 	private reportedNowPlaying = false;
 	private scrobbleSubmittedCurrentTrack = false;
 	private metadataCache = new SvelteMap<string, TrackSummary>();
@@ -692,6 +734,7 @@ export class PlayerState {
 			this.pendingSearchPlay = null;
 		}
 		this.lastObservedPlaybackTime = this.currentTime;
+		this.reportTasteListen(currentTime);
 		this.reportScrobbleWhenEligible();
 		if (Math.abs(this.currentTime - this.lastPersistedPosition) >= 15) {
 			this.lastPersistedPosition = this.currentTime;
@@ -880,6 +923,7 @@ export class PlayerState {
 		this.trackStartedAt = 0;
 		this.lastObservedPlaybackTime = 0;
 		this.listenedSeconds = 0;
+		this.resetTasteListen();
 		this.reportedNowPlaying = false;
 		this.scrobbleSubmittedCurrentTrack = false;
 		this.duration = track.duration || 0;
@@ -1605,6 +1649,7 @@ export class PlayerState {
 	next(auto = false): TrackSummary | null {
 		if (!auto) this.claimPlaybackControlForIntent();
 		if (auto && this.repeatMode === 'one' && this.currentTrack) {
+			this.resetTasteListen();
 			this.currentTime = 0;
 			if (isBrowser) void this.loadAndPlayStream(this.currentTrack.id);
 			return this.currentTrack;

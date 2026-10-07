@@ -1,4 +1,5 @@
 import { error } from '@sveltejs/kit';
+import { playlistEditVersion } from '#lib/server/playlists/edit-version';
 import { getUserPlaylists } from '#lib/server/playlists';
 import { filterPlayableTracks, getConnectionStatus, tidalApi } from '#lib/server/tidal';
 import { normalisePlaylistDetail } from '#lib/server/tidal/normalise';
@@ -50,7 +51,7 @@ export const load: PageServerLoad = async (event): Promise<MobilePlaylistData> =
 						numberOfItems: items.length,
 						items
 					},
-					editVersion: local.updatedAt,
+					editVersion: playlistEditVersion(local),
 					editTracks: local.items,
 					isLocal: true,
 					state: null,

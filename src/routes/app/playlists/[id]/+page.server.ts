@@ -1,7 +1,9 @@
 import { filterPlayableTracks, getConnectionStatus, tidalApi } from '#lib/server/tidal';
 import { normalisePlaylistDetail } from '#lib/server/tidal/normalise';
 import { loadTidalPage, type TidalPageState } from '#lib/server/tidal/load';
+import { playlistEditVersion } from '#lib/server/playlists/edit-version';
 import { getUserPlaylists } from '#lib/server/playlists';
+import type { PlaylistDetail } from '#lib/tidal/models';
 import type { PageServerLoad } from './$types';
 
 const failure = (state: TidalPageState, configured: boolean, id?: string) => ({
@@ -41,9 +43,10 @@ export const load: PageServerLoad = async (event) => {
 						description: local.description ?? undefined,
 						numberOfItems: items.length,
 						items
-					},
+					} as PlaylistDetail,
 					localPlaylist: { ...local, items },
 					editTracks: local.items,
+					editVersion: playlistEditVersion(local),
 					isLocal: true,
 					syncStatus: local.syncStatus,
 					hasWriteScopes: Boolean(connection.hasWriteScopes),

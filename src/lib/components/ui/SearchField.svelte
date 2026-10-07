@@ -60,6 +60,7 @@
 
 	function focusShortcut(event: KeyboardEvent): void {
 		if (!shortcut || event.defaultPrevented || event.repeat || event.isComposing) return;
+		if (document.querySelector('[role="dialog"]') && !input?.closest('[role="dialog"]')) return;
 		if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
 			event.preventDefault();
 			input?.focus();

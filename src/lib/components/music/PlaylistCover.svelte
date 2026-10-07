@@ -5,6 +5,9 @@
 	import { trackArtworkUrl, type ArtworkSize } from '#lib/tidal/artwork';
 	let { tracks, size = 320 }: { tracks: readonly TrackSummary[]; size?: ArtworkSize } = $props();
 	const albums = $derived(playlistCoverTracks(tracks));
+	const imageSize = $derived<ArtworkSize>(
+		albums.length === 4 ? (size === 640 ? 320 : size === 320 ? 160 : 80) : size
+	);
 	let failed = $state<string[]>([]);
 </script>
 
@@ -12,7 +15,7 @@
 	{#if albums.length}{#each albums as track, index (`${track.album?.id ?? track.id}:${index}`)}
 			{@const url = trackArtworkUrl(
 				track.album ? { ...track, imageUrl: track.album.imageUrl } : track,
-				size
+				imageSize
 			)}
 			<span
 				>{#if url && !failed.includes(url)}<img

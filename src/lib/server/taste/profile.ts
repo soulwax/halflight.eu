@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { redisCache, unavailableCache, type EphemeralCache } from '#lib/server/cache';
 import { db } from '#lib/server/db';
 import { tasteProfile } from '#lib/server/db/schema';
-import { getPlaybackState, type PlaybackState } from '#lib/server/playback-state';
+import type { PlaybackState } from '#lib/server/playback-state';
 import {
 	readTasteSignals,
 	tidalTasteSignalReader,
@@ -11,6 +11,13 @@ import {
 	type TasteSignals,
 	type TasteSignalSource
 } from './signals';
+import { blendListeningTaste } from '#lib/taste/listening-profile';
+import {
+	readListeningEvidence,
+	mutateListeningEvidence,
+	clearListeningEvidence
+} from './listening-store';
+import { readLastfmTastePrior } from './lastfm-listening';
 import type { TidalRequestContext } from '#lib/server/tidal';
 
 export const TASTE_PROFILE_VERSION = 1;
@@ -23,6 +30,13 @@ export interface TasteProfile {
 	version: typeof TASTE_PROFILE_VERSION;
 	artists: Record<string, number>;
 	eras: Record<string, number>;
+	genres?: Record<string, number>;
+	listening?: {
+		qualifiedPlays: number;
+		lastfmScrobbles: number;
+		confidence: number;
+		genreConfidence: number;
+	};
 	exclusions: { artists: string[]; eras: number[] };
 	overrides: { artists: Record<string, 'pinned' | 'dampened'> };
 	knobDefaults: GenerationDefaults;
@@ -299,11 +313,27 @@ export async function getTasteProfile(
 	cache: EphemeralCache = store === dbTasteProfileStore ? redisCache : unavailableCache
 ): Promise<TasteProfile> {
 	const cached = await readCachedTasteProfile(userId, cache);
-	if (cached) return cached;
-
-	const profile = (await store.read(userId)) ?? emptyTasteProfile();
-	await cacheTasteProfile(userId, profile, cache);
-	return profile;
+	const profile = cached ?? (await store.read(userId)) ?? emptyTasteProfile();
+	if (!cached) await cacheTasteProfile(userId, profile, cache);
+	if (store !== dbTasteProfileStore) return profile;
+	const evidence = await readListeningEvidence(userId);
+	const blended = blendListeningTaste(profile.artists, evidence);
+	for (const id of profile.exclusions.artists) delete blended.artists[id];
+	for (const [id, mode] of Object.entries(profile.overrides.artists)) {
+		if (!profile.exclusions.artists.includes(id))
+			blended.artists[id] = mode === 'pinned' ? 1 : (blended.artists[id] ?? 0) * 0.25;
+	}
+	return {
+		...profile,
+		artists: blended.artists,
+		genres: blended.genres,
+		listening: {
+			qualifiedPlays: blended.qualifiedPlays,
+			lastfmScrobbles: blended.lastfmScrobbles,
+			confidence: blended.confidence,
+			genreConfidence: blended.genreConfidence
+		}
+	};
 }
 
 export async function rebuildTasteProfile(
@@ -318,7 +348,7 @@ export async function rebuildTasteProfile(
 
 /**
  * Rebuild the owner's disposable, derived profile from live TIDAL collections
- * and the bounded resumable session. Neither source payload is persisted.
+ * and a deduplicated Last.fm prior. Resumable history cannot establish listening duration.
  */
 export async function refreshTasteProfile(
 	userId: string,
@@ -331,17 +361,19 @@ export async function refreshTasteProfile(
 	} = {}
 ): Promise<TasteProfile> {
 	const now = options.now ?? new Date();
-	const playback = options.playbackState ?? (await getPlaybackState(userId));
-	const sessionTracks = [playback.currentTrack, ...playback.history].filter(
-		(track): track is NonNullable<typeof track> => track !== null
-	);
 	const signals = await readTasteSignals(
 		options.ctx,
 		options.reader ?? tidalTasteSignalReader,
 		now,
-		sessionTracks
+		[]
 	);
-	return rebuildTasteProfile(userId, signals, options.store ?? dbTasteProfileStore, now);
+	const store = options.store ?? dbTasteProfileStore;
+	if (store === dbTasteProfileStore) {
+		const prior = await readLastfmTastePrior(userId, options.ctx);
+		if (prior) await mutateListeningEvidence(userId, (state) => ({ ...state, lastfm: prior }));
+	}
+	const rebuilt = await rebuildTasteProfile(userId, signals, store, now);
+	return store === dbTasteProfileStore ? getTasteProfile(userId) : rebuilt;
 }
 
 export async function resetTasteProfile(
@@ -349,6 +381,7 @@ export async function resetTasteProfile(
 	store: TasteProfileStore = dbTasteProfileStore,
 	now = new Date()
 ): Promise<TasteProfile> {
+	if (store === dbTasteProfileStore) await clearListeningEvidence(userId);
 	return store.write(userId, emptyTasteProfile(now));
 }
 
@@ -356,6 +389,7 @@ export async function deleteTasteProfile(
 	userId: string,
 	store: TasteProfileStore = dbTasteProfileStore
 ): Promise<void> {
+	if (store === dbTasteProfileStore) await clearListeningEvidence(userId);
 	await store.delete(userId);
 }
 

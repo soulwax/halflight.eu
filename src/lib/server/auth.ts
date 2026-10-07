@@ -8,11 +8,13 @@ import {
 
 import { betterAuth } from 'better-auth/minimal';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { genericOAuth } from 'better-auth/plugins/generic-oauth';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { getRequestEvent } from '$app/server';
 import { db } from '#lib/server/db';
 import { sendVerificationEmail } from '#lib/server/email';
 import { getAdministratorEmail, isConfiguredAdministratorUsername } from '#lib/server/admin';
+import { bridgeTidalSignInTokens, tidalSignInProvider } from '#lib/server/tidal/sign-in';
 
 /**
  * GitHub's `/user` endpoint omits `email` whenever the account's address is
@@ -32,6 +34,8 @@ function placeholderGithubEmail(login: string): string {
 	const digest = createHash('sha256').update(login.trim().toLocaleLowerCase('en-US')).digest('hex');
 	return `github-${digest}@syn.invalid`;
 }
+
+const tidalProvider = tidalSignInProvider();
 
 export const auth = betterAuth({
 	baseURL: ORIGIN,
@@ -60,7 +64,14 @@ export const auth = betterAuth({
 				profile.email ? {} : { email: placeholderGithubEmail(profile.login) }
 		}
 	},
+	databaseHooks: {
+		account: {
+			create: { after: (account) => bridgeTidalSignInTokens(account) },
+			update: { after: (account) => bridgeTidalSignInTokens(account) }
+		}
+	},
 	plugins: [
+		...(tidalProvider ? [genericOAuth({ config: [tidalProvider] })] : []),
 		sveltekitCookies(getRequestEvent) // make sure this is the last plugin in the array
 	]
 });

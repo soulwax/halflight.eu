@@ -181,6 +181,13 @@ export const tasteProfile = pgTable('taste_profile', {
 	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 });
 
+/** Derived listening weights and bounded opaque deduplication receipts, without song history. */
+export const tasteListeningEvidence = pgTable('taste_listening_evidence', {
+	userId: text('user_id').primaryKey().references(() => user.id, { onDelete: 'cascade' }),
+	data: jsonb('data').notNull(),
+	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+});
+
 /**
  * A bounded, owner-owned suppression list for recently accepted generated
  * tracks. It deliberately holds identifiers and expiry only — no provider

@@ -21,6 +21,7 @@
 	"tidal_settings_attention": "Handlungsbedarf",
 	"tidal_settings_connection_failed": "Die Verbindung mit TIDAL konnte nicht abgeschlossen werden. Bitte versuche es erneut.",
 	"tidal_settings_connected_notice": "Dein TIDAL-Konto ist verbunden.",
+	"tidal_settings_welcome_notice": "Willkommen! Deine TIDAL-Bibliothek ist verbunden. Verknüpfe unten die Wiedergabe, um ganze Titel zu streamen.",
 	"tidal_settings_disconnected_notice": "Dein TIDAL-Konto wurde getrennt.",
 	"tidal_settings_configuration_title": "TIDAL ist noch nicht bereit",
 	"tidal_settings_configuration_description": "Füge die erforderlichen TIDAL-Umgebungsvariablen hinzu, bevor du ein Konto verbindest.",
@@ -185,6 +186,8 @@
 	"sign_in_button": "Anmelden",
 	"sign_up_button": "Konto erstellen",
 	"sign_in_github": "Mit GitHub fortfahren",
+	"sign_in_tidal": "Mit TIDAL fortfahren",
+	"sign_in_tidal_hint": "Meldet dich an und verbindet deine TIDAL-Bibliothek in einem Schritt.",
 	"sign_in_divider": "oder weiter mit E-Mail",
 	"sign_in_mode_group_label": "Anmelden oder Konto erstellen",
 	"sign_in_continue": "Weiter",
@@ -850,5 +853,10 @@
 	"playlist_editor_add_song": "{title} zu dieser Playlist hinzufügen",
 	"playlist_editor_error": "Änderungen konnten nicht gespeichert werden. Dein Entwurf bleibt erhalten.",
 	"playlist_editor_conflict": "Diese Playlist wurde woanders geändert. Schließe den Editor, aktualisiere die Seite und prüfe deine Änderungen erneut.",
-	"playlist_editor_saving": "Änderungen werden gespeichert…"
+	"playlist_editor_saving": "Änderungen werden gespeichert…",
+	"playlist_editor_duplicate": "Duplizieren",
+	"playlist_editor_copy_title": "{title} (Kopie)",
+	"playlist_editor_add_current": "Aktuellen Titel hinzufügen",
+	"playlist_editor_delete_description": "„{title}“ aus Halflight löschen? Deine TIDAL-Playlist bleibt unverändert.",
+	"playlist_editor_drag": "{title} ziehen, um die Reihenfolge zu ändern"
 }

@@ -168,7 +168,7 @@
 				{#each data.playlists as playlist (playlist.id)}
 					<li class="playlist-row">
 						<a class="identity" href={resolve('/(mobile)/playlists/[id]', { id: playlist.id })}>
-							<span class="artwork"><PlaylistCover tracks={playlist.items} size={80} /></span>
+							<span class="artwork"><PlaylistCover tracks={playlist.items} size={160} /></span>
 							<div class="copy">
 								<h2>{playlist.title}</h2>
 								<p>
@@ -375,11 +375,6 @@
 		border-radius: var(--radius-md);
 		background: var(--surface-selected);
 		color: var(--text-muted);
-	}
-	.artwork img {
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
 	}
 	.copy {
 		min-width: 0;

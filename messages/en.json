@@ -21,6 +21,7 @@
 	"tidal_settings_attention": "Needs attention",
 	"tidal_settings_connection_failed": "TIDAL could not complete the connection. Please try again.",
 	"tidal_settings_connected_notice": "Your TIDAL account is connected.",
+	"tidal_settings_welcome_notice": "Welcome! Your TIDAL library is connected. Link playback below to stream full tracks.",
 	"tidal_settings_disconnected_notice": "Your TIDAL account has been disconnected.",
 	"tidal_settings_configuration_title": "TIDAL is not ready to connect",
 	"tidal_settings_configuration_description": "Add the required TIDAL environment variables before connecting an account.",
@@ -185,6 +186,8 @@
 	"sign_in_button": "Sign in",
 	"sign_up_button": "Create account",
 	"sign_in_github": "Continue with GitHub",
+	"sign_in_tidal": "Continue with TIDAL",
+	"sign_in_tidal_hint": "Signs you in and connects your TIDAL library in one step.",
 	"sign_in_divider": "or continue with email",
 	"sign_in_mode_group_label": "Sign in or create an account",
 	"sign_in_continue": "Continue",
@@ -850,5 +853,10 @@
 	"playlist_editor_add_song": "Add {title} to this playlist",
 	"playlist_editor_error": "Could not save your changes. Your draft is still here.",
 	"playlist_editor_conflict": "This playlist changed elsewhere. Close the editor, refresh and review your changes before saving again.",
-	"playlist_editor_saving": "Saving changes…"
+	"playlist_editor_saving": "Saving changes…",
+	"playlist_editor_duplicate": "Duplicate",
+	"playlist_editor_copy_title": "{title} (Copy)",
+	"playlist_editor_add_current": "Add current song",
+	"playlist_editor_delete_description": "Delete “{title}” from Halflight? Your TIDAL playlist stays unchanged.",
+	"playlist_editor_drag": "Drag {title} to reorder"
 }

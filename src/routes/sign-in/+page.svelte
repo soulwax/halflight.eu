@@ -26,9 +26,19 @@
 			<Notice tone="success">{m.sign_up_verification_sent()}</Notice>
 		{/if}
 
+		{#if data.tidalSignIn}
+			<form method="post" action="?/signInSocial" class="tidal-sign-in">
+				<input type="hidden" name="returnTo" value={data.returnTo} />
+				<input type="hidden" name="provider" value="tidal" />
+				<button class="tidal-button" type="submit">{m.sign_in_tidal()}</button>
+				<p class="tidal-hint">{m.sign_in_tidal_hint()}</p>
+			</form>
+		{/if}
+
 		<form method="post" action="?/signInSocial">
 			<input type="hidden" name="returnTo" value={data.returnTo} />
-			<button class="github-button" type="submit">
+			<input type="hidden" name="provider" value="github" />
+			<button class="github-button" class:secondary={data.tidalSignIn} type="submit">
 				<svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true" focusable="false">
 					<path
 						fill="currentColor"
@@ -161,6 +171,38 @@
 
 	.github-button:hover {
 		background: var(--surface-raised);
+	}
+
+	/* With TIDAL as the primary path, GitHub steps back to a quiet alternative. */
+	.github-button.secondary {
+		min-height: 2.5rem;
+		border-color: var(--border-subtle);
+		background: transparent;
+		padding: 0.6rem 1rem;
+		color: var(--text-muted);
+		font-weight: 600;
+	}
+
+	.github-button.secondary:hover {
+		background: var(--surface);
+		color: var(--text-primary);
+	}
+
+	.tidal-sign-in {
+		margin: 0 0 0.75rem;
+	}
+
+	.tidal-button {
+		width: 100%;
+		min-height: 3rem;
+		font-size: 1.05rem;
+	}
+
+	.tidal-hint {
+		margin: 0.5rem 0 0;
+		color: var(--text-muted);
+		font-size: 0.8rem;
+		text-align: center;
 	}
 
 	.divider {

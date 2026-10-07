@@ -9,6 +9,34 @@ const track = (id: string) => ({
 beforeEach(() => localStorage.clear());
 
 describe('played search history', () => {
+	it('merges reissues by valid ISRC and keeps the latest playable selection', () => {
+		const history = new SearchHistory();
+		history.setOwner('first');
+		history.remember({ ...track('old'), isrc: 'US-ABC-12-34567' }, 'first');
+		history.remember({ ...track('new'), isrc: 'USABC1234567' }, 'second');
+		expect(history.entries.map(({ track }) => track.id)).toEqual(['new']);
+		expect(history.entries[0].query).toBe('second');
+	});
+	it('cleans persisted duplicates, keeping the most recently played recording', () => {
+		localStorage.setItem(
+			'halflight:played-search:v1:first',
+			JSON.stringify([
+				{ track: { ...track('old'), isrc: 'USABC1234567' }, query: 'old', playedAt: 1 },
+				{ track: { ...track('new'), isrc: 'USABC1234567' }, query: 'new', playedAt: 3 },
+				{ track: track('other'), query: 'other', playedAt: 2 }
+			])
+		);
+		const history = new SearchHistory();
+		history.setOwner('first');
+		expect(history.entries.map(({ track }) => track.id)).toEqual(['new', 'other']);
+		expect(JSON.parse(localStorage.getItem('halflight:played-search:v1:first')!)).toHaveLength(2);
+	});
+	it('does not merge different recordings with malformed ISRCs', () => {
+		const history = new SearchHistory();
+		history.remember({ ...track('1'), isrc: '-' }, 'first');
+		history.remember({ ...track('2'), isrc: '-' }, 'second');
+		expect(history.entries).toHaveLength(2);
+	});
 	it('keeps unique songs newest first and persists them for their account only', () => {
 		const history = new SearchHistory();
 		history.setOwner('first');

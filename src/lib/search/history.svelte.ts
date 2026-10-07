@@ -34,7 +34,10 @@ export class SearchHistory {
 		if (!this.key || typeof localStorage === 'undefined') return;
 		try {
 			const stored: unknown = JSON.parse(localStorage.getItem(this.key) ?? '[]');
-			if (Array.isArray(stored)) this.entries = stored.filter(validEntry).slice(0, LIMIT);
+			if (Array.isArray(stored)) {
+				this.entries = dedupeEntries(stored.filter(validEntry)).slice(0, LIMIT);
+				this.save();
+			}
 		} catch {
 			/* A disabled browser store cannot prevent playback. */
 		}
@@ -47,7 +50,7 @@ export class SearchHistory {
 				query: query.trim(),
 				playedAt: Date.now()
 			},
-			...this.entries.filter((entry) => entry.track.id !== track.id)
+			...this.entries.filter((entry) => !sameRecording(entry.track, track))
 		].slice(0, LIMIT);
 		this.save();
 	}
@@ -67,6 +70,23 @@ export class SearchHistory {
 			/* Device storage is optional. */
 		}
 	}
+}
+function normalizedIsrc(track: TrackSummary): string | null {
+	const value =
+		typeof track.isrc === 'string' ? track.isrc.replace(/[^a-z0-9]/gi, '').toUpperCase() : '';
+	return /^[A-Z]{2}[A-Z0-9]{3}\d{7}$/.test(value) ? value : null;
+}
+function sameRecording(a: TrackSummary, b: TrackSummary): boolean {
+	if (a.id === b.id) return true;
+	const isrc = normalizedIsrc(a);
+	return isrc !== null && isrc === normalizedIsrc(b);
+}
+function dedupeEntries(entries: SearchHistoryEntry[]): SearchHistoryEntry[] {
+	const unique: SearchHistoryEntry[] = [];
+	for (const entry of [...entries].sort((a, b) => b.playedAt - a.playedAt)) {
+		if (!unique.some((existing) => sameRecording(existing.track, entry.track))) unique.push(entry);
+	}
+	return unique;
 }
 function validEntry(value: unknown): value is SearchHistoryEntry {
 	if (!value || typeof value !== 'object') return false;

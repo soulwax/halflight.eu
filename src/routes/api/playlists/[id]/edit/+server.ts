@@ -1,8 +1,9 @@
 import { error, json, type RequestHandler } from '@sveltejs/kit';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import { db } from '#lib/server/db';
 import { userPlaylist } from '#lib/server/db/schema';
 import { parsePlaybackTrack } from '#lib/server/playback-state';
+import { playlistEditVersion } from '#lib/server/playlists/edit-version';
 import type { TrackSummary } from '#lib/tidal/models';
 export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 	if (!locals.user || !locals.isListener) error(401, 'Unauthorized');
@@ -25,8 +26,16 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 		.where(and(eq(userPlaylist.id, params.id!), eq(userPlaylist.userId, locals.user.id)))
 		.limit(1);
 	if (!row) error(404, 'Playlist not found');
-	if (row.updatedAt.toISOString() !== body.version) error(409, 'Playlist changed');
 	const existing = JSON.parse(row.itemsJson) as TrackSummary[];
+	if (
+		playlistEditVersion({
+			title: row.title,
+			description: row.description,
+			items: existing,
+			updatedAt: row.updatedAt.toISOString()
+		}) !== body.version
+	)
+		error(409, 'Playlist changed');
 	const items: TrackSummary[] = body.items.map(
 		(item: { sourceIndex?: unknown; track?: unknown }) => {
 			if (!item || typeof item !== 'object') error(400, 'Invalid song');
@@ -59,7 +68,11 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 				eq(userPlaylist.id, row.id),
 				eq(userPlaylist.userId, locals.user.id),
 				eq(userPlaylist.itemsJson, row.itemsJson),
-				sql`date_trunc('milliseconds', ${userPlaylist.updatedAt}) = ${body.version}::timestamptz`
+				eq(userPlaylist.title, row.title),
+				row.description === null
+					? isNull(userPlaylist.description)
+					: eq(userPlaylist.description, row.description),
+				sql`date_trunc('milliseconds', ${userPlaylist.updatedAt}) = ${row.updatedAt.toISOString()}::timestamptz`
 			)
 		)
 		.returning({ id: userPlaylist.id });

@@ -65,7 +65,7 @@
 
 		<div class="playlist-hero">
 			<span class="playlist-art">
-				<PlaylistCover tracks={items} />
+				<PlaylistCover tracks={items} size={640} />
 			</span>
 			<p class="playlist-meta">
 				<span>{m.now_library_count({ count: items.length })}</span>
@@ -78,6 +78,7 @@
 
 		{#if isLocal && editVersion}<div class="edit-controls">
 				<PlaylistEditor
+					mobile
 					id={playlist.id}
 					title={playlist.title}
 					description={playlist.description}

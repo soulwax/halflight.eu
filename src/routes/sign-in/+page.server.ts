@@ -1,14 +1,38 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { APIError } from 'better-auth/api';
 import { auth } from '#lib/server/auth';
+import { isMobileRoute } from '#lib/mobile/routes';
 import { safeProductReturn } from '#lib/mobile/site-entry';
+import { isTidalSignInAvailable, TIDAL_SIGN_IN_PROVIDER } from '#lib/server/tidal/sign-in';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = (event) => {
 	const returnTo = safeProductReturn(event.url.searchParams.get('returnTo')) ?? '/';
 	if (event.locals.user && event.locals.isListener) redirect(302, returnTo);
-	return { returnTo };
+	return { returnTo, tidalSignIn: isTidalSignInAvailable() };
 };
+
+/** Each social provider's consent origin, which SvelteKit 3 must allow explicitly. */
+const SOCIAL_ORIGINS = {
+	[TIDAL_SIGN_IN_PROVIDER]: 'https://login.tidal.com',
+	github: 'https://github.com'
+} as const;
+
+type SocialProvider = keyof typeof SOCIAL_ORIGINS;
+
+function isSocialProvider(value: unknown): value is SocialProvider {
+	return typeof value === 'string' && Object.hasOwn(SOCIAL_ORIGINS, value);
+}
+
+/**
+ * A brand-new TIDAL listener has browse access but not full playback yet, so
+ * land them on the one remaining step (TIDAL Link) instead of the app shell.
+ */
+function newTidalListenerLanding(returnTo: string): string {
+	return isMobileRoute(new URL(returnTo, 'https://halflight.invalid').pathname)
+		? '/settings'
+		: '/app/settings/tidal?welcome=1';
+}
 
 export const actions: Actions = {
 	signIn: async (event) => {
@@ -46,10 +70,21 @@ export const actions: Actions = {
 	signInSocial: async (event) => {
 		const formData = await event.request.formData();
 		const returnTo = safeProductReturn(formData.get('returnTo')) ?? '/';
+		const provider = formData.get('provider') ?? 'github';
+		if (!isSocialProvider(provider)) return fail(400, { signInFailed: true });
+		if (provider === TIDAL_SIGN_IN_PROVIDER && !isTidalSignInAvailable())
+			return fail(400, { signInFailed: true });
+
 		let authorizeUrl: string | undefined;
 		try {
 			const result = await auth.api.signInSocial({
-				body: { provider: 'github', callbackURL: returnTo, errorCallbackURL: '/sign-in' }
+				body: {
+					provider,
+					callbackURL: returnTo,
+					newUserCallbackURL:
+						provider === TIDAL_SIGN_IN_PROVIDER ? newTidalListenerLanding(returnTo) : undefined,
+					errorCallbackURL: '/sign-in'
+				}
 			});
 			authorizeUrl = result.url;
 		} catch {
@@ -58,8 +93,8 @@ export const actions: Actions = {
 
 		// `redirect` throws — it must live outside the try/catch above, or it is
 		// swallowed and wrongly reported as a sign-in failure. SvelteKit 3 also
-		// requires opting in to the external GitHub origin.
+		// requires opting in to the provider's external origin.
 		if (!authorizeUrl) return fail(400, { signInFailed: true });
-		redirect(302, authorizeUrl, { external: ['https://github.com'] });
+		redirect(302, authorizeUrl, { external: [SOCIAL_ORIGINS[provider]] });
 	}
 };

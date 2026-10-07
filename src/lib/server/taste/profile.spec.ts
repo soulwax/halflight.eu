@@ -124,7 +124,7 @@ describe('taste profile', () => {
 		]);
 	});
 
-	it('rebuilds from live signals and bounded playback history without persisting tracks', async () => {
+	it('rebuilds from live signals without treating unqualified playback history as listening', async () => {
 		const profile = await refreshTasteProfile('owner-1', {
 			store: memoryStore(),
 			reader: {
@@ -151,7 +151,8 @@ describe('taste profile', () => {
 			now
 		});
 
-		expect(profile.artists).toMatchObject({ 'followed-artist': 1, 'session-artist': 0.5 });
+		expect(profile.artists).toMatchObject({ 'followed-artist': 1 });
+		expect(profile.artists).not.toHaveProperty('session-artist');
 		expect(JSON.stringify(profile)).not.toContain('Display data is discarded');
 	});
 });
