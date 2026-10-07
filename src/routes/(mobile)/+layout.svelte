@@ -15,11 +15,7 @@
 	import MobileRecovery from '#lib/components/mobile/MobileRecovery.svelte';
 	import PlaylistDialog from '#lib/components/music/PlaylistDialog.svelte';
 	import { MobileSearchSession, MOBILE_SEARCH_SESSION } from '#lib/mobile/search-session.svelte.js';
-	import {
-		readMobileViewportBox,
-		setMobileViewportBox,
-		standaloneAppHeight
-	} from '#lib/mobile/viewport-height.js';
+	import { readMobileViewportBox, setMobileViewportBox } from '#lib/mobile/viewport-height.js';
 	import {
 		managesMobileScroll,
 		mobileScrollKey,
@@ -73,14 +69,15 @@
 				visualViewport &&
 				visualViewport.height < window.innerHeight - 80
 			);
-			const box = readMobileViewportBox(window.visualViewport, window.innerHeight, {
-				standalone,
-				keyboardOpen
-			});
-			// The installed app owns the whole display, home-indicator strip included.
-			if (standalone && !keyboardOpen)
-				box.height = standaloneAppHeight(window.innerHeight, window.screen, window.innerWidth);
-			setMobileViewportBox(shellElement, box);
+			// Never larger than the window: iOS draws nothing past it, so a taller
+			// shell only clips the tab bar (see the status-bar note in +layout).
+			setMobileViewportBox(
+				shellElement,
+				readMobileViewportBox(window.visualViewport, window.innerHeight, {
+					standalone,
+					keyboardOpen
+				})
+			);
 		};
 		syncViewportHeight();
 		visualViewport?.addEventListener('resize', syncViewportHeight);

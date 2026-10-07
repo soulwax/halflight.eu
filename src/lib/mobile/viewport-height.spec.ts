@@ -1,9 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import {
-	readMobileViewportBox,
-	setMobileViewportBox,
-	standaloneAppHeight
-} from './viewport-height';
+import { readMobileViewportBox, setMobileViewportBox } from './viewport-height';
 
 describe('readMobileViewportBox', () => {
 	it('prefers the visible viewport and retains its offset', () => {
@@ -51,27 +47,5 @@ describe('setMobileViewportBox', () => {
 		});
 		expect(setProperty).toHaveBeenNthCalledWith(1, '--mobile-viewport-height', '640.44px');
 		expect(setProperty).toHaveBeenNthCalledWith(2, '--mobile-viewport-top', '11.56px');
-	});
-});
-
-describe('standaloneAppHeight', () => {
-	const iPhone15 = { width: 393, height: 852 };
-
-	it('fills the home-indicator strip when the window stops above it', () => {
-		expect(standaloneAppHeight(818, iPhone15, 393)).toBe(852);
-	});
-
-	it('never overshoots a window that already reaches the bottom of the screen', () => {
-		expect(standaloneAppHeight(852, iPhone15, 393)).toBe(852);
-	});
-
-	it('measures landscape against the short side', () => {
-		expect(standaloneAppHeight(372, iPhone15, 852)).toBe(393);
-		expect(standaloneAppHeight(393, iPhone15, 852)).toBe(393);
-	});
-
-	it('keeps the window when something else owns a large part of the screen', () => {
-		expect(standaloneAppHeight(600, iPhone15, 393)).toBe(600);
-		expect(standaloneAppHeight(818, { width: 0, height: 0 }, 393)).toBe(818);
 	});
 });

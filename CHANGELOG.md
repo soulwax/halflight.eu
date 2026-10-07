@@ -87,11 +87,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   line, and the paused "resting" shrink waits for a real pause instead of reacting to stalls and
   track changes. The lyrics card renders fully in the browser, and on short screens the cover
   keeps a usable size with the lyrics one scroll away.
-- The installed iPhone app now uses the whole bottom of the screen. Its shell fills the physical
-  display whether iOS reports a full or a shortened window (it previously overshot by the
-  home-indicator height on a full one), and the player, mini player and tab bar keep only the
-  space the home-indicator bar needs instead of the full safe area. Browser tabs keep the full
-  inset.
+- The installed iPhone app reaches the bottom of the screen again. Affected iOS versions (WebKit
+  bug 301994: 26.1, 26.5, 27 beta) give a Home Screen app a window the height of the screen minus
+  the status bar; with a translucent status bar the app started at the top and stopped 62px short
+  of the bottom, clipping the tab bar. The status bar is now opaque (black, or default for light
+  themes), so the same window starts below it and ends at the bottom edge, and the shell never
+  grows past the window. The player, mini player and tab bar keep only the space the
+  home-indicator bar needs; browser tabs keep the full inset.
+- An actionable playback notice (such as "Playing on another device") in the full-screen mobile
+  player now takes the lyrics card's place at the same size instead of being inserted above the
+  controls, so it no longer resizes the artwork.
 - In the installed mobile app the tab bar and the mini player above it sit at the bottom edge
   instead of floating over unused space. Where iOS already ends the app window above the
   home-indicator strip, they no longer pad by the safe-area inset a second time; in the browser

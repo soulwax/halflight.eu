@@ -2,6 +2,7 @@
 	import AppHeader from '#lib/components/app/AppHeader.svelte';
 	import Footer from '#lib/components/Footer.svelte';
 	import { isMobileRoute } from '#lib/mobile/routes';
+	import { THEME_META } from '#lib/theme';
 	import { deLocalizeHref, locales, localizeHref } from '#lib/paraglide/runtime';
 	import { page } from '$app/state';
 	import type { Snippet } from 'svelte';
@@ -64,7 +65,15 @@
 		<meta name="theme-color" content={MOBILE_CHROME_COLOR[data.theme]} />
 		<meta name="mobile-web-app-capable" content="yes" />
 		<meta name="apple-mobile-web-app-capable" content="yes" />
-		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+		<!-- Opaque, not black-translucent: affected iOS versions (WebKit bug 301994,
+		     26.1, 26.5, 27 beta) size a Home Screen app to the screen minus the status
+		     bar, so a translucent app starting at the top was cut off 62px short of
+		     the bottom edge. Starting below the status bar, the same window reaches
+		     the bottom; nothing drew under the status bar but header padding anyway. -->
+		<meta
+			name="apple-mobile-web-app-status-bar-style"
+			content={THEME_META[data.theme].colorScheme === 'light' ? 'default' : 'black'}
+		/>
 		<meta name="apple-mobile-web-app-title" content="Halflight" />
 		<link rel="apple-touch-icon" sizes="180x180" href="/icons/halflight-180.png" />
 	{/if}
