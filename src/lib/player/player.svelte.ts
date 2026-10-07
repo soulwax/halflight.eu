@@ -1,8 +1,10 @@
-import { SvelteMap, SvelteSet } from 'svelte/reactivity';
+import { SvelteMap, SvelteSet, SvelteURL } from 'svelte/reactivity';
 import type { TrackSummary } from '#lib/tidal/models.js';
 import { trackArtworkUrl } from '#lib/tidal/artwork';
 import { qualityTier, type QualityTier } from '#lib/format';
 import { AudioEngine, replayGainToLinear } from 'bragi-audio/player';
+import { searchHistory } from '#lib/search/history.svelte';
+import { m } from '#lib/paraglide/messages.js';
 import { assessPlayback, type PlaybackAssessment } from './playback-assessment.js';
 import { activeLyricIndexAt } from './lyrics-follow.js';
 import { lastfmScrobbleThreshold } from './scrobble-policy.js';
@@ -125,6 +127,13 @@ function isCachedQueueCommand(value: unknown): value is QueueCommand {
 }
 
 export class PlayerState {
+	private queuedSearch = new SvelteMap<string, { query: string; owner: string | null }>();
+	private pendingSearchPlay: {
+		id: string;
+		query: string;
+		generation: number;
+		owner: string | null;
+	} | null = null;
 	currentTrack = $state<TrackSummary | null>(null);
 	/** Each queued occurrence has its own stable identity, including duplicate tracks. */
 	queue = $state<QueueEntry[]>([]);
@@ -666,6 +675,22 @@ export class PlayerState {
 
 		const elapsed = this.currentTime - this.lastObservedPlaybackTime;
 		if (this.isPlaying && elapsed > 0 && elapsed <= 5) this.listenedSeconds += elapsed;
+		const searchPlay = this.pendingSearchPlay;
+		if (
+			searchPlay &&
+			searchPlay.owner === searchHistory.ownerId &&
+			this.currentTrack?.id === searchPlay.id &&
+			searchPlay.generation === this.streamLoadGeneration &&
+			this.playbackMode === 'direct' &&
+			this.isPlaying &&
+			this.listenedSeconds >= 1 &&
+			this.engine.currentSrc &&
+			new SvelteURL(this.engine.currentSrc, window.location.href).pathname ===
+				`/api/tracks/${encodeURIComponent(searchPlay.id)}/audio`
+		) {
+			searchHistory.remember(this.currentTrack, searchPlay.query);
+			this.pendingSearchPlay = null;
+		}
 		this.lastObservedPlaybackTime = this.currentTime;
 		this.reportScrobbleWhenEligible();
 		if (Math.abs(this.currentTime - this.lastPersistedPosition) >= 15) {
@@ -739,6 +764,7 @@ export class PlayerState {
 		provenance?: string,
 		contextIndex?: number
 	): void {
+		const selectedQuery = searchHistory.takeSelection(track.id);
 		this.claimPlaybackControlForIntent();
 		const selectedTrack = this.withProvenance(track, provenance);
 		const contextualTracks = contextTracks?.map((candidate) =>
@@ -773,6 +799,31 @@ export class PlayerState {
 		}
 
 		this.switchToTrack(selectedTrack);
+		this.pendingSearchPlay = selectedQuery
+			? {
+					id: track.id,
+					query: selectedQuery,
+					generation: this.streamLoadGeneration,
+					owner: searchHistory.ownerId
+				}
+			: null;
+	}
+
+	/** A search selection is recorded only after the matching audio advances. */
+	playFromSearch(
+		track: TrackSummary,
+		contextTracks: TrackSummary[] | undefined,
+		query: string,
+		index?: number
+	): void {
+		if (index === undefined) this.play(track, contextTracks, m.now_search_provenance({ query }));
+		else this.play(track, contextTracks, m.now_search_provenance({ query }), index);
+		this.pendingSearchPlay = {
+			id: track.id,
+			query,
+			generation: this.streamLoadGeneration,
+			owner: searchHistory.ownerId
+		};
 	}
 
 	private withProvenance(track: TrackSummary, provenance?: string): TrackSummary {
@@ -786,8 +837,21 @@ export class PlayerState {
 	 * track must be gone" so next/previous/playFromQueue can't leave stale
 	 * position, quality, codecs, lyrics or embed state on screen.
 	 */
-	private switchToTrack(track: TrackSummary): void {
+	private switchToTrack(track: TrackSummary, entryId?: string): void {
+		const source = entryId ? this.queuedSearch.get(entryId) : null;
+		if (entryId) this.queuedSearch.delete(entryId);
+		const queuedIds = new SvelteSet(this.queue.map((entry) => entry.entryId));
+		for (const id of this.queuedSearch.keys()) if (!queuedIds.has(id)) this.queuedSearch.delete(id);
 		this.streamLoadGeneration += 1;
+		this.pendingSearchPlay =
+			source?.owner === searchHistory.ownerId
+				? {
+						id: track.id,
+						query: source.query,
+						owner: source.owner,
+						generation: this.streamLoadGeneration
+					}
+				: null;
 		this.streamLoadAbort?.abort();
 		// A direct track choice is a deliberate session change, so subsequent
 		// persistence may use its local current-track/history fields again.
@@ -1439,8 +1503,13 @@ export class PlayerState {
 		this.isCoverExpanded = !this.isCoverExpanded;
 	}
 
-	addToQueue(track: TrackSummary, provenance?: string): void {
+	addToQueue(track: TrackSummary, provenance?: string, searchQuery?: string): void {
 		const queuedTrack = createQueueEntry(this.withProvenance(track, provenance));
+		if (searchQuery)
+			this.queuedSearch.set(queuedTrack.entryId, {
+				query: searchQuery,
+				owner: searchHistory.ownerId
+			});
 		this.queue.push(queuedTrack);
 		this.coordinator.recordCommand({ type: 'append', entries: [queuedTrack] });
 		if (this.queue.length === 1) {
@@ -1449,8 +1518,13 @@ export class PlayerState {
 	}
 
 	/** Insert a track directly after the current one without interrupting playback. */
-	playNext(track: TrackSummary, provenance?: string): void {
+	playNext(track: TrackSummary, provenance?: string, searchQuery?: string): void {
 		const queuedTrack = createQueueEntry(this.withProvenance(track, provenance));
+		if (searchQuery)
+			this.queuedSearch.set(queuedTrack.entryId, {
+				query: searchQuery,
+				owner: searchHistory.ownerId
+			});
 		this.queue.unshift(queuedTrack);
 		this.coordinator.recordCommand({ type: 'prepend', entry: queuedTrack });
 		streamPreloader.preload(queuedTrack.id);
@@ -1469,6 +1543,7 @@ export class PlayerState {
 
 	/** Remove one queue occurrence by its stable entry identity. */
 	removeFromQueue(entryId: string): void {
+		this.queuedSearch.delete(entryId);
 		const index = this.queue.findIndex((entry) => entry.entryId === entryId);
 		if (index === -1) return;
 		this.queue.splice(index, 1);
@@ -1537,7 +1612,7 @@ export class PlayerState {
 		const index = this.shuffle ? Math.floor(Math.random() * this.queue.length) : 0;
 		const [nextEntry] = this.queue.splice(index, 1);
 		const nextTrack = toDisplayTrack(nextEntry);
-		this.switchToTrack(nextTrack);
+		this.switchToTrack(nextTrack, nextEntry?.entryId);
 		return nextTrack;
 	}
 
@@ -1570,7 +1645,7 @@ export class PlayerState {
 			this.history.push(this.currentTrack);
 		}
 		const [targetEntry] = this.queue.splice(index, 1);
-		this.switchToTrack(toDisplayTrack(targetEntry));
+		this.switchToTrack(toDisplayTrack(targetEntry), targetEntry.entryId);
 	}
 
 	toggleExpanded(): void {

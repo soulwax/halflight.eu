@@ -27,9 +27,9 @@ describe('HeaderSearch.svelte', () => {
 
 		const input = page.getByRole('combobox', { name: 'Search Halflight' });
 		await input.fill('first');
-		await expect.poll(() => pending.length).toBe(1);
+		await expect.poll(() => pending.length, { timeout: 5_000 }).toBe(1);
 		await input.fill('second');
-		await expect.poll(() => pending.length).toBe(2);
+		await expect.poll(() => pending.length, { timeout: 5_000 }).toBe(2);
 
 		pending[1]?.resolve(
 			new Response(
@@ -79,9 +79,9 @@ describe('HeaderSearch.svelte', () => {
 
 		const input = page.getByRole('combobox', { name: 'Search Halflight' });
 		await input.fill('first');
-		await expect.poll(() => pending.length).toBe(1);
+		await expect.poll(() => pending.length, { timeout: 5_000 }).toBe(1);
 		await input.fill('second');
-		await expect.poll(() => pending.length).toBe(2);
+		await expect.poll(() => pending.length, { timeout: 5_000 }).toBe(2);
 
 		pending[1]?.resolve(
 			new Response(
@@ -126,7 +126,7 @@ describe('HeaderSearch.svelte', () => {
 
 		const input = page.getByRole('combobox', { name: 'Search Halflight' });
 		await input.fill('head');
-		await expect.poll(() => fetchMock.mock.calls.length).toBe(1);
+		await expect.poll(() => fetchMock.mock.calls.length, { timeout: 5_000 }).toBe(1);
 		await expect.element(page.getByRole('option', { name: /Header Track/ })).toBeInTheDocument();
 
 		input

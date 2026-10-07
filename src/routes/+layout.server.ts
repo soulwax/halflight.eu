@@ -13,6 +13,7 @@ export const load: LayoutServerLoad = (event) => {
 
 	const user = event.locals.user
 		? {
+				id: event.locals.user.id,
 				name: event.locals.user.name || event.locals.user.email,
 				isAdministrator: Boolean(event.locals.isAdministrator),
 				isFirstAdministrator: Boolean(event.locals.isFirstAdministrator)

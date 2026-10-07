@@ -3,9 +3,12 @@ import { PlayerState } from './player.svelte';
 import { lastfmScrobbleThreshold } from './scrobble-policy';
 import type { TrackSummary } from '#lib/tidal/models';
 import type { QueueEntry } from './queue-entry';
+import { searchHistory } from '#lib/search/history.svelte';
 
 // The player persists preferences to localStorage; isolate every case from it.
 beforeEach(() => {
+	searchHistory.setOwner('player-test');
+	searchHistory.clear();
 	try {
 		localStorage.clear();
 	} catch {
@@ -52,6 +55,68 @@ function expectQueuedTracks(player: PlayerState, tracks: TrackSummary[]): void {
 }
 
 describe('PlayerState', () => {
+	it('records a song queued from search only after that occurrence plays', () => {
+		const state = new PlayerState();
+		state.playNext(sampleTrack1, 'Search', 'ambient');
+		expect(searchHistory.entries).toEqual([]);
+		state.next();
+		const internal = state as unknown as {
+			engine: { readonly currentSrc: string };
+			onTimeUpdate(time: number): void;
+		};
+		vi.spyOn(internal.engine, 'currentSrc', 'get').mockReturnValue(
+			`${window.location.origin}/api/tracks/track-1/audio`
+		);
+		state.isLoading = false;
+		state.isPlaying = true;
+		state.playbackMode = 'direct';
+		internal.onTimeUpdate(1);
+		expect(searchHistory.entries.map(({ track }) => track.id)).toEqual(['track-1']);
+	});
+	it('records a search song only once the matching direct audio actually advances', () => {
+		const state = new PlayerState();
+		state.playFromSearch(sampleTrack1, [sampleTrack1], 'ambient');
+		expect(searchHistory.entries).toEqual([]);
+		const internal = state as unknown as {
+			engine: { readonly currentSrc: string };
+			onTimeUpdate(time: number): void;
+		};
+		vi.spyOn(internal.engine, 'currentSrc', 'get').mockReturnValue(
+			`${window.location.origin}/api/tracks/track-1/audio`
+		);
+		state.isLoading = false;
+		state.isPlaying = true;
+		state.playbackMode = 'direct';
+		internal.onTimeUpdate(0.5);
+		expect(searchHistory.entries).toEqual([]);
+		internal.onTimeUpdate(1.5);
+		expect(searchHistory.entries.map(({ track, query }) => [track.id, query])).toEqual([
+			['track-1', 'ambient']
+		]);
+		internal.onTimeUpdate(2.5);
+		expect(searchHistory.entries).toHaveLength(1);
+	});
+	it('does not record failed, skipped or outgoing search audio as a successful play', () => {
+		const state = new PlayerState();
+		state.playFromSearch(sampleTrack1, [sampleTrack1], 'ambient');
+		const internal = state as unknown as {
+			engine: { readonly currentSrc: string };
+			onTimeUpdate(time: number): void;
+		};
+		vi.spyOn(internal.engine, 'currentSrc', 'get').mockReturnValue(
+			`${window.location.origin}/api/tracks/older/audio`
+		);
+		state.isLoading = false;
+		state.isPlaying = true;
+		state.playbackMode = 'direct';
+		internal.onTimeUpdate(2);
+		expect(searchHistory.entries).toEqual([]);
+		state.play(sampleTrack2);
+		state.isLoading = false;
+		state.isPlaying = true;
+		internal.onTimeUpdate(3);
+		expect(searchHistory.entries).toEqual([]);
+	});
 	it('starts the tapped duplicate occurrence and queues only the following rows', () => {
 		const player = new PlayerState();
 		const context = [sampleTrack1, sampleTrack2, sampleTrack1, sampleTrack3];

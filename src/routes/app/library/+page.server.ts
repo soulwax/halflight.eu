@@ -9,6 +9,7 @@ import { privateMusicBucket } from '#lib/server/private-music-bucket';
 import { filterPlayableTracks, getConnectionStatus, tidalApi } from '#lib/server/tidal';
 import { normaliseCollectionPage } from '#lib/server/tidal/normalise';
 import type { PageServerLoad } from './$types';
+import { getUserPlaylists } from '#lib/server/playlists';
 
 type LibraryKind = 'albums' | 'artists' | 'tracks' | 'playlists';
 
@@ -17,7 +18,22 @@ const KINDS: LibraryKind[] = ['albums', 'artists', 'tracks', 'playlists'];
 export const load: PageServerLoad = async (event) => {
 	if (!event.locals.user) redirect(302, '/sign-in');
 	if (!event.locals.isListener) error(403, 'Forbidden');
-	const files = await dbPrivateMusicStore.list(event.locals.user.id);
+	const [filesResult, savedResult] = await Promise.allSettled([
+		dbPrivateMusicStore.list(event.locals.user.id),
+		getUserPlaylists(event.locals.user.id)
+	]);
+	const files = filesResult.status === 'fulfilled' ? filesResult.value : [];
+	const savedPlaylists =
+		savedResult.status === 'fulfilled'
+			? await Promise.all(
+					savedResult.value.map(async (playlist) => ({
+						...playlist,
+						items: await filterPlayableTracks(playlist.items)
+					}))
+				)
+			: [];
+	const savedUnavailable = savedResult.status === 'rejected';
+	const privateMusicUnavailable = filesResult.status === 'rejected';
 	const usedBytes = files.reduce((total, file) => total + file.sizeBytes, 0);
 	const privateMusic = {
 		enabled: privateMusicBucket.enabled,
@@ -47,10 +63,24 @@ export const load: PageServerLoad = async (event) => {
 	try {
 		connection = await getConnectionStatus();
 	} catch {
-		return { connected: false, sections: null, privateMusic };
+		return {
+			connected: false,
+			sections: null,
+			privateMusic,
+			savedPlaylists,
+			savedUnavailable,
+			privateMusicUnavailable
+		};
 	}
 	if (!connection.connected) {
-		return { connected: false, sections: null, privateMusic };
+		return {
+			connected: false,
+			sections: null,
+			privateMusic,
+			savedPlaylists,
+			savedUnavailable,
+			privateMusicUnavailable
+		};
 	}
 
 	const results = await Promise.all(
@@ -77,6 +107,9 @@ export const load: PageServerLoad = async (event) => {
 		connected: true,
 		hasWriteScopes: Boolean(connection.hasWriteScopes),
 		privateMusic,
+		savedPlaylists,
+		savedUnavailable,
+		privateMusicUnavailable,
 		sections: await Promise.all(
 			results.map(async (result) => {
 				if (!result.ok) return { kind: result.kind, ok: false as const };

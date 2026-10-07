@@ -16,6 +16,7 @@ vi.mock('#lib/server/tidal/api', async (importOriginal) => ({
 	getFullPlaylist: mocks.fetch
 }));
 vi.mock('#lib/server/tidal/normalise', () => ({ normalisePlaylistDetail: mocks.normalise }));
+vi.mock('./import-metadata', () => ({ resolveImportMetadata: mocks.normalise }));
 vi.mock('./playback-validation', () => ({ validatePlaylistPlayback: mocks.validate }));
 vi.mock('#lib/server/streaming-settings', () => ({ getStreamingSettings: mocks.settings }));
 vi.mock('./index', () => ({
@@ -23,7 +24,7 @@ vi.mock('./index', () => ({
 	createUserPlaylist: mocks.create,
 	updateUserPlaylist: mocks.update
 }));
-import { pullPlaylist } from './sync';
+import { pullPlaylist, pushAllPlaylists } from './sync';
 
 const good: TrackSummary = { kind: 'track', id: '1', title: 'Playable', artists: [] };
 const bad: TrackSummary = { kind: 'track', id: '2', title: 'Defective', artists: [] };
@@ -41,6 +42,19 @@ beforeEach(() => {
 });
 
 describe('playlist import playback boundary', () => {
+	it('never pushes an unchanged playable import back over the provider source', async () => {
+		mocks.list.mockResolvedValue([
+			{
+				id: 'local',
+				tidalPlaylistId: 'remote',
+				source: 'tidal',
+				syncStatus: 'synced',
+				items: [good]
+			}
+		]);
+		expect(await pushAllPlaylists(ctx)).toEqual({ results: [], totalSynced: 0, totalErrors: 0 });
+		expect(mocks.update).not.toHaveBeenCalled();
+	});
 	it('waits for playback validation before saving or reporting import success', async () => {
 		let complete!: (tracks: TrackSummary[]) => void;
 		mocks.validate.mockReturnValue(
@@ -58,7 +72,7 @@ describe('playlist import playback boundary', () => {
 			tracksSkipped: 1,
 			tracksReplaced: 0
 		});
-		expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ items }));
+		expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ items: [good, good] }));
 	});
 	it('does not create or overwrite a playlist after an inconclusive playback check', async () => {
 		mocks.validate.mockRejectedValue(new Error('temporary playback failure'));
@@ -70,4 +84,15 @@ describe('playlist import playback boundary', () => {
 		expect(mocks.create).not.toHaveBeenCalled();
 		expect(mocks.update).not.toHaveBeenCalled();
 	});
+});
+
+it('removes rejected entries durably when reimporting an existing local copy', async () => {
+	mocks.list.mockResolvedValue([{ id: 'local', tidalPlaylistId: 'remote', items }]);
+	const result = await pullPlaylist('remote', ctx);
+	expect(result).toMatchObject({ status: 'synced', tracksSkipped: 1, tracksRemoved: 1 });
+	expect(mocks.update).toHaveBeenCalledWith(
+		'owner',
+		'local',
+		expect.objectContaining({ items: [good, good], syncStatus: 'synced' })
+	);
 });

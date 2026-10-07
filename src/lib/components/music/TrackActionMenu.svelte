@@ -13,6 +13,8 @@
 		contextTracks,
 		contextIndex,
 		provenance,
+		searchQuery,
+		onPlayNow,
 		onStartRadio,
 		radioDisabled = false,
 		showPlayNow = true,
@@ -26,6 +28,8 @@
 		contextTracks?: TrackSummary[];
 		contextIndex?: number;
 		provenance?: string;
+		searchQuery?: string;
+		onPlayNow?: () => void;
 		onStartRadio?: () => void | Promise<void>;
 		radioDisabled?: boolean;
 		showPlayNow?: boolean;
@@ -43,8 +47,13 @@
 	onDestroy(() => radioRequest?.abort());
 
 	function enqueue(next: boolean) {
-		if (next) player.playNext(track, provenance);
-		else player.addToQueue(track, provenance);
+		if (next) {
+			if (searchQuery) player.playNext(track, provenance, searchQuery);
+			else player.playNext(track, provenance);
+		} else {
+			if (searchQuery) player.addToQueue(track, provenance, searchQuery);
+			else player.addToQueue(track, provenance);
+		}
 		feedback = next
 			? m.now_library_next_added({ title: track.title })
 			: m.now_library_added({ title: track.title });
@@ -88,7 +97,8 @@
 				label: m.track_action_play_now(),
 				icon: Play,
 				onSelect: () => {
-					if (contextIndex === undefined) {
+					if (onPlayNow) onPlayNow();
+					else if (contextIndex === undefined) {
 						player.play(track, contextTracks ?? [track], provenance);
 					} else {
 						player.play(track, contextTracks ?? [track], provenance, contextIndex);

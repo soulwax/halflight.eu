@@ -17,6 +17,7 @@ import type { SavedPlaylist } from './index';
 import { createUserPlaylist, getUserPlaylists, updateUserPlaylist } from './index';
 import { validatePlaylistPlayback } from './playback-validation';
 import { getStreamingSettings } from '#lib/server/streaming-settings';
+import { resolveImportMetadata } from './import-metadata';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -104,14 +105,14 @@ export async function pullPlaylist(tidalPlaylistId: string, ctx: SyncContext): P
 	};
 
 	try {
-		// Retain the source snapshot, but validate the playable view before saving.
+		// Validate the source before saving its playable local copy.
 		// Probes are paced and cached; no alternate recording is substituted.
 		const document = await tidalApi.getFullPlaylist(
 			tidalPlaylistId,
 			{ include: ['artists', 'albums'] },
 			tidalCtx
 		);
-		const detail: PlaylistDetail | null = normalisePlaylistDetail(document);
+		const detail: PlaylistDetail = await resolveImportMetadata(document, tidalCtx);
 
 		if (!detail) {
 			result.error = 'Failed to normalise TIDAL playlist';
@@ -134,13 +135,13 @@ export async function pullPlaylist(tidalPlaylistId: string, ctx: SyncContext): P
 		if (existing) {
 			// Update existing local record
 			const oldIds = existing.items.map((t) => t.id);
-			const newIds = detail.items.map((t) => t.id);
+			const newIds = playable.map((t) => t.id);
 			const diff = diffPlaylistItems(newIds, oldIds);
 
 			await updateUserPlaylist(ctx.userId, existing.id, {
 				title: detail.title,
 				description: detail.description,
-				items: detail.items,
+				items: playable,
 				syncStatus: 'synced',
 				lastSyncedAt: new Date(),
 				syncError: null
@@ -156,7 +157,7 @@ export async function pullPlaylist(tidalPlaylistId: string, ctx: SyncContext): P
 				userId: ctx.userId,
 				title: detail.title,
 				description: detail.description,
-				items: detail.items,
+				items: playable,
 				tidalPlaylistId,
 				source: 'tidal',
 				syncStatus: 'synced'
@@ -170,7 +171,7 @@ export async function pullPlaylist(tidalPlaylistId: string, ctx: SyncContext): P
 
 			result.playlistId = created.id;
 			result.status = 'created';
-			result.tracksAdded = detail.items.length;
+			result.tracksAdded = playable.length;
 		}
 	} catch (cause) {
 		// Provider errors may include request paths or raw response details. Keep
@@ -394,7 +395,7 @@ export async function pushAllPlaylists(ctx: SyncContext): Promise<SyncBatchResul
 	const localPlaylists = await getUserPlaylists(ctx.userId);
 	const pushable = localPlaylists.filter(
 		(p) =>
-			p.tidalPlaylistId ||
+			(p.tidalPlaylistId && p.syncStatus === 'pending_push') ||
 			(p.source === 'syn' && p.syncStatus !== 'synced' && p.syncStatus !== 'local_only')
 	);
 

@@ -120,7 +120,7 @@ describe('PlaylistImportModal.svelte', () => {
 			.toBeDisabled();
 	});
 
-	it('does not surface API sync failures in the interface', async () => {
+	it('reports failed imports without claiming success', async () => {
 		const fetchMock = vi
 			.fn()
 			.mockResolvedValueOnce(jsonResponse({ playlists }))
@@ -146,13 +146,15 @@ describe('PlaylistImportModal.svelte', () => {
 		(importButton.element() as HTMLButtonElement).click();
 
 		await expect.element(page.getByText('Night Drive')).toBeInTheDocument();
-		expect(page.getByRole('alert').length).toBe(0);
+		await expect
+			.element(page.getByText(m.playlist_import_some_failed({ count: 1 })))
+			.toBeInTheDocument();
 	});
 
-	it('keeps the chooser quiet when loading playlists fails', async () => {
+	it('offers retry when loading playlists fails', async () => {
 		vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('upstream failure')));
 		render(PlaylistImportModal);
-		await expect.element(page.getByText(m.playlist_no_playlists())).toBeInTheDocument();
-		expect(page.getByRole('alert').length).toBe(0);
+		await expect.element(page.getByText(m.playlist_import_load_failed())).toBeInTheDocument();
+		await expect.element(page.getByRole('button', { name: m.track_retry() })).toBeInTheDocument();
 	});
 });

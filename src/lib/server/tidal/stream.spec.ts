@@ -539,3 +539,10 @@ describe('resolveTrackStream quality ladder', () => {
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 	});
 });
+
+it('refuses a stream manifest for a different recording ID', async () => {
+	const fetchMock = vi.fn().mockResolvedValue(Response.json({ trackId: 999 }));
+	await expect(
+		fetchTrackStream('18343352', { accessToken: 'test-token', ctx: { fetch: fetchMock } })
+	).rejects.toThrow('did not match the requested recording');
+});

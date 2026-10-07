@@ -1,7 +1,11 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { Loader2, Search } from '@lucide/svelte';
 	import { onDestroy } from 'svelte';
+	import SearchField from '#lib/components/ui/SearchField.svelte';
+	import PlayedSearchHistory from '#lib/components/music/PlayedSearchHistory.svelte';
+	import { searchHistory } from '#lib/search/history.svelte';
+	import { player } from '#lib/player/player.svelte';
+	import { LiveSearchScheduler } from '#lib/search/live-search';
 
 	import MediaCard from '#lib/components/music/MediaCard.svelte';
 	import StateCard from '#lib/components/music/StateCard.svelte';
@@ -19,10 +23,13 @@
 	let { data }: { data: PageData } = $props();
 
 	let searchQuery = $state('');
+	let resultsQuery = $state('');
+	let input = $state<HTMLInputElement>();
+	let composing = $state(false);
 	let liveResults = $state<SearchResultGroups | null>(null);
 	let isSearching = $state(false);
 	let urlDetected = $state<string | null>(null);
-	let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+	const scheduler = new LiveSearchScheduler();
 	let activeAbortController: AbortController | null = null;
 	let searchRequestVersion = 0;
 	let liveError = $state<'unavailable' | null>(null);
@@ -34,6 +41,8 @@
 			cancelLiveSearch();
 			lastPropQuery = data.query;
 			searchQuery = data.query ?? '';
+			resultsQuery = searchQuery;
+			urlDetected = parseTidalResource(searchQuery)?.appPath ?? null;
 			liveResults = data.results ?? null;
 			liveError = null;
 			isLiveSearch = false;
@@ -52,28 +61,27 @@
 			url.searchParams.delete('q');
 			url.searchParams.delete('search');
 		}
-		void goto(url, { state: {}, shallow: true, replace: true });
+		void goto(url, { state: {}, shallow: true, replace: true, reset: false });
 	}
 
-	function cancelLiveSearch() {
-		clearTimeout(debounceTimer);
+	function cancelLiveSearch(preserveBurst = false) {
+		scheduler.cancel(preserveBurst);
+		isSearching = false;
 		searchRequestVersion += 1;
 		activeAbortController?.abort();
 		activeAbortController = null;
 	}
 
-	function startLiveSearch(query: string, delay = 0) {
-		cancelLiveSearch();
+	function startLiveSearch(query: string, immediate = true) {
+		cancelLiveSearch(!immediate);
 		const requestVersion = searchRequestVersion;
-		liveResults = null;
+		liveResults ??= data.results ?? null;
 		liveError = null;
 		isLiveSearch = true;
 		isSearching = true;
 
-		if (delay) {
-			debounceTimer = setTimeout(() => {
-				void runLiveSearch(query, requestVersion);
-			}, delay);
+		if (!immediate) {
+			scheduler.schedule(() => void runLiveSearch(query, requestVersion));
 			return;
 		}
 
@@ -86,7 +94,8 @@
 		const q = (url.searchParams.get('q') ?? url.searchParams.get('search') ?? '').trim();
 		if (q !== searchQuery) {
 			searchQuery = q;
-			if (q) {
+			urlDetected = parseTidalResource(q)?.appPath ?? null;
+			if (q.length >= 2 && !urlDetected) {
 				startLiveSearch(q);
 			} else {
 				cancelLiveSearch();
@@ -131,16 +140,18 @@
 			urlDetected = null;
 		}
 
-		cancelLiveSearch();
-		if (!trimmed) {
+		cancelLiveSearch(true);
+		if (trimmed.length < 2) {
 			liveResults = { tracks: [], albums: [], artists: [], playlists: [] };
 			liveError = null;
-			isLiveSearch = false;
+			isLiveSearch = true;
 			isSearching = false;
+			scheduler.cancel();
 			return;
 		}
 
 		if (parsed) {
+			scheduler.cancel();
 			liveResults = null;
 			liveError = null;
 			isLiveSearch = true;
@@ -148,7 +159,7 @@
 			return;
 		}
 
-		startLiveSearch(trimmed, 250);
+		startLiveSearch(trimmed, false);
 	}
 
 	async function runLiveSearch(q: string, requestVersion: number) {
@@ -156,15 +167,19 @@
 
 		const controller = new AbortController();
 		activeAbortController = controller;
+		const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(12_000)]);
 
 		try {
 			const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`, {
-				signal: controller.signal
+				signal
 			});
+			signal.throwIfAborted();
 			if (!res.ok) throw new Error('Search request failed');
 
 			const body = (await res.json()) as { results?: SearchResultGroups };
+			signal.throwIfAborted();
 			if (requestVersion === searchRequestVersion && !controller.signal.aborted) {
+				resultsQuery = q;
 				liveResults = body.results ?? { tracks: [], albums: [], artists: [], playlists: [] };
 			}
 		} catch (err: unknown) {
@@ -193,6 +208,7 @@
 
 	function handleSubmit(event: SubmitEvent) {
 		event.preventDefault();
+		if (composing) return;
 
 		const query = searchQuery.trim();
 		updateUrl(query);
@@ -202,7 +218,7 @@
 			return;
 		}
 
-		if (query) {
+		if (query.length >= 2) {
 			startLiveSearch(query);
 		} else {
 			cancelLiveSearch();
@@ -230,37 +246,35 @@
 	/>
 
 	<form class="search-form" method="GET" role="search" onsubmit={handleSubmit}>
-		<label for="search-query" class="sr-only">{m.search_label()}</label>
-		<div class="search-input-wrap">
-			<div class="input-container">
-				<span class="search-icon"><Search size={18} /></span>
-				<input
-					id="search-query"
-					name="q"
-					type="search"
-					value={searchQuery}
-					oninput={handleInput}
-					placeholder={m.search_live_placeholder()}
-					maxlength="160"
-					autocomplete="off"
-				/>
-			</div>
-			{#if isSearching}
-				<div class="search-spinner" aria-label={m.search_live_searching()}>
-					<Loader2 class="animate-spin text-(--action)" size={20} />
-				</div>
-			{:else}
-				<Button type="submit" variant="primary">
-					{m.search_button()}
-				</Button>
-			{/if}
-		</div>
+		<SearchField
+			id="search-query"
+			label={m.search_label()}
+			placeholder={m.search_live_placeholder()}
+			value={searchQuery}
+			searching={isSearching}
+			oninput={handleInput}
+			bind:input
+			bind:composing
+			shortcut
+			oncompositionstart={() => cancelLiveSearch()}
+			onclear={() => {
+				cancelLiveSearch();
+				searchQuery = '';
+				urlDetected = null;
+				liveResults = null;
+				liveError = null;
+				isLiveSearch = true;
+				updateUrl('');
+			}}
+		/>
 	</form>
 
 	{#if urlDetected}
-		<div class="url-detected-banner" role="alert">
-			<span class="url-label">TIDAL LINK DETECTED</span>
-			<Button variant="primary" size="sm" onclick={navigateToResource}>OPEN RESOURCE →</Button>
+		<div class="url-detected-banner" role="status">
+			<span class="url-label">{m.search_link_detected()}</span>
+			<Button variant="primary" size="sm" onclick={navigateToResource}
+				>{m.search_header_open_resource()}</Button
+			>
 		</div>
 	{/if}
 
@@ -274,9 +288,18 @@
 		<Notice tone="danger">{m.search_invalid_query()}</Notice>
 	{:else if searchError === 'unavailable'}
 		<Notice tone="danger">{m.search_error()}</Notice>
+		<Button onclick={() => startLiveSearch(activeQuery)}>{m.track_retry()}</Button>
 	{:else if !activeQuery}
-		<StateCard title={m.search_empty_title()} description={m.search_empty_description()} />
-	{:else if resultCount === 0 && !isSearching}
+		<!-- Result caches and listening history never populate search history. -->
+		{#if searchHistory.entries.length}<PlayedSearchHistory />{:else}<StateCard
+				title={m.search_empty_title()}
+				description={m.search_empty_description()}
+			/>{/if}
+	{:else if activeQuery.length < 2}
+		<StateCard title={m.search_minimum()} description={m.search_empty_description()} />
+	{:else if isSearching && !currentResults}
+		<p class="result-summary" role="status">{m.search_live_searching()}</p>
+	{:else if resultCount === 0 && !isSearching && !urlDetected}
 		<StateCard
 			title={m.search_no_results_title({ query: activeQuery })}
 			description={m.search_no_results_description()}
@@ -284,8 +307,10 @@
 	{:else if currentResults}
 		<div class="result-summary" role="status">
 			<p>
-				{m.search_results_for({ query: activeQuery })}
-				<span class="font-mono text-xs text-(--text-muted)">({resultCount} matches)</span>
+				{m.search_results_for({ query: resultsQuery || activeQuery })}
+				<span class="font-mono text-xs text-(--text-muted)"
+					>({m.search_matches({ count: resultCount })})</span
+				>
 			</p>
 		</div>
 
@@ -301,9 +326,22 @@
 					contextTracks={currentResults.tracks}
 					provenance={m.search_title()}
 					columns={['album', 'date', 'duration']}
+					onRowActivate={(track, index) =>
+						player.playFromSearch(
+							track,
+							currentResults?.tracks,
+							resultsQuery || activeQuery,
+							index
+						)}
 				>
 					{#snippet rowActions(track)}
-						<TrackQueueActions {track} provenance={m.search_title()} />
+						<TrackQueueActions
+							searchQuery={resultsQuery || activeQuery}
+							{track}
+							provenance={m.search_title()}
+							onPlayNow={() =>
+								player.playFromSearch(track, currentResults?.tracks, resultsQuery || activeQuery)}
+						/>
 					{/snippet}
 				</TrackTable>
 			</section>
@@ -363,58 +401,16 @@
 <style>
 	.search-page {
 		max-width: 72rem;
+		min-width: 0;
 	}
 
 	.search-form {
 		margin-bottom: 1.5rem;
 	}
 
-	.search-input-wrap {
-		display: flex;
-		gap: 0.75rem;
-		align-items: center;
-	}
-
-	.input-container {
-		position: relative;
-		flex: 1;
-	}
-
-	.search-icon {
-		position: absolute;
-		left: 1rem;
-		top: 50%;
-		transform: translateY(-50%);
-		color: var(--text-muted);
-		pointer-events: none;
-	}
-
-	input[type='search'] {
-		width: 100%;
-		padding: 0.75rem 1rem 0.75rem 2.85rem;
-		border: 1px solid var(--border-subtle);
-		background: var(--surface-raised);
-		border-radius: var(--radius-md);
-		color: var(--text-primary);
-		font-size: 0.95rem;
-		transition: all 0.12s ease;
-	}
-
-	input[type='search']:focus {
-		border-color: var(--action);
-		background: var(--surface-selected);
-		outline: none;
-		box-shadow: var(--shadow-panel);
-	}
-
-	.search-spinner {
-		display: grid;
-		place-items: center;
-		padding: 0 1rem;
-	}
-
 	.url-detected-banner {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
 		justify-content: space-between;
 		gap: 1rem;

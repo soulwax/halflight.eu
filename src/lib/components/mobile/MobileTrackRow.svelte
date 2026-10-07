@@ -12,6 +12,7 @@
 		contextTracks,
 		contextIndex,
 		provenance,
+		searchQuery,
 		onStartRadio,
 		radioDisabled = false,
 		compact = false,
@@ -22,6 +23,7 @@
 		contextTracks?: TrackSummary[];
 		contextIndex?: number;
 		provenance?: string;
+		searchQuery?: string;
 		onStartRadio?: () => void | Promise<void>;
 		radioDisabled?: boolean;
 		/** Dense queue rows: two single lines, with the album beside the artist. */
@@ -79,11 +81,13 @@
 	{:else}
 		<div class="mobile-track-actions">
 			<TrackActionMenu
+				onPlayNow={onActivate}
 				mobile
 				{track}
 				{contextTracks}
 				{contextIndex}
 				{provenance}
+				{searchQuery}
 				{onStartRadio}
 				{radioDisabled}
 				triggerClass="mobile-action-btn"

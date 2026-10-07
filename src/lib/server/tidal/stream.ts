@@ -25,10 +25,12 @@ const SUBSTATUS_QUALITY_NOT_ALLOWED = 5003;
  * reconnect the account.
  */
 export function isTrackUnavailableForPlayback(cause: unknown): boolean {
+	if (!(cause instanceof TidalApiError)) return false;
+	const body = cause.body as { subStatus?: number } | null;
 	return (
-		cause instanceof TidalApiError &&
-		cause.status === 401 &&
-		/asset is not ready for playback/i.test(cause.statusText)
+		(cause.status === 401 && /asset is not ready for playback/i.test(cause.statusText)) ||
+		(cause.status === 404 &&
+			(body?.subStatus === 2001 || /track.*not found/i.test(cause.statusText)))
 	);
 }
 
@@ -339,6 +341,9 @@ export async function fetchTrackStream(
 	}
 
 	const data = (await response.json()) as TrackStreamResponse;
+	if (String(data.trackId) !== String(trackId)) {
+		throw new TidalError('Playback response did not match the requested recording');
+	}
 	const parsed = parseTrackStream(data);
 
 	if (!parsed.urls || parsed.urls.length === 0) {

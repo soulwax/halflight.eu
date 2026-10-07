@@ -1,0 +1,52 @@
+import { getTrack } from '#lib/server/tidal/api';
+import { normalisePlaylistDetail, normaliseTrackDetail } from '#lib/server/tidal/normalise';
+import type { TidalRequestContext } from '#lib/server/tidal/client';
+import type { Document, Resource } from '#lib/server/tidal/jsonapi';
+import type { PlaylistDetail, TrackSummary } from '#lib/tidal/models';
+import { TidalApiError } from '#lib/server/tidal/errors';
+
+/** Resolve metadata by recording ID, never by title or result position. */
+export async function resolveImportMetadata(
+	document: Document<Resource>,
+	ctx: TidalRequestContext,
+	readTrack = getTrack
+): Promise<PlaylistDetail> {
+	const playlist = normalisePlaylistDetail(document);
+	if (!playlist) throw new Error('Invalid playlist metadata');
+	const relationship = document.data.relationships?.items ?? document.data.relationships?.tracks;
+	const linkages = relationship?.data;
+	const ordered = (Array.isArray(linkages) ? linkages : linkages ? [linkages] : []).filter(
+		(item) => item.type === 'tracks'
+	);
+	if (!relationship && playlist.numberOfItems) throw new Error('Playlist order is missing');
+	if (ordered.some((item) => !/^\d+$/.test(item.id))) throw new Error('Invalid recording ID');
+
+	const ids = [...new Set(ordered.map((item) => item.id))];
+	const resolved = new Map<string, TrackSummary>();
+	const sourceTracks = new Map(playlist.items.map((track) => [track.id, track]));
+	// Bounded concurrency, no per-recording cache: reimport must repair stale metadata.
+	for (let offset = 0; offset < ids.length; offset += 3) {
+		const batch = await Promise.all(
+			ids.slice(offset, offset + 3).map(async (id) => {
+				let detail;
+				try {
+					detail = normaliseTrackDetail(
+						await readTrack(id, { include: ['artists', 'albums'] }, ctx)
+					);
+				} catch (cause) {
+					// Retired catalogue entries still belong to the source snapshot. The
+					// following playback validation excludes them from the playable view.
+					if (!(cause instanceof TidalApiError) || cause.status !== 404 || !sourceTracks.has(id))
+						throw cause;
+					detail = sourceTracks.get(id)!;
+				}
+				if (!detail || detail.id !== id) throw new Error('Recording metadata did not match its ID');
+				return { ...detail, kind: 'track' as const };
+			})
+		);
+		for (const track of batch) resolved.set(track.id, track);
+	}
+	const items = ordered.map(({ id }) => resolved.get(id)!);
+	if (items.length !== ordered.length) throw new Error('Playlist metadata is incomplete');
+	return { ...playlist, items, numberOfItems: items.length };
+}

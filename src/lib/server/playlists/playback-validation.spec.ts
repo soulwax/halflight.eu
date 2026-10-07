@@ -81,3 +81,11 @@ describe('playlist playback validation', () => {
 		expect(mocks.mark).not.toHaveBeenCalled();
 	});
 });
+
+it('excludes a retired recording reported as track not found', async () => {
+	mocks.resolve.mockRejectedValueOnce(
+		new TidalApiError(404, 'Not Found', { subStatus: 2001 }, '/playback')
+	);
+	expect(await validate([track('18343352'), track('good')])).toEqual([track('good')]);
+	expect(mocks.mark).toHaveBeenCalledWith('18343352', 'asset not ready for playback');
+});

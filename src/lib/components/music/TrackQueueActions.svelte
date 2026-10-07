@@ -5,16 +5,27 @@
 	let {
 		track,
 		contextTracks,
-		provenance
+		provenance,
+		searchQuery,
+		onPlayNow
 	}: {
 		track: TrackSummary;
 		contextTracks?: TrackSummary[];
 		provenance?: string;
+		searchQuery?: string;
+		onPlayNow?: () => void;
 	} = $props();
 </script>
 
 <div class="queue-actions">
-	<TrackActionMenu {track} {contextTracks} {provenance} triggerClass="table-row-menu" />
+	<TrackActionMenu
+		{track}
+		{contextTracks}
+		{provenance}
+		{searchQuery}
+		{onPlayNow}
+		triggerClass="table-row-menu"
+	/>
 </div>
 
 <style>

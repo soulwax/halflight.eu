@@ -230,14 +230,24 @@ export class CustomPlaylistsManager {
 		if (!isBrowser) return false;
 		this.isSyncing = true;
 		try {
+			const playlist = this.playlists.find((item) => item.id === playlistId);
+			const pull =
+				playlist?.source === 'tidal' &&
+				playlist.tidalPlaylistId &&
+				playlist.syncStatus !== 'pending_push';
 			const res = await fetch('/api/playlists/sync', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ action: 'push', playlistId })
+				body: JSON.stringify(
+					pull
+						? { action: 'pull', tidalPlaylistId: playlist.tidalPlaylistId }
+						: { action: 'push', playlistId }
+				)
 			});
 			if (res.ok) {
+				const result = (await res.json()) as { status?: string };
 				await this.syncWithServer();
-				return true;
+				return result.status === 'synced' || result.status === 'created';
 			}
 			return false;
 		} catch {

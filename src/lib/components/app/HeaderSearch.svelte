@@ -1,16 +1,11 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import {
-		Disc3,
-		ExternalLink,
-		ListMusic,
-		LoaderCircle,
-		Music2,
-		Search,
-		UserRound
-	} from '@lucide/svelte';
-	import { onDestroy } from 'svelte';
+	import { Disc3, ExternalLink, ListMusic, Music2, UserRound } from '@lucide/svelte';
+	import { onDestroy, tick } from 'svelte';
+	import SearchField from '#lib/components/ui/SearchField.svelte';
+	import { searchHistory } from '#lib/search/history.svelte';
+	import { LiveSearchScheduler } from '#lib/search/live-search';
 	import { m } from '#lib/paraglide/messages';
 	import type { SearchResult, SearchResultGroups } from '#lib/tidal/models';
 	import { parseTidalResource } from '#lib/tidal/resource';
@@ -26,15 +21,19 @@
 		href: string;
 	}
 
+	const searchId = $props.id();
 	let root: HTMLDivElement;
+	let input = $state<HTMLInputElement>();
+	let composing = $state(false);
 	let query = $state('');
+	let resultsQuery = $state('');
 	let results = $state<SearchResultGroups | null>(null);
 	let isOpen = $state(false);
 	let isSearching = $state(false);
 	let error = $state<'not_connected' | 'unavailable' | null>(null);
 	let resourceHref = $state<string | null>(null);
 	let activeIndex = $state(-1);
-	let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+	const scheduler = new LiveSearchScheduler();
 	let controller: AbortController | undefined;
 	let requestVersion = 0;
 
@@ -42,7 +41,7 @@
 		results
 			? (Object.entries(RESULT_LIMITS).flatMap(([kind, limit]) =>
 					(results?.[kind as SearchKind] ?? []).slice(0, limit).map((result) => ({
-						id: `${kind}-${result.id}`,
+						id: `${searchId}-${kind}-${result.id}`,
 						kind: kind as SearchKind,
 						result,
 						href: resultHref(result)
@@ -57,6 +56,18 @@
 				isSearching ||
 				Boolean(error))
 	);
+
+	const navigationOptions = $derived(
+		resourceHref ? [{ id: `${searchId}-resource`, href: resourceHref }] : options
+	);
+
+	$effect(() => {
+		const option = navigationOptions[activeIndex];
+		if (isOpen && option)
+			void tick().then(() =>
+				document.getElementById(option.id)?.scrollIntoView({ block: 'nearest' })
+			);
+	});
 
 	onDestroy(cancelSearch);
 
@@ -97,9 +108,8 @@
 		return m.search_artists();
 	}
 
-	function cancelSearch(): void {
-		if (debounceTimer) clearTimeout(debounceTimer);
-		debounceTimer = undefined;
+	function cancelSearch(preserveBurst = false): void {
+		scheduler.cancel(preserveBurst);
 		controller?.abort();
 		controller = undefined;
 		requestVersion += 1;
@@ -116,37 +126,48 @@
 	function handleInput(event: Event): void {
 		query = (event.target as HTMLInputElement).value;
 		isOpen = true;
-		clearResults();
-		cancelSearch();
+		error = null;
+		resourceHref = null;
+		activeIndex = -1;
+		cancelSearch(true);
 
 		const trimmed = query.trim();
 		const resource = parseTidalResource(trimmed);
 		if (resource) {
+			scheduler.cancel();
+			results = null;
 			resourceHref = resource.appPath;
 			return;
 		}
-		if (trimmed.length < MINIMUM_QUERY_LENGTH) return;
+		if (trimmed.length < MINIMUM_QUERY_LENGTH) {
+			results = null;
+			scheduler.cancel();
+			return;
+		}
 
 		const version = requestVersion;
 		isSearching = true;
-		debounceTimer = setTimeout(() => void fetchResults(trimmed, version), 250);
+		scheduler.schedule(() => void fetchResults(trimmed, version));
 	}
 
 	async function fetchResults(searchQuery: string, version: number): Promise<void> {
 		if (version !== requestVersion) return;
 		const nextController = new AbortController();
 		controller = nextController;
+		const signal = AbortSignal.any([nextController.signal, AbortSignal.timeout(12_000)]);
 		try {
 			const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`, {
-				signal: nextController.signal
+				signal
 			});
-			if (version !== requestVersion || nextController.signal.aborted) return;
+			signal.throwIfAborted();
+			if (version !== requestVersion) return;
 			if (!response.ok) {
 				error = response.status === 503 ? 'not_connected' : 'unavailable';
 				return;
 			}
 			const body = (await response.json()) as { results?: SearchResultGroups };
 			if (version === requestVersion && !nextController.signal.aborted) {
+				resultsQuery = searchQuery;
 				results = body.results ?? { tracks: [], albums: [], artists: [], playlists: [] };
 			}
 		} catch (cause) {
@@ -170,13 +191,15 @@
 	}
 
 	function navigate(href: string): void {
+		const option = options.find((item) => item.href === href);
+		if (option?.result.kind === 'track') searchHistory.select(option.result, resultsQuery);
 		closeDropdown();
 		void goto(href);
 	}
 
 	function submitSearch(): void {
 		const trimmed = query.trim();
-		if (!trimmed) return;
+		if (!trimmed || composing) return;
 		if (resourceHref) {
 			navigate(resourceHref);
 			return;
@@ -185,24 +208,27 @@
 	}
 
 	function handleKeydown(event: KeyboardEvent): void {
+		if (event.isComposing || composing) return;
 		if (event.key === 'Escape') {
+			event.preventDefault();
 			closeDropdown();
 			return;
 		}
 		if (event.key === 'ArrowDown') {
 			event.preventDefault();
 			isOpen = true;
-			activeIndex = Math.min(activeIndex + 1, options.length - 1);
+			activeIndex = Math.min(activeIndex + 1, navigationOptions.length - 1);
 			return;
 		}
 		if (event.key === 'ArrowUp') {
 			event.preventDefault();
-			activeIndex = Math.max(activeIndex - 1, -1);
+			isOpen = true;
+			activeIndex = activeIndex < 0 ? navigationOptions.length - 1 : Math.max(activeIndex - 1, -1);
 			return;
 		}
-		if (event.key === 'Enter' && activeIndex >= 0 && options[activeIndex]) {
+		if (event.key === 'Enter' && activeIndex >= 0 && navigationOptions[activeIndex]) {
 			event.preventDefault();
-			navigate(options[activeIndex].href);
+			navigate(navigationOptions[activeIndex].href);
 		}
 	}
 
@@ -211,6 +237,12 @@
 		if (!(next instanceof Node) || !root.contains(next)) closeDropdown();
 	}
 </script>
+
+<svelte:window
+	onpointerdown={(event) => {
+		if (event.target instanceof Node && !root?.contains(event.target)) closeDropdown();
+	}}
+/>
 
 <div class="header-search" bind:this={root} onfocusout={handleFocusOut}>
 	<form
@@ -221,95 +253,105 @@
 			submitSearch();
 		}}
 	>
-		<label class="sr-only" for="header-search-input">{m.search_header_label()}</label>
-		<div class="search-field">
-			<Search size={16} aria-hidden="true" />
-			<input
-				id="header-search-input"
-				name="q"
-				type="text"
-				role="combobox"
-				value={query}
-				oninput={handleInput}
-				onfocus={() => (isOpen = true)}
-				onkeydown={handleKeydown}
-				placeholder={m.search_header_placeholder()}
-				maxlength="160"
-				autocomplete="off"
-				aria-autocomplete="list"
-				aria-controls="header-search-results"
-				aria-expanded={shouldShowDropdown}
-				aria-activedescendant={activeIndex >= 0 ? options[activeIndex]?.id : undefined}
-			/>
-			{#if isSearching}
-				<span>
-					<LoaderCircle class="animate-spin" size={16} aria-label={m.search_live_searching()} />
-				</span>
-			{/if}
-		</div>
+		<SearchField
+			id={`${searchId}-input`}
+			label={m.search_header_label()}
+			placeholder={m.search_header_placeholder()}
+			value={query}
+			searching={isSearching}
+			oninput={handleInput}
+			onkeydown={handleKeydown}
+			onfocus={() => (isOpen = true)}
+			oncompositionstart={cancelSearch}
+			onclear={() => {
+				cancelSearch();
+				clearResults();
+				query = '';
+				isOpen = false;
+			}}
+			bind:input
+			bind:composing
+			combobox
+			shortcut
+			expanded={shouldShowDropdown}
+			controls={shouldShowDropdown ? `${searchId}-results` : undefined}
+			activeDescendant={activeIndex >= 0 ? navigationOptions[activeIndex]?.id : undefined}
+		/>
 	</form>
 
 	{#if shouldShowDropdown}
-		<div
-			id="header-search-results"
-			class="search-dropdown"
-			role="listbox"
-			aria-label={m.search_header_results()}
-		>
-			{#if resourceHref}
-				<button type="button" class="resource-result" onclick={() => navigate(resourceHref!)}>
-					<ExternalLink size={16} aria-hidden="true" />
-					<span>
-						<strong>{m.search_header_open_resource()}</strong>
-						<small>{query.trim()}</small>
-					</span>
-				</button>
-			{:else if error === 'not_connected'}
-				<p class="dropdown-state" role="status">{m.search_not_connected_title()}</p>
-			{:else if error === 'unavailable'}
-				<p class="dropdown-state" role="status">{m.search_header_unavailable()}</p>
-			{:else if isSearching}
-				<p class="dropdown-state" role="status">{m.search_live_searching()}</p>
-			{:else if options.length === 0 && query.trim().length >= MINIMUM_QUERY_LENGTH}
-				<p class="dropdown-state" role="status">{m.search_header_no_results()}</p>
-			{:else}
-				{#each ['tracks', 'albums', 'artists', 'playlists'] as kind (kind)}
-					{@const group = options.filter((option) => option.kind === kind)}
-					{#if group.length}
-						<section class="result-group" aria-label={kindLabel(kind as SearchKind)}>
-							<p class="group-label">{kindLabel(kind as SearchKind)}</p>
-							{#each group as option (option.id)}
-								<a
-									id={option.id}
-									class:active={options.indexOf(option) === activeIndex}
-									class="dropdown-result"
-									href={option.href}
-									role="option"
-									aria-selected={options.indexOf(option) === activeIndex}
-									onclick={closeDropdown}
-								>
-									<span class="result-icon" aria-hidden="true">
-										{#if option.result.kind === 'track'}<Music2 size={16} />
-										{:else if option.result.kind === 'album'}<Disc3 size={16} />
-										{:else if option.result.kind === 'artist'}<UserRound size={16} />
-										{:else}<ListMusic size={16} />{/if}
-									</span>
-									<span class="result-copy">
-										<strong>{titleFor(option.result)}</strong>
-										<small>{subtitleFor(option.result)}</small>
-									</span>
-								</a>
-							{/each}
-						</section>
-					{/if}
-				{/each}
+		<div class="search-dropdown">
+			<div id={`${searchId}-results`} role="listbox" aria-label={m.search_header_results()}>
+				{#if resourceHref}
+					<button
+						id={`${searchId}-resource`}
+						role="option"
+						aria-selected={activeIndex === 0}
+						class:active={activeIndex === 0}
+						type="button"
+						class="resource-result"
+						onclick={() => navigate(resourceHref!)}
+					>
+						<ExternalLink size={16} aria-hidden="true" />
+						<span>
+							<strong>{m.search_header_open_resource()}</strong>
+							<small>{query.trim()}</small>
+						</span>
+					</button>
+				{:else if error === 'not_connected'}
+					<p class="dropdown-state" role="status">{m.search_not_connected_title()}</p>
+				{:else if error === 'unavailable'}
+					<p class="dropdown-state" role="status">{m.search_header_unavailable()}</p>
+				{:else if isSearching && !options.length}
+					<p class="dropdown-state" role="status">{m.search_live_searching()}</p>
+				{:else if options.length === 0 && query.trim().length >= MINIMUM_QUERY_LENGTH}
+					<p class="dropdown-state" role="status">{m.search_header_no_results()}</p>
+				{:else}
+					{#if isSearching}<p class="dropdown-state" role="status">
+							{m.search_results_for({ query: resultsQuery })}
+						</p>{/if}
+					{#each ['tracks', 'albums', 'artists', 'playlists'] as kind (kind)}
+						{@const group = options.filter((option) => option.kind === kind)}
+						{#if group.length}
+							<section class="result-group" role="group" aria-label={kindLabel(kind as SearchKind)}>
+								<p class="group-label">{kindLabel(kind as SearchKind)}</p>
+								{#each group as option (option.id)}
+									<a
+										id={option.id}
+										class:active={options.indexOf(option) === activeIndex}
+										class="dropdown-result"
+										href={option.href}
+										role="option"
+										aria-selected={options.indexOf(option) === activeIndex}
+										onclick={() => {
+											if (option.result.kind === 'track')
+												searchHistory.select(option.result, resultsQuery);
+											closeDropdown();
+										}}
+									>
+										<span class="result-icon" aria-hidden="true">
+											{#if option.result.kind === 'track'}<Music2 size={16} />
+											{:else if option.result.kind === 'album'}<Disc3 size={16} />
+											{:else if option.result.kind === 'artist'}<UserRound size={16} />
+											{:else}<ListMusic size={16} />{/if}
+										</span>
+										<span class="result-copy">
+											<strong>{titleFor(option.result)}</strong>
+											<small>{subtitleFor(option.result)}</small>
+										</span>
+									</a>
+								{/each}
+							</section>
+						{/if}
+					{/each}
+				{/if}
+			</div>
+			{#if !resourceHref && !isSearching}
 				<a
 					class="view-all"
 					href={`${resolve('/app/search')}?q=${encodeURIComponent(query.trim())}`}
-					onclick={closeDropdown}
+					onclick={closeDropdown}>{m.search_header_view_all({ query: query.trim() })}</a
 				>
-					{m.search_header_view_all({ query: query.trim() })}
-				</a>
 			{/if}
 		</div>
 	{/if}
@@ -321,46 +363,13 @@
 		width: 100%;
 		max-width: 34rem;
 	}
-	.search-field {
-		display: flex;
-		align-items: center;
-		gap: 0.55rem;
-		min-width: 0;
-		height: 2.5rem;
-		padding: 0 0.85rem;
-		border: 1px solid var(--border-subtle);
-		border-radius: var(--radius-lg);
-		background: var(--surface-raised);
-		color: var(--editorial-faint);
-		transition:
-			border-color 140ms ease,
-			box-shadow 140ms ease,
-			color 140ms ease;
-	}
-	.search-field:focus-within {
-		border-color: color-mix(in oklab, var(--action) 64%, var(--border-subtle));
-		box-shadow: 0 0 0 3px color-mix(in oklab, var(--editorial-sky) 58%, transparent);
-		color: var(--action);
-	}
-	input {
-		min-width: 0;
-		flex: 1;
-		border: 0;
-		background: transparent;
-		color: var(--text-primary);
-		font-size: 0.875rem;
-		letter-spacing: -0.005em;
-		outline: none;
-	}
-	input::placeholder {
-		color: var(--text-muted);
-	}
 	.search-dropdown {
 		position: absolute;
 		z-index: 60;
 		top: calc(100% + 0.55rem);
 		width: 100%;
-		max-height: min(70dvh, 34rem);
+		max-height: min(60dvh, 34rem);
+		overscroll-behavior: contain;
 		overflow-y: auto;
 		border: 1px solid var(--border-subtle);
 		border-radius: var(--radius-lg);
@@ -386,6 +395,7 @@
 		width: 100%;
 		align-items: center;
 		gap: 0.75rem;
+		min-height: 3rem;
 		padding: 0.6rem;
 		border: 0;
 		border-radius: var(--radius-md);
@@ -398,6 +408,7 @@
 	.dropdown-result:hover,
 	.dropdown-result.active,
 	.resource-result:hover,
+	.resource-result.active,
 	.view-all:hover {
 		background: color-mix(in oklab, var(--editorial-sky) 62%, var(--surface-raised));
 	}
@@ -454,31 +465,14 @@
 		letter-spacing: 0.01em;
 		text-decoration: none;
 	}
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		margin: -1px;
-		padding: 0;
-		overflow: hidden;
-		clip: rect(0 0 0 0);
-		white-space: nowrap;
-		border: 0;
-	}
 	@media (max-width: 42rem) {
 		.header-search {
 			max-width: none;
 		}
-		.search-field {
-			height: 2.25rem;
-		}
-		input {
-			font-size: 0.8rem;
-		}
 		.search-dropdown {
-			position: fixed;
-			right: 0.75rem;
-			left: 0.75rem;
+			position: absolute;
+			right: 0;
+			left: 0;
 			width: auto;
 		}
 	}

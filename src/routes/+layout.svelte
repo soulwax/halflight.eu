@@ -7,10 +7,12 @@
 	import { page } from '$app/state';
 	import type { Snippet } from 'svelte';
 	import { onMount } from 'svelte';
+	import { searchHistory } from '#lib/search/history.svelte';
 	import type { LayoutData } from './$types';
 	import './layout.css';
 
 	let { data, children }: { data: LayoutData; children: Snippet } = $props();
+	$effect(() => searchHistory.setOwner(data.user?.id ?? null));
 
 	// The mobile browser/OS chrome colour cannot be a CSS custom property — it
 	// needs a literal string at head-render time — so this is the one place

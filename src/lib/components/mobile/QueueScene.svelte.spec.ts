@@ -124,13 +124,13 @@ describe('QueueScene.svelte', () => {
 		expect(player.currentTrack?.id).toBe('current');
 	});
 
-	it('shows pending queue saves', async () => {
+	it('keeps pending queue saves quiet', async () => {
 		player.persistenceStatus = 'saving';
 		await render(QueueScene);
 
 		await expect
 			.element(page.getByRole('status', { name: m.player_sync_saving() }))
-			.toBeInTheDocument();
+			.not.toBeInTheDocument();
 	});
 
 	it('offers conflict refresh while keeping the current track playing', async () => {

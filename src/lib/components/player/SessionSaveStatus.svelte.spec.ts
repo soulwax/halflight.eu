@@ -12,18 +12,22 @@ afterEach(() => {
 });
 
 describe('SessionSaveStatus', () => {
-	it('shows saving and saved as labelled icons without inline text', async () => {
-		player.persistenceStatus = 'saving';
-		const { container } = render(SessionSaveStatus);
-		await expect
-			.element(page.getByRole('status', { name: m.player_sync_saving() }))
-			.toBeInTheDocument();
-		expect(container.textContent?.trim()).toBe('');
-		player.persistenceStatus = 'saved';
-		await expect
-			.element(page.getByRole('status', { name: m.player_sync_saved() }))
-			.toBeInTheDocument();
-	});
+	it.each([false, true])(
+		'renders no indicator for routine saving or saved states (mobile: %s)',
+		async (mobile) => {
+			player.persistenceStatus = 'saving';
+			const { container } = render(SessionSaveStatus, { mobile, compactText: mobile });
+			await expect
+				.element(page.getByRole('status', { name: m.player_sync_saving() }))
+				.not.toBeInTheDocument();
+			expect(container.querySelector('.session-save-status')).toBeNull();
+			player.persistenceStatus = 'saved';
+			await expect
+				.element(page.getByRole('status', { name: m.player_sync_saved() }))
+				.not.toBeInTheDocument();
+			expect(container.querySelector('.session-save-status')).toBeNull();
+		}
+	);
 	it('reveals local backup details and retry only when the icon is opened', async () => {
 		player.persistenceStatus = 'offline';
 		const retry = vi.spyOn(player, 'retryPersistence').mockImplementation(() => {});

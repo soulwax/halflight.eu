@@ -1,12 +1,17 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { Album, Loader2, Search, UserRound } from '@lucide/svelte';
+	import { Album, ExternalLink, ListMusic, UserRound } from '@lucide/svelte';
 	import { getContext, onDestroy, onMount } from 'svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { player } from '#lib/player/player.svelte.js';
 	import { MobileSearchSession, MOBILE_SEARCH_SESSION } from '#lib/mobile/search-session.svelte.js';
 	import MobileScreenHeader from './MobileScreenHeader.svelte';
+	import SearchField from '#lib/components/ui/SearchField.svelte';
+	import PlayedSearchHistory from '#lib/components/music/PlayedSearchHistory.svelte';
+	import { searchHistory } from '#lib/search/history.svelte';
+	import { LiveSearchScheduler } from '#lib/search/live-search';
+	import { parseTidalResource } from '#lib/tidal/resource';
 	import MobileTrackRow from './MobileTrackRow.svelte';
 
 	import type {
@@ -30,22 +35,22 @@
 	type SearchError = 'not_connected' | 'unauthorized' | 'unavailable' | null;
 
 	let query = $state('');
+	let resultsQuery = $state('');
+	let input = $state<HTMLInputElement>();
+	let composing = $state(false);
 	let results = $state<SearchResultGroups | null>(null);
 	let isSearching = $state(false);
 	let error = $state<SearchError>(null);
 	let startingRadioId = $state<string | null>(null);
 	let radioError = $state<string | null>(null);
 	let radioController: AbortController | undefined;
-	let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+	const scheduler = new LiveSearchScheduler();
 	let controller: AbortController | undefined;
 	let requestVersion = 0;
 
 	const trimmedQuery = $derived(query.trim());
-	const showingLastSearch = $derived(
-		trimmedQuery.length < MINIMUM_QUERY_LENGTH && searchSession.lastResults !== null
-	);
-	const visibleResults = $derived(showingLastSearch ? searchSession.lastResults : results);
-	const visibleQuery = $derived(showingLastSearch ? searchSession.lastQuery : trimmedQuery);
+	const visibleResults = $derived(results);
+	const visibleQuery = $derived(resultsQuery || trimmedQuery);
 	const hasVisibleResults = $derived(
 		Boolean(
 			visibleResults &&
@@ -70,28 +75,33 @@
 		radioError = null;
 	}
 
-	function cancelSearch(): void {
-		if (debounceTimer) clearTimeout(debounceTimer);
-		debounceTimer = undefined;
+	function cancelSearch(preserveBurst = false): void {
+		scheduler.cancel(preserveBurst);
 		controller?.abort();
 		controller = undefined;
 		requestVersion += 1;
 		isSearching = false;
 	}
 
-	function searchFromQuery(searchQuery: string, delay = 250): void {
-		results = searchSession.lastQuery === searchQuery ? searchSession.lastResults : null;
+	function searchFromQuery(searchQuery: string, immediate = false): void {
+		if (searchSession.lastQuery === searchQuery) {
+			results = searchSession.lastResults;
+			resultsQuery = searchQuery;
+		}
 		error = null;
-		cancelSearch();
-		if (searchQuery.length < MINIMUM_QUERY_LENGTH) return;
+		cancelSearch(!immediate);
+		if (searchQuery.length < MINIMUM_QUERY_LENGTH || mobileResourceHref(searchQuery)) {
+			scheduler.cancel();
+			return;
+		}
 
 		const version = requestVersion;
 		isSearching = true;
-		if (delay === 0) {
+		if (immediate) {
 			void search(searchQuery, version);
 			return;
 		}
-		debounceTimer = setTimeout(() => void search(searchQuery, version), delay);
+		scheduler.schedule(() => void search(searchQuery, version));
 	}
 
 	function updateUrl(searchQuery: string): void {
@@ -108,7 +118,7 @@
 		const nextQuery = urlQuery?.trim().slice(0, 160) ?? '';
 		if (nextQuery === query) return;
 		query = nextQuery;
-		searchFromQuery(nextQuery, 0);
+		searchFromQuery(nextQuery, true);
 	}
 
 	function handleInput(event: Event): void {
@@ -120,9 +130,16 @@
 	}
 
 	function submit(): void {
+		if (composing) return;
+		input?.blur();
+		const href = mobileResourceHref(query);
+		if (href) {
+			void goto(href);
+			return;
+		}
 		const searchQuery = query.trim();
 		updateUrl(searchQuery);
-		searchFromQuery(searchQuery, 0);
+		searchFromQuery(searchQuery, true);
 	}
 
 	async function search(searchQuery: string, version: number): Promise<void> {
@@ -150,6 +167,7 @@
 			signal.throwIfAborted();
 			if (version === requestVersion) {
 				const nextResults = body.results ?? EMPTY_RESULTS;
+				resultsQuery = searchQuery;
 				results = nextResults;
 				searchSession.remember(searchQuery, nextResults);
 			}
@@ -169,11 +187,13 @@
 	}
 
 	function play(track: TrackSummary): void {
+		input?.blur();
 		cancelRadio();
-		player.play(track, visibleResults?.tracks, m.now_search_provenance({ query: visibleQuery }));
+		player.playFromSearch(track, visibleResults?.tracks, visibleQuery);
 	}
 
 	async function startRadio(track: TrackSummary): Promise<void> {
+		input?.blur();
 		if (startingRadioId) return;
 		startingRadioId = track.id;
 		radioError = null;
@@ -201,6 +221,24 @@
 			}
 		}
 	}
+
+	function mobileResourceHref(value: string): string | null {
+		const resource = parseTidalResource(value);
+		if (!resource) return null;
+		switch (resource.type) {
+			case 'track':
+				return resolve('/(mobile)/tracks/[id]', { id: resource.id });
+			case 'album':
+				return resolve('/(mobile)/albums/[id]', { id: resource.id });
+			case 'artist':
+				return resolve('/(mobile)/artists/[id]', { id: resource.id });
+			case 'playlist':
+				return resolve('/(mobile)/playlists/[id]', { id: resource.id });
+			default:
+				return null;
+		}
+	}
+	const resourceHref = $derived(mobileResourceHref(query));
 
 	function artistLine(item: TrackSummary | AlbumSummary): string {
 		return item.artists.map((artist) => artist.name).join(', ');
@@ -230,37 +268,52 @@
 			submit();
 		}}
 	>
-		<label class="sr-only" for="mobile-search-input">{m.now_search_label()}</label>
-		<div class="search-field">
-			<Search size={18} aria-hidden="true" />
-			<input
-				id="mobile-search-input"
-				type="search"
-				value={query}
-				oninput={handleInput}
-				placeholder={m.now_search_placeholder()}
-				maxlength="160"
-				autocomplete="off"
-			/>
-			{#if isSearching}<Loader2
-					class="animate-spin"
-					size={18}
-					aria-label={m.search_live_searching()}
-				/>{/if}
-		</div>
+		<SearchField
+			id="mobile-search-input"
+			label={m.now_search_label()}
+			placeholder={m.now_search_placeholder()}
+			value={query}
+			searching={isSearching}
+			oninput={handleInput}
+			bind:input
+			bind:composing
+			oncompositionstart={() => {
+				cancelSearch();
+				cancelRadio();
+			}}
+			onclear={() => {
+				cancelSearch();
+				cancelRadio();
+				query = '';
+				results = null;
+				error = null;
+				updateUrl('');
+			}}
+			onkeydown={(event) => {
+				if (event.key === 'Escape') input?.blur();
+			}}
+		/>
 	</form>
 
-	{#if showingLastSearch}
-		<p class="last-search-label" role="status">
-			{m.now_search_last_results({ query: searchSession.lastQuery })}
-		</p>
-	{/if}
+	{#if isSearching && visibleResults}<p class="last-search-label" role="status">
+			{m.search_results_for({ query: visibleQuery })}
+		</p>{/if}
 
-	{#if trimmedQuery.length < MINIMUM_QUERY_LENGTH && !showingLastSearch}
-		<p class="state-message">{m.now_search_prompt()}</p>
+	{#if resourceHref}
+		<a class="recovery-action resource-link" href={resourceHref} onclick={() => input?.blur()}
+			><ExternalLink size={18} aria-hidden="true" />{m.search_header_open_resource()}</a
+		>
+	{:else if trimmedQuery.length < MINIMUM_QUERY_LENGTH}
+		{#if !trimmedQuery && searchHistory.entries.length}<PlayedSearchHistory
+				mobile
+				onplay={() => input?.blur()}
+			/>
+		{:else}<p class="state-message">
+				{trimmedQuery ? m.search_minimum() : m.now_search_prompt()}
+			</p>{/if}
 	{:else if error === 'not_connected'}
 		<p class="state-message" role="status">{m.search_not_connected_title()}</p>
-		<a class="recovery-action" href={resolve('/app/settings/tidal')}>{m.tidal_connect()}</a>
+		<a class="recovery-action" href={resolve('/(mobile)/settings')}>{m.tidal_connect()}</a>
 	{:else if error === 'unauthorized'}
 		<a class="recovery-action" href={resolve('/sign-in')}>{m.sign_in_button()}</a>
 	{:else if error === 'unavailable'}
@@ -271,7 +324,7 @@
 	{:else if !isSearching && visibleResults && !hasVisibleResults}
 		<p class="state-message" role="status">{m.search_no_results_title({ query: visibleQuery })}</p>
 	{:else if visibleResults}
-		<div class="result-groups">
+		<div class="result-groups" aria-busy={isSearching}>
 			{#if visibleResults.tracks.length}
 				<section aria-labelledby="mobile-search-tracks">
 					<h2 id="mobile-search-tracks">{m.search_tracks()}</h2>
@@ -281,6 +334,7 @@
 								{track}
 								contextTracks={visibleResults.tracks}
 								provenance={m.now_search_provenance({ query: visibleQuery })}
+								searchQuery={visibleQuery}
 								onActivate={() => play(track)}
 								onStartRadio={() => startRadio(track)}
 								radioDisabled={startingRadioId !== null}
@@ -295,20 +349,20 @@
 					<h2 id="mobile-search-catalogue">{m.search_title()}</h2>
 					<div class="catalogue-list">
 						{#each visibleResults.albums as album (album.id)}
-							<a href={resultHref(album)} class="catalogue-result">
+							<a onclick={() => input?.blur()} href={resultHref(album)} class="catalogue-result">
 								<Album size={18} aria-hidden="true" />
 								<span><strong>{album.title}</strong><small>{artistLine(album)}</small></span>
 							</a>
 						{/each}
 						{#each visibleResults.artists as artist (artist.id)}
-							<a href={resultHref(artist)} class="catalogue-result">
+							<a onclick={() => input?.blur()} href={resultHref(artist)} class="catalogue-result">
 								<UserRound size={18} aria-hidden="true" />
 								<span><strong>{artist.name}</strong><small>{m.search_artists()}</small></span>
 							</a>
 						{/each}
 						{#each visibleResults.playlists as playlist (playlist.id)}
-							<a href={resultHref(playlist)} class="catalogue-result">
-								<Album size={18} aria-hidden="true" />
+							<a onclick={() => input?.blur()} href={resultHref(playlist)} class="catalogue-result">
+								<ListMusic size={18} aria-hidden="true" />
 								<span
 									><strong>{playlist.title}</strong><small
 										>{playlist.description ?? m.search_playlists()}</small
@@ -345,29 +399,17 @@
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
 	}
-	.search-field {
-		display: flex;
-		align-items: center;
-		gap: 0.65rem;
-		border: 1px solid var(--border-subtle);
+	form {
+		position: sticky;
+		top: 0;
+		z-index: 5;
+		padding-block: 0.75rem;
+		background: var(--surface-canvas);
+	}
+	.resource-link {
+		gap: 0.5rem;
+		margin-top: 1rem;
 		border-radius: var(--radius-md);
-		background: var(--surface-raised);
-		padding: 0.7rem 0.8rem;
-		color: var(--text-muted);
-	}
-	.search-field:focus-within {
-		border-color: var(--action);
-		box-shadow: 0 0 0 2px color-mix(in oklab, var(--action) 20%, transparent);
-		color: var(--action);
-	}
-	input {
-		min-width: 0;
-		flex: 1;
-		border: 0;
-		background: transparent;
-		color: var(--text-primary);
-		font: inherit;
-		outline: 0;
 	}
 	.state-message {
 		padding: 2.5rem 0.25rem;
@@ -439,14 +481,5 @@
 	.catalogue-result:focus-visible {
 		outline: 2px solid var(--focus-ring);
 		outline-offset: 2px;
-	}
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0 0 0 0);
-		white-space: nowrap;
 	}
 </style>

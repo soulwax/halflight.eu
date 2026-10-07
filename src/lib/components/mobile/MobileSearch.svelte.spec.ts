@@ -1,13 +1,19 @@
 import { page } from 'vitest/browser';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { m } from '#lib/paraglide/messages.js';
+import { searchHistory } from '#lib/search/history.svelte';
 import { player } from '#lib/player/player.svelte.js';
 import { MobileSearchSession, MOBILE_SEARCH_SESSION } from '#lib/mobile/search-session.svelte.js';
 import MobileSearch from './MobileSearch.svelte';
 
 const mocks = vi.hoisted(() => ({ goto: vi.fn() }));
 vi.mock('$app/navigation', () => ({ goto: mocks.goto }));
+
+beforeEach(() => {
+	searchHistory.setOwner('search-test');
+	searchHistory.clear();
+});
 
 afterEach(() => {
 	vi.restoreAllMocks();
@@ -27,6 +33,30 @@ describe('MobileSearch.svelte', () => {
 	};
 	const resultsResponse = () =>
 		Response.json({ results: { tracks: [track], albums: [], artists: [], playlists: [] } });
+
+	it('submits immediately and dismisses the mobile keyboard', async () => {
+		const fetchMock = vi.fn().mockImplementation(resultsResponse);
+		vi.stubGlobal('fetch', fetchMock);
+		render(MobileSearch);
+		const input = page.getByRole('searchbox');
+		await input.fill('ambient');
+		expect(fetchMock).not.toHaveBeenCalled();
+		input.element().closest('form')?.requestSubmit();
+		await expect.element(page.getByText(track.title)).toBeInTheDocument();
+		await expect.element(input).not.toHaveFocus();
+		expect(fetchMock).toHaveBeenCalledOnce();
+	});
+
+	it('opens pasted resources in the mobile layout without a catalogue search', async () => {
+		const fetchMock = vi.fn();
+		vi.stubGlobal('fetch', fetchMock);
+		render(MobileSearch);
+		await page.getByRole('searchbox').fill('https://tidal.com/album/123');
+		await expect
+			.element(page.getByRole('link', { name: m.search_header_open_resource() }))
+			.toHaveAttribute('href', '/albums/123');
+		expect(fetchMock).not.toHaveBeenCalled();
+	});
 
 	it('retries the same failed query and clears the old error', async () => {
 		const fetchMock = vi
@@ -76,7 +106,7 @@ describe('MobileSearch.svelte', () => {
 		expect(mocks.goto).not.toHaveBeenCalled();
 	});
 
-	it('shows the last successful results when the search field is cleared', async () => {
+	it('does not put unplayed result sets into search history when cleared', async () => {
 		vi.stubGlobal('fetch', vi.fn().mockImplementation(resultsResponse));
 		render(MobileSearch);
 		const input = page.getByRole('searchbox');
@@ -86,11 +116,11 @@ describe('MobileSearch.svelte', () => {
 		await input.fill('');
 		await expect
 			.element(page.getByText(m.now_search_last_results({ query: 'previous search' })))
-			.toBeInTheDocument();
-		await expect.element(page.getByText(track.title)).toBeInTheDocument();
+			.not.toBeInTheDocument();
+		await expect.element(page.getByText(track.title)).not.toBeInTheDocument();
 	});
 
-	it('restores the last results when returning to Search after a mobile route change', async () => {
+	it('does not show cached unplayed results as search history after a route change', async () => {
 		vi.stubGlobal('fetch', vi.fn().mockImplementation(resultsResponse));
 		const context = new Map([[MOBILE_SEARCH_SESSION, new MobileSearchSession()]]);
 		const firstVisit = render(MobileSearch, { context });
@@ -101,8 +131,8 @@ describe('MobileSearch.svelte', () => {
 		render(MobileSearch, { context });
 		await expect
 			.element(page.getByText(m.now_search_last_results({ query: 'return path' })))
-			.toBeInTheDocument();
-		await expect.element(page.getByText(track.title)).toBeInTheDocument();
+			.not.toBeInTheDocument();
+		await expect.element(page.getByText(track.title)).not.toBeInTheDocument();
 	});
 
 	it('turns a stalled search into a retryable failure', async () => {
@@ -117,7 +147,7 @@ describe('MobileSearch.svelte', () => {
 		vi.stubGlobal('fetch', fetchMock);
 		render(MobileSearch);
 		await page.getByRole('searchbox').fill('slow');
-		await expect.poll(() => fetchMock.mock.calls.length).toBe(1);
+		await expect.poll(() => fetchMock.mock.calls.length, { timeout: 5_000 }).toBe(1);
 		deadline.abort(new DOMException('Timed out', 'TimeoutError'));
 		await expect.element(page.getByRole('button', { name: m.track_retry() })).toBeInTheDocument();
 		await expect.element(page.getByText(m.search_live_searching())).not.toBeInTheDocument();
@@ -131,9 +161,7 @@ describe('MobileSearch.svelte', () => {
 		const link = page.getByRole('link', {
 			name: status === 401 ? m.sign_in_button() : m.tidal_connect()
 		});
-		await expect
-			.element(link)
-			.toHaveAttribute('href', status === 401 ? '/sign-in' : '/app/settings/tidal');
+		await expect.element(link).toHaveAttribute('href', status === 401 ? '/sign-in' : '/settings');
 	});
 
 	it.each(['cancel', 'unmount', 'new-track'] as const)(
@@ -184,9 +212,9 @@ describe('MobileSearch.svelte', () => {
 
 		const input = page.getByRole('searchbox', { name: 'Search your music' });
 		await input.fill('first');
-		await expect.poll(() => pending.length).toBe(1);
+		await expect.poll(() => pending.length, { timeout: 5_000 }).toBe(1);
 		await input.fill('second');
-		await expect.poll(() => pending.length).toBe(2);
+		await expect.poll(() => pending.length, { timeout: 5_000 }).toBe(2);
 
 		pending[1]?.resolve(
 			new Response(

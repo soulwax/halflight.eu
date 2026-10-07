@@ -3,9 +3,12 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import { localizeHref } from '#lib/paraglide/runtime';
 	import Dialog from '#lib/components/ui/Dialog.svelte';
-	import { Disc, ListPlus, Play } from '@lucide/svelte';
+	import { ArrowDownToLine, Disc, ListPlus, Play, RefreshCw } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import PrivateMusicShelf from '#lib/components/music/PrivateMusicShelf.svelte';
+	import PlaylistImportModal from '#lib/components/music/PlaylistImportModal.svelte';
+	import SearchField from '#lib/components/ui/SearchField.svelte';
+	import { customPlaylists } from '#lib/player/customPlaylists.svelte';
 	import { player } from '#lib/player/player.svelte.js';
 	import type { MobileLibraryData } from '#lib/tidal/mobile-library';
 	import type { TrackSummary } from '#lib/tidal/models';
@@ -19,6 +22,8 @@
 	let searching = $state(false);
 	let pending = $state<{ title: string; tracks: TrackSummary[]; start: TrackSummary } | null>(null);
 	let feedback = $state('');
+	let libraryQuery = $derived(data.query ?? '');
+	let searchInput = $state<HTMLInputElement>();
 	let failedArtwork = $state<Record<string, boolean>>({});
 	const libraryHref = resolve('/(mobile)/library');
 
@@ -61,7 +66,8 @@
 	): Promise<void> {
 		event.preventDefault();
 		if (searching) return;
-		const query = String(new FormData(event.currentTarget).get('q') ?? '').trim();
+		const query = libraryQuery.trim().slice(0, 120);
+		searchInput?.blur();
 		searching = true;
 		feedback = '';
 		try {
@@ -103,17 +109,17 @@
 		headingId="mobile-library-title"
 	/>
 	<nav class="filters" aria-label={m.now_tab_library()}>
-		<a
-			href={`${libraryHref}?tab=private`}
-			aria-current={data.tab === 'private' ? 'page' : undefined}
-		>
-			{m.now_library_private_music()}
-		</a>
 		<a href={`${libraryHref}?tab=saved`} aria-current={data.tab === 'saved' ? 'page' : undefined}>
 			{m.now_library_saved()}
 		</a>
 		<a href={`${libraryHref}?tab=tracks`} aria-current={data.tab === 'tracks' ? 'page' : undefined}>
 			{m.now_library_favorites()}
+		</a>
+		<a
+			href={`${libraryHref}?tab=private`}
+			aria-current={data.tab === 'private' ? 'page' : undefined}
+		>
+			{m.now_library_private_music()}
 		</a>
 	</nav>
 	{#if data.tab === 'saved'}
@@ -125,25 +131,30 @@
 			onsubmit={searchLibrary}
 		>
 			<input type="hidden" name="tab" value="saved" />
-			<label for="saved-library-query">{m.now_library_search_label()}</label>
-			<div class="search-controls">
-				<input
-					id="saved-library-query"
-					type="search"
-					name="q"
-					value={data.query ?? ''}
-					maxlength="120"
-					placeholder={m.now_library_search_placeholder()}
-				/>
-				<button type="submit" disabled={searching} aria-busy={searching}>{m.search_button()}</button
-				>
-			</div>
-			{#if data.query}
-				<a class="text-action" href={`${localizeHref(libraryHref)}?tab=saved`}
-					>{m.now_library_clear_search()}</a
-				>
-			{/if}
+			<SearchField
+				id="saved-library-query"
+				label={m.now_library_search_label()}
+				placeholder={m.now_library_search_placeholder()}
+				value={libraryQuery}
+				{searching}
+				bind:input={searchInput}
+				oninput={(event) => (libraryQuery = (event.currentTarget as HTMLInputElement).value)}
+				onclear={() => {
+					libraryQuery = '';
+					void goto(`${localizeHref(libraryHref)}?tab=saved`, { reset: false });
+				}}
+			/>
 		</form>
+	{/if}
+	{#if data.tab === 'saved'}
+		<div class="library-toolbar">
+			<button type="button" onclick={() => customPlaylists.openImport()}
+				><ArrowDownToLine size={18} aria-hidden="true" />{m.playlist_import()}</button
+			>
+			<button type="button" disabled={refreshing} aria-busy={refreshing} onclick={retryLibrary}
+				><RefreshCw size={18} aria-hidden="true" />{m.library_refresh()}</button
+			>
+		</div>
 	{/if}
 	{#if data.hiddenTrackCount}
 		<p class="availability-note">
@@ -247,6 +258,7 @@
 	{#if data.tab !== 'private'}
 		<a class="attribution" href="https://tidal.com" rel="noreferrer">{m.tidal_attribution()}</a>
 	{/if}
+	<PlaylistImportModal onImported={invalidateAll} />
 </section>
 
 <Dialog
@@ -452,25 +464,18 @@
 	.library-search {
 		margin-block: 1rem;
 	}
-	.library-search label {
-		display: block;
-		margin-bottom: 0.5rem;
-	}
-	.search-controls {
+	.library-toolbar {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.5rem;
+		margin-block: 0.75rem 1rem;
 	}
-	.search-controls input {
-		min-width: 0;
-		width: 100%;
-		flex: 1 1 10rem;
+	.library-toolbar button {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
 		min-height: 3rem;
-		border: 1px solid var(--border-subtle);
-		border-radius: var(--radius-md);
-		background: var(--surface-raised);
-		color: var(--text-primary);
-		padding-inline: 0.75rem;
+		padding: 0.6rem 0.75rem;
 	}
 	.availability-note {
 		color: var(--text-muted);

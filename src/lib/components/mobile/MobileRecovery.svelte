@@ -18,7 +18,11 @@
 					player.playbackMode === 'embed')
 			)
 	);
-	const queueNeedsAttention = $derived(includeQueueSync && player.persistenceStatus !== 'saved');
+	const queueNeedsAttention = $derived(
+		includeQueueSync &&
+			player.persistenceStatus !== 'saved' &&
+			player.persistenceStatus !== 'saving'
+	);
 	const visible = $derived((includePlayback && playbackNeedsAttention) || queueNeedsAttention);
 </script>
 

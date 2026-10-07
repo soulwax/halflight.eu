@@ -48,9 +48,9 @@ describe('search page live search', () => {
 
 		const input = page.getByRole('searchbox', { name: 'Search' });
 		await input.fill('first');
-		await vi.waitFor(() => expect(pending).toHaveLength(1));
+		await vi.waitFor(() => expect(pending).toHaveLength(1), { timeout: 5_000 });
 		await input.fill('second');
-		await vi.waitFor(() => expect(pending).toHaveLength(2));
+		await vi.waitFor(() => expect(pending).toHaveLength(2), { timeout: 5_000 });
 
 		expect(pending[0]?.url).toContain('?q=first');
 		expect(pending[1]?.url).toContain('?q=second');

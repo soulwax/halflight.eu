@@ -21,6 +21,11 @@ product; every route exists to feed it. _Syn_ is the code name, so the package, 
 - **Direct playback** — audio is proxied through the server, with Range support and automatic quality fallback
   from hi-res to lossless, high and low. The browser never receives a token or a TIDAL media URL.
 - **Synced lyrics** — the active line follows the playhead, with the next line shown as a smaller caption.
+- **Verified imports** — TIDAL imports resolve recording metadata by ID and check playback before saving.
+  Unavailable recordings stay out of the local playable copy; source order and repeated playable songs are
+  preserved. Refreshing an unchanged TIDAL import pulls updates without publishing the filtered copy.
+- **Search listening history** — recent search songs appear only after their audio actually plays. The list
+  is separate from search results and the player's listening history, and is saved per account on this device.
 - **Deterministic taste engine** — explainable set generation from your own library. Nothing is sent to an LLM, and
   nothing is written to TIDAL without review.
 - **Optional extras** — Last.fm scrobbling, playlist export, private music upload and a Redis cache, each off until

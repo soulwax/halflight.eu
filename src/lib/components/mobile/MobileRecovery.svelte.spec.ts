@@ -31,6 +31,17 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 describe('MobileRecovery.svelte', () => {
+	it('does not insert an empty recovery row during routine save transitions', async () => {
+		player.persistenceStatus = 'offline';
+		const { container } = render(MobileRecovery);
+		await expect
+			.element(page.getByRole('button', { name: m.player_sync_local() }))
+			.toBeInTheDocument();
+		player.persistenceStatus = 'saving';
+		await expect.poll(() => container.querySelector('.mobile-recovery')).toBeNull();
+		player.persistenceStatus = 'saved';
+		await expect.poll(() => container.querySelector('.mobile-recovery')).toBeNull();
+	});
 	it('stays quiet when playback and queue state are healthy', async () => {
 		const { container } = render(MobileRecovery);
 

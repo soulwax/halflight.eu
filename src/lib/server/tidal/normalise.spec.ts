@@ -573,3 +573,20 @@ describe('rich relationship normalisation', () => {
 		expect(detail?.similarAlbums?.[0].title).toBe('Similar Album');
 	});
 });
+
+it('combines complementary included fragments without losing recording metadata', () => {
+	const result = normaliseTrackDetail({
+		data: {
+			id: '18343352',
+			type: 'tracks',
+			attributes: { title: 'Moan', version: 'Remix' },
+			relationships: { albums: { data: { id: '10', type: 'albums' } } }
+		},
+		included: [
+			{ id: '10', type: 'albums', attributes: { title: 'Chronicles' } },
+			{ id: '10', type: 'albums', attributes: { releaseDate: '2007-01-01' } }
+		]
+	});
+	expect(result?.title).toBe('Moan (Remix)');
+	expect(result?.album).toMatchObject({ id: '10', title: 'Chronicles', releaseDate: '2007-01-01' });
+});

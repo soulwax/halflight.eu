@@ -15,7 +15,12 @@
 		isImported: boolean;
 	}
 
+	let { onImported }: { onImported?: () => void | Promise<void> } = $props();
 	let playlists = $state<ImportablePlaylist[]>([]);
+	let loadError = $state(false);
+	let loading = $state(false);
+	let importError = $state<string | null>(null);
+	let loadVersion = 0;
 	const selectedIds = new SvelteSet<string>();
 	let isImporting = $state(false);
 	let successMessage = $state<string | null>(null);
@@ -26,21 +31,28 @@
 		} else {
 			// Reset state on close
 			playlists = [];
+			loadVersion += 1;
+			importError = null;
 			selectedIds.clear();
 			successMessage = null;
 		}
 	});
 
 	async function loadPlaylists() {
+		const version = ++loadVersion;
+		loading = true;
+		loadError = false;
 		try {
 			const res = await fetch('/api/playlists/import');
-			if (!res.ok) return;
+			if (!res.ok) throw new Error('Playlist list unavailable');
 			const data = (await res.json()) as { playlists: ImportablePlaylist[]; error?: string | null };
-			if (data.error) return;
-			playlists = data.playlists || [];
+			if (version !== loadVersion) return;
+			if (data.error || !Array.isArray(data.playlists)) throw new Error('Invalid playlist list');
+			playlists = data.playlists;
 		} catch {
-			// A transient API sync problem leaves the chooser empty without exposing
-			// transport or provider details to the listener.
+			if (version === loadVersion) loadError = true;
+		} finally {
+			if (version === loadVersion) loading = false;
 		}
 	}
 
@@ -63,8 +75,9 @@
 	}
 
 	async function handleImport() {
-		if (selectedIds.size === 0) return;
+		if (selectedIds.size === 0 || isImporting) return;
 		isImporting = true;
+		importError = null;
 		successMessage = null;
 
 		try {
@@ -74,7 +87,7 @@
 				body: JSON.stringify({ tidalPlaylistIds: Array.from(selectedIds) })
 			});
 
-			if (!res.ok) return;
+			if (!res.ok) throw new Error('Import unavailable');
 
 			const data = (await res.json()) as {
 				totalImported: number;
@@ -85,21 +98,28 @@
 				error?: 'invalid_playlist_selection';
 				imported?: Array<{ tidalPlaylistId: string; status: string }>;
 			};
-			if (data.error === 'invalid_playlist_selection') return;
+			if (data.error === 'invalid_playlist_selection') {
+				importError = m.playlist_import_selection_invalid();
+				return;
+			}
 
 			const failures = (data.imported ?? []).filter((result) => result.status === 'error');
-			const successfulCount = Math.max(0, data.totalImported - failures.length);
+			const successfulCount = data.totalImported;
 			successMessage = successfulCount
 				? `${m.playlist_import_done()} (${data.totalImported}) ${m.playlist_import_source_preserved()} ${m.playlist_import_playback_checked({ count: data.totalTracksSkipped })}`
 				: null;
 
 			// Refresh client-side custom playlist store
 			await customPlaylists.syncWithServer();
+			if (successfulCount > 0) await onImported?.();
 
 			// Reload the list to update `isImported` badges
 			await loadPlaylists();
 			selectedIds.clear();
-			if (failures.length > 0) {
+			if (failures.length > 0 || data.totalErrors > 0) {
+				importError = m.playlist_import_some_failed({
+					count: Math.max(failures.length, data.totalErrors)
+				});
 				return;
 			}
 
@@ -107,7 +127,7 @@
 				customPlaylists.closeImport();
 			}, 1200);
 		} catch {
-			// Keep provider and transport failures out of the interface.
+			importError = m.playlist_import_load_failed();
 		} finally {
 			isImporting = false;
 		}
@@ -140,7 +160,12 @@
 				<Notice tone="success">{successMessage}</Notice>
 			{/if}
 
-			{#if playlists.length === 0}
+			{#if importError}<Notice tone="danger">{importError}</Notice>{/if}
+			{#if loading}<p role="status">{m.playlist_import_loading()}</p>
+			{:else if loadError}<Notice tone="danger">{m.playlist_import_load_failed()}</Notice><Button
+					onclick={loadPlaylists}>{m.track_retry()}</Button
+				>
+			{:else if playlists.length === 0}
 				<div class="empty-wrap">
 					<p>{m.playlist_no_playlists()}</p>
 				</div>

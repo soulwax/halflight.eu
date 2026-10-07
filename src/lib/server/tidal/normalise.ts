@@ -205,6 +205,13 @@ export function normaliseTrack(
 	// after its opaque provider ID. The caller may retry with the appropriate
 	// include path or fetch the specific track detail instead.
 	if (!title) return null;
+	const version = readAttribute(resource, ['version']);
+	const displayTitle =
+		version &&
+		!title.toLowerCase().endsWith(`(${version.toLowerCase()})`) &&
+		!title.toLowerCase().endsWith(` - ${version.toLowerCase()}`)
+			? `${title} (${version})`
+			: title;
 	const album = relatedResources(resource, 'albums', included)[0];
 
 	// 1. Artists: from relationships or fallback to attributes
@@ -259,7 +266,7 @@ export function normaliseTrack(
 	return {
 		kind: 'track',
 		id: resource.id,
-		title,
+		title: displayTitle,
 		artists,
 		...(albumRef ? { album: albumRef } : {}),
 		...(readNumberAttribute(resource, ['duration', 'durationSeconds'])
@@ -750,12 +757,11 @@ function indexIncluded(value: unknown): Map<string, unknown> {
 		// bare relationship identifier later in `included`. Retain the resource
 		// with actual attributes/relationships; otherwise a title, artist, and
 		// album silently collapse to opaque IDs during normalisation.
-		const score =
-			Object.keys(resource.attributes).length * 2 + Object.keys(resource.relationships).length;
-		const existingScore = existing
-			? Object.keys(existing.attributes).length * 2 + Object.keys(existing.relationships).length
-			: -1;
-		if (score > existingScore) index.set(key, item);
+		index.set(key, {
+			...resource,
+			attributes: { ...existing?.attributes, ...resource.attributes },
+			relationships: { ...existing?.relationships, ...resource.relationships }
+		});
 	}
 
 	return index;

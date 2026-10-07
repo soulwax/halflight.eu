@@ -22,9 +22,39 @@
 	import type { TrackSummary } from '#lib/tidal/models';
 	import Notice from '#lib/components/ui/Notice.svelte';
 	import { resolve } from '$app/paths';
+	import SearchField from '#lib/components/ui/SearchField.svelte';
+	import { invalidateAll } from '$app/navigation';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+	let view = $state<'saved' | 'tidal' | 'private'>('saved');
+	let query = $state('');
+	let sort = $state<'recent' | 'name'>('recent');
+	let loadedServerPlaylists = $state(false);
+	let previousSnapshot: PageData['savedPlaylists'] | undefined;
+	$effect(() => {
+		if (data.savedPlaylists !== previousSnapshot && !data.savedUnavailable) {
+			previousSnapshot = data.savedPlaylists;
+			customPlaylists.playlists = data.savedPlaylists ?? [];
+			loadedServerPlaylists = true;
+		}
+	});
+	const matching = (item: { title?: string; name?: string; artists?: { name: string }[] }) =>
+		[item.title, item.name, ...(item.artists?.map((artist) => artist.name) ?? [])].some((text) =>
+			text?.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())
+		);
+	const visiblePlaylists = $derived(
+		(loadedServerPlaylists ? customPlaylists.playlists : (data.savedPlaylists ?? []))
+			.filter((playlist) => matching(playlist) || playlist.items.some(matching))
+			.toSorted((a, b) =>
+				sort === 'name' ? a.title.localeCompare(b.title) : b.updatedAt.localeCompare(a.updatedAt)
+			)
+	);
+	const visibleSections = $derived(
+		data.sections?.map((section) =>
+			section.ok ? { ...section, items: section.items.filter(matching) } : section
+		)
+	);
 
 	function downloadPlaylist(playlistId: string, format: 'm3u8' | 'json' = 'm3u8') {
 		const url = `/api/playlists/${encodeURIComponent(playlistId)}/export?format=${format}`;
@@ -57,169 +87,204 @@
 		description={m.library_subtitle()}
 	/>
 
-	<PrivateMusicShelf library={data.privateMusic} />
-
-	<!-- Custom Playlists Section -->
-	<section class="custom-pl-block" aria-labelledby="user-playlists-title">
-		<SectionHeader
-			title={m.library_custom_title()}
-			titleId="user-playlists-title"
-			count={customPlaylists.playlists.length}
+	<nav class="library-views" aria-label={m.library_view_label()}>
+		<button type="button" aria-pressed={view === 'saved'} onclick={() => (view = 'saved')}
+			>{m.library_view_saved()}</button
 		>
-			{#snippet actions()}
-				{#if data.connected}
-					<Button variant="secondary" onclick={() => customPlaylists.openImport()}>
-						<ArrowDownToLine size={14} />
-						{m.playlist_import()}
+		<button type="button" aria-pressed={view === 'tidal'} onclick={() => (view = 'tidal')}
+			>{m.library_view_tidal()}</button
+		>
+		<button type="button" aria-pressed={view === 'private'} onclick={() => (view = 'private')}
+			>{m.library_view_private()}</button
+		>
+	</nav>
+	{#if view !== 'private'}
+		<form class="library-filter" role="search" onsubmit={(event) => event.preventDefault()}>
+			<SearchField
+				id="desktop-library-filter"
+				label={m.library_filter_label()}
+				placeholder={m.library_filter_placeholder()}
+				value={query}
+				oninput={(event) => (query = (event.currentTarget as HTMLInputElement).value)}
+				onclear={() => (query = '')}
+			/>
+			{#if view === 'saved'}<label
+					>{m.library_sort()}<select bind:value={sort}
+						><option value="recent">{m.library_sort_recent()}</option><option value="name"
+							>{m.library_sort_name()}</option
+						></select
+					></label
+				>{/if}
+		</form>
+	{/if}
+	{#if view === 'private'}<PrivateMusicShelf library={data.privateMusic} />
+	{:else if view === 'saved'}
+		<!-- Custom Playlists Section -->
+		<section class="custom-pl-block" aria-labelledby="user-playlists-title">
+			<SectionHeader
+				title={m.library_custom_title()}
+				titleId="user-playlists-title"
+				count={visiblePlaylists.length}
+			>
+				{#snippet actions()}
+					{#if data.connected}
+						<Button variant="secondary" onclick={() => customPlaylists.openImport()}>
+							<ArrowDownToLine size={14} />
+							{m.playlist_import()}
+						</Button>
+						<Button
+							variant="secondary"
+							disabled={customPlaylists.isSyncing}
+							onclick={async () => {
+								await customPlaylists.syncAll();
+							}}
+						>
+							<RefreshCw size={14} class={customPlaylists.isSyncing ? 'animate-spin' : ''} />
+							{m.playlist_sync_all()}
+						</Button>
+					{/if}
+					<Button href={resolve('/app/generate')} variant="primary">
+						<Sparkles size={14} />
+						{m.nav_generate()}
 					</Button>
-					<Button
-						variant="secondary"
-						disabled={customPlaylists.isSyncing}
-						onclick={async () => {
-							await customPlaylists.syncAll();
-						}}
-					>
-						<RefreshCw size={14} class={customPlaylists.isSyncing ? 'animate-spin' : ''} />
-						{m.playlist_sync_all()}
-					</Button>
-				{/if}
-				<Button href={resolve('/app/generate')} variant="primary">
-					<Sparkles size={14} />
-					{m.nav_generate()}
-				</Button>
-			{/snippet}
-		</SectionHeader>
+				{/snippet}
+			</SectionHeader>
 
-		{#if customPlaylists.playlists.length === 0}
-			<p class="group-empty">{m.library_custom_empty()}</p>
-		{:else}
-			<div class="custom-grid">
-				{#each customPlaylists.playlists as playlist (playlist.id)}
-					<article class="custom-card">
-						<div class="card-top">
-							<ListMusic size={22} class="text-(--action)" />
-							<div class="min-w-0 flex-1">
-								<a
-									class="block truncate hover:text-(--action) hover:underline"
-									href={resolve('/app/playlists/[id]', { id: playlist.id })}
-								>
-									<strong class="truncate">{playlist.title}</strong>
-								</a>
-								<div class="card-meta-row">
-									<span class="font-mono text-xs text-(--text-muted)"
-										>{playlist.items.length} tracks</span
+			{#if data.savedUnavailable}<Notice tone="danger">{m.library_section_error()}</Notice><Button
+					onclick={invalidateAll}>{m.track_retry()}</Button
+				>
+			{:else if visiblePlaylists.length === 0}
+				<p class="group-empty">
+					{query.trim() ? m.library_no_matches({ query: query.trim() }) : m.library_custom_empty()}
+				</p>
+			{:else}
+				<div class="custom-grid">
+					{#each visiblePlaylists as playlist (playlist.id)}
+						<article class="custom-card">
+							<div class="card-top">
+								<ListMusic size={22} class="text-(--action)" />
+								<div class="min-w-0 flex-1">
+									<a
+										class="block truncate hover:text-(--action) hover:underline"
+										href={resolve('/app/playlists/[id]', { id: playlist.id })}
 									>
-									{#if playlist.syncStatus === 'synced'}
-										<span class="sync-dot sync-synced" title={m.playlist_synced()}></span>
-									{:else if playlist.syncStatus === 'pending_push'}
-										<span class="sync-dot sync-pending" title={m.playlist_pending_push()}></span>
-									{:else if playlist.syncStatus === 'error'}
-										<span
-											class="sync-dot sync-error"
-											title={playlist.syncError || m.playlist_sync_error()}
-										></span>
-									{/if}
+										<strong class="truncate">{playlist.title}</strong>
+									</a>
+									<div class="card-meta-row">
+										<span class="font-mono text-xs text-(--text-muted)"
+											>{m.now_library_count({ count: playlist.items.length })}</span
+										>
+										{#if playlist.syncStatus === 'synced'}
+											<span class="sync-dot sync-synced" title={m.playlist_synced()}></span>
+										{:else if playlist.syncStatus === 'pending_push'}
+											<span class="sync-dot sync-pending" title={m.playlist_pending_push()}></span>
+										{:else if playlist.syncStatus === 'error'}
+											<span
+												class="sync-dot sync-error"
+												title={playlist.syncError || m.playlist_sync_error()}
+											></span>
+										{/if}
+									</div>
 								</div>
 							</div>
-						</div>
-						<div class="card-bottom">
-							<button
-								type="button"
-								class="card-play-btn"
-								disabled={playlist.items.length === 0}
-								onclick={() => customPlaylists.playPlaylist(playlist.id)}
-							>
-								<Play size={12} fill="currentColor" />
-								PLAY
-							</button>
-							{#if playlist.tidalPlaylistId || playlist.source === 'syn'}
+							<div class="card-bottom">
 								<button
 									type="button"
-									class="card-sync-btn"
-									disabled={customPlaylists.isSyncing}
-									title={m.playlist_sync()}
-									onclick={() => customPlaylists.syncPlaylist(playlist.id)}
+									class="card-play-btn"
+									disabled={playlist.items.length === 0}
+									onclick={() => customPlaylists.playPlaylist(playlist.id)}
 								>
-									<RefreshCw size={12} class={customPlaylists.isSyncing ? 'animate-spin' : ''} />
+									<Play size={12} fill="currentColor" />
+									{m.track_action_play_now()}
 								</button>
-							{/if}
-							<button
-								type="button"
-								class="card-export-btn"
-								disabled={playlist.items.length === 0}
-								title={m.action_export_m3u8()}
-								onclick={() => downloadPlaylist(playlist.id, 'm3u8')}
-							>
-								<Download size={12} />
-								M3U8
-							</button>
-							<button
-								type="button"
-								class="card-del-btn"
-								onclick={() => void customPlaylists.deletePlaylist(playlist.id)}
-								title={m.action_delete()}
-								aria-label={m.action_delete_playlist()}
-							>
-								<Trash2 size={13} />
-							</button>
-						</div>
-					</article>
-				{/each}
-			</div>
-		{/if}
-	</section>
-
-	{#if !data.connected}
-		<StateCard
-			state="not_connected"
-			title={m.search_not_connected_title()}
-			description={m.search_not_connected_description()}
-		/>
-	{:else if data.sections}
-		<section class="tidal-library" aria-labelledby="tidal-library-title">
-			<SectionHeader title={m.library_tidal_title()} titleId="tidal-library-title" />
-			{#each data.sections as section (section.kind)}
-				<section class="result-group" aria-labelledby="{section.kind}-title">
-					<SectionHeader
-						title={sectionLabel[section.kind]()}
-						titleId="{section.kind}-title"
-						count={section.ok && section.items ? section.items.length : undefined}
-						subtitle={section.ok && section.hasMore ? m.library_has_more() : undefined}
-					/>
-
-					{#if !section.ok}
-						<Notice tone="danger">{m.library_section_error()}</Notice>
-					{:else if section.items.length === 0}
-						<p class="group-empty">{m.library_section_empty()}</p>
-					{:else if section.kind === 'tracks'}
-						<div class="song-cards-grid">
-							{#each section.items as track, index (track.id)}
-								<SongCard
-									track={track as unknown as TrackSummary}
-									contextTracks={section.items as unknown as TrackSummary[]}
-									{index}
-								/>
-							{/each}
-						</div>
-					{:else}
-						<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-							{#each section.items as item (item.id)}
-								<MediaCard
-									{item}
-									kind={section.kind === 'albums'
-										? 'album'
-										: section.kind === 'artists'
-											? 'artist'
-											: 'playlist'}
-								/>
-							{/each}
-						</div>
-					{/if}
-				</section>
-			{/each}
+								{#if playlist.tidalPlaylistId || playlist.source === 'syn'}
+									<button
+										type="button"
+										class="card-sync-btn"
+										disabled={customPlaylists.isSyncing}
+										title={m.playlist_sync()}
+										onclick={() => customPlaylists.syncPlaylist(playlist.id)}
+									>
+										<RefreshCw size={12} class={customPlaylists.isSyncing ? 'animate-spin' : ''} />
+									</button>
+								{/if}
+								<button
+									type="button"
+									class="card-export-btn"
+									disabled={playlist.items.length === 0}
+									title={m.action_export_m3u8()}
+									onclick={() => downloadPlaylist(playlist.id, 'm3u8')}
+								>
+									<Download size={12} />
+									M3U8
+								</button>
+								<button
+									type="button"
+									class="card-del-btn"
+									onclick={() => void customPlaylists.deletePlaylist(playlist.id)}
+									title={m.action_delete()}
+									aria-label={m.action_delete_playlist()}
+								>
+									<Trash2 size={13} />
+								</button>
+							</div>
+						</article>
+					{/each}
+				</div>
+			{/if}
 		</section>
-	{/if}
+	{:else}
+		{#if !data.connected}
+			<StateCard
+				state="not_connected"
+				title={m.search_not_connected_title()}
+				description={m.search_not_connected_description()}
+			/>
+		{:else if data.sections}
+			<section class="tidal-library" aria-labelledby="tidal-library-title">
+				<SectionHeader title={m.library_tidal_title()} titleId="tidal-library-title" />
+				{#each visibleSections ?? [] as section (section.kind)}
+					<section class="result-group" aria-labelledby="{section.kind}-title">
+						<SectionHeader
+							title={sectionLabel[section.kind]()}
+							titleId="{section.kind}-title"
+							count={section.ok && section.items ? section.items.length : undefined}
+							subtitle={section.ok && section.hasMore ? m.library_has_more() : undefined}
+						/>
 
+						{#if !section.ok}
+							<Notice tone="danger">{m.library_section_error()}</Notice>
+						{:else if section.items.length === 0}
+							<p class="group-empty">{m.library_section_empty()}</p>
+						{:else if section.kind === 'tracks'}
+							<div class="song-cards-grid">
+								{#each section.items as track, index (track.id)}
+									<SongCard
+										track={track as unknown as TrackSummary}
+										contextTracks={section.items as unknown as TrackSummary[]}
+										{index}
+									/>
+								{/each}
+							</div>
+						{:else}
+							<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+								{#each section.items as item (item.id)}
+									<MediaCard
+										{item}
+										kind={section.kind === 'albums'
+											? 'album'
+											: section.kind === 'artists'
+												? 'artist'
+												: 'playlist'}
+									/>
+								{/each}
+							</div>
+						{/if}
+					</section>
+				{/each}
+			</section>
+		{/if}
+	{/if}
 	<p class="attribution">
 		<a href="https://tidal.com" rel="noreferrer">{m.tidal_attribution()}</a>
 	</p>
@@ -230,8 +295,61 @@
 <style>
 	.library {
 		max-width: 72rem;
+		min-width: 0;
 	}
 
+	.library-views {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		margin-bottom: 1rem;
+	}
+	.library-views button {
+		min-height: 3rem;
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-full);
+		padding: 0.6rem 1rem;
+		background: var(--surface-raised);
+		color: var(--text-primary);
+		font: inherit;
+		cursor: pointer;
+	}
+	.library-views button[aria-pressed='true'] {
+		background: var(--surface-selected);
+		border-color: var(--action);
+		color: var(--action);
+	}
+	.library-filter {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 1rem;
+		align-items: center;
+		margin-bottom: 1.5rem;
+	}
+	.library-filter :global(.search-field) {
+		flex: 1;
+		min-width: min(100%, 20rem);
+	}
+	.library-filter label {
+		display: flex;
+		gap: 0.75rem;
+		align-items: center;
+		color: var(--text-muted);
+	}
+	select {
+		min-height: 3rem;
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-md);
+		background: var(--surface-raised);
+		color: var(--text-primary);
+		padding-inline: 0.75rem;
+		font: inherit;
+	}
+	.library-views button:focus-visible,
+	select:focus-visible {
+		outline: 2px solid var(--focus-ring);
+		outline-offset: 2px;
+	}
 	.custom-pl-block {
 		margin-bottom: 3rem;
 		padding: 1.5rem;
