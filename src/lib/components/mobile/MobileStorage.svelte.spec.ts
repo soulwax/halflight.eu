@@ -32,6 +32,20 @@ describe('mobile storage controls', () => {
 		await expect
 			.element(page.getByText(m.storage_session_counts({ queue: 3, history: 2 })))
 			.toBeInTheDocument();
+		expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
+		expect(
+			page.getByRole('link', { name: m.storage_export_json() }).element().getBoundingClientRect()
+				.height
+		).toBeGreaterThanOrEqual(48);
+	});
+
+	it('reports one unavailable store while retaining the other controls', async () => {
+		render(MobileStorage, { storage: { ...storage, privateMusic: { status: 'unavailable' } } });
+		await expect.element(page.getByRole('status')).toHaveTextContent(m.storage_unavailable());
+		await expect
+			.element(page.getByRole('link', { name: m.player_queue(), exact: true }))
+			.toBeInTheDocument();
+		await expect.element(page.getByRole('button', { name: m.storage_refresh() })).toBeEnabled();
 	});
 
 	it('creates, downloads and deletes a protected temporary copy', async () => {
