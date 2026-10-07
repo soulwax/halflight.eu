@@ -140,7 +140,15 @@ it('keeps the artwork size fixed as lyrics, buffering and quality change, and fi
 		() => (lyricClock.lyricTime = 20),
 		() => (player.isBuffering = true),
 		() => (player.isLoading = true),
-		() => ((player.isLoading = false), (player.isBuffering = false))
+		() => ((player.isLoading = false), (player.isBuffering = false)),
+		// Another device takes over: the notice covers the lyrics slot instead.
+		() =>
+			(player.activeDevice = {
+				origin: 'listening-room',
+				expiresAt: new Date(Date.now() + 45_000).toISOString(),
+				isCurrent: false
+			}),
+		() => (player.activeDevice = null)
 	]) {
 		step();
 		await settle();

@@ -432,9 +432,6 @@
 			</div>
 
 			<div class="now-controls">
-				<!-- Only notices that need an action. Loading and buffering show on the
-				     play button, so a stall never resizes the artwork. -->
-				<PlaybackStatus mobile attentionOnly />
 				<PlayerSeekBar mobile />
 				<PlayerTransport mobile />
 
@@ -471,39 +468,45 @@
 					</a>
 				</nav>
 
-				<a
-					href={resolve('/(mobile)/now/lyrics')}
-					class="now-lyrics-card"
-					class:synced={player.lyricsCues.length > 0}
-					aria-label={m.now_lyrics_open()}
-				>
-					<span class="now-lyrics-badge">
-						{#if player.lyricsCues.length && player.isPlaying}
-							<span class="now-lyrics-live" aria-hidden="true"></span>
-						{/if}
-						{m.player_lyrics()}
-					</span>
-					<span class="now-lyrics-lines">
-						{#if player.lyricsCues.length}
-							<!-- Two fixed-height lines whatever the lyric: a long line shrinks to
+				<!-- One fixed-height slot at the bottom. A notice that needs an action covers
+				     the lyrics card instead of being inserted above the controls, and loading
+				     or buffering show on the play button, so nothing above ever moves. -->
+				<div class="now-bottom-slot">
+					<a
+						href={resolve('/(mobile)/now/lyrics')}
+						class="now-lyrics-card"
+						class:synced={player.lyricsCues.length > 0}
+						aria-label={m.now_lyrics_open()}
+					>
+						<span class="now-lyrics-badge">
+							{#if player.lyricsCues.length && player.isPlaying}
+								<span class="now-lyrics-live" aria-hidden="true"></span>
+							{/if}
+							{m.player_lyrics()}
+						</span>
+						<span class="now-lyrics-lines">
+							{#if player.lyricsCues.length}
+								<!-- Two fixed-height lines whatever the lyric: a long line shrinks to
 							     fit instead of wrapping, so the card never resizes the artwork. -->
-							{#key currentLyric}
-								<span
-									class="now-lyrics-preview"
-									use:fitText={currentLyric}
-									in:fade={{ duration: motion(220), easing: cubicOut }}>{currentLyric}</span
-								>
-							{/key}
-							<span class="now-lyrics-next" use:fitText={nextLyric}>{nextLyric}</span>
-						{:else if player.lyrics}
-							<span class="now-lyrics-preview multi">{lyricsSnippet || m.player_lyrics()}</span>
-						{:else if player.isLyricsLoading}
-							<span class="now-lyrics-preview muted">{m.now_lyrics_loading()}</span>
-						{:else}
-							<span class="now-lyrics-preview muted">{m.player_lyrics()}</span>
-						{/if}
-					</span>
-				</a>
+								{#key currentLyric}
+									<span
+										class="now-lyrics-preview"
+										use:fitText={currentLyric}
+										in:fade={{ duration: motion(220), easing: cubicOut }}>{currentLyric}</span
+									>
+								{/key}
+								<span class="now-lyrics-next" use:fitText={nextLyric}>{nextLyric}</span>
+							{:else if player.lyrics}
+								<span class="now-lyrics-preview multi">{lyricsSnippet || m.player_lyrics()}</span>
+							{:else if player.isLyricsLoading}
+								<span class="now-lyrics-preview muted">{m.now_lyrics_loading()}</span>
+							{:else}
+								<span class="now-lyrics-preview muted">{m.player_lyrics()}</span>
+							{/if}
+						</span>
+					</a>
+					<PlaybackStatus mobile attentionOnly />
+				</div>
 			</div>
 		</div>
 	{:else}
@@ -1072,6 +1075,40 @@
 		font-variant-numeric: tabular-nums;
 	}
 
+	.now-bottom-slot {
+		position: relative;
+		flex: none;
+	}
+
+	/* An actionable notice takes the lyrics card's place, at the card's size. */
+	/* .compact matches the notice's own compact rule so this one wins. */
+	.now-bottom-slot :global(.playback-notice.compact) {
+		position: absolute;
+		inset: 0;
+		z-index: 1;
+		flex-wrap: nowrap;
+		padding: 0.5rem 0.6rem 0.5rem 0.9rem;
+		border: 1px solid color-mix(in oklab, var(--text-primary) 12%, transparent);
+		border-radius: var(--radius-lg);
+		background: var(--surface-raised);
+	}
+
+	.now-bottom-slot :global(.playback-notice p) {
+		display: -webkit-box;
+		flex: 1 1 auto;
+		min-width: 0;
+		overflow: hidden;
+		-webkit-line-clamp: 3;
+		-webkit-box-orient: vertical;
+		line-clamp: 3;
+		line-height: 1.25;
+	}
+
+	.now-bottom-slot :global(.playback-notice .btn-base),
+	.now-bottom-slot :global(.playback-notice .notice-actions) {
+		flex: none;
+	}
+
 	/* Lyrics Card */
 	.now-lyrics-card {
 		display: flex;
@@ -1086,6 +1123,9 @@
 		color: var(--text-primary);
 		text-decoration: none;
 		flex: none;
+		/* Explicit, so no lyric, font fallback or state can change it. */
+		height: 4.75rem;
+		overflow: hidden;
 		box-sizing: border-box;
 		touch-action: manipulation;
 		-webkit-tap-highlight-color: transparent;
