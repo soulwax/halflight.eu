@@ -13,6 +13,7 @@
 	import PlayerTransport from '#lib/components/player/PlayerTransport.svelte';
 	import PlayerSeekBar from '#lib/components/player/PlayerSeekBar.svelte';
 	import { nextLyricText } from '#lib/player/lyrics-follow.js';
+	import { fitText } from '#lib/player/fit-text';
 	import PlaybackStatus from '#lib/components/player/PlaybackStatus.svelte';
 	import TrackActionMenu from '#lib/components/music/TrackActionMenu.svelte';
 	import { MOBILE_PLAYER_NAVIGATION, type MobilePlayerNavigation } from '#lib/mobile/navigation';
@@ -36,8 +37,19 @@
 	let erroredTrackId = $state<string | null>(null);
 	const showCover = $derived(Boolean(track && cover && erroredTrackId !== track.id));
 
-	// Apple-Music-style resting state: the artwork settles back when paused.
-	const isResting = $derived(Boolean(track) && !player.isPlaying && !player.isLoading);
+	// Apple-Music-style resting state: the artwork settles back when paused. Only
+	// a pause that lasts counts, so a stall or the gap between tracks never makes
+	// the cover shrink and spring back.
+	let isResting = $state(false);
+	$effect(() => {
+		const paused = Boolean(track) && !player.isPlaying && !player.isLoading;
+		if (!paused) {
+			isResting = false;
+			return;
+		}
+		const settle = setTimeout(() => (isResting = true), 700);
+		return () => clearTimeout(settle);
+	});
 
 	let reducedMotion = $state(false);
 	$effect(() => {
@@ -60,8 +72,9 @@
 
 	// Synced lyrics: show the line being sung and a quieter preview of the next.
 	const syncedIndex = $derived(player.activeLyricIndex);
+	// Before the first timed line (an intro) the line reads ♪, never a blank row.
 	const currentLyric = $derived(
-		syncedIndex >= 0 ? player.lyricsCues[syncedIndex]?.text.trim() || '♪' : ''
+		syncedIndex >= 0 ? player.lyricsCues[syncedIndex]?.text.trim() || '♪' : '♪'
 	);
 	const nextLyric = $derived(
 		player.lyricsCues.length ? nextLyricText(player.lyricsCues, syncedIndex) : ''
@@ -419,7 +432,9 @@
 			</div>
 
 			<div class="now-controls">
-				<PlaybackStatus mobile />
+				<!-- Only notices that need an action. Loading and buffering show on the
+				     play button, so a stall never resizes the artwork. -->
+				<PlaybackStatus mobile attentionOnly />
 				<PlayerSeekBar mobile />
 				<PlayerTransport mobile />
 
@@ -470,15 +485,16 @@
 					</span>
 					<span class="now-lyrics-lines">
 						{#if player.lyricsCues.length}
+							<!-- Two fixed-height lines whatever the lyric: a long line shrinks to
+							     fit instead of wrapping, so the card never resizes the artwork. -->
 							{#key currentLyric}
 								<span
 									class="now-lyrics-preview"
+									use:fitText={currentLyric}
 									in:fade={{ duration: motion(220), easing: cubicOut }}>{currentLyric}</span
 								>
 							{/key}
-							{#if nextLyric}
-								<span class="now-lyrics-next">{nextLyric}</span>
-							{/if}
+							<span class="now-lyrics-next" use:fitText={nextLyric}>{nextLyric}</span>
 						{:else if player.lyrics}
 							<span class="now-lyrics-preview multi">{lyricsSnippet || m.player_lyrics()}</span>
 						{:else if player.isLyricsLoading}
@@ -518,7 +534,8 @@
 		box-sizing: border-box;
 		/* Close sits a few px below the status bar / Dynamic Island, not flush with it. */
 		padding: calc(0.75rem + env(safe-area-inset-top)) max(1.25rem, env(safe-area-inset-right))
-			calc(0.5rem + env(safe-area-inset-bottom)) max(1.25rem, env(safe-area-inset-left));
+			calc(0.5rem + var(--mobile-home-indicator, env(safe-area-inset-bottom)))
+			max(1.25rem, env(safe-area-inset-left));
 		overflow-x: hidden;
 		overflow-y: auto;
 		overscroll-behavior: none;
@@ -673,11 +690,14 @@
 	}
 
 	/* Artwork */
+	/* Takes the height left after every other row; those rows all have fixed
+	   heights, so the cover is sized once per screen and never pulses. */
 	.now-artwork-wrap {
+		container-type: size;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		flex: 1 0 0;
+		flex: 1 1 0;
 		min-height: 0;
 		min-width: 0;
 		width: 100%;
@@ -688,16 +708,21 @@
 		-webkit-touch-callout: none;
 	}
 
+	/* Short portrait screens (an SE with Safari's toolbar) keep a real cover; the
+	   lyrics card then sits just below the fold, a scroll away, as in Spotify. */
+	@media (orientation: portrait) and (max-height: 37.5rem) {
+		.now-artwork-wrap {
+			min-height: 10rem;
+		}
+	}
+
 	.now-artwork {
 		--drag-x: 0px;
 		--art-scale: 1;
 		position: relative;
-		height: 100%;
-		max-height: min(100%, 24rem);
-		max-width: 100%;
+		width: min(100cqw, 100cqh, 22rem);
+		height: auto;
 		aspect-ratio: 1;
-		min-width: 0;
-		min-height: 0;
 		flex: none;
 		transform: translate3d(var(--drag-x), 0, 0) scale(var(--art-scale));
 		transition: transform 520ms cubic-bezier(0.34, 1.36, 0.64, 1);
@@ -920,10 +945,12 @@
 		text-underline-offset: 3px;
 	}
 
+	/* Fixed height: the quality tag arrives after the stream resolves. */
 	.now-meta-row {
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
+		height: 1.375rem;
 		margin-top: 0.25rem;
 		min-width: 0;
 	}
@@ -1058,7 +1085,6 @@
 		-webkit-backdrop-filter: blur(16px) saturate(1.3);
 		color: var(--text-primary);
 		text-decoration: none;
-		min-height: 48px;
 		flex: none;
 		box-sizing: border-box;
 		touch-action: manipulation;
@@ -1081,6 +1107,7 @@
 	.now-lyrics-badge {
 		display: inline-flex;
 		align-items: center;
+		height: 0.875rem;
 		gap: 0.4rem;
 		font-size: 0.625rem;
 		font-weight: 700;
@@ -1105,8 +1132,10 @@
 		}
 	}
 
+	/* Two rows of fixed height, filled or not. */
 	.now-lyrics-lines {
 		display: grid;
+		grid-template-rows: 1.25rem 1.0625rem;
 		gap: 0.1rem;
 		min-width: 0;
 	}
@@ -1122,9 +1151,10 @@
 	}
 
 	.now-lyrics-preview {
+		grid-row: 1;
 		font-size: 0.9375rem;
 		font-weight: 700;
-		line-height: 1.3;
+		line-height: 1.25rem;
 		color: var(--text-primary);
 	}
 
@@ -1134,8 +1164,10 @@
 		-webkit-line-clamp: 2;
 		-webkit-box-orient: vertical;
 		line-clamp: 2;
+		grid-row: 1 / -1;
 		font-size: 0.875rem;
 		font-weight: 600;
+		line-height: 1.15rem;
 	}
 
 	.now-lyrics-preview.muted {
@@ -1144,9 +1176,10 @@
 	}
 
 	.now-lyrics-next {
+		grid-row: 2;
 		font-size: 0.8125rem;
 		font-weight: 600;
-		line-height: 1.3;
+		line-height: 1.0625rem;
 		color: var(--text-muted);
 	}
 
@@ -1263,7 +1296,8 @@
 		(min-width: 40rem) and (max-height: 34rem) {
 		.now-screen {
 			padding: calc(0.45rem + env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right))
-				calc(0.25rem + env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left));
+				calc(0.25rem + var(--mobile-home-indicator, env(safe-area-inset-bottom)))
+				max(0.75rem, env(safe-area-inset-left));
 		}
 
 		.now-header {
@@ -1306,13 +1340,6 @@
 			padding: 0;
 			display: grid;
 			place-items: center;
-		}
-
-		.now-artwork {
-			max-height: min(100%, 55dvh);
-			max-width: min(100%, 55dvh);
-			width: 100%;
-			height: auto;
 		}
 
 		.now-identity {

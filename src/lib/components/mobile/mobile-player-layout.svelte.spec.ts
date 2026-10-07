@@ -96,3 +96,69 @@ it('keeps all four German navigation labels and touch targets at 320px with enla
 		.element(page.getByRole('link', { name: m.now_tab_library() }))
 		.toHaveAttribute('aria-current', 'page');
 });
+
+it('keeps the artwork size fixed as lyrics, buffering and quality change, and fits long lines', async () => {
+	await page.viewport(393, 659);
+	player.currentTrack = {
+		kind: 'track',
+		id: '9',
+		title: 'Bela Lugosi Is Dead',
+		artists: [{ id: 'bauhaus', name: 'Bauhaus' }],
+		album: { id: '1', title: 'Press the Eject' },
+		imageUrl:
+			'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect width="100" height="100" fill="slateblue"/%3E%3C/svg%3E'
+	};
+	player.playbackMode = 'direct';
+	player.isPlaying = true;
+	player.duration = 542;
+	player.currentTime = 1;
+	player.lyricsCues = [
+		{ time: 0, text: 'Short line' },
+		{
+			time: 10,
+			text: 'An extremely long lyric line that could never fit on a single line of any phone screen'
+		},
+		{ time: 20, text: '' }
+	];
+	const lyricClock = player as unknown as { lyricTime: number };
+	// The mobile shell gives the screen a fixed height; mirror it here.
+	const shell = document.createElement('div');
+	shell.style.cssText = 'height: 659px; display: flex; flex-direction: column;';
+	document.body.append(shell);
+	await render(NowPlayingScreen, { target: shell });
+	const artwork = () => document.querySelector('.now-artwork')!.getBoundingClientRect();
+	const card = () => document.querySelector('.now-lyrics-card')!.getBoundingClientRect();
+	await expect.element(page.getByText('Short line')).toBeInTheDocument();
+	const settle = () =>
+		new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
+	await settle();
+	const initial = { art: artwork(), card: card() };
+	expect(initial.art.width).toBeGreaterThan(120);
+
+	for (const step of [
+		() => (lyricClock.lyricTime = 10),
+		() => (lyricClock.lyricTime = 20),
+		() => (player.isBuffering = true),
+		() => (player.isLoading = true),
+		() => ((player.isLoading = false), (player.isBuffering = false))
+	]) {
+		step();
+		await settle();
+		expect(artwork().width).toBeCloseTo(initial.art.width, 0);
+		expect(artwork().top).toBeCloseTo(initial.art.top, 0);
+		expect(card().height).toBeCloseTo(initial.card.height, 0);
+	}
+
+	lyricClock.lyricTime = 10;
+	await expect.element(page.getByText(/An extremely long lyric/)).toBeInTheDocument();
+	await settle();
+	const line = document.querySelector<HTMLElement>('.now-lyrics-preview')!;
+	expect(Number.parseFloat(getComputedStyle(line).fontSize)).toBeLessThan(15);
+	expect(
+		document.querySelector('.now-lyrics-card')!.getBoundingClientRect().bottom
+	).toBeLessThanOrEqual(659);
+	lyricClock.lyricTime = 0;
+	player.lyricsCues = [];
+	player.isPlaying = false;
+	shell.remove();
+});

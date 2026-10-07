@@ -60,7 +60,8 @@
 			(!player.isPlaying && player.resumeStatus !== 'ready') ||
 			player.playbackMode !== 'direct' ||
 			player.isPlaybackActiveElsewhere}
-		aria-busy={player.isLoading}
+		class:buffering={player.isBuffering && !player.isLoading}
+		aria-busy={player.isLoading || player.isBuffering}
 		onclick={() => player.togglePlayPause()}
 		title={playLabel}
 		aria-label={playLabel}
@@ -153,6 +154,27 @@
 			transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1),
 			box-shadow var(--dur-fast) ease,
 			opacity var(--dur-fast) ease;
+	}
+	/* A stall shows on the button itself, so no status line pushes the layout around. */
+	.mobile .play.buffering::before {
+		content: '';
+		position: absolute;
+		inset: -5px;
+		border: 2px solid transparent;
+		border-top-color: var(--text-primary);
+		border-radius: var(--radius-full);
+		animation: play-buffering 0.9s linear infinite;
+	}
+	@keyframes play-buffering {
+		to {
+			transform: rotate(360deg);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.mobile .play.buffering::before {
+			animation: none;
+			border-color: color-mix(in oklab, var(--text-primary) 45%, transparent);
+		}
 	}
 	.mobile .play:hover:not(:disabled) {
 		transform: scale(1.04);
