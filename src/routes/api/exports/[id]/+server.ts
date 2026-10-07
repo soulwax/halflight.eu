@@ -9,20 +9,21 @@ function requireOwner(event: Parameters<RequestHandler>[0]): string {
 
 export const GET: RequestHandler = async (event) => {
 	const userId = requireOwner(event);
+	let artifact;
 	try {
-		const artifact = await exportBucket.get(userId, event.params.id ?? '');
-		if (!artifact) error(404, 'Export not found or expired');
-		return new Response(artifact.body, {
-			headers: {
-				'Content-Type': artifact.contentType,
-				'Content-Disposition': artifact.contentDisposition,
-				'Cache-Control': 'no-store'
-			}
-		});
+		artifact = await exportBucket.get(userId, event.params.id ?? '');
 	} catch (cause) {
 		log.warn('export bucket read failed', { cause });
 		error(503, 'Export storage is temporarily unavailable');
 	}
+	if (!artifact) error(404, 'Export not found or expired');
+	return new Response(artifact.body, {
+		headers: {
+			'Content-Type': artifact.contentType,
+			'Content-Disposition': artifact.contentDisposition,
+			'Cache-Control': 'no-store'
+		}
+	});
 };
 
 export const DELETE: RequestHandler = async (event) => {

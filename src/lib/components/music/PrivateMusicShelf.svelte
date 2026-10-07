@@ -28,6 +28,7 @@
 	let fileInput = $state<HTMLInputElement>();
 	let deleteDialog = $state<HTMLDialogElement>();
 	let pendingDelete = $state<PrivateMusicFile | null>(null);
+	let isDeleting = $state(false);
 
 	const accept = $derived(privateMusicAccept(library.formats));
 	const isUploading = $derived(uploadState.status === 'uploading');
@@ -143,7 +144,8 @@
 	}
 
 	async function confirmDeletion(): Promise<void> {
-		if (!pendingDelete) return;
+		if (!pendingDelete || isDeleting) return;
+		isDeleting = true;
 		const file = pendingDelete;
 		try {
 			const response = await fetch(file.downloadUrl, { method: 'DELETE' });
@@ -157,6 +159,8 @@
 			deleteDialog?.close();
 		} catch {
 			feedback = { tone: 'danger', message: m.private_music_delete_error() };
+		} finally {
+			isDeleting = false;
 		}
 	}
 </script>
@@ -184,6 +188,15 @@
 			>
 		</div>
 	</div>
+	<meter
+		min="0"
+		max={storage.maxTotalBytes}
+		value={storage.usedBytes}
+		aria-label={m.private_music_storage({
+			used: formatBytes(storage.usedBytes),
+			total: formatBytes(storage.maxTotalBytes)
+		})}
+	></meter>
 
 	{#if !library.enabled}
 		<Notice tone="warning">{m.private_music_storage_unavailable()}</Notice>
@@ -288,8 +301,12 @@
 		<button type="button" onclick={() => deleteDialog?.close()}
 			>{m.private_music_delete_cancel()}</button
 		>
-		<button type="button" class="danger" onclick={() => void confirmDeletion()}
-			>{m.private_music_delete_action()}</button
+		<button
+			type="button"
+			class="danger"
+			disabled={isDeleting}
+			aria-busy={isDeleting}
+			onclick={() => void confirmDeletion()}>{m.private_music_delete_action()}</button
 		>
 	</div>
 </dialog>
@@ -403,6 +420,10 @@
 		width: 100%;
 		accent-color: var(--action);
 	}
+	meter {
+		width: 100%;
+		height: 1rem;
+	}
 	.empty {
 		display: flex;
 		align-items: center;
@@ -476,6 +497,14 @@
 		color: var(--scrim-ink);
 	}
 	@media (max-width: 44rem) {
+		.private-music-heading {
+			flex-direction: column;
+		}
+		button,
+		.file-actions a {
+			min-height: 3rem;
+			min-width: 3rem;
+		}
 		.private-music-heading,
 		.drop-zone {
 			align-items: flex-start;

@@ -44,6 +44,12 @@ describe('/api/exports/[id]', () => {
 		await expect(GET(event(undefined, false))).rejects.toMatchObject({ status: 401 });
 		expect(mocks.get).not.toHaveBeenCalled();
 	});
+	it('returns 404 for an expired copy and 503 for a bucket failure', async () => {
+		mocks.get.mockResolvedValue(null);
+		await expect(GET(event())).rejects.toMatchObject({ status: 404 });
+		mocks.get.mockRejectedValue(new Error('Bucket unavailable'));
+		await expect(GET(event())).rejects.toMatchObject({ status: 503 });
+	});
 
 	it('deletes an export through the authenticated proxy', async () => {
 		mocks.delete.mockResolvedValue(true);

@@ -4,6 +4,7 @@
 	import { CircleCheck, Download, Palette, SlidersHorizontal } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import MobileSubScreenHeader from '#lib/components/mobile/MobileSubScreenHeader.svelte';
+	import MobileStorage from '#lib/components/mobile/MobileStorage.svelte';
 	import TidalPlaybackSetup from '#lib/components/tidal/TidalPlaybackSetup.svelte';
 	import { getThemeLabel, type Theme } from '#lib/theme.js';
 	import { rememberSiteChoice } from '#lib/mobile/site-entry';
@@ -260,6 +261,8 @@
 			<button type="submit">{m.appearance_save()}</button>
 		</form>
 	</section>
+
+	{#if data.storage}<MobileStorage storage={data.storage} />{/if}
 
 	<section class="card" aria-labelledby="mobile-install-title">
 		<div class="card-heading">

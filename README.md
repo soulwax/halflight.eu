@@ -25,6 +25,10 @@ product; every route exists to feed it. _Syn_ is the code name, so the package, 
   nothing is written to TIDAL without review.
 - **Optional extras** — Last.fm scrobbling, playlist export, private music upload and a Redis cache, each off until
   configured.
+- **Mobile storage controls** — Settings shows private-music capacity, saved playlists, listening-session
+  counts and saved preferences. Download private-music manifests directly, or create, download and delete
+  an account-protected 15-minute export when export storage is configured. Storage failures are reported
+  separately so other controls remain usable. `/api/storage` exposes the same authenticated summaries.
 
 ## Stack
 

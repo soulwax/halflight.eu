@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+vi.mock('#lib/server/storage', () => ({ getStorageOverview: vi.fn() }));
 
 const mocks = vi.hoisted(() => ({
 	saveStreamingSettings: vi.fn(),
