@@ -383,7 +383,9 @@ export async function pullAllPlaylists(ctx: SyncContext): Promise<SyncBatchResul
 	const results: SyncResult[] = [];
 
 	const localPlaylists = await getUserPlaylists(ctx.userId);
-	const linkedPlaylists = localPlaylists.filter((p) => p.tidalPlaylistId);
+	const linkedPlaylists = localPlaylists.filter(
+		(p) => p.tidalPlaylistId && p.syncStatus !== 'local_only'
+	);
 
 	for (const playlist of linkedPlaylists) {
 		const res = await pullPlaylist(playlist.tidalPlaylistId!, ctx);
@@ -449,7 +451,9 @@ export async function listImportablePlaylists(ctx: SyncContext) {
 		// Get already-imported TIDAL IDs
 		const localPlaylists = await getUserPlaylists(ctx.userId);
 		const importedTidalIds = new Set(
-			localPlaylists.filter((p) => p.tidalPlaylistId).map((p) => p.tidalPlaylistId!)
+			localPlaylists
+				.filter((p) => p.tidalPlaylistId && p.syncStatus !== 'local_only')
+				.map((p) => p.tidalPlaylistId!)
 		);
 
 		const collectionPlaylists = (items as Array<{ id: string; type: string }>)

@@ -3,7 +3,7 @@ import { getUserPlaylists } from '#lib/server/playlists';
 import { filterPlayableTracks, getConnectionStatus, tidalApi } from '#lib/server/tidal';
 import { normalisePlaylistDetail } from '#lib/server/tidal/normalise';
 import { loadTidalPage, type TidalPageState } from '#lib/server/tidal/load';
-import type { PlaylistDetail } from '#lib/tidal/models';
+import type { TrackSummary, PlaylistDetail } from '#lib/tidal/models';
 import type { PageServerLoad } from './$types';
 
 export interface MobilePlaylistData {
@@ -11,6 +11,8 @@ export interface MobilePlaylistData {
 	isLocal: boolean;
 	state: TidalPageState | null;
 	id?: string;
+	editVersion?: string;
+	editTracks?: TrackSummary[];
 }
 
 const failure = (state: TidalPageState, _configured: boolean, id?: string): MobilePlaylistData => ({
@@ -48,6 +50,8 @@ export const load: PageServerLoad = async (event): Promise<MobilePlaylistData> =
 						numberOfItems: items.length,
 						items
 					},
+					editVersion: local.updatedAt,
+					editTracks: local.items,
 					isLocal: true,
 					state: null,
 					id: local.id

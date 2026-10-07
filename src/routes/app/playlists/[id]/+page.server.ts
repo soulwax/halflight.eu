@@ -43,6 +43,7 @@ export const load: PageServerLoad = async (event) => {
 						items
 					},
 					localPlaylist: { ...local, items },
+					editTracks: local.items,
 					isLocal: true,
 					syncStatus: local.syncStatus,
 					hasWriteScopes: Boolean(connection.hasWriteScopes),

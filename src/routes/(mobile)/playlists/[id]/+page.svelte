@@ -11,4 +11,10 @@
 	>
 </svelte:head>
 
-<MobilePlaylistDetail playlist={data.playlist} state={data.state} />
+<MobilePlaylistDetail
+	playlist={data.playlist}
+	state={data.state}
+	isLocal={data.isLocal}
+	editVersion={data.editVersion}
+	editTracks={data.editTracks}
+/>

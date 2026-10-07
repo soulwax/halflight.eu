@@ -1,16 +1,29 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { ListMusic, ListPlus, Play, Shuffle } from '@lucide/svelte';
+	import { ListPlus, Play, Shuffle } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
+	import PlaylistCover from '#lib/components/music/PlaylistCover.svelte';
+	import PlaylistEditor from '#lib/components/music/PlaylistEditor.svelte';
 	import { player } from '#lib/player/player.svelte.js';
-	import type { PlaylistDetail } from '#lib/tidal/models';
+	import type { PlaylistDetail, TrackSummary } from '#lib/tidal/models';
 	import type { TidalPageState } from '#lib/tidal/page-state';
 	import MobileSubScreenHeader from './MobileSubScreenHeader.svelte';
 	import MobileDetailRetry from './MobileDetailRetry.svelte';
 	import MobileTrackRow from './MobileTrackRow.svelte';
 
-	let { playlist, state }: { playlist: PlaylistDetail | null; state: TidalPageState | null } =
-		$props();
+	let {
+		playlist,
+		state,
+		isLocal = false,
+		editVersion,
+		editTracks
+	}: {
+		playlist: PlaylistDetail | null;
+		state: TidalPageState | null;
+		isLocal?: boolean;
+		editVersion?: string;
+		editTracks?: TrackSummary[];
+	} = $props();
 
 	const homeHref = resolve('/(mobile)/home');
 	const settingsHref = resolve('/(mobile)/settings');
@@ -52,11 +65,7 @@
 
 		<div class="playlist-hero">
 			<span class="playlist-art">
-				{#if playlist.imageUrl}
-					<img src={playlist.imageUrl} alt="" width="320" height="320" />
-				{:else}
-					<ListMusic size={52} strokeWidth={1.4} aria-hidden="true" />
-				{/if}
+				<PlaylistCover tracks={items} />
 			</span>
 			<p class="playlist-meta">
 				<span>{m.now_library_count({ count: items.length })}</span>
@@ -66,6 +75,20 @@
 				<p class="playlist-description">{playlist.description}</p>
 			{/if}
 		</div>
+
+		{#if isLocal && editVersion}<div class="edit-controls">
+				<PlaylistEditor
+					id={playlist.id}
+					title={playlist.title}
+					description={playlist.description}
+					tracks={editTracks ?? items}
+					version={editVersion}
+				/><a
+					class="notice-action"
+					href={`/api/playlists/${encodeURIComponent(playlist.id)}/export?format=m3u8`}
+					download>{m.action_export_m3u8()}</a
+				>
+			</div>{/if}
 
 		{#if items.length}
 			<div class="playlist-actions">
@@ -155,10 +178,12 @@
 		box-shadow: 0 24px 42px -26px rgb(0 0 0 / 70%);
 	}
 
-	.playlist-art img {
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
+	.edit-controls {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: 0.5rem;
+		margin-top: 1rem;
 	}
 
 	.playlist-meta {

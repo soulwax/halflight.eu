@@ -840,5 +840,15 @@
 	"replacement_local_copy": "Replaces every occurrence of this song in the selected Halflight playlist. Your TIDAL playlist stays unchanged.",
 	"replacement_save_play": "Replace and play",
 	"replacement_play": "Play this version",
-	"replacement_saving": "Updating the playlist…"
+	"replacement_saving": "Updating the playlist…",
+	"playlist_editor_local": "Changes are saved to your Halflight copy. Your TIDAL playlist stays unchanged.",
+	"playlist_editor_undo": "Undo",
+	"playlist_editor_up": "Move {title} up",
+	"playlist_editor_down": "Move {title} down",
+	"playlist_editor_remove": "Remove {title} from this playlist",
+	"playlist_editor_add": "Add songs",
+	"playlist_editor_add_song": "Add {title} to this playlist",
+	"playlist_editor_error": "Could not save your changes. Your draft is still here.",
+	"playlist_editor_conflict": "This playlist changed elsewhere. Close the editor, refresh and review your changes before saving again.",
+	"playlist_editor_saving": "Saving changes…"
 }

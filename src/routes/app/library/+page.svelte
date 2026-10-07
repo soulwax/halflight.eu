@@ -1,14 +1,7 @@
 <script lang="ts">
-	import {
-		ArrowDownToLine,
-		Download,
-		ListMusic,
-		Play,
-		RefreshCw,
-		Sparkles,
-		Trash2
-	} from '@lucide/svelte';
+	import { ArrowDownToLine, Download, Play, RefreshCw, Sparkles, Trash2 } from '@lucide/svelte';
 
+	import PlaylistCover from '#lib/components/music/PlaylistCover.svelte';
 	import MediaCard from '#lib/components/music/MediaCard.svelte';
 	import PrivateMusicShelf from '#lib/components/music/PrivateMusicShelf.svelte';
 	import PlaylistImportModal from '#lib/components/music/PlaylistImportModal.svelte';
@@ -162,7 +155,7 @@
 					{#each visiblePlaylists as playlist (playlist.id)}
 						<article class="custom-card">
 							<div class="card-top">
-								<ListMusic size={22} class="text-(--action)" />
+								<div class="saved-cover"><PlaylistCover tracks={playlist.items} size={160} /></div>
 								<div class="min-w-0 flex-1">
 									<a
 										class="block truncate hover:text-(--action) hover:underline"
@@ -197,7 +190,7 @@
 									<Play size={12} fill="currentColor" />
 									{m.track_action_play_now()}
 								</button>
-								{#if playlist.tidalPlaylistId || playlist.source === 'syn'}
+								{#if (playlist.tidalPlaylistId || playlist.source === 'syn') && !(playlist.source === 'tidal' && playlist.syncStatus === 'local_only')}
 									<button
 										type="button"
 										class="card-sync-btn"
@@ -366,6 +359,12 @@
 		margin-top: 1rem;
 	}
 
+	.saved-cover {
+		width: 4rem;
+		height: 4rem;
+		flex-shrink: 0;
+		border-radius: var(--radius-md);
+	}
 	.custom-card {
 		padding: 1rem;
 		border: 1px solid var(--border-subtle);

@@ -4,6 +4,7 @@
 
 	let {
 		imageUrl,
+		cover,
 		title,
 		eyebrow,
 		type = 'album',
@@ -11,6 +12,7 @@
 		actions
 	}: {
 		imageUrl?: string | null;
+		cover?: Snippet;
 		title: string;
 		eyebrow?: string;
 		type?: 'album' | 'track' | 'artist' | 'playlist';
@@ -20,7 +22,8 @@
 </script>
 
 <header class="entity-page-header">
-	{#if imageUrl}
+	{#if cover}<div class="entity-cover">{@render cover()}</div>
+	{:else if imageUrl}
 		<img
 			class="entity-cover"
 			class:entity-cover-round={type === 'artist'}

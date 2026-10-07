@@ -840,5 +840,15 @@
 	"replacement_local_copy": "Ersetzt jedes Vorkommen dieses Titels in der gewählten Halflight-Playlist. Deine TIDAL-Playlist bleibt unverändert.",
 	"replacement_save_play": "Ersetzen und abspielen",
 	"replacement_play": "Diese Version abspielen",
-	"replacement_saving": "Playlist wird aktualisiert…"
+	"replacement_saving": "Playlist wird aktualisiert…",
+	"playlist_editor_local": "Änderungen werden in deiner Halflight-Kopie gespeichert. Deine TIDAL-Playlist bleibt unverändert.",
+	"playlist_editor_undo": "Rückgängig",
+	"playlist_editor_up": "{title} nach oben verschieben",
+	"playlist_editor_down": "{title} nach unten verschieben",
+	"playlist_editor_remove": "{title} aus dieser Playlist entfernen",
+	"playlist_editor_add": "Titel hinzufügen",
+	"playlist_editor_add_song": "{title} zu dieser Playlist hinzufügen",
+	"playlist_editor_error": "Änderungen konnten nicht gespeichert werden. Dein Entwurf bleibt erhalten.",
+	"playlist_editor_conflict": "Diese Playlist wurde woanders geändert. Schließe den Editor, aktualisiere die Seite und prüfe deine Änderungen erneut.",
+	"playlist_editor_saving": "Änderungen werden gespeichert…"
 }

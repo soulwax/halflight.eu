@@ -1,5 +1,7 @@
 <script lang="ts">
 	import PageActions from '#lib/components/music/PageActions.svelte';
+	import PlaylistCover from '#lib/components/music/PlaylistCover.svelte';
+	import PlaylistEditor from '#lib/components/music/PlaylistEditor.svelte';
 	import PageHeader from '#lib/components/music/PageHeader.svelte';
 	import StateCard from '#lib/components/music/StateCard.svelte';
 	import TrackTable from '#lib/components/music/TrackTable.svelte';
@@ -11,15 +13,10 @@
 	import { downloadM3u8File, generateM3u8 } from '#lib/utils/m3u';
 	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
-	import { Check, Download, Edit3, Loader2, Play, RefreshCw, Trash2, X } from '@lucide/svelte';
+	import { Check, Download, Loader2, Play, RefreshCw, Trash2, X } from '@lucide/svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
-
-	let isEditing = $state(false);
-	let editTitle = $state('');
-	let editDescription = $state('');
-	let isSaving = $state(false);
 
 	let isDeleting = $state(false);
 	let deleteTidalToo = $state(false);
@@ -51,37 +48,6 @@
 		const minutes = Math.floor((seconds % 3600) / 60);
 		if (hours > 0) return `${hours} hr ${minutes} min`;
 		return `${minutes} min`;
-	}
-
-	function startEdit() {
-		if (!data.playlist) return;
-		editTitle = data.playlist.title;
-		editDescription = data.playlist.description || '';
-		isEditing = true;
-	}
-
-	async function saveEdit() {
-		if (!data.playlist || !editTitle.trim()) return;
-		isSaving = true;
-		try {
-			const res = await fetch(`/api/playlists/${encodeURIComponent(data.playlist.id)}`, {
-				method: 'PATCH',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					title: editTitle.trim(),
-					description: editDescription.trim() || null
-				})
-			});
-			if (res.ok) {
-				isEditing = false;
-				await customPlaylists.syncWithServer();
-				window.location.reload();
-			}
-		} catch {
-			// error saving
-		} finally {
-			isSaving = false;
-		}
 	}
 
 	async function handleSync() {
@@ -161,136 +127,115 @@
 
 <section class="playlist-page" aria-labelledby="playlist-title">
 	{#if data.playlist}
-		{#if isEditing}
-			<div class="edit-panel">
-				<div class="edit-field">
-					<label for="edit-title">{m.track_col_title()}</label>
-					<input id="edit-title" class="edit-input" type="text" bind:value={editTitle} />
-				</div>
-				<div class="edit-field">
-					<label for="edit-desc">{m.playlist_field_description()}</label>
-					<textarea id="edit-desc" class="edit-textarea" rows="2" bind:value={editDescription}
-					></textarea>
-				</div>
-				<div class="edit-actions">
-					<Button variant="secondary" onclick={() => (isEditing = false)} disabled={isSaving}>
-						{m.playlist_cancel()}
-					</Button>
-					<Button variant="primary" onclick={saveEdit} disabled={isSaving || !editTitle.trim()}>
-						{#if isSaving}
-							<Loader2 size={14} class="animate-spin" />
-						{/if}
-						{m.playlist_save()}
-					</Button>
-				</div>
-			</div>
-		{:else}
-			<PageHeader
-				title={data.playlist.title}
-				imageUrl={data.playlist.imageUrl}
-				eyebrow={m.playlist_label()}
-				type="playlist"
-			>
-				{#if data.playlist.description}
-					<p class="line-clamp-2 text-sm text-(--text-muted)">{data.playlist.description}</p>
+		<PageHeader
+			title={data.playlist.title}
+			imageUrl={data.playlist.imageUrl}
+			eyebrow={m.playlist_label()}
+			type="playlist"
+		>
+			{#if data.playlist.description}
+				<p class="line-clamp-2 text-sm text-(--text-muted)">{data.playlist.description}</p>
+			{/if}
+			<div class="meta-line">
+				{#if data.playlist.creator}
+					<span class="font-bold"
+						>{m.playlist_by({ creator: data.playlist.creator.name ?? 'TIDAL' })}</span
+					>
+					<span>·</span>
 				{/if}
-				<div class="meta-line">
-					{#if data.playlist.creator}
-						<span class="font-bold"
-							>{m.playlist_by({ creator: data.playlist.creator.name ?? 'TIDAL' })}</span
-						>
-						<span>·</span>
-					{/if}
-					{#if data.playlist.numberOfItems || data.playlist.items.length}
-						<span class="font-mono"
-							>{data.playlist.numberOfItems ?? data.playlist.items.length}
-							{m.playlist_track_count()}</span
-						>
-					{/if}
-					{#if data.playlist.duration}
-						<span>·</span>
-						<span class="font-mono">{formatTotalDuration(data.playlist.duration)}</span>
-					{/if}
+				{#if data.playlist.numberOfItems || data.playlist.items.length}
+					<span class="font-mono"
+						>{data.playlist.numberOfItems ?? data.playlist.items.length}
+						{m.playlist_track_count()}</span
+					>
+				{/if}
+				{#if data.playlist.duration}
+					<span>·</span>
+					<span class="font-mono">{formatTotalDuration(data.playlist.duration)}</span>
+				{/if}
 
-					<!-- Sync status badge -->
-					{#if data.syncStatus === 'synced'}
-						<span class="status-pill pill-green">
-							<Check size={11} />
-							{m.playlist_synced()}
-						</span>
-					{:else if data.syncStatus === 'pending_push'}
-						<span class="status-pill pill-amber">
-							<RefreshCw size={11} />
-							{m.playlist_pending_push()}
-						</span>
-					{:else if data.syncStatus === 'error'}
-						<span class="status-pill pill-red">
-							{m.playlist_sync_error()}
-						</span>
-					{:else if data.isLocal && !tidalPlaylistId}
-						<span class="status-pill pill-gray">
-							{m.playlist_local_only()}
-						</span>
-					{/if}
-				</div>
+				<!-- Sync status badge -->
+				{#if data.syncStatus === 'synced'}
+					<span class="status-pill pill-green">
+						<Check size={11} />
+						{m.playlist_synced()}
+					</span>
+				{:else if data.syncStatus === 'pending_push'}
+					<span class="status-pill pill-amber">
+						<RefreshCw size={11} />
+						{m.playlist_pending_push()}
+					</span>
+				{:else if data.syncStatus === 'error'}
+					<span class="status-pill pill-red">
+						{m.playlist_sync_error()}
+					</span>
+				{:else if data.isLocal && !tidalPlaylistId}
+					<span class="status-pill pill-gray">
+						{m.playlist_local_only()}
+					</span>
+				{/if}
+			</div>
 
-				{#snippet actions()}
-					{#if data.playlist?.items.length}
-						<Button
-							variant="primary"
-							onclick={() =>
-								player.play(data.playlist!.items[0], data.playlist!.items, playlistProvenance)}
-						>
-							<Play size={14} fill="currentColor" />
-							{m.player_play_all()}
-						</Button>
+			{#snippet cover()}<PlaylistCover tracks={data.playlist.items} />{/snippet}
+			{#snippet actions()}
+				{#if data.playlist?.items.length}
+					<Button
+						variant="primary"
+						onclick={() =>
+							player.play(data.playlist!.items[0], data.playlist!.items, playlistProvenance)}
+					>
+						<Play size={14} fill="currentColor" />
+						{m.player_play_all()}
+					</Button>
 
-						<Button
-							variant="secondary"
-							onclick={() => {
-								if (!data.playlist) return;
-								const m3uContent = generateM3u8(data.playlist.title, data.playlist.items);
-								downloadM3u8File(`${data.playlist.title}.m3u8`, m3uContent);
-							}}
-							title={m.action_export_m3u8()}
-							ariaLabel={m.action_export_m3u8()}
-						>
-							<Download size={14} />
-							M3U8
-						</Button>
-					{/if}
+					<Button
+						variant="secondary"
+						onclick={() => {
+							if (!data.playlist) return;
+							const m3uContent = generateM3u8(data.playlist.title, data.playlist.items);
+							downloadM3u8File(`${data.playlist.title}.m3u8`, m3uContent);
+						}}
+						title={m.action_export_m3u8()}
+						ariaLabel={m.action_export_m3u8()}
+					>
+						<Download size={14} />
+						M3U8
+					</Button>
+				{/if}
 
-					<!-- Sync with TIDAL button -->
-					{#if data.isLocal || tidalPlaylistId}
-						<Button
-							variant="secondary"
-							disabled={isSyncing}
-							onclick={handleSync}
-							title={m.playlist_sync()}
-						>
-							<RefreshCw size={14} class={isSyncing ? 'animate-spin' : ''} />
-							{isSyncing ? m.playlist_syncing() : m.playlist_sync()}
-						</Button>
-					{/if}
+				<!-- Sync with TIDAL button -->
+				{#if (data.isLocal || tidalPlaylistId) && !(data.localPlaylist?.source === 'tidal' && data.localPlaylist?.syncStatus === 'local_only')}
+					<Button
+						variant="secondary"
+						disabled={isSyncing}
+						onclick={handleSync}
+						title={m.playlist_sync()}
+					>
+						<RefreshCw size={14} class={isSyncing ? 'animate-spin' : ''} />
+						{isSyncing ? m.playlist_syncing() : m.playlist_sync()}
+					</Button>
+				{/if}
 
-					<!-- Edit button for local playlists -->
-					{#if data.isLocal}
-						<Button variant="secondary" onclick={startEdit} title={m.playlist_edit()}>
-							<Edit3 size={14} />
-							{m.playlist_edit()}
-						</Button>
+				<!-- Edit button for local playlists -->
+				{#if data.isLocal}
+					<PlaylistEditor
+						id={data.playlist.id}
+						title={data.playlist.title}
+						description={data.playlist.description}
+						tracks={data.editTracks ?? data.playlist.items}
+						version={data.localPlaylist!.updatedAt}
+					/>
 
-						<Button
-							variant="secondary"
-							onclick={() => (isDeleting = true)}
-							title={m.action_delete_playlist()}
-						>
-							<Trash2 size={14} class="text-[var(--danger)]" />
-						</Button>
-					{/if}
-				{/snippet}
-			</PageHeader>
-		{/if}
+					<Button
+						variant="secondary"
+						onclick={() => (isDeleting = true)}
+						title={m.action_delete_playlist()}
+					>
+						<Trash2 size={14} class="text-[var(--danger)]" />
+					</Button>
+				{/if}
+			{/snippet}
+		</PageHeader>
 
 		{#if syncFeedback}
 			<div class="sync-feedback" role="status">
@@ -410,50 +355,6 @@
 		background: var(--paper);
 		color: var(--text-muted);
 		border: 1px solid var(--border-subtle);
-	}
-
-	.edit-panel {
-		background: var(--surface-raised);
-		border: 1px solid var(--border-subtle);
-		padding: 1.5rem;
-		margin-bottom: 2rem;
-		display: flex;
-		flex-direction: column;
-		gap: 1rem;
-	}
-
-	.edit-field {
-		display: flex;
-		flex-direction: column;
-		gap: 0.35rem;
-	}
-
-	.edit-field label {
-		font-size: 0.8rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		color: var(--text-muted);
-	}
-
-	.edit-input,
-	.edit-textarea {
-		background: var(--paper);
-		border: 1px solid var(--border-subtle);
-		color: var(--text-primary);
-		padding: 0.5rem 0.75rem;
-		font-size: 0.9rem;
-	}
-
-	.edit-input:focus,
-	.edit-textarea:focus {
-		border-color: var(--action);
-		outline: none;
-	}
-
-	.edit-actions {
-		display: flex;
-		justify-content: flex-end;
-		gap: 0.5rem;
 	}
 
 	.sync-feedback {

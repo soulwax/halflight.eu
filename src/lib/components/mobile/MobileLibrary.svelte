@@ -3,8 +3,9 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import { localizeHref } from '#lib/paraglide/runtime';
 	import Dialog from '#lib/components/ui/Dialog.svelte';
-	import { ArrowDownToLine, Disc, ListPlus, Play, RefreshCw } from '@lucide/svelte';
+	import { ArrowDownToLine, ListPlus, Play, RefreshCw } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
+	import PlaylistCover from '#lib/components/music/PlaylistCover.svelte';
 	import PrivateMusicShelf from '#lib/components/music/PrivateMusicShelf.svelte';
 	import PlaylistImportModal from '#lib/components/music/PlaylistImportModal.svelte';
 	import SearchField from '#lib/components/ui/SearchField.svelte';
@@ -12,7 +13,6 @@
 	import { player } from '#lib/player/player.svelte.js';
 	import type { MobileLibraryData } from '#lib/tidal/mobile-library';
 	import type { TrackSummary } from '#lib/tidal/models';
-	import { trackArtworkUrl } from '#lib/tidal/artwork';
 	import MobileScreenHeader from './MobileScreenHeader.svelte';
 	import MobileTrackRow from './MobileTrackRow.svelte';
 
@@ -24,7 +24,6 @@
 	let feedback = $state('');
 	let libraryQuery = $derived(data.query ?? '');
 	let searchInput = $state<HTMLInputElement>();
-	let failedArtwork = $state<Record<string, boolean>>({});
 	const libraryHref = resolve('/(mobile)/library');
 
 	function play(title: string, tracks: TrackSummary[], start = tracks[0]): void {
@@ -82,25 +81,6 @@
 		}
 	}
 </script>
-
-{#snippet artwork(track?: TrackSummary)}
-	{@const cover = trackArtworkUrl(track, 160)}
-	<span class="artwork">
-		{#if cover && !failedArtwork[cover]}
-			<img
-				src={cover}
-				alt=""
-				loading="lazy"
-				decoding="async"
-				width="64"
-				height="64"
-				onerror={() => cover && (failedArtwork[cover] = true)}
-			/>
-		{:else}
-			<Disc size={28} aria-hidden="true" />
-		{/if}
-	</span>
-{/snippet}
 
 <section class="mobile-library" aria-labelledby="mobile-library-title">
 	<MobileScreenHeader
@@ -188,7 +168,7 @@
 				{#each data.playlists as playlist (playlist.id)}
 					<li class="playlist-row">
 						<a class="identity" href={resolve('/(mobile)/playlists/[id]', { id: playlist.id })}>
-							{@render artwork(playlist.items[0])}
+							<span class="artwork"><PlaylistCover tracks={playlist.items} size={80} /></span>
 							<div class="copy">
 								<h2>{playlist.title}</h2>
 								<p>
