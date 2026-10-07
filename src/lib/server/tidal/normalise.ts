@@ -56,6 +56,15 @@ function readNumberAttribute(resource: ResourceLike, names: string[]): number | 
 	}
 }
 
+function durationSeconds(resource: ResourceLike): number | undefined {
+	const numeric = readNumberAttribute(resource, ['duration', 'durationSeconds']);
+	if (numeric !== undefined) return numeric;
+	const duration = readAttribute(resource, ['duration']);
+	const match = duration?.match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?$/);
+	if (!match || !match.slice(1).some(Boolean)) return undefined;
+	return Number(match[1] ?? 0) * 3600 + Number(match[2] ?? 0) * 60 + Number(match[3] ?? 0);
+}
+
 function readBooleanAttribute(resource: ResourceLike, names: string[]): boolean | undefined {
 	for (const name of names) {
 		const value = resource.attributes[name];
@@ -269,9 +278,7 @@ export function normaliseTrack(
 		title: displayTitle,
 		artists,
 		...(albumRef ? { album: albumRef } : {}),
-		...(readNumberAttribute(resource, ['duration', 'durationSeconds'])
-			? { duration: readNumberAttribute(resource, ['duration', 'durationSeconds']) }
-			: {}),
+		...(durationSeconds(resource) ? { duration: durationSeconds(resource) } : {}),
 		...(readNumberAttribute(resource, ['trackNumber', 'track_number'])
 			? { trackNumber: readNumberAttribute(resource, ['trackNumber', 'track_number']) }
 			: {}),

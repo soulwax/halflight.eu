@@ -22,8 +22,11 @@ product; every route exists to feed it. _Syn_ is the code name, so the package, 
   from hi-res to lossless, high and low. The browser never receives a token or a TIDAL media URL.
 - **Synced lyrics** — the active line follows the playhead, with the next line shown as a smaller caption.
 - **Verified imports** — TIDAL imports resolve recording metadata by ID and check playback before saving.
-  Unavailable recordings stay out of the local playable copy; source order and repeated playable songs are
-  preserved. Refreshing an unchanged TIDAL import pulls updates without publishing the filtered copy.
+  Unavailable IDs are matched to playback-checked catalogue candidates, preferring the same ISRC and
+  allowing compatible best fits after checking title, artist, edition and duration. Source order and repeated playable songs are preserved. Refreshing an unchanged TIDAL import pulls updates without publishing the filtered copy.
+- **Interactive recording repair** — when a song cannot play, choose a verified alternative in the mobile or
+  desktop player. Preview the match, update a selected local playlist, or play without changing it. Confirmed
+  replacements survive later imports; the TIDAL source playlist stays unchanged.
 - **Search listening history** — recent search songs appear only after their audio actually plays. The list
   is separate from search results and the player's listening history, and is saved per account on this device.
 - **Deterministic taste engine** — explainable set generation from your own library. Nothing is sent to an LLM, and

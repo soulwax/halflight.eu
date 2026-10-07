@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { TidalApiError } from '#lib/server/tidal/errors';
 import { resolveImportMetadata } from './import-metadata';
 import type { Document, Resource } from '#lib/server/tidal/jsonapi';
 
@@ -50,4 +51,21 @@ describe('import recording metadata', () => {
 			'Temporary provider failure'
 		);
 	});
+});
+
+it('retains an accepted relink if the original recording no longer has catalogue metadata', async () => {
+	const chosen = {
+		kind: 'track' as const,
+		id: '22',
+		title: 'Chosen recording',
+		artists: [{ id: 'artist', name: 'Artist' }],
+		replacementForId: '2'
+	};
+	const read = vi.fn(async (id: string) => {
+		if (id === '2') throw new TidalApiError(404, 'Not Found', null, '/tracks/2');
+		return { data: { id, type: 'tracks', attributes: { title: 'Canonical 1' } } };
+	});
+	const result = await resolveImportMetadata(source, {}, read, new Map([['2', chosen]]));
+	expect(result.items.map(({ id }) => id)).toEqual(['1', '2', '1']);
+	expect(result.items[1]).toMatchObject({ title: 'Chosen recording', artists: chosen.artists });
 });

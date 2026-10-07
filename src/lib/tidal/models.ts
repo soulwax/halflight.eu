@@ -33,6 +33,8 @@ export interface TrackSummary {
 	copyright?: string;
 	imageUrl?: string;
 	provenance?: string;
+	/** Original TIDAL ID retained for confirmed local playlist relinks. */
+	replacementForId?: string;
 }
 
 /**

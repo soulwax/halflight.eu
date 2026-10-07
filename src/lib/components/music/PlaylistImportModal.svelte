@@ -106,7 +106,7 @@
 			const failures = (data.imported ?? []).filter((result) => result.status === 'error');
 			const successfulCount = data.totalImported;
 			successMessage = successfulCount
-				? `${m.playlist_import_done()} (${data.totalImported}) ${m.playlist_import_source_preserved()} ${m.playlist_import_playback_checked({ count: data.totalTracksSkipped })}`
+				? `${m.playlist_import_done()} (${data.totalImported}) ${m.playlist_import_source_preserved()} ${m.playlist_import_streams_adjusted({ replaced: data.totalTracksReplaced ?? 0, skipped: data.totalTracksSkipped })}`
 				: null;
 
 			// Refresh client-side custom playlist store

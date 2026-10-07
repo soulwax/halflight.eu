@@ -15,9 +15,9 @@ import type { PlaylistDetail } from '#lib/tidal/models';
 import type { Cookies } from '@sveltejs/kit';
 import type { SavedPlaylist } from './index';
 import { createUserPlaylist, getUserPlaylists, updateUserPlaylist } from './index';
-import { validatePlaylistPlayback } from './playback-validation';
 import { getStreamingSettings } from '#lib/server/streaming-settings';
 import { resolveImportMetadata } from './import-metadata';
+import { verifyImportedRecordings } from './recording-verification';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -37,7 +37,7 @@ export interface SyncResult {
 	tracksRemoved: number;
 	/** Confirmed defective entries excluded from the playable imported view. */
 	tracksSkipped: number;
-	/** Always zero: imports never substitute a different TIDAL recording. */
+	/** Unavailable source occurrences relinked to verified catalogue candidates. */
 	tracksReplaced: number;
 	/** A pull is successful only after all source tracks have been checked. */
 	streamValidation: 'verified' | 'deferred';
@@ -106,31 +106,43 @@ export async function pullPlaylist(tidalPlaylistId: string, ctx: SyncContext): P
 
 	try {
 		// Validate the source before saving its playable local copy.
-		// Probes are paced and cached; no alternate recording is substituted.
+		// Unavailable IDs are relinked only after identity matching and playback checks.
 		const document = await tidalApi.getFullPlaylist(
 			tidalPlaylistId,
 			{ include: ['artists', 'albums'] },
 			tidalCtx
 		);
-		const detail: PlaylistDetail = await resolveImportMetadata(document, tidalCtx);
+		const localPlaylists = await getUserPlaylists(ctx.userId);
+		const existing = localPlaylists.find((p) => p.tidalPlaylistId === tidalPlaylistId);
+		const preferred = new Map(
+			existing?.items
+				.filter((track) => track.replacementForId)
+				.map((track) => [track.replacementForId!, track])
+		);
+		const detail: PlaylistDetail = await resolveImportMetadata(
+			document,
+			tidalCtx,
+			undefined,
+			preferred
+		);
 
 		if (!detail) {
 			result.error = 'Failed to normalise TIDAL playlist';
 			return result;
 		}
 		const settings = await getStreamingSettings(ctx.userId);
-		const playable = await validatePlaylistPlayback(
+		const verification = await verifyImportedRecordings(
 			detail.items,
 			ctx.userId,
 			tidalCtx,
-			settings.preferredQuality
+			settings.preferredQuality,
+			undefined,
+			preferred
 		);
-		result.tracksSkipped = detail.items.length - playable.length;
+		const playable = verification.tracks;
+		result.tracksSkipped = verification.skipped;
+		result.tracksReplaced = verification.replacements;
 		result.streamValidation = 'verified';
-
-		// Find existing local record
-		const localPlaylists = await getUserPlaylists(ctx.userId);
-		const existing = localPlaylists.find((p) => p.tidalPlaylistId === tidalPlaylistId);
 
 		if (existing) {
 			// Update existing local record

@@ -6,7 +6,8 @@ const mocks = vi.hoisted(() => ({ resolve: vi.fn(), unavailable: vi.fn(), mark: 
 vi.mock('#lib/server/tidal/stream-cache', () => ({ resolveTrackStreamCached: mocks.resolve }));
 vi.mock('#lib/server/tidal/track-playability', () => ({
 	getUnplayableTrackIds: mocks.unavailable,
-	markTrackUnplayable: mocks.mark
+	markTrackUnplayable: mocks.mark,
+	markTrackPlayable: vi.fn().mockResolvedValue(undefined)
 }));
 import { resetPlaylistPlaybackValidation, validatePlaylistPlayback } from './playback-validation';
 

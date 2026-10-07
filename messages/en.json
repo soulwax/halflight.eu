@@ -825,5 +825,20 @@
 	"library_refresh": "Refresh",
 	"library_sort": "Sort by",
 	"library_sort_recent": "Recently updated",
-	"library_sort_name": "Name"
+	"library_sort_name": "Name",
+	"replacement_find": "Find a playable version",
+	"replacement_title": "Choose a playable version",
+	"replacement_description": "Compare verified alternatives and choose the recording you want.",
+	"replacement_checking": "Finding and checking playable versions…",
+	"replacement_exact": "Same recording · playback checked",
+	"replacement_best_fit": "Best fit · playback checked",
+	"replacement_empty": "No matching playable version found. You can skip this song and try again later.",
+	"replacement_failed": "Could not complete this check. Please try again.",
+	"replacement_changed": "The playlist changed or this version is no longer playable. Refresh the suggestions before choosing again.",
+	"replacement_destination": "Update playlist",
+	"replacement_play_only": "Play without changing a playlist",
+	"replacement_local_copy": "Replaces every occurrence of this song in the selected Halflight playlist. Your TIDAL playlist stays unchanged.",
+	"replacement_save_play": "Replace and play",
+	"replacement_play": "Play this version",
+	"replacement_saving": "Updating the playlist…"
 }

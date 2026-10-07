@@ -2,10 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const dbMocks = vi.hoisted(() => ({
 	insert: vi.fn(),
+	delete: vi.fn(),
 	select: vi.fn()
 }));
 
-vi.mock('#lib/server/db', () => ({ db: { insert: dbMocks.insert, select: dbMocks.select } }));
+vi.mock('#lib/server/db', () => ({
+	db: { insert: dbMocks.insert, select: dbMocks.select, delete: dbMocks.delete }
+}));
 vi.mock('#lib/server/log', () => ({ log: { error: vi.fn(), warn: vi.fn() } }));
 
 import {
@@ -13,6 +16,7 @@ import {
 	filterPlayableTracks,
 	getUnplayableTrackIds,
 	markTrackUnplayable,
+	markTrackPlayable,
 	UNPLAYABLE_TRACK_TTL_MS
 } from './track-playability';
 
@@ -31,6 +35,15 @@ function mockSelectChain(rows: { trackId: string; checkedAt?: Date }[]) {
 }
 
 describe('track-playability', () => {
+	it('clears an old negative immediately after verified successful playback', async () => {
+		mockInsertChain();
+		await markTrackUnplayable('recovered', 'asset unavailable');
+		expect(await getUnplayableTrackIds(['recovered'])).toEqual(new Set(['recovered']));
+		dbMocks.delete.mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) });
+		await markTrackPlayable('recovered');
+		mockSelectChain([]);
+		expect(await getUnplayableTrackIds(['recovered'])).toEqual(new Set());
+	});
 	beforeEach(() => {
 		vi.clearAllMocks();
 		__resetTrackPlayabilityCache();

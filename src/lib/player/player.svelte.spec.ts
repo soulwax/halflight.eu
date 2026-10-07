@@ -55,6 +55,26 @@ function expectQueuedTracks(player: PlayerState, tracks: TrackSummary[]): void {
 }
 
 describe('PlayerState', () => {
+	it('applies a selected recording to queued occurrences without losing their identities', () => {
+		const state = new PlayerState();
+		state.currentTrack = sampleTrack1;
+		state.queue = persistedQueue(sampleTrack1, sampleTrack2, sampleTrack1);
+		const ids = state.queue.map((entry) => entry.entryId);
+		state.applyRecordingReplacement(sampleTrack1.id, sampleTrack3, 'Saved playlist');
+		expect(state.currentTrack?.id).toBe(sampleTrack3.id);
+		expect(state.queue.map((entry) => entry.id)).toEqual([
+			sampleTrack3.id,
+			sampleTrack2.id,
+			sampleTrack3.id
+		]);
+		expect(state.queue.map((entry) => entry.entryId)).toEqual(ids);
+	});
+	it('does not interrupt a different song if playback changed while choosing a replacement', () => {
+		const state = new PlayerState();
+		state.currentTrack = sampleTrack2;
+		state.applyRecordingReplacement(sampleTrack1.id, sampleTrack3);
+		expect(state.currentTrack?.id).toBe(sampleTrack2.id);
+	});
 	it('records a song queued from search only after that occurrence plays', () => {
 		const state = new PlayerState();
 		state.playNext(sampleTrack1, 'Search', 'ambient');

@@ -810,6 +810,16 @@ export class PlayerState {
 	}
 
 	/** A search selection is recorded only after the matching audio advances. */
+	applyRecordingReplacement(sourceId: string, track: TrackSummary, provenance?: string): void {
+		if (this.queue.some((entry) => entry.id === sourceId)) {
+			this.queue = this.queue.map((entry) =>
+				entry.id === sourceId ? { ...track, entryId: entry.entryId } : entry
+			);
+			this.coordinator.recordQueueReplacement(this.queue);
+		}
+		if (this.currentTrack?.id === sourceId) this.play(track, undefined, provenance);
+	}
+
 	playFromSearch(
 		track: TrackSummary,
 		contextTracks: TrackSummary[] | undefined,

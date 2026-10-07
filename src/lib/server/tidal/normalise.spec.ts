@@ -590,3 +590,17 @@ it('combines complementary included fragments without losing recording metadata'
 	expect(result?.title).toBe('Moan (Remix)');
 	expect(result?.album).toMatchObject({ id: '10', title: 'Chronicles', releaseDate: '2007-01-01' });
 });
+
+it('normalises catalogue ISO durations for replacement comparison', () => {
+	expect(
+		normaliseTrack({ id: '1', type: 'tracks', attributes: { title: 'Song', duration: 'PT7M25S' } })
+			?.duration
+	).toBe(445);
+	expect(
+		normaliseTrack({
+			id: '1',
+			type: 'tracks',
+			attributes: { title: 'Song', duration: 'PT1H2M3.5S' }
+		})?.duration
+	).toBe(3723.5);
+});

@@ -9,7 +9,8 @@ import { TidalApiError } from '#lib/server/tidal/errors';
 export async function resolveImportMetadata(
 	document: Document<Resource>,
 	ctx: TidalRequestContext,
-	readTrack = getTrack
+	readTrack = getTrack,
+	preferred: Map<string, TrackSummary> = new Map()
 ): Promise<PlaylistDetail> {
 	const playlist = normalisePlaylistDetail(document);
 	if (!playlist) throw new Error('Invalid playlist metadata');
@@ -36,9 +37,11 @@ export async function resolveImportMetadata(
 				} catch (cause) {
 					// Retired catalogue entries still belong to the source snapshot. The
 					// following playback validation excludes them from the playable view.
-					if (!(cause instanceof TidalApiError) || cause.status !== 404 || !sourceTracks.has(id))
-						throw cause;
-					detail = sourceTracks.get(id)!;
+					if (!(cause instanceof TidalApiError) || cause.status !== 404) throw cause;
+					const chosen = preferred.get(id);
+					detail =
+						sourceTracks.get(id) ??
+						(chosen ? { ...chosen, id, isrc: undefined, replacementForId: undefined } : null);
 				}
 				if (!detail || detail.id !== id) throw new Error('Recording metadata did not match its ID');
 				return { ...detail, kind: 'track' as const };

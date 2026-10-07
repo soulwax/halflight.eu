@@ -3,6 +3,7 @@
 	import { m } from '#lib/paraglide/messages.js';
 	import { player } from '#lib/player/player.svelte.js';
 	import Button from '#lib/components/ui/Button.svelte';
+	import { replacementOffer } from '#lib/player/replacement.svelte';
 	let { mobile = false, attentionOnly = false }: { mobile?: boolean; attentionOnly?: boolean } =
 		$props();
 	const settingsHref = $derived(
@@ -29,6 +30,11 @@
 {:else if player.currentTrack && player.resumeStatus === 'unavailable'}
 	<div class="playback-notice" class:compact={mobile && attentionOnly} role="status">
 		<p>{m.player_unavailable_track()}</p>
+		<Button
+			onclick={() => {
+				replacementOffer.trackId = player.currentTrack?.id ?? null;
+			}}>{m.replacement_find()}</Button
+		>
 		<Button onclick={() => player.next()}>{m.player_skip_unavailable()}</Button>
 	</div>
 {:else if player.currentTrack && player.resumeStatus === 'auth'}

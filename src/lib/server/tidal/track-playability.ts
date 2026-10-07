@@ -1,4 +1,4 @@
-import { and, gt, inArray } from 'drizzle-orm';
+import { and, eq, gt, inArray } from 'drizzle-orm';
 import { db } from '#lib/server/db';
 import { trackPlayability } from '#lib/server/db/schema';
 import { log } from '#lib/server/log';
@@ -30,6 +30,12 @@ function rememberLocal(trackId: string, checkedAt: number): void {
 /** Test seam: drop every memoised unplayable id. */
 export function __resetTrackPlayabilityCache(): void {
 	local.clear();
+}
+
+/** A successful fresh probe supersedes an older unavailable classification. */
+export async function markTrackPlayable(trackId: string): Promise<void> {
+	local.delete(trackId);
+	await db.delete(trackPlayability).where(eq(trackPlayability.trackId, trackId));
 }
 
 /**

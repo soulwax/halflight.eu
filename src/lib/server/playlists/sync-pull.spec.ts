@@ -17,7 +17,17 @@ vi.mock('#lib/server/tidal/api', async (importOriginal) => ({
 }));
 vi.mock('#lib/server/tidal/normalise', () => ({ normalisePlaylistDetail: mocks.normalise }));
 vi.mock('./import-metadata', () => ({ resolveImportMetadata: mocks.normalise }));
-vi.mock('./playback-validation', () => ({ validatePlaylistPlayback: mocks.validate }));
+vi.mock('./recording-verification', () => ({
+	verifyImportedRecordings: async (...args: unknown[]) => {
+		const tracks = await mocks.validate(...args);
+		return {
+			tracks,
+			replacements: 0,
+			bestFits: 0,
+			skipped: (args[0] as unknown[]).length - tracks.length
+		};
+	}
+}));
 vi.mock('#lib/server/streaming-settings', () => ({ getStreamingSettings: mocks.settings }));
 vi.mock('./index', () => ({
 	getUserPlaylists: mocks.list,

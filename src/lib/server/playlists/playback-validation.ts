@@ -3,7 +3,11 @@ import type { TidalRequestContext } from '#lib/server/tidal/client';
 import { TidalApiError } from '#lib/server/tidal/errors';
 import { isTrackUnavailableForPlayback, type TrackAudioQuality } from '#lib/server/tidal/stream';
 import { resolveTrackStreamCached } from '#lib/server/tidal/stream-cache';
-import { getUnplayableTrackIds, markTrackUnplayable } from '#lib/server/tidal/track-playability';
+import {
+	getUnplayableTrackIds,
+	markTrackUnplayable,
+	markTrackPlayable
+} from '#lib/server/tidal/track-playability';
 
 const VERIFIED_TTL_MS = 15 * 60 * 1000;
 const MAX_VERIFIED_TRACKS = 2_000;
@@ -44,14 +48,17 @@ export async function validatePlaylistPlayback(
 	tracks: TrackSummary[],
 	ownerId: string,
 	ctx: TidalRequestContext,
-	quality: TrackAudioQuality
+	quality: TrackAudioQuality,
+	force = false
 ): Promise<TrackSummary[]> {
-	const unavailable = await getUnplayableTrackIds(tracks.map((track) => track.id));
+	const unavailable = force
+		? new Set<string>()
+		: await getUnplayableTrackIds(tracks.map((track) => track.id));
 	const candidates = [...new Map(tracks.map((track) => [track.id, track])).values()];
 	for (const track of candidates) {
 		if (unavailable.has(track.id)) continue;
 		const key = `${ownerId}:${quality}:${track.id}`;
-		if ((verified.get(key) ?? 0) > Date.now()) continue;
+		if (!force && (verified.get(key) ?? 0) > Date.now()) continue;
 		let request = inFlight.get(key);
 		if (!request) {
 			request = resolveTrackStreamCached(track.id, {
@@ -59,7 +66,8 @@ export async function validatePlaylistPlayback(
 				quality,
 				ctx: { ...ctx, fetch: (...args) => pacedFetch(ctx.fetch ?? fetch, ...args) }
 			})
-				.then(() => {
+				.then(async () => {
+					if (force) await markTrackPlayable(track.id);
 					if (verified.size >= MAX_VERIFIED_TRACKS) {
 						const oldest = verified.keys().next().value;
 						if (oldest !== undefined) verified.delete(oldest);
