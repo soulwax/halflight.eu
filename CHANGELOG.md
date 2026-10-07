@@ -81,6 +81,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The full-screen mobile player's artwork no longer changes size while a song plays. Every row
+  around it now has a fixed height: the lyrics card always keeps two lines (a long lyric shrinks
+  to fit instead of wrapping), loading and buffering show on the play button instead of a status
+  line, and the paused "resting" shrink waits for a real pause instead of reacting to stalls and
+  track changes. The lyrics card renders fully in the browser, and on short screens the cover
+  keeps a usable size with the lyrics one scroll away.
+- The installed iPhone app now uses the whole bottom of the screen. Its shell fills the physical
+  display whether iOS reports a full or a shortened window (it previously overshot by the
+  home-indicator height on a full one), and the player, mini player and tab bar keep only the
+  space the home-indicator bar needs instead of the full safe area. Browser tabs keep the full
+  inset.
 - In the installed mobile app the tab bar and the mini player above it sit at the bottom edge
   instead of floating over unused space. Where iOS already ends the app window above the
   home-indicator strip, they no longer pad by the safe-area inset a second time; in the browser

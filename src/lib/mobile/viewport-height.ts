@@ -43,19 +43,30 @@ export function setMobileViewportBox(element: HTMLElement, box: MobileViewportBo
 	element.style.setProperty('--mobile-viewport-top', `${offsetTop}px`);
 }
 
-/** Extra portrait PWA space painted below the app viewport for the home indicator. */
-export function standaloneBottomExtension(
-	safeAreaBottom: number,
+/** Most an installed app's window may fall short of the screen and still be filled. */
+const MAX_STANDALONE_SHORTFALL = 64;
+
+/**
+ * Height for the installed app's shell: the whole physical screen.
+ *
+ * With `viewport-fit=cover` and a translucent status bar the web view owns the
+ * entire display, but iOS can report a window (`innerHeight`) that ends at the
+ * top of the home-indicator strip. Sizing to the window then leaves that strip
+ * empty, and adding the safe-area inset on top overshoots whenever the window
+ * already reaches the bottom. Fill to the screen extent in the current
+ * orientation instead (iOS keeps `screen` in portrait axes); a larger gap means
+ * something else owns the space, such as a split view, so keep the window then.
+ */
+export function standaloneAppHeight(
+	innerHeight: number,
 	screen: Pick<Screen, 'width' | 'height'>,
-	viewport: { width: number; height: number }
+	viewportWidth: number
 ): number {
-	if (!Number.isFinite(safeAreaBottom) || safeAreaBottom <= 0) return 0;
-	if (!Number.isFinite(viewport.width) || !Number.isFinite(viewport.height) || viewport.height <= 0)
-		return 0;
+	if (!Number.isFinite(innerHeight) || innerHeight <= 0) return 0;
+	const long = Math.max(screen.width, screen.height);
 	const short = Math.min(screen.width, screen.height);
-	if (!Number.isFinite(short) || short <= 0 || viewport.width > short) return 0;
-	// In installed portrait iOS, use the safe-area measurement itself. The screen
-	// dimensions can include browser/system strips that aren't part of the app's
-	// layout viewport, creating a large false extension and empty bottom region.
-	return Math.min(safeAreaBottom, 48);
+	if (!Number.isFinite(short) || short <= 0) return innerHeight;
+	const extent = viewportWidth > short ? short : long;
+	const shortfall = extent - innerHeight;
+	return shortfall > 0 && shortfall <= MAX_STANDALONE_SHORTFALL ? extent : innerHeight;
 }

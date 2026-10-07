@@ -18,7 +18,7 @@
 	import {
 		readMobileViewportBox,
 		setMobileViewportBox,
-		standaloneBottomExtension
+		standaloneAppHeight
 	} from '#lib/mobile/viewport-height.js';
 	import {
 		managesMobileScroll,
@@ -59,24 +59,6 @@
 			window.matchMedia('(display-mode: standalone)').matches ||
 			(window.navigator as Navigator & { standalone?: boolean }).standalone === true;
 		if (standalone) document.documentElement.classList.add('mobile-standalone');
-		// env() is only readable through layout, so a hidden probe reports the inset.
-		const insetProbe = document.createElement('div');
-		insetProbe.setAttribute('aria-hidden', 'true');
-		insetProbe.style.cssText =
-			'position:fixed;left:0;bottom:0;width:0;height:0;visibility:hidden;pointer-events:none;padding-bottom:env(safe-area-inset-bottom,0px)';
-		if (standalone) document.body.append(insetProbe);
-		const syncBottomInset = () => {
-			if (!standalone) return;
-			const safeBottom = Number.parseFloat(getComputedStyle(insetProbe).paddingBottom) || 0;
-			const viewport = { width: window.innerWidth, height: window.innerHeight };
-			const inset = safeBottom;
-			shellElement.style.setProperty('--mobile-bottom-inset', `${inset}px`);
-			shellElement.style.setProperty(
-				'--mobile-bottom-extension',
-				`${standaloneBottomExtension(safeBottom, window.screen, viewport)}px`
-			);
-			shellElement.style.setProperty('--mobile-bottom-physical-strip', '0px');
-		};
 		const syncViewportHeight = () => {
 			const activeElement = document.activeElement;
 			const hasEditableFocus =
@@ -91,14 +73,14 @@
 				visualViewport &&
 				visualViewport.height < window.innerHeight - 80
 			);
-			setMobileViewportBox(
-				shellElement,
-				readMobileViewportBox(window.visualViewport, window.innerHeight, {
-					standalone,
-					keyboardOpen
-				})
-			);
-			syncBottomInset();
+			const box = readMobileViewportBox(window.visualViewport, window.innerHeight, {
+				standalone,
+				keyboardOpen
+			});
+			// The installed app owns the whole display, home-indicator strip included.
+			if (standalone && !keyboardOpen)
+				box.height = standaloneAppHeight(window.innerHeight, window.screen, window.innerWidth);
+			setMobileViewportBox(shellElement, box);
 		};
 		syncViewportHeight();
 		visualViewport?.addEventListener('resize', syncViewportHeight);
@@ -108,7 +90,6 @@
 		window.addEventListener('pageshow', syncViewportHeight);
 		return () => {
 			document.documentElement.classList.remove('mobile-standalone');
-			insetProbe.remove();
 			visualViewport?.removeEventListener('resize', syncViewportHeight);
 			visualViewport?.removeEventListener('scroll', syncViewportHeight);
 			window.removeEventListener('resize', syncViewportHeight);
@@ -242,20 +223,16 @@
 	.mobile-shell {
 		/* Header controls sit this far below the safe area, not flush against it. */
 		--mobile-header-offset: 0.375rem;
-		/* What the tab bar and mini player pad below themselves. The browser keeps
-		   the whole home-indicator inset; the installed app drops whatever part of
-		   it the window already ends above (see standaloneBottomInset), so the
-		   navigation sits at the bottom edge instead of floating over spare space. */
-		--mobile-bottom-inset: env(safe-area-inset-bottom, 0px);
-		--mobile-bottom-extension: 0px;
-		--mobile-bottom-physical-strip: 0px;
+		/* The one bottom inset every bottom-anchored surface pads by (tab bar, mini
+		   player, Now Playing). A browser tab keeps the whole safe area. */
+		--mobile-home-indicator: env(safe-area-inset-bottom, 0px);
 		/* JS refreshes these from visualViewport as browser chrome, keyboard and
 		   orientation change. Viewport units are only the pre-hydration fallback;
 		   some iOS standalone versions report a stale 100dvh/100lvh value. */
 		position: fixed;
 		top: var(--mobile-viewport-top, 0px);
 		inset-inline: 0;
-		height: calc(var(--mobile-viewport-height, 100vh) + var(--mobile-bottom-extension));
+		height: var(--mobile-viewport-height, 100vh);
 		min-height: 0;
 		overflow: hidden;
 		/* No double-tap zoom; pinch zoom stays available. */
@@ -274,7 +251,20 @@
 
 	@supports (height: 100dvh) {
 		.mobile-shell {
-			height: calc(var(--mobile-viewport-height, 100dvh) + var(--mobile-bottom-extension));
+			height: var(--mobile-viewport-height, 100dvh);
+		}
+	}
+
+	/* The installed app's shell reaches the physical bottom edge, so it keeps just
+	   enough of the safe area to clear the home-indicator bar itself (which sits
+	   in the lowest ~13px) and gives the rest of the strip back to the content. */
+	:global(html.mobile-standalone) .mobile-shell {
+		--mobile-home-indicator: calc(env(safe-area-inset-bottom, 0px) * 0.45);
+	}
+
+	@media (display-mode: standalone) {
+		.mobile-shell {
+			--mobile-home-indicator: calc(env(safe-area-inset-bottom, 0px) * 0.45);
 		}
 	}
 
@@ -311,8 +301,8 @@
 		outline-offset: 2px;
 	}
 
+	/* The tab bar or mini player always sits below <main>, so it needs no inset. */
 	.mobile-scroll-region {
-		padding-bottom: var(--mobile-bottom-inset);
 		overscroll-behavior: contain;
 		scrollbar-width: none;
 		overflow-x: hidden;

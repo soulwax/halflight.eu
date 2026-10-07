@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
 	readMobileViewportBox,
 	setMobileViewportBox,
-	standaloneBottomExtension
+	standaloneAppHeight
 } from './viewport-height';
 
 describe('readMobileViewportBox', () => {
@@ -54,17 +54,24 @@ describe('setMobileViewportBox', () => {
 	});
 });
 
-describe('standaloneBottomExtension', () => {
+describe('standaloneAppHeight', () => {
 	const iPhone15 = { width: 393, height: 852 };
 
-	it('extends the portrait shell only by its measured safe area', () => {
-		expect(standaloneBottomExtension(34, iPhone15, { width: 393, height: 818 })).toBe(34);
-		expect(standaloneBottomExtension(34, iPhone15, { width: 393, height: 852 })).toBe(34);
-		expect(standaloneBottomExtension(240, iPhone15, { width: 393, height: 612 })).toBe(48);
+	it('fills the home-indicator strip when the window stops above it', () => {
+		expect(standaloneAppHeight(818, iPhone15, 393)).toBe(852);
 	});
 
-	it('does not add portrait-style extension in landscape or without a safe area', () => {
-		expect(standaloneBottomExtension(21, iPhone15, { width: 852, height: 393 })).toBe(0);
-		expect(standaloneBottomExtension(0, iPhone15, { width: 393, height: 818 })).toBe(0);
+	it('never overshoots a window that already reaches the bottom of the screen', () => {
+		expect(standaloneAppHeight(852, iPhone15, 393)).toBe(852);
+	});
+
+	it('measures landscape against the short side', () => {
+		expect(standaloneAppHeight(372, iPhone15, 852)).toBe(393);
+		expect(standaloneAppHeight(393, iPhone15, 852)).toBe(393);
+	});
+
+	it('keeps the window when something else owns a large part of the screen', () => {
+		expect(standaloneAppHeight(600, iPhone15, 393)).toBe(600);
+		expect(standaloneAppHeight(818, { width: 0, height: 0 }, 393)).toBe(818);
 	});
 });

@@ -159,9 +159,6 @@
 		}
 	}
 	.with-safe-area {
-		padding-bottom: calc(
-			0.375rem +
-				var(--mobile-bottom-physical-strip, var(--mobile-bottom-inset, env(safe-area-inset-bottom)))
-		);
+		padding-bottom: calc(0.375rem + var(--mobile-home-indicator, env(safe-area-inset-bottom)));
 	}
 </style>

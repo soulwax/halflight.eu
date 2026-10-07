@@ -62,12 +62,8 @@
 		font-weight: 700;
 	}
 	.mobile-tab-bar {
-		/* In the PWA, extend the surface through the home-indicator area and keep
-		   the tab controls at the physical bottom edge. Browser mode keeps its inset. */
-		padding-bottom: var(
-			--mobile-bottom-physical-strip,
-			var(--mobile-bottom-inset, env(safe-area-inset-bottom))
-		);
+		/* Full safe area in a browser; in the installed app just the indicator bar. */
+		padding-bottom: var(--mobile-home-indicator, env(safe-area-inset-bottom));
 		/* Landscape: keep the outer tabs clear of the notch / Dynamic Island. */
 		padding-inline: env(safe-area-inset-left) env(safe-area-inset-right);
 		border-top: 1px solid var(--border-subtle);
