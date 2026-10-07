@@ -30,14 +30,3 @@ export function indexIncluded(doc: Document<Resource | Resource[]>): Map<string,
 	return map;
 }
 
-/** Resolve one relationship's linkage against an `included` index. */
-export function resolveRelationship(
-	resource: Resource,
-	name: string,
-	included: Map<string, Resource>
-): Resource[] {
-	const rel = resource.relationships?.[name]?.data;
-	if (!rel) return [];
-	const ids = Array.isArray(rel) ? rel : [rel];
-	return ids.map((id) => included.get(`${id.type}:${id.id}`) ?? { id: id.id, type: id.type });
-}

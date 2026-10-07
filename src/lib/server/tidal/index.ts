@@ -52,7 +52,7 @@ export {
 	type TokenRowStore,
 	type TokenSlot
 } from './store';
-export { clearTokenCookie, readTokenCookie, writeTokenCookie, TIDAL_TOKEN_COOKIE } from './cookie';
+export { clearTokenCookie } from './cookie';
 export { seal, open } from './crypto';
 export * as tidalApi from './api';
 export * from './jsonapi';

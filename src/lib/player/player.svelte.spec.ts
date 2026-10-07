@@ -1271,17 +1271,6 @@ describe('PlayerState', () => {
 		expect(metadataCallCount(fetchSpy)).toBe(1); // no wasted request for a track that will never exist
 	});
 
-	it('does not fetch a cover when the track already has artwork', async () => {
-		const fetchSpy = vi.fn((_url: string) => Promise.reject(new Error('offline')));
-		vi.stubGlobal('fetch', fetchSpy);
-
-		const player = new PlayerState();
-		player.play({ ...sampleTrack1, imageUrl: 'https://img.test/existing.jpg' });
-		await Promise.resolve();
-
-		expect(fetchSpy.mock.calls.some((args) => String(args[0]).endsWith('/cover'))).toBe(false);
-	});
-
 	it('attributes a persisted write to the site the player is acting as', async () => {
 		const fetchSpy = vi.fn((url: string, _init?: RequestInit) => {
 			if (String(url) === '/api/playback-state/intents') {

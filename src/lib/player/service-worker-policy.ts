@@ -7,7 +7,6 @@
  * - Sign-in, verification, OAuth, and mutations are never cached or replayed.
  */
 
-export const PRECACHE_BUDGET_BYTES = 2 * 1024 * 1024; // 2 MiB budget
 export const OFFLINE_FALLBACK_URL = '/offline';
 
 /** SvelteKit's manifest contains relative path records, not URL strings. */

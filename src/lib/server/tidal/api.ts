@@ -102,11 +102,6 @@ async function collectPages(
 	}
 }
 
-/** The authenticated user's profile resource (`/users/me`). */
-export function getCurrentUser(ctx?: Ctx): Promise<Document<Resource>> {
-	return tidalJson(`/users/me`, {}, ctx);
-}
-
 /**
  * One page of the user's collection for a resource kind, with the referenced
  * items side-loaded via `include=items`.
@@ -341,21 +336,6 @@ export function getMix(
 	);
 }
 
-/**
- * The user's recommendation hub in one call — discovery mixes, "my mixes" and
- * new-arrival mixes side-loaded.
- */
-export function getRecommendations(opts: PageOptions = {}, ctx?: Ctx): Promise<Document<Resource>> {
-	return tidalJson(
-		`/userRecommendations/me${qs({
-			include: ['discoveryMixes', 'myMixes', 'newArrivalMixes', ...(opts.include ?? [])],
-			locale: opts.locale
-		})}`,
-		{},
-		ctx
-	);
-}
-
 export interface SearchOptions extends PageOptions {
 	types?: Array<'tracks' | 'albums' | 'artists' | 'playlists' | 'videos' | 'topHits'>;
 	explicitFilter?: 'INCLUDE' | 'EXCLUDE';
@@ -396,7 +376,6 @@ const catalogue =
 export const getTrack = catalogue('tracks');
 export const getAlbum = catalogue('albums');
 export const getArtist = catalogue('artists');
-export const getVideo = catalogue('videos');
 
 /** A named relationship of an artist (`radio`, `similarArtists`, `tracks`, `albums`, `videos`, …). */
 export function getArtistRelationship(
@@ -464,40 +443,6 @@ async function mutate(method: string, path: string, body: unknown, ctx?: Ctx): P
 		throw new TidalApiError(response.status, response.statusText, text, `${method} ${path}`);
 	}
 	return text ? JSON.parse(text) : null;
-}
-
-/**
- * Add or remove items in the user's collection. The dedicated
- * `userCollection*` resources accept `me`; the item `type` is the plain
- * resource type (`albums`, `tracks`, …).
- */
-async function mutateCollection(
-	method: 'POST' | 'DELETE',
-	kind: CollectionKind,
-	ids: string[],
-	ctx?: Ctx
-): Promise<void> {
-	const resource = `userCollection${kind[0].toUpperCase()}${kind.slice(1)}`;
-	await mutate(
-		method,
-		`/${resource}/me/relationships/items`,
-		{ data: ids.map((id) => ({ id, type: kind })) },
-		ctx
-	);
-}
-
-/** Add resources to the user's collection (max 50 ids per call). */
-export function addToCollection(kind: CollectionKind, ids: string[], ctx?: Ctx): Promise<void> {
-	return mutateCollection('POST', kind, ids, ctx);
-}
-
-/** Remove resources from the user's collection. */
-export function removeFromCollection(
-	kind: CollectionKind,
-	ids: string[],
-	ctx?: Ctx
-): Promise<void> {
-	return mutateCollection('DELETE', kind, ids, ctx);
 }
 
 export interface NewPlaylist {

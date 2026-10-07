@@ -15,7 +15,7 @@ import {
  */
 export type QueueEntry = GenericQueueEntry<TrackSummary>;
 export type { QueueEntryIdFactory };
-export { isQueueEntryId, mintQueueEntryId } from 'bragi-audio/player';
+export { isQueueEntryId } from 'bragi-audio/player';
 
 export const createQueueEntry: (track: TrackSummary, entryId?: string) => QueueEntry = createEntry;
 

@@ -4,7 +4,6 @@ import { updateMediaMetadata as publishMetadata } from 'bragi-audio/player';
 
 export {
 	setupMediaSessionHandlers,
-	toAbsoluteArtworkUrl,
 	updatePlaybackState,
 	updatePositionState,
 	type MediaSessionHandlers

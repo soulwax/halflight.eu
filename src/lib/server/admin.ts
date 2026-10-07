@@ -1,5 +1,5 @@
-import { createHash, timingSafeEqual } from 'node:crypto';
-import { ADMIN_PASSWORD, ADMIN_USERNAME } from '$app/env/private';
+import { createHash } from 'node:crypto';
+import { ADMIN_USERNAME } from '$app/env/private';
 import { eq, asc } from 'drizzle-orm';
 import { db } from '#lib/server/db';
 import { administrator, userStatus } from '#lib/server/db/schema';
@@ -23,18 +23,6 @@ export function getAdministratorEmail(username = normalizedAdminUsername): strin
 
 export function isConfiguredAdministratorUsername(username: string): boolean {
 	return normalizeUsername(username) === normalizedAdminUsername;
-}
-
-/** Compare password digests so differing lengths cannot short-circuit the check. */
-export function hasAdministratorPassword(password: string): boolean {
-	const expected = createHash('sha256').update(ADMIN_PASSWORD).digest();
-	const supplied = createHash('sha256').update(password).digest();
-
-	return timingSafeEqual(expected, supplied);
-}
-
-export function hasAdministratorCredentials(username: string, password: string): boolean {
-	return isConfiguredAdministratorUsername(username) && hasAdministratorPassword(password);
 }
 
 export async function getAdministratorRecord(userId: string) {
@@ -200,15 +188,6 @@ export async function setUserStatus(
 			target: userStatus.userId,
 			set: { status, reason, updatedAt: new Date() }
 		});
-}
-
-export async function getUserStatus(
-	targetUserId: string
-): Promise<'active' | 'archived' | 'banned'> {
-	const record = await db.query.userStatus.findFirst({
-		where: eq(userStatus.userId, targetUserId)
-	});
-	return (record?.status as 'active' | 'archived' | 'banned') ?? 'active';
 }
 
 export async function kickUser(targetUserId: string): Promise<boolean> {

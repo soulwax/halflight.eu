@@ -55,11 +55,3 @@ export class TidalApiError extends TidalError {
 }
 
 /** The user denied authorization on the TIDAL consent screen. */
-export class TidalAuthorizationDeniedError extends TidalError {
-	constructor(
-		readonly reason: string,
-		readonly description?: string
-	) {
-		super(`TIDAL authorization was denied: ${description ?? reason}`);
-	}
-}
