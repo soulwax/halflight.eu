@@ -83,3 +83,44 @@ export async function readImportResponse(
 		reader.releaseLock();
 	}
 }
+
+const MAX_THROTTLED_ATTEMPTS = 5;
+const MAX_THROTTLE_WAIT_SECONDS = 120;
+
+/**
+ * Imports share a small per-listener request budget. A throttled request has not
+ * started any work, so it is waited out and re-sent rather than reported as a
+ * failed playlist. `onWait` receives the pause in seconds (0 when it ends).
+ */
+export async function fetchWithinImportBudget(
+	send: () => Promise<Response>,
+	signal: AbortSignal,
+	onWait: (seconds: number) => void = () => {}
+): Promise<Response> {
+	for (let attempt = 1; ; attempt++) {
+		const response = await send();
+		if (response.status !== 429 || attempt >= MAX_THROTTLED_ATTEMPTS) return response;
+		const header = Number(response.headers.get('retry-after'));
+		const seconds = Number.isFinite(header) && header > 0 ? Math.ceil(header) : 10;
+		if (seconds > MAX_THROTTLE_WAIT_SECONDS) return response;
+		await response.body?.cancel().catch(() => {});
+		onWait(seconds);
+		try {
+			await new Promise<void>((resolve, reject) => {
+				const timer = setTimeout(done, seconds * 1000);
+				function done() {
+					signal.removeEventListener('abort', abort);
+					resolve();
+				}
+				function abort() {
+					clearTimeout(timer);
+					reject(signal.reason);
+				}
+				signal.throwIfAborted();
+				signal.addEventListener('abort', abort, { once: true });
+			});
+		} finally {
+			onWait(0);
+		}
+	}
+}

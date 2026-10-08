@@ -60,8 +60,8 @@ pnpm dev                 # port per ORIGIN in .env, default :3000
 Sign-up is open. The owner is whoever signs in with the GitHub account named by `ADMIN_USERNAME`, matched on its
 immutable GitHub user id (set `ADMIN_GITHUB_ID` to pin it without a GitHub API lookup). Display names never grant
 ownership. Once recorded, ownership belongs to that Halflight user, so a TIDAL sign-in linked to the same user is
-equivalent to the GitHub one. Only administrators can use the product routes; opening them to every signed-in
-listener is the planned change.
+equivalent to the GitHub one. Every signed-in, active user can use the product routes
+with their own TIDAL connection; only `/app/admin` requires an administrator.
 
 ### Commands
 

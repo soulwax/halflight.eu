@@ -135,6 +135,22 @@ function sourceVersion(document: Document<Resource>): string {
 		.digest('hex');
 }
 
+/**
+ * Playability drifts as TIDAL retires and remaps recordings, so even an unchanged
+ * source is verified again after this long. Within it, a refresh is one read.
+ */
+const VERIFIED_COPY_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+function isCurrentVerifiedCopy(
+	existing: SavedPlaylist,
+	version: string,
+	now = Date.now()
+): boolean {
+	if (existing.syncStatus !== 'synced' || existing.remoteEtag !== version) return false;
+	const verifiedAt = existing.lastSyncedAt ? Date.parse(existing.lastSyncedAt) : NaN;
+	return Number.isFinite(verifiedAt) && now - verifiedAt < VERIFIED_COPY_TTL_MS;
+}
+
 export async function pullPlaylist(tidalPlaylistId: string, ctx: SyncContext): Promise<SyncResult> {
 	const tidalCtx: TidalRequestContext = {
 		fetch: createImportFetch(ctx.fetch),
@@ -170,6 +186,14 @@ export async function pullPlaylist(tidalPlaylistId: string, ctx: SyncContext): P
 			tidalCtx
 		);
 		if (document.data?.id !== tidalPlaylistId) throw new Error('Playlist identity did not match');
+		const version = sourceVersion(document);
+		if (existing && isCurrentVerifiedCopy(existing, version)) {
+			// The saved copy was verified against this exact source recently; keep it as is.
+			result.playlistId = existing.id;
+			result.status = 'synced';
+			result.streamValidation = 'verified';
+			return result;
+		}
 		const preferred = new Map(
 			existing?.items
 				.filter((track) => track.replacementForId)
@@ -201,7 +225,7 @@ export async function pullPlaylist(tidalPlaylistId: string, ctx: SyncContext): P
 			{ include: ['artists', 'albums'] },
 			tidalCtx
 		);
-		if (sourceVersion(document) !== sourceVersion(freshSource)) {
+		if (version !== sourceVersion(freshSource)) {
 			result.errorCode = 'source_changed';
 			result.error = 'The TIDAL playlist changed during verification. Please try again.';
 			return result;
@@ -223,6 +247,7 @@ export async function pullPlaylist(tidalPlaylistId: string, ctx: SyncContext): P
 			title: detail.title,
 			description: detail.description,
 			items: playable,
+			sourceVersion: version,
 			expected: existing
 		});
 		result.playlistId = committed.id;

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { readImportResponse, readImportResult } from './import-result';
+import { fetchWithinImportBudget, readImportResponse, readImportResult } from './import-result';
 const result = {
 	tidalPlaylistId: 'remote',
 	status: 'created',
@@ -72,5 +72,46 @@ describe('verified import response', () => {
 		const assertion = expect(pending).rejects.toMatchObject({ name: 'AbortError' });
 		controller.abort();
 		await assertion;
+	});
+});
+
+describe('import request budget', () => {
+	const throttled = (seconds: string) =>
+		new Response('Too many requests', { status: 429, headers: { 'Retry-After': seconds } });
+
+	it('waits out Retry-After and re-sends instead of failing the playlist', async () => {
+		vi.useFakeTimers();
+		const send = vi
+			.fn()
+			.mockResolvedValueOnce(throttled('3'))
+			.mockResolvedValue(new Response('{}', { status: 200 }));
+		const waits: number[] = [];
+		const pending = fetchWithinImportBudget(send, new AbortController().signal, (s) =>
+			waits.push(s)
+		);
+		await vi.advanceTimersByTimeAsync(2_999);
+		expect(send).toHaveBeenCalledOnce();
+		await vi.advanceTimersByTimeAsync(1);
+		expect((await pending).status).toBe(200);
+		expect(waits).toEqual([3, 0]);
+	});
+
+	it('stops waiting when the import is cancelled', async () => {
+		vi.useFakeTimers();
+		const controller = new AbortController();
+		const pending = fetchWithinImportBudget(async () => throttled('30'), controller.signal);
+		const assertion = expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+		await vi.advanceTimersByTimeAsync(0);
+		controller.abort();
+		await assertion;
+	});
+
+	it('gives up after repeated throttling and returns the 429', async () => {
+		vi.useFakeTimers();
+		const send = vi.fn(async () => throttled('1'));
+		const pending = fetchWithinImportBudget(send, new AbortController().signal);
+		await vi.advanceTimersByTimeAsync(10_000);
+		expect((await pending).status).toBe(429);
+		expect(send).toHaveBeenCalledTimes(5);
 	});
 });

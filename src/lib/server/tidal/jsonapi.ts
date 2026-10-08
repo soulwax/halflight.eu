@@ -29,4 +29,3 @@ export function indexIncluded(doc: Document<Resource | Resource[]>): Map<string,
 	for (const r of doc.included ?? []) map.set(`${r.type}:${r.id}`, r);
 	return map;
 }
-

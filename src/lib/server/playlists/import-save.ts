@@ -13,6 +13,8 @@ export async function saveVerifiedImport(input: {
 	title: string;
 	description?: string;
 	items: TrackSummary[];
+	/** Version of the TIDAL source these items were verified against. */
+	sourceVersion?: string;
 	expected: SavedPlaylist | undefined;
 }): Promise<{ id: string; status: 'created' | 'synced' | 'conflict' }> {
 	await ensurePlaylistTable();
@@ -58,6 +60,7 @@ export async function saveVerifiedImport(input: {
 			itemsJson: JSON.stringify(input.items),
 			syncStatus: 'synced',
 			lastSyncedAt: now,
+			remoteEtag: input.sourceVersion ?? null,
 			syncError: null,
 			updatedAt: now
 		};
@@ -69,16 +72,14 @@ export async function saveVerifiedImport(input: {
 			return { id: current.id, status: 'synced' };
 		}
 		const id = `pl_${randomUUID()}`;
-		await tx
-			.insert(userPlaylist)
-			.values({
-				...values,
-				id,
-				userId: input.userId,
-				tidalPlaylistId: input.tidalPlaylistId,
-				source: 'tidal',
-				createdAt: now
-			});
+		await tx.insert(userPlaylist).values({
+			...values,
+			id,
+			userId: input.userId,
+			tidalPlaylistId: input.tidalPlaylistId,
+			source: 'tidal',
+			createdAt: now
+		});
 		return { id, status: 'created' };
 	});
 }

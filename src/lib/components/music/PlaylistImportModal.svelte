@@ -5,6 +5,7 @@
 	import { m } from '#lib/paraglide/messages.js';
 	import { customPlaylists } from '#lib/player/customPlaylists.svelte';
 	import {
+		fetchWithinImportBudget,
 		readImportResult,
 		readImportResponse,
 		type ImportResult
@@ -36,6 +37,7 @@
 	let currentTitle = $state('');
 	let completed = $state(0);
 	let batchTotal = $state(0);
+	let waitSeconds = $state(0);
 	const successful = $derived(
 		outcomes.filter((result) => result.status === 'created' || result.status === 'synced')
 	);
@@ -73,9 +75,14 @@
 		loading = true;
 		loadError = false;
 		try {
-			const res = await fetch('/api/playlists/import', {
-				signal: AbortSignal.any([loadController.signal, AbortSignal.timeout(30_000)])
-			});
+			const signal = loadController.signal;
+			const res = await fetchWithinImportBudget(
+				() =>
+					fetch('/api/playlists/import', {
+						signal: AbortSignal.any([signal, AbortSignal.timeout(30_000)])
+					}),
+				signal
+			);
 			if (!res.ok) throw new Error('Playlist list unavailable');
 			const data = (await res.json()) as { playlists: ImportablePlaylist[]; error?: string | null };
 			if (version !== loadVersion) return;
@@ -140,12 +147,19 @@
 				currentTitle = playlists.find((playlist) => playlist.id === id)?.title ?? '';
 				let result: ImportResult;
 				try {
-					const response = await fetch('/api/playlists/import', {
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({ tidalPlaylistIds: [id] }),
-						signal: controller.signal
-					});
+					const response = await fetchWithinImportBudget(
+						() =>
+							fetch('/api/playlists/import', {
+								method: 'POST',
+								headers: { 'Content-Type': 'application/json' },
+								body: JSON.stringify({ tidalPlaylistIds: [id] }),
+								signal: controller.signal
+							}),
+						controller.signal,
+						(seconds) => {
+							if (version === importVersion) waitSeconds = seconds;
+						}
+					);
 					if (!response.ok) throw new Error('Import unavailable');
 					result = readImportResult(await readImportResponse(response, controller.signal), id);
 				} catch {
@@ -213,7 +227,11 @@
 		{#if isImporting}
 			<div class="import-progress" role="status" aria-live="polite">
 				<p>{m.playlist_import_progress({ completed, total: batchTotal })}</p>
-				<p>{m.playlist_import_verifying({ title: currentTitle })}</p>
+				<p>
+					{waitSeconds
+						? m.playlist_import_waiting({ seconds: waitSeconds })
+						: m.playlist_import_verifying({ title: currentTitle })}
+				</p>
 				<progress
 					value={completed}
 					max={batchTotal}

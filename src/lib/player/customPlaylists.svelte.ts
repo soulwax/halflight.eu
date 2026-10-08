@@ -1,4 +1,5 @@
 import { SvelteDate } from 'svelte/reactivity';
+import { fetchWithinImportBudget } from '#lib/playlists/import-result';
 import type { TrackSummary } from '#lib/tidal/models';
 import { player } from './player.svelte';
 
@@ -235,15 +236,19 @@ export class CustomPlaylistsManager {
 				playlist?.source === 'tidal' &&
 				playlist.tidalPlaylistId &&
 				playlist.syncStatus !== 'pending_push';
-			const res = await fetch('/api/playlists/sync', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(
-					pull
-						? { action: 'pull', tidalPlaylistId: playlist.tidalPlaylistId }
-						: { action: 'push', playlistId }
-				)
-			});
+			const res = await fetchWithinImportBudget(
+				() =>
+					fetch('/api/playlists/sync', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify(
+							pull
+								? { action: 'pull', tidalPlaylistId: playlist.tidalPlaylistId }
+								: { action: 'push', playlistId }
+						)
+					}),
+				new AbortController().signal
+			);
 			if (res.ok) {
 				const result = (await res.json()) as { status?: string };
 				await this.syncWithServer();
@@ -262,16 +267,24 @@ export class CustomPlaylistsManager {
 		this.isSyncing = true;
 		try {
 			// First push local changes, then pull remote updates
-			const pushRes = await fetch('/api/playlists/sync', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ action: 'push_all' })
-			});
-			const pullRes = await fetch('/api/playlists/sync', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ action: 'pull_all' })
-			});
+			const pushRes = await fetchWithinImportBudget(
+				() =>
+					fetch('/api/playlists/sync', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ action: 'push_all' })
+					}),
+				new AbortController().signal
+			);
+			const pullRes = await fetchWithinImportBudget(
+				() =>
+					fetch('/api/playlists/sync', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ action: 'pull_all' })
+					}),
+				new AbortController().signal
+			);
 
 			await this.syncWithServer();
 

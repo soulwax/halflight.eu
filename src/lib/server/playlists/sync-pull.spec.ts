@@ -165,3 +165,53 @@ it('allows a genuinely empty source playlist after complete verification', async
 	expect(await pullPlaylist('remote', ctx)).toMatchObject({ status: 'created', tracksSkipped: 0 });
 	expect(mocks.save).toHaveBeenCalledWith(expect.objectContaining({ items: [] }));
 });
+
+describe('refreshing an unchanged verified import', () => {
+	const savedCopy = (remoteEtag: string, lastSyncedAt: string) => ({
+		id: 'local',
+		tidalPlaylistId: 'remote',
+		source: 'tidal',
+		syncStatus: 'synced',
+		remoteEtag,
+		lastSyncedAt,
+		items: [good, good]
+	});
+	async function versionOfFirstImport(): Promise<string> {
+		await pullPlaylist('remote', ctx);
+		const version = mocks.save.mock.calls[0][0].sourceVersion;
+		expect(version).toMatch(/^[0-9a-f]{64}$/);
+		mocks.save.mockClear();
+		mocks.validate.mockClear();
+		mocks.fetch.mockClear();
+		return version;
+	}
+
+	it('keeps a recently verified copy without probing playback again', async () => {
+		const version = await versionOfFirstImport();
+		mocks.list.mockResolvedValue([savedCopy(version, new Date().toISOString())]);
+		expect(await pullPlaylist('remote', ctx)).toMatchObject({
+			playlistId: 'local',
+			status: 'synced',
+			streamValidation: 'verified',
+			tracksAdded: 0,
+			tracksRemoved: 0
+		});
+		expect(mocks.fetch).toHaveBeenCalledOnce();
+		expect(mocks.validate).not.toHaveBeenCalled();
+		expect(mocks.save).not.toHaveBeenCalled();
+	});
+
+	it('verifies again once the copy is a week old', async () => {
+		const version = await versionOfFirstImport();
+		const stale = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString();
+		mocks.list.mockResolvedValue([savedCopy(version, stale)]);
+		expect(await pullPlaylist('remote', ctx)).toMatchObject({ status: 'synced' });
+		expect(mocks.validate).toHaveBeenCalledOnce();
+	});
+
+	it('verifies again when the TIDAL source changed', async () => {
+		mocks.list.mockResolvedValue([savedCopy('older-version', new Date().toISOString())]);
+		await pullPlaylist('remote', ctx);
+		expect(mocks.validate).toHaveBeenCalledOnce();
+	});
+});

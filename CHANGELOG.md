@@ -86,6 +86,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- TIDAL imports no longer fail outright when TIDAL serves a playback manifest for a different
+  recording ID than the one requested (a silently remapped catalogue entry). The original ID now
+  counts as unavailable, so verification relinks it to a matched, playback-checked recording or
+  skips it, and the player moves past it instead of reporting a stream error.
+- Imports no longer re-read every track's metadata when the playlist already side-loaded it; the
+  check wrongly required artwork, which neither read includes.
+- Importing many playlists, or syncing, waits out Halflight's own per-listener import budget
+  (`Retry-After`) and shows the pause, instead of reporting later playlists as failed.
+- Refreshing an imported playlist whose TIDAL source is unchanged keeps the verified copy without
+  checking playback again; copies are re-verified at least weekly or when the source changes.
+
 - The full-screen mobile player's artwork no longer changes size while a song plays. Every row
   around it now has a fixed height: the lyrics card always keeps two lines (a long lyric shrinks
   to fit instead of wrapping), loading and buffering show on the play button instead of a status

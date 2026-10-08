@@ -47,12 +47,14 @@ describe('MobileTrackRow.svelte', () => {
 			contextTracks: repeated,
 			contextIndex: 2,
 			provenance: 'An album',
-			onActivate: () => {}
+			// Play Now runs the row's own activation, so callers' side effects (e.g. search history) apply.
+			onActivate: () => player.play(track, repeated, 'An album', 2)
 		});
 
 		await page.getByRole('button', { name: m.track_action_menu() }).click();
 		await page.getByRole('dialog').getByRole('button', { name: m.track_action_play_now() }).click();
 
+		expect(play).toHaveBeenCalledOnce();
 		expect(play).toHaveBeenCalledWith(track, repeated, 'An album', 2);
 		play.mockRestore();
 	});

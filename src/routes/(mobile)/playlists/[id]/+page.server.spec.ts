@@ -64,6 +64,8 @@ describe('/(mobile)/playlists/[id] load', () => {
 				items: [track]
 			},
 			isLocal: true,
+			editVersion: expect.stringMatching(/^[0-9a-f]{64}$/),
+			editTracks: [track],
 			state: null,
 			id: 'pl-1'
 		});

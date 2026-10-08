@@ -874,6 +874,7 @@
 	"playlist_import_no_playable": "Es wurden keine spielbaren Songs gefunden. Es wurde nichts importiert und deine bestehende Playlist wurde beibehalten.",
 	"playlist_import_saved_found": "Eine gespeicherte Kopie wurde in deiner Bibliothek gefunden. Du musst sie nicht erneut importieren.",
 	"playlist_import_reconnect": "Verbinde TIDAL in den Einstellungen erneut und versuche es noch einmal. Deine bestehenden Playlists bleiben erhalten.",
+	"playlist_import_waiting": "Kurze Pause von {seconds} s, um das Importlimit einzuhalten…",
 	"playlist_import_rate_limited": "TIDAL begrenzt gerade die Anfragen. Warte einen Moment und versuche es erneut.",
 	"playlist_import_stop": "Nach dieser Playlist stoppen",
 	"playlist_import_stopping": "Diese Playlist wird abgeschlossen…",
