@@ -156,3 +156,26 @@ describe('taste profile', () => {
 		expect(JSON.stringify(profile)).not.toContain('Display data is discarded');
 	});
 });
+
+describe('analysed playlist evidence', () => {
+	it('replaces the raw playlist sample and counts towards confidence', () => {
+		const signals = {
+			artistSignals: [
+				{ artistId: 'sampled', source: 'playlist' as const },
+				{ artistId: 'followed', source: 'followed_artist' as const }
+			],
+			eraSignals: []
+		};
+		const withoutAnalysis = buildTasteProfile(signals);
+		const analysed = buildTasteProfile(signals, undefined, undefined, {
+			artists: { analysed: 1 },
+			eras: { '1990': 1 },
+			playlistCount: 12
+		});
+		expect(analysed.artists.sampled).toBeUndefined();
+		expect(analysed.artists.analysed).toBeGreaterThan(0);
+		expect(analysed.artists.followed).toBe(1);
+		expect(analysed.eras['1990']).toBe(1);
+		expect(analysed.confidence.eras).toBeGreaterThan(withoutAnalysis.confidence.eras);
+	});
+});

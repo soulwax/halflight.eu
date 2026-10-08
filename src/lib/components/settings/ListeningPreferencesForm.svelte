@@ -9,6 +9,7 @@
 		personalizeSuggestions: boolean;
 		learnFromListening: boolean;
 		useLastfmHistory: boolean;
+		learnFromPlaylists: boolean;
 	}
 	let {
 		preferences,
@@ -59,6 +60,13 @@
 		<label class="toggle">
 			<input type="checkbox" name="learnFromListening" checked={preferences.learnFromListening} />
 			<span>{m.listening_prefs_learn()}</span>
+		</label>
+		<label class="toggle">
+			<input type="checkbox" name="learnFromPlaylists" checked={preferences.learnFromPlaylists} />
+			<span>
+				{m.listening_prefs_playlists()}
+				<small>{m.listening_prefs_playlists_hint()}</small>
+			</span>
 		</label>
 		<label class="toggle">
 			<input type="checkbox" name="useLastfmHistory" checked={preferences.useLastfmHistory} />

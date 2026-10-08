@@ -54,6 +54,21 @@
 		forgotten={Boolean(form?.listeningForgotten)}
 	/>
 
+	{#if data.listeningPreferences.learnFromPlaylists}
+		<p class="text-sm text-[var(--text-muted)]" role="status">
+			{#if data.playlistAnalysis.firstPassComplete}
+				{m.taste_playlist_analysis_done({ count: data.playlistAnalysis.analysed })}
+			{:else if data.playlistAnalysis.total}
+				{m.taste_playlist_analysis_running({
+					analysed: data.playlistAnalysis.analysed,
+					total: data.playlistAnalysis.total
+				})}
+			{:else}
+				{m.taste_playlist_analysis_waiting()}
+			{/if}
+		</p>
+	{/if}
+
 	<!-- Plain Language Summary Card -->
 	<section
 		class="relative overflow-hidden border border-[var(--border-subtle)] bg-[var(--surface-raised)] p-6"

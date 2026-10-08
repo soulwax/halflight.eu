@@ -132,7 +132,9 @@ export async function readTasteSignals(
 	ctx: TidalRequestContext = {},
 	reader: TasteSignalReader = tidalTasteSignalReader,
 	now = new Date(),
-	sessionTracks: TrackSummary[] = []
+	sessionTracks: TrackSummary[] = [],
+	/** False once the background playlist analysis supplies playlist evidence. */
+	includePlaylists = true
 ): Promise<TasteSignals> {
 	const readOrEmpty = async <T>(read: (() => Promise<T>) | undefined, empty: T): Promise<T> => {
 		if (!read) return empty;
@@ -155,7 +157,7 @@ export async function readTasteSignals(
 			[] as AlbumSummary[]
 		),
 		readOrEmpty(
-			reader.getPlaylists ? () => reader.getPlaylists!(ctx) : undefined,
+			includePlaylists && reader.getPlaylists ? () => reader.getPlaylists!(ctx) : undefined,
 			[] as Array<{ id: string }>
 		)
 	]);

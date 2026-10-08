@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- A background worker analyses each listener's TIDAL playlists to build a smarter taste
+  profile. Artists saturate per playlist (one prolific artist cannot dominate), featured artists
+  count half, recently added songs count more, larger playlists weigh more with diminishing
+  returns, and artists found across many playlists rise. The first pass is deliberately slow —
+  one playlist every 90 seconds, at most 300 songs each, through the same paced TIDAL lanes as
+  imports — and later passes re-read the list daily and only re-analyse changed playlists. Only
+  artist and decade weights are stored. A database lease keeps one process per listener; set
+  `TASTE_WORKER` to override the default (on in production, off in `vite dev`). "Learn from my
+  playlists" in the Suggestions & taste data preferences turns it off and removes its data.
+
 - Autoplay: when the queue runs out, Halflight continues with 10 suggested songs (Spotify
   style). Suggestions follow the last few songs' radio, are deduplicated by ID, ISRC and song
   identity against everything queued or recently heard, let an artist return at most twice per

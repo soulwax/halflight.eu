@@ -905,5 +905,10 @@
 	"context_open_new_tab": "In neuem Tab öffnen",
 	"context_play_from_queue": "Ab hier abspielen",
 	"context_added_next": "Als Nächstes: {title}",
-	"context_added_queue": "Zur Warteschlange hinzugefügt: {title}"
+	"context_added_queue": "Zur Warteschlange hinzugefügt: {title}",
+	"listening_prefs_playlists": "Aus meinen Playlists lernen",
+	"listening_prefs_playlists_hint": "Ein Hintergrunddienst liest deine Playlists langsam, beim ersten Durchlauf eine alle 90 Sekunden, und speichert nur Künstler- und Jahrzehntgewichte. Beim Ausschalten werden sie entfernt.",
+	"taste_playlist_analysis_running": "Deine Playlists werden im Hintergrund analysiert: bisher {analysed} von {total}. Der erste Durchlauf ist bewusst langsam.",
+	"taste_playlist_analysis_waiting": "Deine Playlists werden in Kürze im Hintergrund analysiert.",
+	"taste_playlist_analysis_done": "Die Playlist-Analyse umfasst {count} Playlists und wird täglich aktualisiert."
 }

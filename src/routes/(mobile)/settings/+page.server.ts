@@ -6,6 +6,7 @@ import {
 	saveListeningPreferencesForm
 } from '#lib/server/listening-preferences';
 import { clearHalflightListening, clearLastfmEvidence } from '#lib/server/taste/listening-store';
+import { schedulePlaylistAnalysisSoon } from '#lib/server/taste/playlist-worker';
 import type { Actions, PageServerLoad } from './$types';
 import { getStorageOverview } from '#lib/server/storage';
 
@@ -30,6 +31,7 @@ export const actions: Actions = {
 			clearLastfmEvidence
 		);
 		if (!saved) return fail(400, { listeningPreferencesError: true });
+		await schedulePlaylistAnalysisSoon(user.id);
 		return { listeningPreferencesSaved: true };
 	},
 

@@ -15,6 +15,9 @@ import {
 	saveListeningPreferencesForm
 } from '#lib/server/listening-preferences';
 import { clearHalflightListening, clearLastfmEvidence } from '#lib/server/taste/listening-store';
+import { readPlaylistAnalysis } from '#lib/server/taste/playlist-worker';
+import { analysisProgress } from '#lib/server/taste/playlist-analysis';
+import { schedulePlaylistAnalysisSoon } from '#lib/server/taste/playlist-worker';
 import type { PageServerLoad } from './$types';
 
 export interface AnchorArtistItem {
@@ -37,10 +40,11 @@ export const load: PageServerLoad = async (event) => {
 		throw redirect(303, resolve('/sign-in'));
 	}
 
-	const [profile, connection, listeningPreferences] = await Promise.all([
+	const [profile, connection, listeningPreferences, playlistAnalysis] = await Promise.all([
 		getTasteProfile(user.id),
 		getConnectionStatus(),
-		getListeningPreferences(user.id)
+		getListeningPreferences(user.id),
+		readPlaylistAnalysis(user.id).then(analysisProgress)
 	]);
 
 	// Resolve names for top anchor artists (up to 8)
@@ -147,6 +151,7 @@ export const load: PageServerLoad = async (event) => {
 		profile,
 		connection,
 		listeningPreferences,
+		playlistAnalysis,
 		anchorArtists,
 		excludedArtists,
 		eraDistribution,
@@ -170,6 +175,7 @@ export const actions: Actions = {
 			clearLastfmEvidence
 		);
 		if (!saved) return fail(400, { listeningPreferencesError: true });
+		await schedulePlaylistAnalysisSoon(user.id);
 		return { listeningPreferencesSaved: true };
 	},
 

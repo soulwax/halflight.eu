@@ -4,8 +4,9 @@ import { getRequestAccess } from '#lib/server/request-access';
 import { auth } from '#lib/server/auth';
 import { requestLimiter } from '#lib/server/rate-limit';
 import { DEFAULT_THEME, getThemeSettings, isTheme } from '#lib/server/theme-settings';
-import { building } from '$app/env';
-import type { Handle } from '@sveltejs/kit/hooks';
+import { building, dev } from '$app/env';
+import { TASTE_WORKER } from '$app/env/private';
+import type { Handle, ServerInit } from '@sveltejs/kit/hooks';
 import { sequence } from '@sveltejs/kit/hooks';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
 
@@ -87,3 +88,30 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
 };
 
 export const handle: Handle = sequence(handleParaglide, handleBetterAuth);
+
+/**
+ * Background playlist analysis. Off in `vite dev` unless asked for, because a
+ * local `.env` may point at a shared database; the lease in the table keeps
+ * two running processes from analysing the same listener at once.
+ */
+export const init: ServerInit = async () => {
+	if (building || TASTE_WORKER === 'off' || (dev && TASTE_WORKER !== 'on')) return;
+	const [{ startPlaylistAnalysisWorker, tidalPlaylistSource }, { refreshTasteProfile }] =
+		await Promise.all([
+			import('#lib/server/taste/playlist-worker'),
+			import('#lib/server/taste/profile')
+		]);
+	const { createImportFetch } = await import('#lib/server/playlists/import-fetch');
+	const { createDbTokenRowStore } = await import('#lib/server/tidal/store');
+	startPlaylistAnalysisWorker({
+		source: tidalPlaylistSource,
+		rebuildProfile: async (userId) => {
+			await refreshTasteProfile(userId, {
+				ctx: {
+					store: createDbTokenRowStore(userId),
+					fetch: createImportFetch((...args) => fetch(...args))
+				}
+			});
+		}
+	});
+};

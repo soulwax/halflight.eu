@@ -119,6 +119,11 @@ export const variables = defineEnvVars({
 		description: 'Server-only secret key for the short-lived TIDAL cache bucket.'
 	},
 	LASTFM_API_KEY: { schema: optional, description: 'Last.fm API key.' },
+	TASTE_WORKER: {
+		schema: optional,
+		description:
+			'Background playlist analysis for taste profiles. On by default in production builds and off in `vite dev`; set to `on` or `off` to override.'
+	},
 	LASTFM_APPLICATION_NAME: {
 		schema: optional,
 		description: 'Registered Last.fm application name.'

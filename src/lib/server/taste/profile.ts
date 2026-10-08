@@ -1,4 +1,7 @@
 import { eq } from 'drizzle-orm';
+import { getListeningPreferences } from '#lib/server/listening-preferences';
+import { aggregateDigests } from './playlist-analysis';
+import { readPlaylistAnalysis } from './playlist-worker';
 import { createHash } from 'node:crypto';
 import { redisCache, unavailableCache, type EphemeralCache } from '#lib/server/cache';
 import { db } from '#lib/server/db';
@@ -220,7 +223,8 @@ function confidenceFor(weights: Record<string, number>, anchorCount: number): nu
 
 function weightedSignals<T extends { source: TasteSignalSource; observedAt?: string }>(
 	signals: T[],
-	key: (signal: T) => string
+	key: (signal: T) => string,
+	playlistWeights?: Record<string, number>
 ): Record<string, number> {
 	const bySource = new Map<TasteSignalSource, Record<string, number>>();
 	for (const signal of signals) {
@@ -229,6 +233,9 @@ function weightedSignals<T extends { source: TasteSignalSource; observedAt?: str
 		source[id] = (source[id] ?? 0) + recencyMultiplier(signal.observedAt);
 		bySource.set(signal.source, source);
 	}
+	// Background analysis replaces the raw playlist sample with weighted evidence.
+	if (playlistWeights && Object.keys(playlistWeights).length)
+		bySource.set('playlist', playlistWeights);
 
 	const combined: Record<string, number> = {};
 	for (const [source, weights] of bySource) {
@@ -243,13 +250,30 @@ function weightedSignals<T extends { source: TasteSignalSource; observedAt?: str
  * Rebuilds derived weights from fresh signals while preserving explicit owner
  * choices. Inputs are not retained after this function returns.
  */
+export interface PlaylistEvidence {
+	artists: Record<string, number>;
+	eras: Record<string, number>;
+	playlistCount: number;
+}
+
 export function buildTasteProfile(
 	signals: TasteSignals,
 	previous: TasteProfile = emptyTasteProfile(),
-	now = new Date()
+	now = new Date(),
+	playlists?: PlaylistEvidence
 ): TasteProfile {
-	const artists = weightedSignals(signals.artistSignals, (signal) => signal.artistId);
-	const eras = weightedSignals(signals.eraSignals, (signal) => String(signal.decade));
+	const artists = weightedSignals(
+		signals.artistSignals,
+		(signal) => signal.artistId,
+		playlists?.artists
+	);
+	const eras = weightedSignals(
+		signals.eraSignals,
+		(signal) => String(signal.decade),
+		playlists?.eras
+	);
+	// Analysed playlists are evidence too, even though they arrive pre-weighted.
+	const playlistAnchors = playlists ? Object.keys(playlists.artists).length : 0;
 
 	for (const artistId of previous.exclusions.artists) delete artists[artistId];
 	for (const era of previous.exclusions.eras) delete eras[String(era)];
@@ -269,8 +293,8 @@ export function buildTasteProfile(
 		overrides: { artists: { ...previous.overrides.artists } },
 		knobDefaults: { ...previous.knobDefaults },
 		confidence: {
-			artists: confidenceFor(artists, signals.artistSignals.length),
-			eras: confidenceFor(eras, signals.eraSignals.length)
+			artists: confidenceFor(artists, signals.artistSignals.length + playlistAnchors),
+			eras: confidenceFor(eras, signals.eraSignals.length + (playlists?.playlistCount ?? 0))
 		},
 		updatedAt: now.toISOString()
 	};
@@ -340,10 +364,11 @@ export async function rebuildTasteProfile(
 	userId: string,
 	signals: TasteSignals,
 	store: TasteProfileStore = dbTasteProfileStore,
-	now = new Date()
+	now = new Date(),
+	playlists?: PlaylistEvidence
 ): Promise<TasteProfile> {
 	const previous = (await store.read(userId)) ?? emptyTasteProfile(now);
-	return store.write(userId, buildTasteProfile(signals, previous, now));
+	return store.write(userId, buildTasteProfile(signals, previous, now, playlists));
 }
 
 /**
@@ -361,19 +386,38 @@ export async function refreshTasteProfile(
 	} = {}
 ): Promise<TasteProfile> {
 	const now = options.now ?? new Date();
+	const store = options.store ?? dbTasteProfileStore;
+	const playlists = store === dbTasteProfileStore ? await playlistEvidence(userId) : 'sample';
 	const signals = await readTasteSignals(
 		options.ctx,
 		options.reader ?? tidalTasteSignalReader,
 		now,
-		[]
+		[],
+		playlists === 'sample'
 	);
-	const store = options.store ?? dbTasteProfileStore;
 	if (store === dbTasteProfileStore) {
 		const prior = await readLastfmTastePrior(userId, options.ctx);
 		if (prior) await mutateListeningEvidence(userId, (state) => ({ ...state, lastfm: prior }));
 	}
-	const rebuilt = await rebuildTasteProfile(userId, signals, store, now);
+	const rebuilt = await rebuildTasteProfile(
+		userId,
+		signals,
+		store,
+		now,
+		typeof playlists === 'object' ? playlists : undefined
+	);
 	return store === dbTasteProfileStore ? getTasteProfile(userId) : rebuilt;
+}
+
+/**
+ * Where playlist evidence comes from: the background analysis once its first
+ * pass is complete, nothing when the listener opted out, otherwise the small
+ * live sample read during the rebuild.
+ */
+async function playlistEvidence(userId: string): Promise<PlaylistEvidence | 'sample' | 'none'> {
+	if (!(await getListeningPreferences(userId)).learnFromPlaylists) return 'none';
+	const analysis = await readPlaylistAnalysis(userId);
+	return analysis.firstPassCompletedAt ? aggregateDigests(analysis.playlists) : 'sample';
 }
 
 export async function resetTasteProfile(

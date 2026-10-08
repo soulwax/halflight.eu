@@ -184,13 +184,10 @@ export function applyListing(
 		Object.entries(state.playlists).filter(([id]) => id in known)
 	);
 	const failures = Object.fromEntries(
-		Object.entries(state.failures).filter(
-			([id]) => id in known && state.known[id] === known[id]
-		)
+		Object.entries(state.failures).filter(([id]) => id in known && state.known[id] === known[id])
 	);
 	const pending = Object.keys(known).filter(
-		(id) =>
-			playlists[id]?.version !== known[id] && (failures[id] ?? 0) < MAX_PLAYLIST_FAILURES
+		(id) => playlists[id]?.version !== known[id] && (failures[id] ?? 0) < MAX_PLAYLIST_FAILURES
 	);
 	return { ...state, known, playlists, failures, pending, listedAt: now.toISOString() };
 }

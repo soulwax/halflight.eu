@@ -20,7 +20,8 @@ describe('listening preferences', () => {
 			autoplayCount: 10,
 			personalizeSuggestions: true,
 			learnFromListening: true,
-			useLastfmHistory: true
+			useLastfmHistory: true,
+			learnFromPlaylists: true
 		});
 	});
 
@@ -30,7 +31,8 @@ describe('listening preferences', () => {
 			autoplayCount: 20,
 			personalizeSuggestions: false,
 			learnFromListening: false,
-			useLastfmHistory: false
+			useLastfmHistory: false,
+			learnFromPlaylists: false
 		});
 	});
 

@@ -905,5 +905,10 @@
 	"context_open_new_tab": "Open in new tab",
 	"context_play_from_queue": "Play from here",
 	"context_added_next": "Playing next: {title}",
-	"context_added_queue": "Added to queue: {title}"
+	"context_added_queue": "Added to queue: {title}",
+	"listening_prefs_playlists": "Learn from my playlists",
+	"listening_prefs_playlists_hint": "A background worker reads your playlists slowly, one every 90 seconds on the first pass, and keeps only artist and decade weights. Turning this off removes them.",
+	"taste_playlist_analysis_running": "Analysing your playlists in the background: {analysed} of {total} so far. The first pass is deliberately slow.",
+	"taste_playlist_analysis_waiting": "Your playlists will be analysed in the background shortly.",
+	"taste_playlist_analysis_done": "Playlist analysis covers {count} playlists and refreshes daily."
 }
