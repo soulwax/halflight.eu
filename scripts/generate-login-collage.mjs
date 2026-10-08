@@ -63,6 +63,11 @@ try {
 	// Use real catalogue metadata and the actual mobile player. Preview state stays
 	// inside this disposable browser; no audio or playback commands are sent.
 	const songs = [
+		{ query: 'Soulwax NY Excuse', artist: 'Soulwax', title: 'NY Excuse' },
+		{ query: 'Goldfrapp Strict Machine', artist: 'Goldfrapp', title: 'Strict Machine' },
+		{ query: 'Franz Ferdinand Take Me Out', artist: 'Franz Ferdinand', title: 'Take Me Out' },
+		{ query: 'Gorillaz Feel Good Inc.', artist: 'Gorillaz', title: 'Feel Good Inc.' },
+		{ query: 'Cibo Matto Sugar Water', artist: 'Cibo Matto', title: 'Sugar Water' },
 		{ query: 'Daft Punk Get Lucky', artist: 'Daft Punk', title: 'Get Lucky' },
 		{ query: 'The Weeknd Blinding Lights', artist: 'The Weeknd', title: 'Blinding Lights' },
 		{ query: 'Fleetwood Mac Dreams', artist: 'Fleetwood Mac', title: 'Dreams' }
@@ -79,7 +84,10 @@ try {
 				track.title.toLowerCase().startsWith(song.title.toLowerCase()) &&
 				track.artists.some((artist) => artist.name === song.artist)
 		);
-		if (!track) throw new Error(`Missing catalogue track: ${song.query}`);
+		if (!track)
+			throw new Error(
+				`Missing catalogue track: ${song.query}; found ${results.tracks.map((track) => track.title + ' by ' + track.artists.map((artist) => artist.name).join(',')).join('; ')}`
+			);
 		tracks.push(track);
 	}
 	await context.route('**/api/**', (route) => {
@@ -181,14 +189,16 @@ try {
 		}
 		// Portrait panels are deliberately larger than the desktop tiles, with a
 		// quiet device rim that makes the two form factors immediately recognizable.
-		const mobiles = shots.filter((shot) => shot.mobile);
+		const mobiles = shots.filter((shot) => shot.mobile).filter((_, index) => index % 2 === 0);
 		const positions = [
-			[90, -210],
-			[515, 100],
-			[100, 850],
-			[1780, -160],
-			[2160, 280],
-			[1710, 860]
+			[510, 60],
+			[80, 410],
+			[1740, 60],
+			[2170, 420],
+			[1730, 850],
+			[70, -330],
+			[530, 880],
+			[2130, -340]
 		];
 		for (const [index, shot] of mobiles.entries()) {
 			const [x, y] = positions[index];
@@ -198,10 +208,11 @@ try {
 			img.src = `data:image/png;base64,${shot.data}`;
 			await img.decode();
 			ctx.save();
-			ctx.shadowColor = '#000b';
+			ctx.rotate(index % 2 ? 0.025 : -0.018);
+			ctx.shadowColor = index % 2 ? '#ea5d6b66' : '#54c9d866';
 			ctx.shadowBlur = 36;
 			ctx.shadowOffsetY = 16;
-			ctx.fillStyle = '#090b10';
+			ctx.fillStyle = '#11131d';
 			ctx.beginPath();
 			ctx.roundRect(x - 7, y - 7, width + 14, height + 14, 30);
 			ctx.fill();
@@ -211,6 +222,51 @@ try {
 			ctx.clip();
 			ctx.drawImage(img, x, y, width, height);
 			ctx.restore();
+		}
+		// Screen-printed poster treatment: ink tint, coloured light, fine grain,
+		// and sparse registration marks. The real interfaces remain recognizable.
+		ctx.setTransform(1, 0, 0, 1, 0, 0);
+		ctx.globalCompositeOperation = 'soft-light';
+		const ink = ctx.createLinearGradient(0, 0, 2560, 1440);
+		ink.addColorStop(0, '#54bac7');
+		ink.addColorStop(0.48, '#33324d');
+		ink.addColorStop(1, '#e88669');
+		ctx.fillStyle = ink;
+		ctx.fillRect(0, 0, 2560, 1440);
+		ctx.globalCompositeOperation = 'screen';
+		for (const [x, y, color] of [
+			[100, 150, '#409dad55'],
+			[2400, 1100, '#c5566455']
+		]) {
+			const glow = ctx.createRadialGradient(x, y, 0, x, y, 900);
+			glow.addColorStop(0, color);
+			glow.addColorStop(1, '#0000');
+			ctx.fillStyle = glow;
+			ctx.fillRect(0, 0, 2560, 1440);
+		}
+		ctx.globalCompositeOperation = 'soft-light';
+		let seed = 71;
+		for (let index = 0; index < 190000; index++) {
+			seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+			const x = seed % 2560;
+			seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+			const y = seed % 1440;
+			ctx.fillStyle = index % 2 ? '#ffffff38' : '#00000048';
+			ctx.fillRect(x, y, 1, 1);
+		}
+		ctx.globalCompositeOperation = 'source-over';
+		ctx.strokeStyle = '#b9dfdb55';
+		ctx.lineWidth = 1;
+		for (const [x, y] of [
+			[35, 35],
+			[2525, 1405]
+		]) {
+			ctx.beginPath();
+			ctx.moveTo(x - 14, y);
+			ctx.lineTo(x + 14, y);
+			ctx.moveTo(x, y - 14);
+			ctx.lineTo(x, y + 14);
+			ctx.stroke();
 		}
 		return canvas.toDataURL('image/webp', 0.9);
 	}, shots);

@@ -209,11 +209,91 @@
       "route": "/now",
       "theme": "blue-hour",
       "mobile": true,
+      "title": "NY Excuse",
+      "artist": "Soulwax"
+    },
+    {
+      "file": "mobile-1-warm-night.png",
+      "route": "/now",
+      "theme": "warm-night",
+      "mobile": true,
+      "title": "NY Excuse",
+      "artist": "Soulwax"
+    },
+    {
+      "file": "mobile-2-blue-hour.png",
+      "route": "/now",
+      "theme": "blue-hour",
+      "mobile": true,
+      "title": "Strict Machine",
+      "artist": "Goldfrapp"
+    },
+    {
+      "file": "mobile-2-warm-night.png",
+      "route": "/now",
+      "theme": "warm-night",
+      "mobile": true,
+      "title": "Strict Machine",
+      "artist": "Goldfrapp"
+    },
+    {
+      "file": "mobile-3-blue-hour.png",
+      "route": "/now",
+      "theme": "blue-hour",
+      "mobile": true,
+      "title": "Take Me Out",
+      "artist": "Franz Ferdinand"
+    },
+    {
+      "file": "mobile-3-warm-night.png",
+      "route": "/now",
+      "theme": "warm-night",
+      "mobile": true,
+      "title": "Take Me Out",
+      "artist": "Franz Ferdinand"
+    },
+    {
+      "file": "mobile-4-blue-hour.png",
+      "route": "/now",
+      "theme": "blue-hour",
+      "mobile": true,
+      "title": "Feel Good Inc.",
+      "artist": "Gorillaz, De La Soul"
+    },
+    {
+      "file": "mobile-4-warm-night.png",
+      "route": "/now",
+      "theme": "warm-night",
+      "mobile": true,
+      "title": "Feel Good Inc.",
+      "artist": "Gorillaz, De La Soul"
+    },
+    {
+      "file": "mobile-5-blue-hour.png",
+      "route": "/now",
+      "theme": "blue-hour",
+      "mobile": true,
+      "title": "Sugar Water",
+      "artist": "Cibo Matto"
+    },
+    {
+      "file": "mobile-5-warm-night.png",
+      "route": "/now",
+      "theme": "warm-night",
+      "mobile": true,
+      "title": "Sugar Water",
+      "artist": "Cibo Matto"
+    },
+    {
+      "file": "mobile-6-blue-hour.png",
+      "route": "/now",
+      "theme": "blue-hour",
+      "mobile": true,
       "title": "Get Lucky (feat. Pharrell Williams and Nile Rodgers)",
       "artist": "Daft Punk, Pharrell Williams, Nile Rodgers"
     },
     {
-      "file": "mobile-1-warm-night.png",
+      "file": "mobile-6-warm-night.png",
       "route": "/now",
       "theme": "warm-night",
       "mobile": true,
@@ -221,7 +301,7 @@
       "artist": "Daft Punk, Pharrell Williams, Nile Rodgers"
     },
     {
-      "file": "mobile-2-blue-hour.png",
+      "file": "mobile-7-blue-hour.png",
       "route": "/now",
       "theme": "blue-hour",
       "mobile": true,
@@ -229,7 +309,7 @@
       "artist": "The Weeknd"
     },
     {
-      "file": "mobile-2-warm-night.png",
+      "file": "mobile-7-warm-night.png",
       "route": "/now",
       "theme": "warm-night",
       "mobile": true,
@@ -237,7 +317,7 @@
       "artist": "The Weeknd"
     },
     {
-      "file": "mobile-3-blue-hour.png",
+      "file": "mobile-8-blue-hour.png",
       "route": "/now",
       "theme": "blue-hour",
       "mobile": true,
@@ -245,7 +325,7 @@
       "artist": "Fleetwood Mac"
     },
     {
-      "file": "mobile-3-warm-night.png",
+      "file": "mobile-8-warm-night.png",
       "route": "/now",
       "theme": "warm-night",
       "mobile": true,
