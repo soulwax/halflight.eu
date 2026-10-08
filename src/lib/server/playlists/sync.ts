@@ -1,3 +1,4 @@
+import { createImportFetch } from './import-fetch';
 import { createHash } from 'node:crypto';
 import type { Document, Resource } from '#lib/server/tidal/jsonapi';
 import { saveVerifiedImport } from './import-save';
@@ -136,13 +137,7 @@ function sourceVersion(document: Document<Resource>): string {
 
 export async function pullPlaylist(tidalPlaylistId: string, ctx: SyncContext): Promise<SyncResult> {
 	const tidalCtx: TidalRequestContext = {
-		fetch: (input, init = {}) => {
-			const timeout = AbortSignal.timeout(25_000);
-			return ctx.fetch(input, {
-				...init,
-				signal: init.signal ? AbortSignal.any([init.signal, timeout]) : timeout
-			});
-		},
+		fetch: createImportFetch(ctx.fetch),
 		cookies: ctx.cookies,
 		store: ctx.store
 	};
@@ -505,7 +500,7 @@ export async function pushAllPlaylists(ctx: SyncContext): Promise<SyncBatchResul
  */
 export async function listImportablePlaylists(ctx: SyncContext) {
 	const tidalCtx: TidalRequestContext = {
-		fetch: ctx.fetch,
+		fetch: createImportFetch(ctx.fetch),
 		cookies: ctx.cookies,
 		store: ctx.store
 	};

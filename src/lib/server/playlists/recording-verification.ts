@@ -68,7 +68,8 @@ export async function findVerifiedReplacements(
 	ownerId: string,
 	ctx: TidalRequestContext,
 	quality: TrackAudioQuality,
-	sources = recordingVerificationSources
+	sources = recordingVerificationSources,
+	limit = 5
 ): Promise<ReplacementCandidate[]> {
 	if (!source.artists.length) return [];
 	const candidates = new Map<string, TrackSummary>();
@@ -99,6 +100,7 @@ export async function findVerifiedReplacements(
 		if (!(await sources.validate([candidate], ownerId, ctx, quality, true)).length) continue;
 		const score = recordingMatchScore(source, candidate);
 		result.push({ track: candidate, match: score === 100 ? 'isrc' : 'best_fit', score });
+		if (result.length >= limit) break;
 	}
 	return result;
 }
@@ -112,7 +114,7 @@ export async function verifyImportedRecordings(
 	sources = recordingVerificationSources,
 	preferred: Map<string, TrackSummary> = new Map()
 ): Promise<{ tracks: TrackSummary[]; replacements: number; bestFits: number; skipped: number }> {
-	const originals = await sources.validate(tracks, ownerId, ctx, quality, true);
+	const originals = await sources.validate(tracks, ownerId, ctx, quality, 'recover');
 	const available = new Map(originals.map((track) => [track.id, track]));
 	const replacements = new Map<string, ReplacementCandidate>();
 	for (const source of new Map(tracks.map((track) => [track.id, track])).values()) {
@@ -121,7 +123,7 @@ export async function verifyImportedRecordings(
 		if (
 			confirmed &&
 			(score || confirmed.replacementForId === source.id) &&
-			(await sources.validate([confirmed], ownerId, ctx, quality, true)).length
+			(await sources.validate([confirmed], ownerId, ctx, quality, 'recover')).length
 		) {
 			replacements.set(source.id, {
 				track: confirmed,
@@ -131,7 +133,9 @@ export async function verifyImportedRecordings(
 			continue;
 		}
 		if (available.has(source.id)) continue;
-		const candidate = (await findVerifiedReplacements(source, ownerId, ctx, quality, sources))[0];
+		const candidate = (
+			await findVerifiedReplacements(source, ownerId, ctx, quality, sources, 1)
+		)[0];
 		if (candidate) replacements.set(source.id, candidate);
 	}
 	let relinked = 0;
