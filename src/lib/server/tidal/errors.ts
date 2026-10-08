@@ -54,4 +54,18 @@ export class TidalApiError extends TidalError {
 	}
 }
 
+/**
+ * TIDAL answered a playback request with a manifest for another recording ID
+ * (a silently remapped catalogue entry). The requested recording itself is not
+ * playable; the served one must earn its place through identity matching.
+ */
+export class TidalRecordingRemappedError extends TidalError {
+	constructor(
+		readonly requestedTrackId: string,
+		readonly servedTrackId: string
+	) {
+		super('Playback response did not match the requested recording');
+	}
+}
+
 /** The user denied authorization on the TIDAL consent screen. */

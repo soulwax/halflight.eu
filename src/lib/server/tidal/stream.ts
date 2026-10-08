@@ -1,4 +1,4 @@
-import { TidalApiError, TidalError } from './errors';
+import { TidalApiError, TidalError, TidalRecordingRemappedError } from './errors';
 import { getPlaybackToken, type TidalRequestContext } from './client';
 import { withTransientRetry } from './retry';
 
@@ -22,9 +22,11 @@ const SUBSTATUS_QUALITY_NOT_ALLOWED = 5003;
  * TIDAL's legacy playback endpoint uses this otherwise-auth-like response for
  * a catalogue item which has been removed or is not available to play. The
  * response is asset-specific, so callers must not present it as a request to
- * reconnect the account.
+ * reconnect the account. A manifest served for a remapped recording ID counts
+ * too: the requested recording cannot be played as itself.
  */
 export function isTrackUnavailableForPlayback(cause: unknown): boolean {
+	if (cause instanceof TidalRecordingRemappedError) return true;
 	if (!(cause instanceof TidalApiError)) return false;
 	const body = cause.body as { subStatus?: number } | null;
 	return (
@@ -342,7 +344,7 @@ export async function fetchTrackStream(
 
 	const data = (await response.json()) as TrackStreamResponse;
 	if (String(data.trackId) !== String(trackId)) {
-		throw new TidalError('Playback response did not match the requested recording');
+		throw new TidalRecordingRemappedError(String(trackId), String(data.trackId));
 	}
 	const parsed = parseTrackStream(data);
 
@@ -402,6 +404,8 @@ export async function resolveTrackStream(
 		} catch (err) {
 			lastError = err;
 			if (subStatusOf(err) === SUBSTATUS_QUALITY_NOT_ALLOWED) continue;
+			// A remap is the same at every quality; other tiers cannot change it.
+			if (err instanceof TidalRecordingRemappedError) throw err;
 			if (isTrackUnavailableForPlayback(err)) {
 				unavailableError = err;
 				continue;

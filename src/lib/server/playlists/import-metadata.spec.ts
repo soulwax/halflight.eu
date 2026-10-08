@@ -39,6 +39,33 @@ describe('import recording metadata', () => {
 		expect(read).toHaveBeenCalledTimes(2);
 		expect(read).toHaveBeenCalledWith('2', { include: ['artists', 'albums'] }, {});
 	});
+	it('uses complete side-loaded metadata without per-recording reads, even without artwork', async () => {
+		const complete: Document<Resource> = {
+			data: {
+				id: 'playlist',
+				type: 'playlists',
+				attributes: { title: 'Source', numberOfItems: 1 },
+				relationships: { items: { data: [{ id: '1', type: 'tracks' }] } }
+			},
+			included: [
+				{
+					id: '1',
+					type: 'tracks',
+					attributes: { title: 'Side-loaded' },
+					relationships: {
+						artists: { data: [{ id: 'artist', type: 'artists' }] },
+						albums: { data: [{ id: 'album', type: 'albums' }] }
+					}
+				},
+				{ id: 'artist', type: 'artists', attributes: { name: 'Artist' } },
+				{ id: 'album', type: 'albums', attributes: { title: 'Album' } }
+			]
+		};
+		const read = vi.fn();
+		const playlist = await resolveImportMetadata(complete, {}, read);
+		expect(playlist.items.map(({ id, title }) => [id, title])).toEqual([['1', 'Side-loaded']]);
+		expect(read).not.toHaveBeenCalled();
+	});
 	it('rejects metadata for a different recording instead of matching by title', async () => {
 		const read = vi.fn(async () => ({
 			data: { id: '99', type: 'tracks', attributes: { title: 'Same title' } }

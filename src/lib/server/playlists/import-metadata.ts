@@ -42,12 +42,8 @@ export async function resolveImportMetadata(
 				// Complete, ID-indexed compound metadata is already authoritative for this snapshot.
 				// Fetch individually only when the provider left holes; checking every ID again
 				// causes a burst of redundant catalogue calls before playback verification starts.
-				if (
-					included?.title.trim() &&
-					included.artists.length &&
-					included.album?.id &&
-					(included.album.imageUrl || included.imageUrl)
-				)
+				// Artwork is not required: neither the playlist nor the track read side-loads it.
+				if (included?.title.trim() && included.artists.length && included.album?.id)
 					return included;
 				let detail;
 				try {

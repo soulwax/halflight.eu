@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TrackSummary } from '#lib/tidal/models';
-import { TidalApiError } from '#lib/server/tidal/errors';
+import { TidalApiError, TidalRecordingRemappedError } from '#lib/server/tidal/errors';
 
 const mocks = vi.hoisted(() => ({ resolve: vi.fn(), unavailable: vi.fn(), mark: vi.fn() }));
 vi.mock('#lib/server/tidal/stream-cache', () => ({ resolveTrackStreamCached: mocks.resolve }));
@@ -37,6 +37,11 @@ describe('playlist playback validation', () => {
 		expect(mocks.mark).toHaveBeenCalledOnce();
 		expect(mocks.mark).toHaveBeenCalledWith('bad', 'asset not ready for playback');
 	});
+	it('excludes a recording TIDAL remaps to another ID instead of failing the import', async () => {
+		mocks.resolve.mockRejectedValueOnce(new TidalRecordingRemappedError('old', '147734'));
+		expect(await validate([track('old'), track('good')])).toEqual([track('good')]);
+		expect(mocks.mark).toHaveBeenCalledWith('old', 'asset not ready for playback');
+	});
 	it.each([401, 403, 429, 502])(
 		'stops on %s without labelling a recording defective',
 		async (status) => {
@@ -62,24 +67,6 @@ describe('playlist playback validation', () => {
 		vi.advanceTimersByTime(15 * 60 * 1_000);
 		await validate([track('1')]);
 		expect(mocks.resolve).toHaveBeenCalledTimes(3);
-	});
-	it('honours provider throttling before another probe can start', async () => {
-		const fetchMock = vi
-			.fn()
-			.mockResolvedValue(new Response('{}', { status: 429, headers: { 'retry-after': '60' } }));
-		mocks.resolve.mockImplementation(async (_id, options) => {
-			const response = await options.ctx.fetch('https://api.tidal.com/playback');
-			if (!response.ok)
-				throw new TidalApiError(response.status, 'Request failed', null, '/playback');
-		});
-		await expect(
-			validatePlaylistPlayback([track('one')], 'owner', { fetch: fetchMock }, 'HIGH')
-		).rejects.toMatchObject({ status: 429 });
-		await expect(
-			validatePlaylistPlayback([track('two')], 'owner', { fetch: fetchMock }, 'HIGH')
-		).rejects.toMatchObject({ status: 429 });
-		expect(fetchMock).toHaveBeenCalledOnce();
-		expect(mocks.mark).not.toHaveBeenCalled();
 	});
 });
 

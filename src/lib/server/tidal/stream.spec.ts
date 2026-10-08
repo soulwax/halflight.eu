@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
 	describePlaybackDelivery,
 	fetchTrackStream,
+	isTrackUnavailableForPlayback,
 	parseManifestXml,
 	parseTrackStream,
 	resolveTrackStream,
@@ -9,7 +10,7 @@ import {
 	type TrackStreamResponse
 } from './stream';
 import { writePlaybackRecord, type TokenRowStore, type TokenSlot } from './store';
-import { TidalApiError, TidalError } from './errors';
+import { TidalApiError, TidalError, TidalRecordingRemappedError } from './errors';
 
 function memoryStore(): TokenRowStore {
 	const blobs: Record<TokenSlot, string | null> = { primary: null, playback: null };
@@ -538,11 +539,26 @@ describe('resolveTrackStream quality ladder', () => {
 		).rejects.toBeInstanceOf(TidalApiError);
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 	});
+
+	it('treats a remapped recording as unavailable without walking the quality ladder', async () => {
+		const store = await storeWithPlayback();
+		const fetchMock = vi.fn(async () => Response.json({ trackId: 147734 }));
+		const refused = resolveTrackStream('44768802', { ctx: { fetch: fetchMock as never, store } });
+		await expect(refused).rejects.toBeInstanceOf(TidalRecordingRemappedError);
+		await refused.catch((cause) => expect(isTrackUnavailableForPlayback(cause)).toBe(true));
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+	});
 });
 
 it('refuses a stream manifest for a different recording ID', async () => {
 	const fetchMock = vi.fn().mockResolvedValue(Response.json({ trackId: 999 }));
-	await expect(
-		fetchTrackStream('18343352', { accessToken: 'test-token', ctx: { fetch: fetchMock } })
-	).rejects.toThrow('did not match the requested recording');
+	const refused = fetchTrackStream('18343352', {
+		accessToken: 'test-token',
+		ctx: { fetch: fetchMock }
+	});
+	await expect(refused).rejects.toThrow('did not match the requested recording');
+	await expect(refused).rejects.toMatchObject({
+		requestedTrackId: '18343352',
+		servedTrackId: '999'
+	});
 });
