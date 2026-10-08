@@ -216,6 +216,7 @@ export class PlayerState {
 	isLyricsLoading = $state(false);
 	isLyricsOpen = $derived(this.isExpanded && this.panel === 'lyrics');
 	private lyricAnimationFrame: number | null = null;
+	private lyricsRequestGeneration = 0;
 
 	private readonly engine = new AudioEngine({
 		onTimeUpdate: (currentTime) => this.onTimeUpdate(currentTime),
@@ -228,11 +229,13 @@ export class PlayerState {
 		onProgress: () => this.updateBuffer(),
 		onWaiting: () => {
 			this.isBuffering = true;
+			this.coordinator?.schedulePersistence();
 		},
 		onPlaying: () => {
 			this.tasteListen.rebase(this.engine.currentTime);
 			this.isBuffering = false;
 			this.isPlaying = true;
+			this.coordinator?.schedulePersistence();
 			this.startLyricClock();
 			updatePlaybackState(true);
 		},
@@ -249,6 +252,8 @@ export class PlayerState {
 		onPause: () => {
 			this.tasteListen.rebase(this.engine.currentTime);
 			this.isPlaying = false;
+			this.currentTime = this.engine.currentTime;
+			this.coordinator?.schedulePersistence();
 			this.updateSyncedLyricTime(this.engine.currentTime);
 			this.stopLyricClock();
 			updatePlaybackState(false);
@@ -390,8 +395,11 @@ export class PlayerState {
 				currentTrack: this.currentTrack,
 				queue: this.queue,
 				history: this.history,
-				currentTime: this.currentTime,
-				isPlaying: this.isPlaying,
+				currentTime:
+					this.isPlaying && !this.isLoading && this.engine.currentSrc
+						? this.engine.currentTime
+						: this.currentTime,
+				isPlaying: this.isPlaying && !this.isBuffering && !this.isLoading,
 				hasLocalMedia: Boolean(this.streamUrl || this.engine.currentSrc)
 			}),
 			onApplyQueue: (queue) => {
@@ -407,7 +415,7 @@ export class PlayerState {
 					void this.checkResumeAvailability(state.currentTrack.id);
 				}
 				this.history = state.history.slice(-MAX_HISTORY_LENGTH);
-				this.currentTime = Math.max(0, Math.floor(state.currentTime));
+				this.currentTime = Math.max(0, state.currentTime);
 				this.duration = state.currentTrack?.duration ?? 0;
 				if (this.currentTrack) {
 					void this.resolveCover(this.currentTrack);
@@ -422,7 +430,9 @@ export class PlayerState {
 				this.persistenceStatus = status;
 			},
 			onActiveDeviceChange: (device) => {
+				const lostLease = this.activeDevice?.isCurrent && device && !device.isCurrent;
 				this.activeDevice = device;
+				if (lostLease && (this.isPlaying || this.isLoading)) this.pausePlayback();
 			},
 			onHydrateMetadata: (tracks) => {
 				this.hydrateTrackMetadata(tracks);
@@ -498,8 +508,8 @@ export class PlayerState {
 	 * would lose the browser's user-activation gesture and make playback feel
 	 * slower. The authoritative server response still decides the resume owner.
 	 */
-	async takePlaybackControl(): Promise<boolean> {
-		const result = await this.coordinator.takePlaybackControl();
+	async takePlaybackControl(applySession = false): Promise<boolean> {
+		const result = await this.coordinator.takePlaybackControl(applySession);
 		this.activeDevice = this.coordinator.activeDevice;
 		return result;
 	}
@@ -507,13 +517,17 @@ export class PlayerState {
 	/** Start the current track locally while deliberately taking shared control. */
 	playHere(): void {
 		if (!this.currentTrack || this.isLoading || this.playbackClaimPending) return;
-		void this.takePlaybackControl();
-		if (this.playbackMode === 'embed') {
+		// Unlock audio synchronously, then use the claim's canonical position.
+		this.engine.init();
+		this.engine.resume();
+		const generation = this.streamLoadGeneration;
+		void this.takePlaybackControl(true).then((claimed) => {
+			if (!claimed || generation !== this.streamLoadGeneration || !this.currentTrack) return;
 			this.playbackMode = 'direct';
 			this.streamUrl = null;
 			this.playbackReason = null;
-		}
-		this.resumePlayback();
+			void this.loadAndPlayStream(this.currentTrack.id);
+		});
 	}
 
 	private claimPlaybackControlForIntent(): void {
@@ -621,7 +635,7 @@ export class PlayerState {
 			this.history = history;
 			this.coordinator.restoreQueueCommands(queueCommands);
 			if (typeof parsed.currentTime === 'number' && Number.isFinite(parsed.currentTime)) {
-				this.currentTime = Math.max(0, Math.floor(parsed.currentTime));
+				this.currentTime = Math.max(0, parsed.currentTime);
 				this.duration = currentTrack?.duration ?? 0;
 			}
 			this.hasHydratedFromLocalCache = true;
@@ -669,7 +683,7 @@ export class PlayerState {
 	}
 
 	private updateSyncedLyricTime(time: number): void {
-		if (!Number.isFinite(time)) return;
+		if (!Number.isFinite(time) || this.isLoading) return;
 		const currentIndex = activeLyricIndexAt(this.lyricsCues, this.lyricTime);
 		if (activeLyricIndexAt(this.lyricsCues, time) !== currentIndex) this.lyricTime = time;
 	}
@@ -679,6 +693,7 @@ export class PlayerState {
 			!isBrowser ||
 			typeof requestAnimationFrame !== 'function' ||
 			!this.isPlaying ||
+			this.isLoading ||
 			!this.lyricsCues.length ||
 			this.lyricAnimationFrame !== null
 		) {
@@ -686,7 +701,7 @@ export class PlayerState {
 		}
 		const tick = () => {
 			this.lyricAnimationFrame = null;
-			if (!this.isPlaying || !this.lyricsCues.length) return;
+			if (!this.isPlaying || !this.lyricsCues.length || this.isLoading) return;
 			this.updateSyncedLyricTime(this.engine.currentTime);
 			this.lyricAnimationFrame = requestAnimationFrame(tick);
 		};
@@ -741,7 +756,7 @@ export class PlayerState {
 		this.lastObservedPlaybackTime = this.currentTime;
 		this.reportTasteListen(currentTime);
 		this.reportScrobbleWhenEligible();
-		if (Math.abs(this.currentTime - this.lastPersistedPosition) >= 15) {
+		if (Math.abs(this.currentTime - this.lastPersistedPosition) >= 3) {
 			this.lastPersistedPosition = this.currentTime;
 			this.schedulePersistence();
 		}
@@ -1185,6 +1200,7 @@ export class PlayerState {
 	}
 
 	async loadLyrics(trackId: string, trackHint?: TrackSummary | null): Promise<void> {
+		const generation = ++this.lyricsRequestGeneration;
 		if (!isBrowser) return;
 		this.isLyricsLoading = true;
 		try {
@@ -1204,7 +1220,7 @@ export class PlayerState {
 			);
 
 			// Discard late response if track changed while fetching
-			if (this.currentTrack?.id !== trackId) return;
+			if (this.currentTrack?.id !== trackId || generation !== this.lyricsRequestGeneration) return;
 
 			if (res && res.ok) {
 				const data = (await res.json().catch(() => null)) as {
@@ -1214,7 +1230,13 @@ export class PlayerState {
 					lyricsProvider?: string;
 				} | null;
 
-				if (data) {
+				if (generation !== this.lyricsRequestGeneration || this.currentTrack?.id !== trackId)
+					return;
+				if (
+					data &&
+					generation === this.lyricsRequestGeneration &&
+					this.currentTrack?.id === trackId
+				) {
 					this.lyrics = data.lyrics || null;
 					this.lyricsCues = data.cues || [];
 					this.lyricTime = this.engine.currentTime;
@@ -1228,14 +1250,14 @@ export class PlayerState {
 			this.stopLyricClock();
 			this.lyricsProvider = null;
 		} catch {
-			if (this.currentTrack?.id === trackId) {
+			if (this.currentTrack?.id === trackId && generation === this.lyricsRequestGeneration) {
 				this.lyrics = null;
 				this.lyricsCues = [];
 				this.stopLyricClock();
 				this.lyricsProvider = null;
 			}
 		} finally {
-			if (this.currentTrack?.id === trackId) {
+			if (this.currentTrack?.id === trackId && generation === this.lyricsRequestGeneration) {
 				this.isLyricsLoading = false;
 			}
 		}
@@ -1399,6 +1421,7 @@ export class PlayerState {
 			if (!started) this.playbackMode = 'embed';
 			this.isPlaying = !this.engine.paused;
 			this.isLoading = false;
+			this.startLyricClock();
 
 			// Immediately preload the next track in queue
 			if (this.queue.length > 0) {
@@ -1484,7 +1507,7 @@ export class PlayerState {
 	}
 
 	private clampToTrack(seconds: number): number {
-		return Math.max(0, Math.min(seconds, this.duration || 9999));
+		return Number.isFinite(seconds) ? Math.max(0, Math.min(seconds, this.duration || 9999)) : NaN;
 	}
 
 	/**
@@ -1512,7 +1535,11 @@ export class PlayerState {
 
 	seek(seconds: number): void {
 		const target = this.clampToTrack(seconds);
+		if (!Number.isFinite(target)) return;
 		this.currentTime = target;
+		this.lyricTime = target;
+		this.lastObservedPlaybackTime = target;
+		this.tasteListen.rebase(target);
 		this.engine.seek(target);
 		this.lastPersistedPosition = target;
 		this.schedulePersistence();
@@ -1820,7 +1847,7 @@ export class PlayerState {
 				: 'ready';
 		this.queue = state.queue.slice(0, MAX_QUEUE_LENGTH);
 		this.history = state.history.slice(-MAX_HISTORY_LENGTH);
-		this.currentTime = Math.max(0, Math.floor(state.currentTime));
+		this.currentTime = Math.max(0, state.currentTime);
 		this.playbackStateRevision = Math.max(0, state.revision ?? 0);
 		this.applyActiveDevice(state);
 		const pendingQueueCommands = this.queueCommands.slice();

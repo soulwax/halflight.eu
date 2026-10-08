@@ -1,5 +1,10 @@
 import {
 	ArrowDown,
+	ChevronDown,
+	ChevronUp,
+	ListMusic,
+	Mic2,
+	PictureInPicture2,
 	ArrowUp,
 	Disc3,
 	ExternalLink,
@@ -240,7 +245,12 @@ export function mediaActions(
 	return [
 		{
 			id: 'open',
-			label: m.context_open(),
+			label:
+				kind === 'album'
+					? m.context_go_to_album()
+					: kind === 'artist'
+						? m.context_go_to_artist()
+						: m.context_open(),
 			icon: SquareArrowOutUpRight,
 			onSelect: () => goto(path)
 		},
@@ -254,5 +264,48 @@ export function mediaActions(
 		},
 		{ id: 'copy-link', label: m.context_copy_link(), icon: Link, onSelect: () => copyLink(path) },
 		...shareAction(path, title)
+	];
+}
+
+/** The player frame controls layout; songs and media links keep their own menus. */
+export function playerLayoutActions(allowDock = true): ContextAction[] {
+	const expanded = player.isExpanded;
+	return [
+		{
+			id: 'toggle-expanded',
+			label: player.isExpanded ? m.player_collapse() : m.player_expand(),
+			icon: player.isExpanded ? ChevronDown : ChevronUp,
+			onSelect: () => {
+				player.isExpanded = !expanded;
+			}
+		},
+		{
+			id: 'queue',
+			label: m.player_queue(),
+			icon: ListMusic,
+			onSelect: () => player.selectPanel('queue')
+		},
+		{
+			id: 'lyrics',
+			label: m.player_lyrics(),
+			icon: Mic2,
+			onSelect: () => player.selectPanel('lyrics')
+		},
+		{
+			id: 'source',
+			label: m.player_source(),
+			icon: Radio,
+			onSelect: () => player.selectPanel('source')
+		},
+		...(allowDock
+			? [
+					{
+						id: 'toggle-dock',
+						label: player.dockMode === 'floating' ? m.player_dock() : m.player_undock(),
+						icon: PictureInPicture2,
+						onSelect: () => player.toggleDock()
+					}
+				]
+			: [])
 	];
 }

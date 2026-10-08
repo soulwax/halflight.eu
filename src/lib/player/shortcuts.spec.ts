@@ -97,3 +97,15 @@ describe('shortcuts.ts', () => {
 		expect(actions.toggleDock).toHaveBeenCalledOnce();
 	});
 });
+it('leaves handled keys and menu/dialog navigation to their own controls', () => {
+	const actions = createMockActions();
+	const prevented = {
+		...mockKeyEvent({ code: 'ArrowUp' }),
+		defaultPrevented: true
+	} as KeyboardEvent;
+	expect(handlePlayerKeydown(prevented, actions)).toBe(false);
+	const target = { closest: () => ({}) } as unknown as EventTarget;
+	expect(handlePlayerKeydown(mockKeyEvent({ code: 'ArrowRight', target }), actions)).toBe(false);
+	expect(actions.adjustVolume).not.toHaveBeenCalled();
+	expect(actions.seekBy).not.toHaveBeenCalled();
+});

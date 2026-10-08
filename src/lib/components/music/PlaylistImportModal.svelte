@@ -1,6 +1,8 @@
 <script lang="ts">
-	import { onDestroy } from 'svelte';
+	import { onDestroy, untrack } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
+	import type { TrackSummary } from '#lib/tidal/models';
+	import SearchField from '#lib/components/ui/SearchField.svelte';
 	import { Check, Download, Loader2, Music } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { customPlaylists } from '#lib/player/customPlaylists.svelte';
@@ -32,6 +34,111 @@
 	let importController: AbortController | null = null;
 	const selectedIds = new SvelteSet<string>();
 	let isImporting = $state(false);
+	let notification = $state<string | null>(null);
+	let reviewQueue = $state<{ playlistId: string; source: TrackSummary }[]>([]);
+	let review = $state<{ playlistId: string; source: TrackSummary } | null>(null);
+	let reviewCandidates = $state<TrackSummary[]>([]);
+	let reviewQuery = $state('');
+	let reviewVersion = '';
+	let reviewBusy = $state(false);
+	let reviewError = $state(false);
+	let reviewGeneration = 0;
+	let reviewController: AbortController | null = null;
+	async function nextReview() {
+		review = reviewQueue[0] ?? null;
+		reviewQueue = reviewQueue.slice(1);
+		if (!review) return;
+		reviewQuery = `${review.source.title} ${review.source.artists[0]?.name ?? ''}`.trim();
+		customPlaylists.closeImport();
+		await searchReview(false);
+	}
+	async function searchReview(manual = true) {
+		if (!review) return;
+		const current = review;
+		const generation = ++reviewGeneration;
+		reviewController?.abort();
+		reviewController = new AbortController();
+		reviewBusy = true;
+		reviewError = false;
+		reviewCandidates = [];
+		try {
+			const params = new URLSearchParams({
+				sourceId: current.source.id,
+				...(manual ? { q: reviewQuery } : {})
+			});
+			const response = await fetch(
+				`/api/playlists/${encodeURIComponent(current.playlistId)}/repair-import?${params}`,
+				{ signal: AbortSignal.any([reviewController.signal, AbortSignal.timeout(60_000)]) }
+			);
+			if (!response.ok) throw new Error('Repair search unavailable');
+			const body = await response.json();
+			if (generation !== reviewGeneration || review !== current) return;
+			reviewCandidates = body.candidates;
+			reviewVersion = body.version;
+		} catch {
+			if (generation === reviewGeneration) reviewError = true;
+		} finally {
+			if (generation === reviewGeneration) reviewBusy = false;
+		}
+	}
+	async function acceptReview(candidate: TrackSummary) {
+		if (!review || reviewBusy) return;
+		reviewBusy = true;
+		reviewError = false;
+		const current = review;
+		try {
+			const response = await fetch(
+				`/api/playlists/${encodeURIComponent(current.playlistId)}/repair-import`,
+				{
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						sourceId: current.source.id,
+						candidateId: candidate.id,
+						version: reviewVersion
+					}),
+					signal: AbortSignal.timeout(90_000)
+				}
+			);
+			if (!response.ok) throw new Error('Repair failed');
+			const result = await response.json().catch(() => null);
+			const restored =
+				Number.isSafeInteger(result?.restoredCount) && result.restoredCount > 0
+					? result.restoredCount
+					: 1;
+			outcomes = outcomes.map((outcome) =>
+				outcome.playlistId === current.playlistId
+					? {
+							...outcome,
+							tracksSkipped: Math.max(0, outcome.tracksSkipped - restored),
+							tracksReplaced: outcome.tracksReplaced + restored,
+							unmatchedTracks: outcome.unmatchedTracks?.filter(
+								(track) => track.id !== current.source.id
+							)
+						}
+					: outcome
+			);
+			await Promise.allSettled([
+				customPlaylists.syncWithServer(),
+				Promise.resolve().then(() => onImported?.())
+			]);
+			if (review !== current) return;
+			reviewBusy = false;
+			await nextReview();
+		} catch {
+			if (review === current) {
+				reviewBusy = false;
+				reviewError = true;
+			}
+		}
+	}
+	function skipReview() {
+		reviewGeneration++;
+		reviewController?.abort();
+		reviewBusy = false;
+		void nextReview();
+	}
+
 	let stopRequested = $state(false);
 	let outcomes = $state<ImportResult[]>([]);
 	let currentTitle = $state('');
@@ -47,26 +154,43 @@
 			? `${m.playlist_import_done()} (${successful.length}) ${m.playlist_import_source_preserved()} ${m.playlist_import_streams_adjusted({ replaced: successful.reduce((sum, result) => sum + result.tracksReplaced, 0), skipped: successful.reduce((sum, result) => sum + result.tracksSkipped, 0) })}`
 			: null
 	);
+
 	$effect(() => {
-		if (customPlaylists.isImportOpen) {
-			void loadPlaylists();
-		} else {
-			loadVersion += 1;
-			importVersion += 1;
-			loadController?.abort();
-			importController?.abort();
-			playlists = [];
-			importError = null;
-			selectedIds.clear();
-			outcomes = [];
-			isImporting = false;
-		}
+		const open = customPlaylists.isImportOpen;
+		untrack(() => {
+			if (open) {
+				notification = null;
+				if (!isImporting) void loadPlaylists();
+			} else if (!isImporting && !notification) {
+				loadVersion++;
+				importVersion++;
+				loadController?.abort();
+				playlists = [];
+				importError = null;
+				selectedIds.clear();
+				outcomes = [];
+			}
+		});
 	});
+
+	$effect(() => {
+		const requests = customPlaylists.importReviewRequests;
+		if (!requests.length) return;
+		untrack(() => {
+			customPlaylists.importReviewRequests = [];
+			reviewQueue = [...reviewQueue, ...requests];
+			if (!isImporting && !review) void nextReview();
+		});
+	});
+
 	onDestroy(() => {
 		loadVersion += 1;
 		importVersion += 1;
 		loadController?.abort();
 		importController?.abort();
+		reviewController?.abort();
+		reviewGeneration++;
+		customPlaylists.importReviewRequests = [];
 	});
 	async function loadPlaylists() {
 		const version = ++loadVersion;
@@ -135,6 +259,7 @@
 		const controller = new AbortController();
 		importController = controller;
 		isImporting = true;
+		notification = null;
 		stopRequested = false;
 		importError = null;
 		completed = 0;
@@ -177,6 +302,14 @@
 				if (result.status === 'created' || result.status === 'synced') {
 					selectedIds.delete(id);
 					changed = true;
+					if (result.playlistId)
+						reviewQueue = [
+							...reviewQueue,
+							...(result.unmatchedTracks ?? []).map((source) => ({
+								playlistId: result.playlistId!,
+								source
+							}))
+						];
 				}
 			}
 			if (version !== importVersion) return;
@@ -203,6 +336,8 @@
 			if (version === importVersion) {
 				isImporting = false;
 				currentTitle = '';
+				if (reviewQueue.length && !review) void nextReview();
+				if (!customPlaylists.isImportOpen) notification = importError ?? m.playlist_import_done();
 			}
 		}
 	}
@@ -212,9 +347,9 @@
 	open={customPlaylists.isImportOpen}
 	title={m.playlist_import()}
 	description={m.playlist_import_explanation()}
-	closeDisabled={isImporting}
+	closeDisabled={false}
 	onOpenChange={(open) => {
-		if (!open && !isImporting) customPlaylists.closeImport();
+		if (!open) customPlaylists.closeImport();
 	}}
 >
 	<div class="modal-body">
@@ -320,6 +455,9 @@
 	</div>
 
 	<footer class="modal-footer">
+		{#if isImporting}<Button variant="secondary" onclick={() => customPlaylists.closeImport()}
+				>{m.playlist_import_minimize()}</Button
+			>{/if}
 		<Button
 			variant="secondary"
 			onclick={() => {
@@ -353,7 +491,127 @@
 	</footer>
 </Dialog>
 
+{#if !customPlaylists.isImportOpen && (isImporting || notification)}
+	<aside class="import-background" aria-label={m.playlist_import()}>
+		<button type="button" class="background-open" onclick={() => customPlaylists.openImport()}>
+			{#if isImporting}<Loader2 size={16} class="animate-spin" /><span
+					>{m.playlist_import_progress({ completed, total: batchTotal })}</span
+				>{:else}<Check size={16} /><span role="status">{notification}</span>{/if}
+		</button>
+		{#if !isImporting}<button
+				type="button"
+				class="background-dismiss"
+				aria-label={m.action_close()}
+				onclick={() => {
+					notification = null;
+					outcomes = [];
+					playlists = [];
+				}}>{m.action_close()}</button
+			>{/if}
+	</aside>
+{/if}
+
+<Dialog
+	open={Boolean(review)}
+	title={m.playlist_import_match_title()}
+	description={m.playlist_import_match_description()}
+	closeDisabled={reviewBusy}
+	onOpenChange={(open) => {
+		if (!open && !reviewBusy) skipReview();
+	}}
+>
+	{#if review}
+		<section class="match-body">
+			<p>
+				<strong>{review.source.title}</strong> · {review.source.artists
+					.map((artist) => artist.name)
+					.join(', ')}
+			</p>
+			<SearchField
+				id="import-match-search"
+				label={m.search_button()}
+				placeholder={m.search_button()}
+				value={reviewQuery}
+				oninput={(event) => {
+					reviewQuery = (event.currentTarget as HTMLInputElement).value;
+				}}
+				onclear={() => {
+					reviewQuery = '';
+				}}
+				onkeydown={(event) => {
+					if (event.key === 'Enter' && !event.isComposing) void searchReview();
+				}}
+			/>
+			<Button disabled={reviewBusy || !reviewQuery.trim()} onclick={() => void searchReview()}
+				>{m.search_button()}</Button
+			>
+			{#if reviewError}<Notice tone="danger">{m.playlist_import_match_failed()}</Notice>{/if}
+			{#if reviewBusy}<p role="status">
+					{m.playlist_import_importing()}
+				</p>{:else if !reviewCandidates.length}<p>{m.playlist_import_match_empty()}</p>{/if}
+			{#each reviewCandidates as candidate (candidate.id)}
+				<button
+					class="match-candidate"
+					type="button"
+					disabled={reviewBusy}
+					onclick={() => void acceptReview(candidate)}
+					><strong>{candidate.title}</strong><span
+						>{candidate.artists.map((artist) => artist.name).join(', ')}</span
+					></button
+				>
+			{/each}
+			<Button variant="secondary" disabled={reviewBusy} onclick={skipReview}
+				>{m.playlist_import_match_skip()}</Button
+			>
+		</section>
+	{/if}
+</Dialog>
+
 <style>
+	.match-body {
+		padding: 1rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+	.match-candidate {
+		display: flex;
+		flex-direction: column;
+		text-align: left;
+		padding: 0.8rem;
+		border: 1px solid var(--border-subtle);
+		background: var(--paper);
+		color: var(--text-primary);
+		cursor: pointer;
+		min-height: 48px;
+	}
+	.import-background {
+		position: fixed;
+		z-index: 140;
+		right: 1rem;
+		bottom: calc(env(safe-area-inset-bottom) + 9.5rem);
+		display: flex;
+		max-width: calc(100vw - 2rem);
+		gap: 0.5rem;
+		padding: 0.5rem;
+		background: var(--surface-raised);
+		border: 1px solid var(--border-strong);
+		border-radius: var(--radius-lg, 12px);
+		box-shadow: var(--shadow-float);
+	}
+	.background-open,
+	.background-dismiss {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		min-height: 44px;
+		border: 0;
+		color: var(--text-primary);
+		background: transparent;
+		cursor: pointer;
+		font: inherit;
+		font-size: 0.85rem;
+	}
 	.modal-body {
 		padding: 1.25rem 1.5rem;
 		overflow-y: auto;

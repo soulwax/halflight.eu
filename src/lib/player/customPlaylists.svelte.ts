@@ -39,6 +39,23 @@ export function reconcilePlaylistsWithServer(
 export class CustomPlaylistsManager {
 	playlists = $state<CustomPlaylist[]>([]);
 	isImportOpen = $state(false);
+	importReviewRequests = $state<{ playlistId: string; source: TrackSummary }[]>([]);
+	requestImportReview(result: {
+		status?: string;
+		playlistId?: string;
+		unmatchedTracks?: TrackSummary[];
+	}): void {
+		if (!result.playlistId || !['created', 'synced'].includes(result.status ?? '')) return;
+		for (const source of result.unmatchedTracks ?? []) {
+			if (
+				source?.kind === 'track' &&
+				!this.importReviewRequests.some(
+					(request) => request.playlistId === result.playlistId && request.source.id === source.id
+				)
+			)
+				this.importReviewRequests.push({ playlistId: result.playlistId, source });
+		}
+	}
 	selectedTrackForPlaylist = $state<TrackSummary | null>(null);
 	isSyncing = $state(false);
 
@@ -250,7 +267,12 @@ export class CustomPlaylistsManager {
 				new AbortController().signal
 			);
 			if (res.ok) {
-				const result = (await res.json()) as { status?: string };
+				const result = (await res.json()) as {
+					status?: string;
+					playlistId?: string;
+					unmatchedTracks?: TrackSummary[];
+				};
+				this.requestImportReview(result);
 				await this.syncWithServer();
 				return result.status === 'synced' || result.status === 'created';
 			}
@@ -290,6 +312,7 @@ export class CustomPlaylistsManager {
 
 			const pushData = pushRes.ok ? await pushRes.json() : null;
 			const pullData = pullRes.ok ? await pullRes.json() : null;
+			for (const result of pullData?.results ?? []) this.requestImportReview(result);
 
 			return {
 				totalSynced: (pushData?.totalSynced ?? 0) + (pullData?.totalSynced ?? 0),

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { ListMusic, Mic2, Move, Radio } from '@lucide/svelte';
+	import { ChevronDown, ListMusic, Mic2, Move, Radio } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { player } from '#lib/player/player.svelte.js';
 	import type { TrackSummary } from '#lib/tidal/models';
@@ -40,38 +40,51 @@
 				<PlayerVolume />
 			</div>
 
-			<div class="tabs" role="tablist">
+			<div class="panel-heading">
+				<div class="tabs" role="tablist">
+					<button
+						type="button"
+						role="tab"
+						aria-selected={player.panel === 'queue'}
+						class:on={player.panel === 'queue'}
+						onclick={() => player.selectPanel('queue')}
+					>
+						<ListMusic size={13} />
+						{m.player_queue()}
+						{#if player.queueCount}<span class="tab-count">{player.queueCount}</span>{/if}
+					</button>
+					<button
+						type="button"
+						role="tab"
+						aria-selected={player.panel === 'lyrics'}
+						class:on={player.panel === 'lyrics'}
+						onclick={() => player.selectPanel('lyrics')}
+					>
+						<Mic2 size={13} />
+						{m.player_lyrics()}
+					</button>
+					<button
+						type="button"
+						role="tab"
+						aria-selected={player.panel === 'source'}
+						class:on={player.panel === 'source'}
+						onclick={() => player.selectPanel('source')}
+					>
+						<Radio size={13} />
+						{m.player_source()}
+					</button>
+				</div>
+
 				<button
 					type="button"
-					role="tab"
-					aria-selected={player.panel === 'queue'}
-					class:on={player.panel === 'queue'}
-					onclick={() => player.selectPanel('queue')}
+					class="panel-collapse"
+					onclick={() => {
+						player.isExpanded = false;
+					}}
+					aria-label={m.player_collapse()}
+					title={`${m.player_collapse()} (Esc)`}
+					><ChevronDown size={18} /><span>{m.player_collapse()}</span></button
 				>
-					<ListMusic size={13} />
-					{m.player_queue()}
-					{#if player.queueCount}<span class="tab-count">{player.queueCount}</span>{/if}
-				</button>
-				<button
-					type="button"
-					role="tab"
-					aria-selected={player.panel === 'lyrics'}
-					class:on={player.panel === 'lyrics'}
-					onclick={() => player.selectPanel('lyrics')}
-				>
-					<Mic2 size={13} />
-					{m.player_lyrics()}
-				</button>
-				<button
-					type="button"
-					role="tab"
-					aria-selected={player.panel === 'source'}
-					class:on={player.panel === 'source'}
-					onclick={() => player.selectPanel('source')}
-				>
-					<Radio size={13} />
-					{m.player_source()}
-				</button>
 			</div>
 
 			<div class="panel-body">

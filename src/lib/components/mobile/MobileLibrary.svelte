@@ -7,7 +7,6 @@
 	import { m } from '#lib/paraglide/messages.js';
 	import PlaylistCover from '#lib/components/music/PlaylistCover.svelte';
 	import PrivateMusicShelf from '#lib/components/music/PrivateMusicShelf.svelte';
-	import PlaylistImportModal from '#lib/components/music/PlaylistImportModal.svelte';
 	import SearchField from '#lib/components/ui/SearchField.svelte';
 	import { customPlaylists } from '#lib/player/customPlaylists.svelte';
 	import { player } from '#lib/player/player.svelte.js';
@@ -238,7 +237,6 @@
 	{#if data.tab !== 'private'}
 		<a class="attribution" href="https://tidal.com" rel="noreferrer">{m.tidal_attribution()}</a>
 	{/if}
-	<PlaylistImportModal onImported={invalidateAll} />
 </section>
 
 <Dialog

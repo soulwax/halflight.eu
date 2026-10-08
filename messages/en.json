@@ -488,7 +488,7 @@
 	"player_previous": "Previous track",
 	"player_next": "Next track",
 	"player_expand": "Expand player",
-	"player_collapse": "Collapse player",
+	"player_collapse": "Minimise player",
 	"player_close": "Close player",
 	"player_shuffle": "Shuffle",
 	"player_repeat": "Repeat",
@@ -910,5 +910,11 @@
 	"listening_prefs_playlists_hint": "A background worker reads your playlists slowly, one every 90 seconds on the first pass, and keeps only artist and decade weights. Turning this off removes them.",
 	"taste_playlist_analysis_running": "Analysing your playlists in the background: {analysed} of {total} so far. The first pass is deliberately slow.",
 	"taste_playlist_analysis_waiting": "Your playlists will be analysed in the background shortly.",
-	"taste_playlist_analysis_done": "Playlist analysis covers {count} playlists and refreshes daily."
+	"taste_playlist_analysis_done": "Playlist analysis covers {count} playlists and refreshes daily.",
+	"playlist_import_minimize": "Minimise",
+	"playlist_import_match_title": "Choose a playable recording",
+	"playlist_import_match_description": "This song could not be matched automatically. Choose a replacement to restore it in its original playlist position, or leave it out.",
+	"playlist_import_match_failed": "Could not update this playlist. It may have changed, or this recording cannot play. Search again to refresh.",
+	"playlist_import_match_empty": "No safe automatic match. Adjust the search to find another recording.",
+	"playlist_import_match_skip": "Leave this song out"
 }

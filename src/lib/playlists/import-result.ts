@@ -1,5 +1,8 @@
+import type { TrackSummary } from '#lib/tidal/models';
 export interface ImportResult {
 	tidalPlaylistId: string;
+	playlistId?: string;
+	unmatchedTracks?: TrackSummary[];
 	status: 'created' | 'synced' | 'error' | 'conflict';
 	tracksSkipped: number;
 	tracksReplaced: number;
@@ -32,6 +35,16 @@ export function readImportResult(value: unknown, requestedId: string): ImportRes
 	if (bestFits > replaced) throw new Error('Invalid replacement counts');
 	return {
 		tidalPlaylistId: requestedId,
+		playlistId: typeof result.playlistId === 'string' ? result.playlistId : undefined,
+		unmatchedTracks: Array.isArray(result.unmatchedTracks)
+			? result.unmatchedTracks.filter(
+					(track: TrackSummary) =>
+						track?.kind === 'track' &&
+						typeof track.id === 'string' &&
+						typeof track.title === 'string' &&
+						Array.isArray(track.artists)
+				)
+			: [],
 		status: result.status,
 		tracksSkipped: skipped,
 		tracksReplaced: replaced,

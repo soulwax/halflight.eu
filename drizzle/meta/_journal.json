@@ -225,6 +225,13 @@
       "when": 1791434825100,
       "tag": "0031_taste_playlist_analysis",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1791437767779,
+      "tag": "0032_precise_playback_position",
+      "breakpoints": true
     }
   ]
 }

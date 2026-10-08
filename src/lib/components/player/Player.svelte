@@ -11,6 +11,8 @@
 	import PlayerTransport from './PlayerTransport.svelte';
 	import PlayerActions from './PlayerActions.svelte';
 	import PlayerPanel from './PlayerPanel.svelte';
+	import { contextActions, contextMenu } from '#lib/context-menu/context-menu.svelte';
+	import { playerLayoutActions } from '#lib/context-menu/actions';
 	import './player.css';
 
 	const tidalUrl = $derived(
@@ -62,6 +64,21 @@
 
 	// --- listening room keyboard shortcuts ---
 	function onKeydown(event: KeyboardEvent) {
+		if (
+			event.code === 'Escape' &&
+			!event.defaultPrevented &&
+			player.isExpanded &&
+			!contextMenu.open &&
+			!document.querySelector('[role="dialog"], [role="menu"]') &&
+			!(
+				event.target instanceof HTMLElement &&
+				event.target.closest('input, textarea, select, [contenteditable="true"]')
+			)
+		) {
+			event.preventDefault();
+			player.toggleExpanded();
+			return;
+		}
 		handlePlayerKeydown(event, {
 			hasTrack: Boolean(player.currentTrack),
 			togglePlayPause: () => player.togglePlayPause(),
@@ -88,6 +105,7 @@
 	{@const track = player.currentTrack}
 	<section
 		class="syn-player"
+		use:contextActions={() => playerLayoutActions(!isNarrow)}
 		class:floating
 		class:expanded={player.isExpanded}
 		class:dragging

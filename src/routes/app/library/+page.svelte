@@ -4,7 +4,6 @@
 	import PlaylistCover from '#lib/components/music/PlaylistCover.svelte';
 	import MediaCard from '#lib/components/music/MediaCard.svelte';
 	import PrivateMusicShelf from '#lib/components/music/PrivateMusicShelf.svelte';
-	import PlaylistImportModal from '#lib/components/music/PlaylistImportModal.svelte';
 	import SongCard from '#lib/components/music/SongCard.svelte';
 	import StateCard from '#lib/components/music/StateCard.svelte';
 	import Button from '#lib/components/ui/Button.svelte';
@@ -281,8 +280,6 @@
 	<p class="attribution">
 		<a href="https://tidal.com" rel="noreferrer">{m.tidal_attribution()}</a>
 	</p>
-
-	<PlaylistImportModal />
 </section>
 
 <style>

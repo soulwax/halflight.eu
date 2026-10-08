@@ -90,3 +90,12 @@ describe('context actions', () => {
 		expect(navigation.goto).toHaveBeenCalledWith('/app/playlists/p1');
 	});
 });
+it('offers layout controls on the frame and honours an already chosen minimise action', async () => {
+	const { playerLayoutActions } = await import('./actions');
+	player.isExpanded = true;
+	const actions = playerLayoutActions(false);
+	expect(ids(actions)).toEqual(['toggle-expanded', 'queue', 'lyrics', 'source']);
+	player.isExpanded = false;
+	actions[0].onSelect();
+	expect(player.isExpanded).toBe(false);
+});

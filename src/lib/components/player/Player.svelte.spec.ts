@@ -67,3 +67,13 @@ describe('Player.svelte', () => {
 		expect(retry).toHaveBeenCalledOnce();
 	});
 });
+it('minimises the expanded scaffold with Escape while keeping the current song', async () => {
+	player.currentTrack = { kind: 'track', id: '42', title: 'Song', artists: [] };
+	player.isExpanded = true;
+	render(Player);
+	document.body.dispatchEvent(
+		new KeyboardEvent('keydown', { code: 'Escape', key: 'Escape', bubbles: true, cancelable: true })
+	);
+	expect(player.isExpanded).toBe(false);
+	expect(player.currentTrack?.id).toBe('42');
+});

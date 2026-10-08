@@ -1,0 +1,256 @@
+{
+  "canvas": {
+    "width": 2560,
+    "height": 1440
+  },
+  "screenshots": [
+    {
+      "file": "01-app-blue-hour.png",
+      "route": "/app",
+      "theme": "blue-hour"
+    },
+    {
+      "file": "02-app-warm-night.png",
+      "route": "/app",
+      "theme": "warm-night"
+    },
+    {
+      "file": "03-app-terrarium.png",
+      "route": "/app",
+      "theme": "terrarium"
+    },
+    {
+      "file": "04-app-electric.png",
+      "route": "/app",
+      "theme": "electric"
+    },
+    {
+      "file": "05-app-riso.png",
+      "route": "/app",
+      "theme": "riso"
+    },
+    {
+      "file": "06-app-search-blue-hour.png",
+      "route": "/app/search",
+      "theme": "blue-hour"
+    },
+    {
+      "file": "07-app-search-warm-night.png",
+      "route": "/app/search",
+      "theme": "warm-night"
+    },
+    {
+      "file": "08-app-search-terrarium.png",
+      "route": "/app/search",
+      "theme": "terrarium"
+    },
+    {
+      "file": "09-app-search-electric.png",
+      "route": "/app/search",
+      "theme": "electric"
+    },
+    {
+      "file": "10-app-search-riso.png",
+      "route": "/app/search",
+      "theme": "riso"
+    },
+    {
+      "file": "11-app-library-blue-hour.png",
+      "route": "/app/library",
+      "theme": "blue-hour"
+    },
+    {
+      "file": "12-app-library-warm-night.png",
+      "route": "/app/library",
+      "theme": "warm-night"
+    },
+    {
+      "file": "13-app-library-terrarium.png",
+      "route": "/app/library",
+      "theme": "terrarium"
+    },
+    {
+      "file": "14-app-library-electric.png",
+      "route": "/app/library",
+      "theme": "electric"
+    },
+    {
+      "file": "15-app-library-riso.png",
+      "route": "/app/library",
+      "theme": "riso"
+    },
+    {
+      "file": "16-app-mixes-blue-hour.png",
+      "route": "/app/mixes",
+      "theme": "blue-hour"
+    },
+    {
+      "file": "17-app-mixes-warm-night.png",
+      "route": "/app/mixes",
+      "theme": "warm-night"
+    },
+    {
+      "file": "18-app-mixes-terrarium.png",
+      "route": "/app/mixes",
+      "theme": "terrarium"
+    },
+    {
+      "file": "19-app-mixes-electric.png",
+      "route": "/app/mixes",
+      "theme": "electric"
+    },
+    {
+      "file": "20-app-mixes-riso.png",
+      "route": "/app/mixes",
+      "theme": "riso"
+    },
+    {
+      "file": "21-app-generate-blue-hour.png",
+      "route": "/app/generate",
+      "theme": "blue-hour"
+    },
+    {
+      "file": "22-app-generate-warm-night.png",
+      "route": "/app/generate",
+      "theme": "warm-night"
+    },
+    {
+      "file": "23-app-generate-terrarium.png",
+      "route": "/app/generate",
+      "theme": "terrarium"
+    },
+    {
+      "file": "24-app-generate-electric.png",
+      "route": "/app/generate",
+      "theme": "electric"
+    },
+    {
+      "file": "25-app-generate-riso.png",
+      "route": "/app/generate",
+      "theme": "riso"
+    },
+    {
+      "file": "26-app-settings-appearance-blue-hour.png",
+      "route": "/app/settings/appearance",
+      "theme": "blue-hour"
+    },
+    {
+      "file": "27-app-settings-appearance-warm-night.png",
+      "route": "/app/settings/appearance",
+      "theme": "warm-night"
+    },
+    {
+      "file": "28-app-settings-appearance-terrarium.png",
+      "route": "/app/settings/appearance",
+      "theme": "terrarium"
+    },
+    {
+      "file": "29-app-settings-appearance-electric.png",
+      "route": "/app/settings/appearance",
+      "theme": "electric"
+    },
+    {
+      "file": "30-app-settings-appearance-riso.png",
+      "route": "/app/settings/appearance",
+      "theme": "riso"
+    },
+    {
+      "file": "31-app-settings-taste-blue-hour.png",
+      "route": "/app/settings/taste",
+      "theme": "blue-hour"
+    },
+    {
+      "file": "32-app-settings-taste-warm-night.png",
+      "route": "/app/settings/taste",
+      "theme": "warm-night"
+    },
+    {
+      "file": "33-app-settings-taste-terrarium.png",
+      "route": "/app/settings/taste",
+      "theme": "terrarium"
+    },
+    {
+      "file": "34-app-settings-taste-electric.png",
+      "route": "/app/settings/taste",
+      "theme": "electric"
+    },
+    {
+      "file": "35-app-settings-taste-riso.png",
+      "route": "/app/settings/taste",
+      "theme": "riso"
+    },
+    {
+      "file": "36-app-api-blue-hour.png",
+      "route": "/app/api",
+      "theme": "blue-hour"
+    },
+    {
+      "file": "37-app-api-warm-night.png",
+      "route": "/app/api",
+      "theme": "warm-night"
+    },
+    {
+      "file": "38-app-api-terrarium.png",
+      "route": "/app/api",
+      "theme": "terrarium"
+    },
+    {
+      "file": "39-app-api-electric.png",
+      "route": "/app/api",
+      "theme": "electric"
+    },
+    {
+      "file": "40-app-api-riso.png",
+      "route": "/app/api",
+      "theme": "riso"
+    },
+    {
+      "file": "mobile-1-blue-hour.png",
+      "route": "/now",
+      "theme": "blue-hour",
+      "mobile": true,
+      "title": "Get Lucky (feat. Pharrell Williams and Nile Rodgers)",
+      "artist": "Daft Punk, Pharrell Williams, Nile Rodgers"
+    },
+    {
+      "file": "mobile-1-warm-night.png",
+      "route": "/now",
+      "theme": "warm-night",
+      "mobile": true,
+      "title": "Get Lucky (feat. Pharrell Williams and Nile Rodgers)",
+      "artist": "Daft Punk, Pharrell Williams, Nile Rodgers"
+    },
+    {
+      "file": "mobile-2-blue-hour.png",
+      "route": "/now",
+      "theme": "blue-hour",
+      "mobile": true,
+      "title": "Blinding Lights",
+      "artist": "The Weeknd"
+    },
+    {
+      "file": "mobile-2-warm-night.png",
+      "route": "/now",
+      "theme": "warm-night",
+      "mobile": true,
+      "title": "Blinding Lights",
+      "artist": "The Weeknd"
+    },
+    {
+      "file": "mobile-3-blue-hour.png",
+      "route": "/now",
+      "theme": "blue-hour",
+      "mobile": true,
+      "title": "Dreams (2001 Remaster)",
+      "artist": "Fleetwood Mac"
+    },
+    {
+      "file": "mobile-3-warm-night.png",
+      "route": "/now",
+      "theme": "warm-night",
+      "mobile": true,
+      "title": "Dreams (2001 Remaster)",
+      "artist": "Fleetwood Mac"
+    }
+  ]
+}

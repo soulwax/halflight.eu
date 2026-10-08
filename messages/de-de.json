@@ -488,7 +488,7 @@
 	"player_previous": "Vorheriger Titel",
 	"player_next": "Nächster Titel",
 	"player_expand": "Player vergrößern",
-	"player_collapse": "Player verkleinern",
+	"player_collapse": "Player minimieren",
 	"player_close": "Player schließen",
 	"player_shuffle": "Zufallswiedergabe",
 	"player_repeat": "Wiederholen",
@@ -910,5 +910,11 @@
 	"listening_prefs_playlists_hint": "Ein Hintergrunddienst liest deine Playlists langsam, beim ersten Durchlauf eine alle 90 Sekunden, und speichert nur Künstler- und Jahrzehntgewichte. Beim Ausschalten werden sie entfernt.",
 	"taste_playlist_analysis_running": "Deine Playlists werden im Hintergrund analysiert: bisher {analysed} von {total}. Der erste Durchlauf ist bewusst langsam.",
 	"taste_playlist_analysis_waiting": "Deine Playlists werden in Kürze im Hintergrund analysiert.",
-	"taste_playlist_analysis_done": "Die Playlist-Analyse umfasst {count} Playlists und wird täglich aktualisiert."
+	"taste_playlist_analysis_done": "Die Playlist-Analyse umfasst {count} Playlists und wird täglich aktualisiert.",
+	"playlist_import_minimize": "Minimieren",
+	"playlist_import_match_title": "Spielbare Aufnahme auswählen",
+	"playlist_import_match_description": "Dieser Song konnte nicht automatisch zugeordnet werden. Wähle einen Ersatz, um ihn an seiner ursprünglichen Position wiederherzustellen, oder lasse ihn aus.",
+	"playlist_import_match_failed": "Die Playlist konnte nicht aktualisiert werden. Sie wurde möglicherweise geändert oder die Aufnahme ist nicht spielbar. Suche erneut, um die Auswahl zu aktualisieren.",
+	"playlist_import_match_empty": "Keine sichere automatische Zuordnung. Passe die Suche an, um eine andere Aufnahme zu finden.",
+	"playlist_import_match_skip": "Diesen Song auslassen"
 }

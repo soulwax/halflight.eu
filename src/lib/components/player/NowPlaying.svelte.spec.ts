@@ -32,3 +32,21 @@ describe('NowPlaying.svelte', () => {
 			.not.toBeInTheDocument();
 	});
 });
+
+it('targets the artist or album directly rather than opening the song menu', async () => {
+	const { contextMenu } = await import('#lib/context-menu/context-menu.svelte');
+	render(NowPlaying, { track });
+	const artist = page.getByRole('link', { name: 'Bauhaus' });
+	await expect.element(artist).toHaveAttribute('href', '/app/artists/a1');
+	artist
+		.element()
+		.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, button: 2 }));
+	expect(contextMenu.actions[0].label).toBe(m.context_go_to_artist());
+	expect(contextMenu.actions.some((action) => action.id === 'radio')).toBe(false);
+	const album = page.getByRole('link', { name: 'Press the Eject · 1982' });
+	album
+		.element()
+		.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, button: 2 }));
+	expect(contextMenu.actions[0].label).toBe(m.context_go_to_album());
+	contextMenu.close();
+});

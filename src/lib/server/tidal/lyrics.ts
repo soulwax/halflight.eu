@@ -149,6 +149,7 @@ export function parseLrc(lrcContent: string | null | undefined): LyricCue[] {
 		while ((match = tagRegex.exec(trimmed)) !== null) {
 			const minutes = parseInt(match[1], 10);
 			const seconds = parseInt(match[2], 10);
+			if (seconds >= 60) continue;
 			let ms = 0;
 			if (match[3]) {
 				if (match[3].length === 1) ms = parseInt(match[3], 10) * 100;

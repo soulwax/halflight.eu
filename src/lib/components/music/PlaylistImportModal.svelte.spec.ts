@@ -237,7 +237,7 @@ it('continues after one failed playlist and retries only the failed selection', 
 	).click();
 	await vi.waitFor(() => expect(posts()).toEqual([['remote-1'], ['remote-3'], ['remote-1']]));
 });
-it('keeps the dialog open during verification and never treats aggregate counts as verified success', async () => {
+it('minimises without cancelling verification and never treats aggregate counts as verified success', async () => {
 	let finish!: (value: Response) => void;
 	const fetchMock = vi.fn().mockImplementation(async (_url, options) => {
 		if (!options?.method) return jsonResponse({ playlists });
@@ -255,11 +255,11 @@ it('keeps the dialog open during verification and never treats aggregate counts 
 	(
 		page.getByRole('button', { name: `${m.playlist_import()} (1)` }).element() as HTMLButtonElement
 	).click();
-	await expect.element(page.getByRole('button', { name: m.action_close() })).toBeDisabled();
+	await expect.element(page.getByRole('button', { name: m.action_close() })).toBeEnabled();
 	document.dispatchEvent(
 		new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
 	);
-	await expect.element(page.getByRole('dialog')).toBeInTheDocument();
+	await expect.element(page.getByRole('dialog')).not.toBeInTheDocument();
 	finish(jsonResponse({ totalImported: 1, totalErrors: 0 }));
 	await expect
 		.element(page.getByText(m.playlist_import_some_failed({ count: 1 })))
@@ -345,4 +345,79 @@ it('stops a batch after the current verified playlist and keeps remaining select
 		.element(page.getByRole('button', { name: `${m.playlist_import()} (1)` }))
 		.toBeEnabled();
 	expect(fetchMock.mock.calls.filter(([, options]) => options?.method === 'POST')).toHaveLength(1);
+});
+it('prompts for an unmatched recording after a minimised import and verifies the chosen replacement', async () => {
+	const source = {
+		kind: 'track',
+		id: '2',
+		title: 'Missing Song',
+		artists: [{ id: 'a', name: 'Artist' }]
+	};
+	const candidate = { ...source, id: '22', title: 'Playable Song' };
+	let finish!: (value: Response) => void;
+	const fetchMock = vi.fn().mockImplementation(async (url, options) => {
+		if (String(url).includes('/repair-import'))
+			return jsonResponse(
+				options?.method === 'POST'
+					? { saved: true }
+					: { source, candidates: [candidate], version: '2026-10-08T12:00:00.000Z' }
+			);
+		if (!options?.method) return jsonResponse({ playlists });
+		return new Promise<Response>((resolve) => {
+			finish = resolve;
+		});
+	});
+	vi.stubGlobal('fetch', fetchMock);
+	vi.spyOn(customPlaylists, 'syncWithServer').mockResolvedValue(undefined);
+	render(PlaylistImportModal);
+	await expect.element(page.getByText('Night Drive')).toBeInTheDocument();
+	(page.getByRole('checkbox').nth(0).element() as HTMLInputElement).click();
+	await expect
+		.element(page.getByRole('button', { name: `${m.playlist_import()} (1)` }))
+		.toBeEnabled();
+	(
+		page.getByRole('button', { name: `${m.playlist_import()} (1)` }).element() as HTMLButtonElement
+	).click();
+	await expect
+		.element(page.getByRole('button', { name: m.playlist_import_minimize() }))
+		.toBeEnabled();
+	(
+		page.getByRole('button', { name: m.playlist_import_minimize() }).element() as HTMLButtonElement
+	).click();
+	await expect.element(page.getByRole('dialog')).not.toBeInTheDocument();
+	finish(
+		jsonResponse({
+			imported: [
+				{
+					tidalPlaylistId: 'remote-1',
+					playlistId: 'local',
+					status: 'created',
+					streamValidation: 'verified',
+					tracksSkipped: 1,
+					tracksReplaced: 0,
+					unmatchedTracks: [source]
+				}
+			]
+		})
+	);
+	await expect
+		.element(page.getByRole('dialog', { name: m.playlist_import_match_title() }))
+		.toBeInTheDocument();
+	await expect.element(page.getByText('Playable Song')).toBeInTheDocument();
+	(page.getByText('Playable Song').element().closest('button') as HTMLButtonElement).click();
+	await vi.waitFor(() =>
+		expect(
+			fetchMock.mock.calls.some(
+				([url, options]) => String(url).endsWith('/repair-import') && options?.method === 'POST'
+			)
+		).toBe(true)
+	);
+	await expect.element(page.getByRole('dialog')).not.toBeInTheDocument();
+	expect(
+		JSON.parse(
+			fetchMock.mock.calls.find(
+				([url, options]) => String(url).endsWith('/repair-import') && options?.method === 'POST'
+			)![1].body
+		)
+	).toMatchObject({ sourceId: '2', candidateId: '22' });
 });

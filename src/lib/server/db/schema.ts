@@ -1,5 +1,6 @@
 import {
 	pgTable,
+	doublePrecision,
 	integer,
 	text,
 	timestamp,
@@ -156,7 +157,9 @@ export const playbackState = pgTable('playback_state', {
 	// can still read the legacy snapshot column.
 	queueEntriesJson: text('queue_entries_json').notNull().default('[]'),
 	historyJson: text('history_json').notNull().default('[]'),
-	currentTime: integer('current_time').notNull().default(0),
+	currentTime: doublePrecision('current_time').notNull().default(0),
+	positionPlaying: boolean('position_playing').notNull().default(false),
+	positionUpdatedAt: timestamp('position_updated_at', { withTimezone: true }),
 	revision: integer('revision').notNull().default(0),
 	lastOrigin: text('last_origin'),
 	// An opaque, short-lived browser identity. It prevents a second open

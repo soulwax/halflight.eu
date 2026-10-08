@@ -25,7 +25,9 @@ function isEditable(target: EventTarget | null): boolean {
  * while respecting text fields and active inputs.
  */
 export function handlePlayerKeydown(event: KeyboardEvent, actions: ShortcutActions): boolean {
-	if (isEditable(event.target)) return false;
+	if (event.defaultPrevented || isEditable(event.target)) return false;
+	if ((event.target as HTMLElement | null)?.closest?.('[role="menu"], [role="dialog"]'))
+		return false;
 	if (event.metaKey || event.ctrlKey) return false;
 
 	const target = event.target as {

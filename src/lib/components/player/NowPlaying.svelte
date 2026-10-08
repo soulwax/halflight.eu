@@ -6,13 +6,13 @@
 	import type { TrackSummary } from '#lib/tidal/models';
 	import { trackArtworkUrl } from '#lib/tidal/artwork';
 	import { contextActions } from '#lib/context-menu/context-menu.svelte';
-	import { nowPlayingActions } from '#lib/context-menu/actions';
+	import { resolve } from '$app/paths';
+	import { mediaActions, nowPlayingActions } from '#lib/context-menu/actions';
 
 	let { track }: { track: TrackSummary } = $props();
 
 	const cover = $derived(trackArtworkUrl(track, 160));
 	let failedCover = $state<string | null>(null);
-	const artistLine = $derived(track.artists.map((a) => a.name).join(', '));
 	const releaseYear = $derived(formatReleaseDate(track.album?.releaseDate));
 	const albumLine = $derived(
 		track.album ? `${track.album.title}${releaseYear ? ` · ${releaseYear}` : ''}` : ''
@@ -36,9 +36,22 @@
 			aria-label={m.player_now_playing()}>{track.title}</button
 		>
 		<span class="sub">
-			{#if artistLine}<span class="artists">{artistLine}</span>{/if}
+			{#if track.artists.length}<span class="artists"
+					>{#each track.artists as artist, index (index)}{#if index},
+						{/if}{#if artist.id}<a
+								href={resolve('/app/artists/[id]', { id: artist.id })}
+								use:contextActions={() => mediaActions('artist', artist.id, artist.name)}
+								>{artist.name}</a
+							>{:else}{artist.name}{/if}{/each}</span
+				>{/if}
 			{#if albumLine}
-				<span aria-hidden="true">·</span><span class="album" title={albumLine}>{albumLine}</span>
+				<span aria-hidden="true">·</span>{#if track.album?.id}<a
+						class="album"
+						title={albumLine}
+						href={resolve('/app/albums/[id]', { id: track.album.id })}
+						use:contextActions={() => mediaActions('album', track.album!.id, track.album!.title)}
+						>{albumLine}</a
+					>{:else}<span class="album" title={albumLine}>{albumLine}</span>{/if}
 			{/if}
 		</span>
 		{#if player.qualityLabel || player.playbackMode === 'embed' || track.provenance || player.assessment.warning}
@@ -66,3 +79,21 @@
 		{/if}
 	</div>
 </div>
+
+<style>
+	.artists a,
+	a.album {
+		color: inherit;
+		text-decoration: none;
+	}
+	.artists a:hover,
+	a.album:hover {
+		color: var(--action);
+		text-decoration: underline;
+	}
+	.artists a:focus-visible,
+	a.album:focus-visible {
+		outline: 2px solid var(--action);
+		outline-offset: 3px;
+	}
+</style>

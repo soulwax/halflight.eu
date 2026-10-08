@@ -1,3 +1,4 @@
+import { projectPlaybackPosition } from '#lib/player/playback-position';
 import { and, desc, eq, inArray, lt, sql } from 'drizzle-orm';
 import { createHash } from 'node:crypto';
 import * as v from 'valibot';
@@ -47,8 +48,9 @@ const playbackStateSnapshotSchema = v.object({
 	currentTrack: v.nullable(v.unknown()),
 	queue: v.array(v.unknown()),
 	history: v.array(v.unknown()),
-	currentTime: v.pipe(v.number(), v.safeInteger(), v.minValue(0), v.maxValue(MAX_POSITION_SECONDS)),
-	queueCommands: v.optional(v.array(queueCommandSchema))
+	currentTime: v.pipe(v.number(), v.finite(), v.minValue(0), v.maxValue(MAX_POSITION_SECONDS)),
+	queueCommands: v.optional(v.array(queueCommandSchema)),
+	positionPlaying: v.optional(v.boolean())
 });
 
 const playbackStateOriginSchema = v.picklist(PLAYBACK_STATE_ORIGINS);
@@ -73,6 +75,7 @@ export interface PlaybackState {
 	queue: QueueEntry[];
 	history: TrackSummary[];
 	currentTime: number;
+	positionPlaying?: boolean;
 	revision: number;
 	lastOrigin: PlaybackStateOrigin | null;
 	activeDevice: PlaybackDeviceStatus | null;
@@ -272,7 +275,13 @@ export function parsePlaybackState(value: unknown): PlaybackStateInput | null {
 	const queue = parseQueueEntryList(state.queue, MAX_PLAYBACK_QUEUE_LENGTH);
 	const history = parseTrackList(state.history, MAX_PLAYBACK_HISTORY_LENGTH);
 	if (!queue || !history) return null;
-	return { currentTrack, queue, history, currentTime: state.currentTime };
+	return {
+		currentTrack,
+		queue,
+		history,
+		currentTime: state.currentTime,
+		...(state.positionPlaying !== undefined ? { positionPlaying: state.positionPlaying } : {})
+	};
 }
 
 /** Only explicitly named product surfaces may claim a playback-state write. */
@@ -481,6 +490,8 @@ function fromRow(
 		activeDeviceId?: string | null;
 		activeDeviceOrigin?: string | null;
 		activeDeviceExpiresAt?: Date | null;
+		positionPlaying?: boolean;
+		positionUpdatedAt?: Date | null;
 	},
 	deviceId?: string | null
 ): PlaybackState {
@@ -499,6 +510,15 @@ function fromRow(
 		history: parseJson(row.historyJson),
 		currentTime: row.currentTime
 	});
+	if (input)
+		input.currentTime = projectPlaybackPosition(
+			input.currentTime,
+			row.positionUpdatedAt?.getTime() ?? NaN,
+			Boolean(row.positionPlaying),
+			Date.now(),
+			row.activeDeviceExpiresAt?.getTime() ?? 0,
+			input.currentTrack?.duration
+		);
 	return input
 		? {
 				...input,
@@ -521,6 +541,8 @@ const playbackStateSelection = {
 	queueEntriesJson: playbackState.queueEntriesJson,
 	historyJson: playbackState.historyJson,
 	currentTime: playbackState.currentTime,
+	positionPlaying: playbackState.positionPlaying,
+	positionUpdatedAt: playbackState.positionUpdatedAt,
 	revision: playbackState.revision,
 	lastOrigin: playbackState.lastOrigin,
 	activeDeviceId: playbackState.activeDeviceId,
@@ -551,6 +573,8 @@ export const dbPlaybackStateStore: PlaybackStateStore = {
 			queueEntriesJson: JSON.stringify(state.queue),
 			historyJson: JSON.stringify(state.history),
 			currentTime: state.currentTime,
+			positionPlaying: Boolean(state.positionPlaying && state.currentTrack && deviceId),
+			positionUpdatedAt: new Date(),
 			lastOrigin: origin,
 			updatedAt: new Date()
 		};
@@ -572,6 +596,8 @@ export const dbPlaybackStateStore: PlaybackStateStore = {
 					currentTrackJson: sql`case when ${preserveActivePlayback} then ${playbackState.currentTrackJson} else ${values.currentTrackJson} end`,
 					historyJson: sql`case when ${preserveActivePlayback} then ${playbackState.historyJson} else ${values.historyJson} end`,
 					currentTime: sql`case when ${preserveActivePlayback} then ${playbackState.currentTime} else ${values.currentTime} end`,
+					positionPlaying: sql`case when ${preserveActivePlayback} then ${playbackState.positionPlaying} else ${values.positionPlaying} end`,
+					positionUpdatedAt: sql`case when ${preserveActivePlayback} then ${playbackState.positionUpdatedAt} else ${values.positionUpdatedAt.toISOString()}::timestamptz end`,
 					activeDeviceExpiresAt: sql`case when ${playbackState.activeDeviceId} = ${writingDeviceId} then ${leaseExpiresAtSql} else ${playbackState.activeDeviceExpiresAt} end`,
 					revision: sql`${playbackState.revision} + 1`
 				},
@@ -600,6 +626,9 @@ export const dbPlaybackDeviceLeaseStore: PlaybackDeviceLeaseStore = {
 			.onConflictDoUpdate({
 				target: playbackState.userId,
 				set: {
+					currentTime: sql`${playbackState.currentTime} + case when ${playbackState.positionPlaying} and ${playbackState.activeDeviceExpiresAt} is not null and ${playbackState.positionUpdatedAt} is not null then greatest(0, least(10, extract(epoch from (least(${now.toISOString()}::timestamptz, ${playbackState.activeDeviceExpiresAt}) - ${playbackState.positionUpdatedAt})))) else 0 end`,
+					positionPlaying: false,
+					positionUpdatedAt: now,
 					activeDeviceId: deviceId,
 					activeDeviceOrigin: origin,
 					activeDeviceExpiresAt: new Date(now.getTime() + PLAYBACK_DEVICE_LEASE_MS),
@@ -674,6 +703,8 @@ export const dbPlaybackIntentStore: PlaybackIntentStore = {
 				queueEntriesJson: JSON.stringify(queue),
 				historyJson: JSON.stringify(current.history),
 				currentTime: current.currentTime,
+				positionPlaying: stateRows[0]?.positionPlaying ?? false,
+				positionUpdatedAt: now,
 				lastOrigin: intent.origin,
 				updatedAt: now
 			};

@@ -61,3 +61,47 @@ describe('import fetch pacing', () => {
 		expect(retryAfterMs(null, now)).toBe(30_000);
 	});
 });
+
+describe('paced import requests', () => {
+	it('paces concurrent catalogue calls and waits for Retry-After without losing the current request', async () => {
+		const starts: number[] = [];
+		const send = vi.fn(async () => {
+			starts.push(Date.now());
+			return starts.length === 1
+				? new Response('{}', { status: 429, headers: { 'Retry-After': '4' } })
+				: new Response('{}');
+		});
+		const fetch = createImportFetch(send);
+		const first = fetch('https://openapi.tidal.com/v2/tracks/1');
+		const second = fetch('https://openapi.tidal.com/v2/searchResults/test');
+		await vi.advanceTimersByTimeAsync(3999);
+		expect(send).toHaveBeenCalledOnce();
+		await vi.advanceTimersByTimeAsync(5501);
+		expect((await first).status).toBe(200);
+		expect((await second).status).toBe(200);
+		expect(starts[1] - starts[0]).toBeGreaterThanOrEqual(4000);
+		expect(starts[2] - starts[1]).toBeGreaterThanOrEqual(1500);
+	});
+	it('supports HTTP-date cooldowns and conservative missing headers', () => {
+		expect(retryAfterMs('Thu, 08 Oct 2026 12:00:04 GMT', Date.parse('2026-10-08T12:00:00Z'))).toBe(
+			4000
+		);
+		expect(retryAfterMs(null)).toBe(30000);
+	});
+	it('allows cancellation during cooldown and releases the lane for later requests', async () => {
+		const send = vi
+			.fn()
+			.mockResolvedValueOnce(new Response('{}', { status: 429, headers: { 'Retry-After': '4' } }))
+			.mockResolvedValue(new Response('{}'));
+		const controller = new AbortController();
+		const fetch = createImportFetch(send);
+		const pending = fetch('https://openapi.tidal.com/v2/tracks/1', { signal: controller.signal });
+		const assertion = expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+		await vi.advanceTimersByTimeAsync(100);
+		controller.abort();
+		await assertion;
+		const next = fetch('https://openapi.tidal.com/v2/tracks/2');
+		await vi.advanceTimersByTimeAsync(5000);
+		expect((await next).status).toBe(200);
+	});
+});

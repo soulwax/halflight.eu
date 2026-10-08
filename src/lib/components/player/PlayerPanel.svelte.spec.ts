@@ -31,3 +31,16 @@ describe('PlayerPanel.svelte', () => {
 		await expect.element(sourceTab).toHaveAttribute('aria-selected', 'true');
 	});
 });
+it('minimises without stopping playback or discarding the selected panel', async () => {
+	player.currentTrack = track;
+	player.isExpanded = true;
+	player.panel = 'lyrics';
+	player.isPlaying = true;
+	render(PlayerPanel, { track, floating: false, onDragStart: () => {} });
+	await page.getByRole('button', { name: m.player_collapse() }).click();
+	expect(player.isExpanded).toBe(false);
+	expect(player.panel).toBe('lyrics');
+	expect(player.isPlaying).toBe(true);
+	expect(player.currentTrack?.id).toBe(track.id);
+	player.isPlaying = false;
+});

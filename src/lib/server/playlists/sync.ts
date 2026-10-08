@@ -19,7 +19,7 @@ import {
 } from '#lib/server/tidal/errors';
 import { log } from '#lib/server/log';
 import type { TokenRowStore } from '#lib/server/tidal/store';
-import type { PlaylistDetail } from '#lib/tidal/models';
+import type { PlaylistDetail, TrackSummary } from '#lib/tidal/models';
 import type { Cookies } from '@sveltejs/kit';
 import type { SavedPlaylist } from './index';
 import { getUserPlaylists, updateUserPlaylist } from './index';
@@ -49,6 +49,7 @@ export interface SyncResult {
 	tracksReplaced: number;
 	/** Matched by full title/version and artist rather than an exact ISRC. */
 	tracksBestFit?: number;
+	unmatchedTracks?: TrackSummary[];
 	errorCode?:
 		| 'local_changes'
 		| 'playlist_changed'
@@ -118,7 +119,7 @@ export function diffPlaylistItems(localIds: string[], remoteIds: string[]): Play
  * If a local record already exists with this `tidalPlaylistId`, it is updated.
  * Otherwise a new local record is created with `source = 'tidal'`.
  */
-function sourceVersion(document: Document<Resource>): string {
+export function playlistSourceVersion(document: Document<Resource>): string {
 	const attributes = document.data.attributes ?? {};
 	const linkage =
 		document.data.relationships?.items?.data ?? document.data.relationships?.tracks?.data;
@@ -186,7 +187,7 @@ export async function pullPlaylist(tidalPlaylistId: string, ctx: SyncContext): P
 			tidalCtx
 		);
 		if (document.data?.id !== tidalPlaylistId) throw new Error('Playlist identity did not match');
-		const version = sourceVersion(document);
+		const version = playlistSourceVersion(document);
 		if (existing && isCurrentVerifiedCopy(existing, version)) {
 			// The saved copy was verified against this exact source recently; keep it as is.
 			result.playlistId = existing.id;
@@ -225,7 +226,7 @@ export async function pullPlaylist(tidalPlaylistId: string, ctx: SyncContext): P
 			{ include: ['artists', 'albums'] },
 			tidalCtx
 		);
-		if (version !== sourceVersion(freshSource)) {
+		if (version !== playlistSourceVersion(freshSource)) {
 			result.errorCode = 'source_changed';
 			result.error = 'The TIDAL playlist changed during verification. Please try again.';
 			return result;
@@ -239,6 +240,7 @@ export async function pullPlaylist(tidalPlaylistId: string, ctx: SyncContext): P
 		result.tracksSkipped = verification.skipped;
 		result.tracksReplaced = verification.replacements;
 		result.tracksBestFit = verification.bestFits;
+		result.unmatchedTracks = verification.unmatched ?? [];
 		result.streamValidation = 'verified';
 
 		const committed = await saveVerifiedImport({
@@ -256,6 +258,7 @@ export async function pullPlaylist(tidalPlaylistId: string, ctx: SyncContext): P
 			result.tracksSkipped = 0;
 			result.tracksReplaced = 0;
 			result.tracksBestFit = 0;
+			result.unmatchedTracks = [];
 			result.errorCode = 'playlist_changed';
 			result.error = 'This playlist changed during import. Your current version has been kept.';
 			return result;

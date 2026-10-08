@@ -15,6 +15,7 @@ export interface SavedPlaybackState {
 	queue: QueueEntry[];
 	history: TrackSummary[];
 	currentTime: number;
+	positionPlaying?: boolean;
 	revision?: number;
 	lastOrigin?: PlaybackOrigin | null;
 	activeDevice?: PlaybackDeviceStatus | null;
@@ -367,7 +368,8 @@ export class PlaybackSessionCoordinator {
 			currentTrack: base?.currentTrack ?? current.currentTrack,
 			queue: current.queue.slice(0, this.maxQueueLength),
 			history: (base?.history ?? current.history).slice(-this.maxHistoryLength),
-			currentTime: Math.max(0, Math.floor(base?.currentTime ?? current.currentTime)),
+			currentTime: Math.max(0, base?.currentTime ?? current.currentTime),
+			positionPlaying: base ? false : current.isPlaying,
 			revision: this.revision,
 			origin: this.origin,
 			queueCommands: this.queueCommands.slice()
@@ -714,7 +716,6 @@ export class PlaybackSessionCoordinator {
 			}
 
 			this.sessionSyncFailures = 0;
-			this.applyActiveDevice(state);
 			const shouldResumePendingQueueWrites =
 				this.status === 'offline' ||
 				this.status === 'buffered' ||
@@ -729,6 +730,8 @@ export class PlaybackSessionCoordinator {
 				}
 				return;
 			}
+
+			this.applyActiveDevice(state);
 
 			if (this.queueCommands.length > 0) {
 				if (state.revision === this.revision) {
@@ -845,7 +848,7 @@ export class PlaybackSessionCoordinator {
 		}, delay);
 	}
 
-	async takePlaybackControl(): Promise<boolean> {
+	async takePlaybackControl(applySession = false): Promise<boolean> {
 		const deviceId = this.getDeviceIdFn();
 		if (!deviceId) return false;
 		if (
@@ -856,6 +859,7 @@ export class PlaybackSessionCoordinator {
 		}
 		if (this.playbackClaimPending) return false;
 		this.playbackClaimPending = true;
+		const claimVersion = this.changeVersion;
 		try {
 			const { response, state: rawState } = await this.requestState('/api/playback-state/claim', {
 				method: 'POST',
@@ -864,9 +868,14 @@ export class PlaybackSessionCoordinator {
 				keepalive: true
 			});
 			const state = rawState;
-			if (!response.ok || !isSavedPlaybackState(state)) return false;
+			if (!response.ok || !isSavedPlaybackState(state) || state.revision < this.revision)
+				return false;
 			this.revision = Math.max(this.revision, state.revision);
 			this.applyActiveDevice(state);
+			if (applySession && claimVersion === this.changeVersion && state.activeDevice?.isCurrent) {
+				this.onApplyQueueFn(rebaseQueue(state.queue, this.queueCommands, this.maxQueueLength));
+				this.onApplySessionFn?.(state);
+			}
 			return state.activeDevice?.isCurrent === true;
 		} catch {
 			return false;

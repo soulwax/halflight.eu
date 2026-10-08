@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { contextActions } from '#lib/context-menu/context-menu.svelte';
+	import { mediaActions, nowPlayingActions } from '#lib/context-menu/actions';
 	import { Disc } from '@lucide/svelte';
 	import type { TrackSummary } from '#lib/tidal/models';
 	import { trackArtworkUrl } from '#lib/tidal/artwork';
@@ -10,7 +12,13 @@
 	const cover = $derived(trackArtworkUrl(track));
 </script>
 
-<div class="art-panel">
+<div
+	class="art-panel"
+	use:contextActions={() =>
+		track.album?.id
+			? mediaActions('album', track.album.id, track.album.title)
+			: nowPlayingActions(track)}
+>
 	<div class="artwork-frame">
 		{#if cover && failedCover !== cover}
 			<img

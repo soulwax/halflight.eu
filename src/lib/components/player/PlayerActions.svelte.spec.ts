@@ -29,9 +29,7 @@ describe('PlayerActions.svelte', () => {
 
 		await expect.element(page.getByRole('button', { name: m.player_queue() })).toBeInTheDocument();
 		await expect.element(page.getByRole('button', { name: m.player_lyrics() })).toBeInTheDocument();
-		await expect
-			.element(page.getByRole('button', { name: m.player_expand() }))
-			.not.toBeInTheDocument();
+		await expect.element(page.getByRole('button', { name: m.player_expand() })).toBeInTheDocument();
 
 		await page.getByRole('button', { name: m.track_action_menu() }).click();
 		const details = page.getByRole('menuitem', { name: m.player_source() });

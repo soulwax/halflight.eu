@@ -1,6 +1,7 @@
 <script lang="ts">
 	import {
 		ChevronDown,
+		ChevronUp,
 		ExternalLink,
 		ListMusic,
 		Mic2,
@@ -122,6 +123,16 @@
 		aria-expanded={player.isExpanded && player.panel === 'lyrics'}
 	>
 		<Mic2 size={15} />
+	</button>
+	<button
+		type="button"
+		class="a-btn player-size-toggle"
+		onclick={() => player.toggleExpanded()}
+		title={player.isExpanded ? m.player_collapse() : m.player_expand()}
+		aria-label={player.isExpanded ? m.player_collapse() : m.player_expand()}
+		aria-expanded={player.isExpanded}
+	>
+		{#if player.isExpanded}<ChevronDown size={19} />{:else}<ChevronUp size={19} />{/if}
 	</button>
 	<DropdownMenu
 		items={moreActions}

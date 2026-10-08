@@ -14,6 +14,7 @@
 </svelte:head>
 
 <main class="auth-page">
+	<div class="auth-artwork" aria-hidden="true"></div>
 	<section class="auth-card" aria-labelledby="sign-in-title">
 		<img class="brand-logo" src="/icons/halflight-128.png" alt={m.brand_name()} />
 		<h1 id="sign-in-title">{m.sign_in_title()}</h1>
@@ -119,10 +120,23 @@
 
 <style>
 	.auth-page {
+		position: relative;
+		isolation: isolate;
 		display: grid;
-		min-height: calc(100dvh - 10px);
+		min-height: 100dvh;
 		place-items: center;
 		padding: 1.5rem;
+	}
+
+	.auth-artwork {
+		position: fixed;
+		inset: 0;
+		z-index: -1;
+		pointer-events: none;
+		background:
+			linear-gradient(180deg, #080c1433, #080c1466),
+			radial-gradient(ellipse at center, #080c1480, transparent 75%),
+			url('/artwork/login-collage-2k.webp') center / cover no-repeat;
 	}
 
 	.auth-card {
@@ -130,8 +144,11 @@
 		padding: clamp(1.5rem, 5vw, 2.5rem);
 		border: 1px solid var(--border-subtle);
 		border-radius: 1.5rem;
-		background: var(--surface-raised);
-		box-shadow: var(--shadow-panel);
+		background: color-mix(in srgb, var(--surface-raised) 96%, transparent);
+		box-shadow:
+			var(--shadow-panel),
+			0 24px 80px #0006;
+		backdrop-filter: blur(16px);
 	}
 
 	.brand-logo {

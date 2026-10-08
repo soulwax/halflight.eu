@@ -1090,3 +1090,87 @@ describe('PlaybackSessionCoordinator', () => {
 		});
 	});
 });
+
+describe('precise device handoff', () => {
+	const track: TrackSummary = { kind: 'track', id: '42', title: 'Song', artists: [] };
+	const claimed = {
+		currentTrack: track,
+		queue: [],
+		history: [],
+		currentTime: 42.125,
+		revision: 2,
+		activeDevice: {
+			origin: 'halflight-now',
+			isCurrent: true,
+			expiresAt: new Date(Date.now() + 45000).toISOString()
+		}
+	};
+	it('adopts the fresh claim position instead of the previous polled timestamp', async () => {
+		const apply = vi.fn();
+		const coordinator = new PlaybackSessionCoordinator({
+			origin: 'halflight-now',
+			getDeviceId: () => 'device_1234567890123456',
+			fetch: vi.fn().mockResolvedValue(Response.json(claimed)),
+			getCurrentState: () => ({
+				currentTrack: track,
+				queue: [],
+				history: [],
+				currentTime: 25.375,
+				isPlaying: false,
+				hasLocalMedia: false
+			}),
+			onApplyQueue: vi.fn(),
+			onApplySession: apply
+		});
+		expect(await coordinator.takePlaybackControl(true)).toBe(true);
+		expect(apply).toHaveBeenCalledWith(expect.objectContaining({ currentTime: 42.125 }));
+	});
+	it('keeps fractional media samples without using device wall clocks', () => {
+		const coordinator = new PlaybackSessionCoordinator({
+			origin: 'halflight-now',
+			getCurrentState: () => ({
+				currentTrack: track,
+				queue: [],
+				history: [],
+				currentTime: 25.375,
+				isPlaying: true,
+				hasLocalMedia: true
+			}),
+			onApplyQueue: vi.fn()
+		});
+		expect(coordinator.snapshotPlaybackState()).toMatchObject({
+			currentTime: 25.375,
+			positionPlaying: true
+		});
+	});
+	it('does not overwrite a newer local edit with a late claim response', async () => {
+		let complete!: (value: Response) => void;
+		const apply = vi.fn();
+		const coordinator = new PlaybackSessionCoordinator({
+			origin: 'halflight-now',
+			getDeviceId: () => 'device_1234567890123456',
+			fetch: vi.fn(
+				() =>
+					new Promise<Response>((resolve) => {
+						complete = resolve;
+					})
+			),
+			getCurrentState: () => ({
+				currentTrack: track,
+				queue: [],
+				history: [],
+				currentTime: 25.375,
+				isPlaying: false,
+				hasLocalMedia: false
+			}),
+			onApplyQueue: vi.fn(),
+			onApplySession: apply
+		});
+		const pending = coordinator.takePlaybackControl(true);
+		coordinator.schedulePersistence();
+		complete(Response.json(claimed));
+		await pending;
+		expect(apply).not.toHaveBeenCalled();
+		coordinator.cancelPendingPersistence();
+	});
+});

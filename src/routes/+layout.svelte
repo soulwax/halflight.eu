@@ -8,6 +8,8 @@
 	import type { Snippet } from 'svelte';
 	import { onMount } from 'svelte';
 	import { searchHistory } from '#lib/search/history.svelte';
+	import PlaylistImportModal from '#lib/components/music/PlaylistImportModal.svelte';
+	import { invalidateAll } from '$app/navigation';
 	import TrackReplacementDialog from '#lib/components/player/TrackReplacementDialog.svelte';
 	import ContextMenuBar from '#lib/components/ui/ContextMenuBar.svelte';
 	import type { LayoutData } from './$types';
@@ -82,7 +84,7 @@
 		<link rel="apple-touch-icon" sizes="180x180" href="/icons/halflight-180.png" />
 	{/if}
 </svelte:head>
-{#if isMobile || isListeningRoom}
+{#if isMobile || isListeningRoom || deLocalizeHref(page.url.pathname) === '/sign-in'}
 	{@render children()}
 {:else}
 	<div class="flex min-h-dvh flex-col">
@@ -99,4 +101,6 @@
 		<a href={localizeHref(page.url.pathname, { locale })}>{locale}</a>
 	{/each}
 </div>
-{#if data.user}{#key data.user.id}<TrackReplacementDialog />{/key}<ContextMenuBar />{/if}
+{#if data.user}{#key data.user.id}<TrackReplacementDialog /><PlaylistImportModal
+			onImported={invalidateAll}
+		/>{/key}<ContextMenuBar />{/if}

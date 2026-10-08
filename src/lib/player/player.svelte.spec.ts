@@ -450,7 +450,7 @@ describe('PlayerState', () => {
 		expect(player.currentTrack).toEqual(sampleTrack1);
 		expectQueuedTracks(player, [sampleTrack2]);
 		expect(player.history).toEqual([sampleTrack3]);
-		expect(player.currentTime).toBe(67);
+		expect(player.currentTime).toBe(67.8);
 		expect(player.isPlaying).toBe(false);
 	});
 
@@ -1980,5 +1980,48 @@ describe('PlayerState autoplay', () => {
 		release();
 		await vi.waitFor(() => expect(state.currentTrack?.id).toBe('900'));
 		expect(state.history.map((track) => track.id)).toEqual(['10']);
+	});
+});
+
+describe('precise lyric and seek timing', () => {
+	it('updates the lyric cue immediately when seeking while paused and ignores invalid targets', () => {
+		const state = new PlayerState();
+		state.currentTrack = { ...sampleTrack1, duration: 100 };
+		state.duration = 100;
+		state.lyricsCues = [
+			{ time: 0, text: 'first' },
+			{ time: 1.125, text: 'second' }
+		];
+		state.seek(1.125);
+		expect(state.currentTime).toBe(1.125);
+		expect(state.activeLyricIndex).toBe(1);
+		state.seek(NaN);
+		expect(state.currentTime).toBe(1.125);
+		state.seek(0.5);
+		expect(state.activeLyricIndex).toBe(0);
+	});
+	it('discards an old lyric body even if a newer request is for the same recording', async () => {
+		const state = new PlayerState();
+		state.currentTrack = sampleTrack1;
+		let finish!: (value: unknown) => void;
+		const oldBody = new Promise((resolve) => {
+			finish = resolve;
+		});
+		const json = vi.fn(() => oldBody);
+		const fetch = vi
+			.fn()
+			.mockResolvedValueOnce({ ok: true, json })
+			.mockResolvedValueOnce(
+				Response.json({ lyrics: 'new', cues: [{ time: 1.125, text: 'new' }] })
+			);
+		vi.stubGlobal('fetch', fetch);
+		const first = state.loadLyrics(sampleTrack1.id);
+		await vi.waitFor(() => expect(json).toHaveBeenCalled());
+		await state.loadLyrics(sampleTrack1.id);
+		finish({ lyrics: 'old', cues: [{ time: 0, text: 'old' }] });
+		await first;
+		expect(state.lyrics).toBe('new');
+		expect(state.lyricsCues[0].text).toBe('new');
+		expect(state.isLyricsLoading).toBe(false);
 	});
 });

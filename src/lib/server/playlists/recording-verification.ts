@@ -113,7 +113,13 @@ export async function verifyImportedRecordings(
 	quality: TrackAudioQuality,
 	sources = recordingVerificationSources,
 	preferred: Map<string, TrackSummary> = new Map()
-): Promise<{ tracks: TrackSummary[]; replacements: number; bestFits: number; skipped: number }> {
+): Promise<{
+	tracks: TrackSummary[];
+	replacements: number;
+	bestFits: number;
+	skipped: number;
+	unmatched: TrackSummary[];
+}> {
 	const originals = await sources.validate(tracks, ownerId, ctx, quality, 'recover');
 	const available = new Map(originals.map((track) => [track.id, track]));
 	const replacements = new Map<string, ReplacementCandidate>();
@@ -153,6 +159,13 @@ export async function verifyImportedRecordings(
 		tracks: result,
 		replacements: relinked,
 		bestFits,
-		skipped: tracks.length - result.length
+		skipped: tracks.length - result.length,
+		unmatched: [
+			...new Map(
+				tracks
+					.filter((track) => !available.has(track.id) && !replacements.has(track.id))
+					.map((track) => [track.id, track])
+			).values()
+		]
 	};
 }

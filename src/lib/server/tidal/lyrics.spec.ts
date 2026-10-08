@@ -326,3 +326,8 @@ describe('lyrics fallback providers', () => {
 		expect(res?.lyrics).toContain('Ziggy played guitar');
 	});
 });
+it('keeps millisecond cue boundaries and ignores malformed seconds', () => {
+	expect(parseLrc('[00:60.123] malformed\n[00:01.125] exact')).toEqual([
+		{ time: 1.125, text: 'exact' }
+	]);
+});
