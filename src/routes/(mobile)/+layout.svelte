@@ -45,6 +45,7 @@
 	$effect(() => {
 		player.origin = 'halflight-now';
 		player.applyStreamingSettings(data.streamingSettings);
+		player.applyListeningPreferences(data.listeningPreferences);
 		player.restorePlaybackState(data.playbackState, data.knownUnavailableIds);
 	});
 

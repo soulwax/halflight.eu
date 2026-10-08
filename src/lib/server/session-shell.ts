@@ -2,12 +2,17 @@ import type { RequestEvent } from '@sveltejs/kit';
 import { getConnectionStatus } from '#lib/server/tidal';
 import { getPlaybackState, type PlaybackState } from '#lib/server/playback-state';
 import { getStreamingSettings, type StreamingSettings } from '#lib/server/streaming-settings';
+import {
+	getListeningPreferences,
+	type ListeningPreferences
+} from '#lib/server/listening-preferences';
 import { getUnplayableTrackIds } from '#lib/server/tidal/track-playability';
 import { ensureTidalIdentityLinked } from '#lib/server/tidal/identity';
 
 export interface SessionShellData {
 	connection: { connected: boolean; configured: boolean; hasPlayback?: boolean };
 	streamingSettings: StreamingSettings;
+	listeningPreferences: ListeningPreferences;
 	playbackState: PlaybackState;
 	knownUnavailableIds: string[];
 }
@@ -26,9 +31,10 @@ export async function loadSessionShellData(event: RequestEvent): Promise<Session
 	// Off the render path: memoised per user, and it never throws.
 	void ensureTidalIdentityLinked(userId);
 
-	const [connection, streamingSettings, playbackState] = await Promise.all([
+	const [connection, streamingSettings, listeningPreferences, playbackState] = await Promise.all([
 		getConnectionStatus(),
 		getStreamingSettings(userId),
+		getListeningPreferences(userId),
 		getPlaybackState(userId)
 	]);
 	const knownUnavailableIds = [
@@ -44,6 +50,7 @@ export async function loadSessionShellData(event: RequestEvent): Promise<Session
 			hasPlayback: connection.hasPlayback
 		},
 		streamingSettings,
+		listeningPreferences,
 		playbackState,
 		knownUnavailableIds: [...unavailable]
 	};

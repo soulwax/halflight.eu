@@ -93,6 +93,35 @@ export const streamingSettings = pgTable(
 );
 
 /**
+ * How a listener wants suggestions and their taste data handled. Separate from
+ * the derived `taste_profile`, so resetting or deleting taste data never
+ * forgets these choices.
+ */
+export const listeningPreferences = pgTable(
+	'listening_preferences',
+	{
+		userId: text('user_id')
+			.primaryKey()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		/** Continue with suggested songs when the queue runs out. */
+		autoplay: boolean('autoplay').notNull().default(true),
+		autoplayCount: integer('autoplay_count').notNull().default(10),
+		/** Rank and filter suggestions with the taste profile. */
+		personalizeSuggestions: boolean('personalize_suggestions').notNull().default(true),
+		/** Record qualified Halflight plays as taste evidence. */
+		learnFromListening: boolean('learn_from_listening').notNull().default(true),
+		/** Use Last.fm scrobbles and tags as taste evidence. */
+		useLastfmHistory: boolean('use_lastfm_history').notNull().default(true),
+		/** Let the background worker analyse the listener's TIDAL playlists. */
+		learnFromPlaylists: boolean('learn_from_playlists').notNull().default(true),
+		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+	},
+	(table) => [
+		check('listening_preferences_autoplay_count', sql`${table.autoplayCount} between 5 and 25`)
+	]
+);
+
+/**
  * The owner's selected visual theme. Separate from `streaming_settings`
  * because appearance and audio preferences are different concerns that
  * change independently; a reconnect or quality change must never touch this.
@@ -189,6 +218,25 @@ export const tasteListeningEvidence = pgTable('taste_listening_evidence', {
 	data: jsonb('data').notNull(),
 	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 });
+
+/**
+ * Background playlist analysis per listener: identifiers, versions and derived
+ * artist/decade weights only — never titles, artwork or track lists. The lease
+ * keeps one worker on a listener at a time, across processes.
+ */
+export const tastePlaylistAnalysis = pgTable(
+	'taste_playlist_analysis',
+	{
+		userId: text('user_id')
+			.primaryKey()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		data: jsonb('data').notNull(),
+		nextRunAt: timestamp('next_run_at', { withTimezone: true }).notNull().defaultNow(),
+		leaseUntil: timestamp('lease_until', { withTimezone: true }),
+		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+	},
+	(table) => [index('taste_playlist_analysis_next_run_idx').on(table.nextRunAt)]
+);
 
 /**
  * A bounded, owner-owned suppression list for recently accepted generated

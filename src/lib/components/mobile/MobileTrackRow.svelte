@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { contextActions, type ContextActionSource } from '#lib/context-menu/context-menu.svelte';
+	import { trackActions } from '#lib/context-menu/actions';
 	import type { Snippet } from 'svelte';
 	import { Disc } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
@@ -9,6 +11,7 @@
 	let {
 		track,
 		onActivate,
+		contextActions: rowContextActions,
 		contextTracks,
 		contextIndex,
 		provenance,
@@ -20,6 +23,8 @@
 	}: {
 		track: TrackSummary;
 		onActivate: () => void;
+		/** Right-click actions; defaults to this song's actions in its list. */
+		contextActions?: ContextActionSource;
 		contextTracks?: TrackSummary[];
 		contextIndex?: number;
 		provenance?: string;
@@ -45,7 +50,13 @@
 	);
 </script>
 
-<div class="mobile-track-row" class:compact class:with-actions={Boolean(actions)}>
+<div
+	class="mobile-track-row"
+	class:compact
+	class:with-actions={Boolean(actions)}
+	use:contextActions={rowContextActions ??
+		(() => trackActions(track, { contextTracks, contextIndex, provenance, onPlayNow: onActivate }))}
+>
 	<button type="button" class="mobile-track-primary" onclick={onActivate}>
 		<span class="mobile-track-art">
 			{#if cover && cover !== failedCover}

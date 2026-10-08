@@ -1,10 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { emptyListeningEvidence, type ListeningEvidence } from '#lib/taste/listening-profile';
-const mocks = vi.hoisted(() => ({ track: vi.fn(), genres: vi.fn(), mutate: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+	track: vi.fn(),
+	genres: vi.fn(),
+	mutate: vi.fn(),
+	preferences: vi.fn()
+}));
 vi.mock('#lib/server/tidal/api', () => ({ getTrack: mocks.track }));
 vi.mock('#lib/server/tidal/normalise', () => ({ normaliseTrackDetail: (value: unknown) => value }));
 vi.mock('#lib/server/taste/lastfm-listening', () => ({ genresForPlayedTrack: mocks.genres }));
 vi.mock('#lib/server/taste/listening-store', () => ({ mutateListeningEvidence: mocks.mutate }));
+vi.mock('#lib/server/listening-preferences', () => ({
+	getListeningPreferences: mocks.preferences
+}));
 import { POST } from './+server';
 let state: ListeningEvidence;
 function event(body: unknown, listener = true) {
@@ -28,6 +36,7 @@ const body = () => ({
 beforeEach(() => {
 	vi.clearAllMocks();
 	state = emptyListeningEvidence();
+	mocks.preferences.mockResolvedValue({ learnFromListening: true });
 	mocks.track.mockResolvedValue({
 		id: '123',
 		title: 'Canonical',
@@ -66,4 +75,12 @@ describe('qualified listening endpoint', () => {
 		await expect(POST(event(body()))).rejects.toMatchObject({ status: 404 });
 		expect(mocks.mutate).not.toHaveBeenCalled();
 	});
+});
+
+it('stores nothing and reads no metadata when the listener opted out of learning', async () => {
+	mocks.preferences.mockResolvedValue({ learnFromListening: false });
+	const response = await POST(event(body()));
+	expect(await response.json()).toEqual({ accepted: false, reason: 'learning_disabled' });
+	expect(mocks.track).not.toHaveBeenCalled();
+	expect(mocks.mutate).not.toHaveBeenCalled();
 });

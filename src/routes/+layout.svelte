@@ -9,6 +9,7 @@
 	import { onMount } from 'svelte';
 	import { searchHistory } from '#lib/search/history.svelte';
 	import TrackReplacementDialog from '#lib/components/player/TrackReplacementDialog.svelte';
+	import ContextMenuBar from '#lib/components/ui/ContextMenuBar.svelte';
 	import type { LayoutData } from './$types';
 	import './layout.css';
 
@@ -98,4 +99,4 @@
 		<a href={localizeHref(page.url.pathname, { locale })}>{locale}</a>
 	{/each}
 </div>
-{#if data.user}{#key data.user.id}<TrackReplacementDialog />{/key}{/if}
+{#if data.user}{#key data.user.id}<TrackReplacementDialog />{/key}<ContextMenuBar />{/if}

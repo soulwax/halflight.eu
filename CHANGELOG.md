@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Autoplay: when the queue runs out, Halflight continues with 10 suggested songs (Spotify
+  style). Suggestions follow the last few songs' radio, are deduplicated by ID, ISRC and song
+  identity against everything queued or recently heard, let an artist return at most twice per
+  batch, and respect taste exclusions. They load while the last queued song plays, so playback
+  continues without a gap; the listener's own queue choices always win.
+- Suggestions & taste data preferences (desktop Taste profile, mobile Settings), saved per
+  account: autoplay on/off and batch size (5, 10, 20), shaping suggestions with the taste
+  profile, learning from Halflight plays, and using Last.fm history (switching it off removes
+  the stored Last.fm evidence). A separate action forgets Halflight listening evidence.
+- A right-click context bar on songs (lists, tables, cards), queue entries, the song playing
+  now, and album, artist and playlist cards. It shows each action as a 32px symbol with an
+  accessible name, wraps into balanced rows on narrow screens, and reverses its pivot to open
+  up and/or left when the pointer is near the right or bottom edge. The Menu key and Shift+F10
+  open it too; Shift+right-click keeps the browser menu.
+
 - Halflight Now measures the visible mobile viewport as browser chrome, keyboard, and orientation
   change, fills the standalone app's exposed bottom area without shifting controls, and brings the
   most recent successful search results back when returning to Search.

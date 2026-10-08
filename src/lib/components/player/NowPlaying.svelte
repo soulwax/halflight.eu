@@ -5,6 +5,8 @@
 	import { player } from '#lib/player/player.svelte.js';
 	import type { TrackSummary } from '#lib/tidal/models';
 	import { trackArtworkUrl } from '#lib/tidal/artwork';
+	import { contextActions } from '#lib/context-menu/context-menu.svelte';
+	import { nowPlayingActions } from '#lib/context-menu/actions';
 
 	let { track }: { track: TrackSummary } = $props();
 
@@ -17,7 +19,7 @@
 	);
 </script>
 
-<div class="identity">
+<div class="identity" use:contextActions={() => nowPlayingActions(track)}>
 	<span class="cover" class:spin={player.isPlaying && !player.isLoading}>
 		{#if cover && cover !== failedCover}
 			<img src={cover} alt="" decoding="async" onerror={() => (failedCover = cover)} />

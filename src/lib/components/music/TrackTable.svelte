@@ -10,6 +10,8 @@
 	import { queueDndZone, type DndEvent } from '#lib/player/queue-dnd.js';
 	import TrackQueueActions from './TrackQueueActions.svelte';
 	import TrackTableRow from './TrackTableRow.svelte';
+	import type { ContextAction } from '#lib/context-menu/context-menu.svelte';
+	import { trackActions } from '#lib/context-menu/actions';
 
 	let {
 		tracks,
@@ -19,6 +21,7 @@
 		compact = false,
 		rowActions,
 		onRowActivate,
+		rowContextActions,
 		rowKey,
 		reorderable = false,
 		onconsider,
@@ -32,6 +35,8 @@
 		compact?: boolean;
 		rowActions?: Snippet<[TrackSummary, number]>;
 		onRowActivate?: (track: TrackSummary, index: number) => void;
+		/** Right-click actions for a row; defaults to the song's own actions in this list. */
+		rowContextActions?: (track: TrackSummary, index: number) => ContextAction[];
 		/**
 		 * Stable identity for a row. Defaults to position, which is safe for a
 		 * fixed listing but destroys and recreates rows when the list reorders.
@@ -57,6 +62,16 @@
 	const activate = $derived(
 		onRowActivate ?? ((track: TrackSummary) => player.play(track, activeContext, provenance))
 	);
+
+	const contextFor = (track: TrackSummary, index: number) => () =>
+		rowContextActions
+			? rowContextActions(track, index)
+			: trackActions(track, {
+					contextTracks: activeContext,
+					contextIndex: contextTracks ? undefined : index,
+					provenance,
+					onPlayNow: () => activate(track, index)
+				});
 
 	const gridTemplate = $derived(
 		[
@@ -121,6 +136,7 @@
 					{compact}
 					isPlaying={player.currentTrack?.id === track.id}
 					onActivate={() => activate(track, index)}
+					contextActions={contextFor(track, index)}
 				>
 					{#snippet actions()}
 						{#if rowActions}
@@ -141,6 +157,7 @@
 					{compact}
 					isPlaying={player.currentTrack?.id === track.id}
 					onActivate={() => activate(track, index)}
+					contextActions={contextFor(track, index)}
 				>
 					{#snippet actions()}
 						{#if rowActions}

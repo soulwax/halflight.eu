@@ -5,6 +5,7 @@
 	import { m } from '#lib/paraglide/messages.js';
 	import MobileSubScreenHeader from '#lib/components/mobile/MobileSubScreenHeader.svelte';
 	import MobileStorage from '#lib/components/mobile/MobileStorage.svelte';
+	import ListeningPreferencesForm from '#lib/components/settings/ListeningPreferencesForm.svelte';
 	import TidalPlaybackSetup from '#lib/components/tidal/TidalPlaybackSetup.svelte';
 	import { getThemeLabel, type Theme } from '#lib/theme.js';
 	import { rememberSiteChoice } from '#lib/mobile/site-entry';
@@ -261,6 +262,13 @@
 			<button type="submit">{m.appearance_save()}</button>
 		</form>
 	</section>
+
+	<ListeningPreferencesForm
+		preferences={data.listeningPreferences}
+		saved={Boolean(form?.listeningPreferencesSaved)}
+		failed={Boolean(form?.listeningPreferencesError)}
+		forgotten={Boolean(form?.listeningForgotten)}
+	/>
 
 	{#if data.storage}<MobileStorage storage={data.storage} />{/if}
 

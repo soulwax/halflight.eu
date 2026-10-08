@@ -33,3 +33,17 @@ export async function mutateListeningEvidence(
 export async function clearListeningEvidence(userId: string): Promise<void> {
 	await db.delete(tasteListeningEvidence).where(eq(tasteListeningEvidence.userId, userId));
 }
+/** Drop Last.fm-derived evidence while keeping qualified Halflight plays. */
+export async function clearLastfmEvidence(userId: string): Promise<void> {
+	await mutateListeningEvidence(userId, (state) => ({
+		...state,
+		lastfm: emptyListeningEvidence().lastfm
+	}));
+}
+/** Drop qualified Halflight plays while keeping the Last.fm prior. */
+export async function clearHalflightListening(userId: string): Promise<void> {
+	await mutateListeningEvidence(userId, (state) => ({
+		...emptyListeningEvidence(),
+		lastfm: state.lastfm
+	}));
+}

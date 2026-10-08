@@ -4,6 +4,7 @@ import { lastfmScrobbleThreshold } from './scrobble-policy';
 import type { TrackSummary } from '#lib/tidal/models';
 import type { QueueEntry } from './queue-entry';
 import { searchHistory } from '#lib/search/history.svelte';
+import { m } from '#lib/paraglide/messages.js';
 
 // The player persists preferences to localStorage; isolate every case from it.
 beforeEach(() => {
@@ -1905,5 +1906,79 @@ describe('transport availability and deliberate commands', () => {
 		expect(state.isPlaying).toBe(false);
 		expect(state.isLoading).toBe(false);
 		expect(state.currentTrack).toEqual(sampleTrack1);
+	});
+});
+
+describe('PlayerState autoplay', () => {
+	const suggestion = (id: string): TrackSummary => ({
+		kind: 'track',
+		id,
+		title: `Suggested ${id}`,
+		artists: [{ id: `s-${id}`, name: `Suggested artist ${id}` }]
+	});
+	const catalogue = (id: string): TrackSummary => ({ ...sampleTrack1, id, title: `Song ${id}` });
+
+	function serveSuggestions(tracks: TrackSummary[], gate?: Promise<void>) {
+		const requests: { seeds: { id: string }[]; exclude: { id: string }[] }[] = [];
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+				if (String(input) !== '/api/suggestions/autoplay')
+					throw new Error('fetch disabled in component tests');
+				requests.push(JSON.parse(String(init?.body)));
+				await gate;
+				return Response.json({ tracks });
+			})
+		);
+		return requests;
+	}
+
+	it('tops up the queue with deduplicated suggestions once the last queued song starts', async () => {
+		const requests = serveSuggestions([suggestion('900'), catalogue('11'), suggestion('901')]);
+		const state = new PlayerState();
+		state.play(catalogue('10'), [catalogue('10'), catalogue('11')]);
+		expect(requests).toHaveLength(0);
+		state.next();
+		await vi.waitFor(() => expect(state.queue).toHaveLength(2));
+		expect(state.queue.map((entry) => entry.id)).toEqual(['900', '901']);
+		expect(state.queue[0].provenance).toBe(m.player_autoplay_provenance());
+		expect(requests[0].seeds.map((seed) => seed.id)).toEqual(['11', '10']);
+	});
+
+	it('asks for nothing when autoplay is off or repeat loops the session', () => {
+		const requests = serveSuggestions([suggestion('900')]);
+		const off = new PlayerState();
+		off.applyListeningPreferences({ autoplay: false });
+		off.play(catalogue('10'));
+		const looping = new PlayerState();
+		looping.repeatMode = 'all';
+		looping.play(catalogue('10'));
+		expect(requests).toHaveLength(0);
+	});
+
+	it('keeps the listener’s own queue if they added songs while suggestions loaded', async () => {
+		let release!: () => void;
+		const requests = serveSuggestions(
+			[suggestion('900')],
+			new Promise((resolve) => (release = resolve))
+		);
+		const state = new PlayerState();
+		state.play(catalogue('10'));
+		await vi.waitFor(() => expect(requests).toHaveLength(1));
+		state.addToQueue(catalogue('12'));
+		release();
+		await vi.waitFor(() => expect(state.isLoadingAutoplay).toBe(false));
+		expect(state.queue.map((entry) => entry.id)).toEqual(['12']);
+	});
+
+	it('continues playback once suggestions arrive if the song ended first', async () => {
+		let release!: () => void;
+		serveSuggestions([suggestion('900')], new Promise((resolve) => (release = resolve)));
+		const state = new PlayerState();
+		state.play(catalogue('10'));
+		expect(state.next(true)).toBeNull();
+		release();
+		await vi.waitFor(() => expect(state.currentTrack?.id).toBe('900'));
+		expect(state.history.map((track) => track.id)).toEqual(['10']);
 	});
 });

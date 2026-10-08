@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { queueEntryActions } from '#lib/context-menu/actions';
 	import { tick } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { ChevronDown, ChevronUp, Disc, X } from '@lucide/svelte';
@@ -128,6 +129,7 @@
 					compact
 					track={entry}
 					onActivate={() => player.playFromQueue(entry.entryId)}
+					contextActions={() => queueEntryActions(entry)}
 				>
 					{#snippet actions()}
 						<div class="queue-row-controls">

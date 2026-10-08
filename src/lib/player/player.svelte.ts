@@ -9,6 +9,7 @@ import { m } from '#lib/paraglide/messages.js';
 import { assessPlayback, type PlaybackAssessment } from './playback-assessment.js';
 import { activeLyricIndexAt } from './lyrics-follow.js';
 import { lastfmScrobbleThreshold } from './scrobble-policy.js';
+import { autoplayRequestBody, freshSuggestions, readSuggestedTracks } from './autoplay.js';
 import {
 	setupMediaSessionHandlers,
 	updateMediaMetadata,
@@ -149,6 +150,10 @@ export class PlayerState {
 	floatingPos = $state<{ x: number; y: number }>({ x: 24, y: 24 });
 	shuffle = $state(false);
 	repeatMode = $state<RepeatMode>('off');
+	/** Continue with suggested songs when the queue runs out (a saved listening preference). */
+	autoplayEnabled = $state(true);
+	/** True while suggestions for the end of the queue are being fetched. */
+	isLoadingAutoplay = $state(false);
 	/** Which site this browser tab is acting as, for session-write attribution. */
 	origin = $state<PlaybackOrigin>('listening-room');
 	/** Whether the current in-memory session has reached the authoritative server state. */
@@ -947,6 +952,8 @@ export class PlayerState {
 		updateMediaMetadata(track);
 		if (this.queue.length > 0) {
 			streamPreloader.preload(this.queue[0].id);
+		} else {
+			void this.continueWithSuggestions();
 		}
 
 		if (isBrowser) {
@@ -1538,6 +1545,56 @@ export class PlayerState {
 		this.savePrefs();
 	}
 
+	applyListeningPreferences(preferences: { autoplay: boolean }): void {
+		this.autoplayEnabled = preferences.autoplay;
+	}
+
+	private autoplayRequest: Promise<void> | null = null;
+
+	/**
+	 * Once the last queued song starts, fetch the songs that follow it so playback
+	 * continues without a gap. Only the device playing the session does this, and
+	 * nothing is added while repeat loops the session or the listener opted out.
+	 */
+	private continueWithSuggestions(): Promise<void> | null {
+		if (!isBrowser || !this.autoplayEnabled || this.repeatMode !== 'off') return null;
+		if (!this.currentTrack || this.queue.length > 0 || this.isPlaybackActiveElsewhere) return null;
+		if (this.autoplayRequest) return this.autoplayRequest;
+		const body = autoplayRequestBody(
+			this.currentTrack,
+			this.history,
+			this.queue.map(toDisplayTrack)
+		);
+		if (!body) return null;
+		const seedId = this.currentTrack.id;
+		this.isLoadingAutoplay = true;
+		const request = fetch('/api/suggestions/autoplay', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(body)
+		})
+			.then((response) => (response.ok ? response.json() : null))
+			.then((data) => {
+				// The listener moved on or filled the queue meanwhile: their choice wins.
+				if (this.currentTrack?.id !== seedId || this.queue.length > 0) return;
+				if (!this.autoplayEnabled || this.repeatMode !== 'off') return;
+				const tracks = freshSuggestions(readSuggestedTracks(data), [
+					...this.history,
+					...(this.currentTrack ? [this.currentTrack] : [])
+				]);
+				if (tracks.length) this.addMultipleToQueue(tracks, m.player_autoplay_provenance());
+			})
+			.catch(() => {
+				// Suggestions are a convenience; the session simply ends without them.
+			})
+			.finally(() => {
+				this.autoplayRequest = null;
+				this.isLoadingAutoplay = false;
+			});
+		this.autoplayRequest = request;
+		return request;
+	}
+
 	/** Apply server defaults without clobbering a locally adjusted player volume. */
 	applyStreamingSettings(settings: { volume: number; loudnessNormalization: boolean }): void {
 		if (!this.hasLocalVolumePreference) {
@@ -1656,6 +1713,15 @@ export class PlayerState {
 		}
 
 		if (this.queue.length === 0) {
+			if (auto && this.repeatMode === 'off') {
+				// The queue ran out before suggestions arrived: continue once they do.
+				const pending = this.continueWithSuggestions();
+				if (pending)
+					void pending.then(() => {
+						if (this.queue.length > 0 && !this.isPlaying) this.next(true);
+					});
+				return null;
+			}
 			if (this.repeatMode !== 'all') return null;
 			const loop = [...this.history, ...(this.currentTrack ? [this.currentTrack] : [])];
 			if (loop.length === 0) return null;

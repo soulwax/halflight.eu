@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { queueEntryActions } from '#lib/context-menu/actions';
 	import { onMount, tick } from 'svelte';
 	import { ArrowDown, ArrowUp, Trash2 } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
@@ -80,6 +81,7 @@
 		reorderable={true}
 		onconsider={handleConsider}
 		onfinalize={handleFinalize}
+		rowContextActions={(_, index) => (items[index] ? queueEntryActions(items[index]) : [])}
 		onRowActivate={(_, index) => {
 			const entry = items[index];
 			if (entry) player.playFromQueue(entry.entryId);

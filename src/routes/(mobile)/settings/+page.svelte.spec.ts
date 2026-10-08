@@ -21,7 +21,14 @@ function installPrompt(
 
 const data = {
 	connection: { configured: true, connected: true },
-	streamingSettings: { preferredQuality: 'HIGH', volume: 75, loudnessNormalization: true }
+	streamingSettings: { preferredQuality: 'HIGH', volume: 75, loudnessNormalization: true },
+	listeningPreferences: {
+		autoplay: true,
+		autoplayCount: 10,
+		personalizeSuggestions: true,
+		learnFromListening: true,
+		useLastfmHistory: true
+	}
 } as PageData;
 
 describe('mobile settings install flow', () => {

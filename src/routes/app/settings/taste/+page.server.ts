@@ -10,6 +10,11 @@ import {
 } from '#lib/server/taste/profile';
 import { getConnectionStatus } from '#lib/server/tidal';
 import { getArtist } from '#lib/server/tidal/api';
+import {
+	getListeningPreferences,
+	saveListeningPreferencesForm
+} from '#lib/server/listening-preferences';
+import { clearHalflightListening, clearLastfmEvidence } from '#lib/server/taste/listening-store';
 import type { PageServerLoad } from './$types';
 
 export interface AnchorArtistItem {
@@ -32,8 +37,11 @@ export const load: PageServerLoad = async (event) => {
 		throw redirect(303, resolve('/sign-in'));
 	}
 
-	const profile = await getTasteProfile(user.id);
-	const connection = await getConnectionStatus();
+	const [profile, connection, listeningPreferences] = await Promise.all([
+		getTasteProfile(user.id),
+		getConnectionStatus(),
+		getListeningPreferences(user.id)
+	]);
 
 	// Resolve names for top anchor artists (up to 8)
 	const sortedArtistEntries = Object.entries(profile.artists).sort(([, a], [, b]) => b - a);
@@ -138,6 +146,7 @@ export const load: PageServerLoad = async (event) => {
 	return {
 		profile,
 		connection,
+		listeningPreferences,
 		anchorArtists,
 		excludedArtists,
 		eraDistribution,
@@ -152,6 +161,24 @@ export const load: PageServerLoad = async (event) => {
 };
 
 export const actions: Actions = {
+	saveListeningPreferences: async (event) => {
+		const user = event.locals.user;
+		if (!user) throw error(401, 'Unauthorized');
+		const saved = await saveListeningPreferencesForm(
+			user.id,
+			await event.request.formData(),
+			clearLastfmEvidence
+		);
+		if (!saved) return fail(400, { listeningPreferencesError: true });
+		return { listeningPreferencesSaved: true };
+	},
+
+	forgetListening: async (event) => {
+		const user = event.locals.user;
+		if (!user) throw error(401, 'Unauthorized');
+		await clearHalflightListening(user.id);
+		return { listeningForgotten: true };
+	},
 	rebuild: async (event) => {
 		const user = event.locals.user;
 		if (!user) throw error(401, 'Unauthorized');

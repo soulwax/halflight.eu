@@ -84,7 +84,8 @@ export function classifyRequest(pathname: string): Bucket | null {
 	if (/^\/api\/playlists\/(import|sync)\/?$/.test(pathname)) return 'import';
 	if (
 		/^\/api\/(search|favorites)\/?$/.test(pathname) ||
-		/^\/api\/tracks\/[^/]+\/(stream|radio)\/?$/.test(pathname)
+		/^\/api\/tracks\/[^/]+\/(stream|radio)\/?$/.test(pathname) ||
+		/^\/api\/suggestions\/autoplay\/?$/.test(pathname)
 	)
 		return 'upstream';
 	if (pathname.startsWith('/api/') || pathname.startsWith('/tidal/api/')) return 'api';

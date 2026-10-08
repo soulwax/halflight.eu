@@ -1,4 +1,5 @@
 import { weightedRecentSongs, type RecentSong } from '#lib/taste/recent-songs';
+import { getListeningPreferences } from '#lib/server/listening-preferences';
 import { createHash } from 'node:crypto';
 import { LASTFM_API_KEY } from '$app/env/private';
 import { getLastfmConnection } from '#lib/server/lastfm';
@@ -104,7 +105,8 @@ export async function genresForPlayedTrack(
 	artist: string,
 	track: string
 ): Promise<GenreEvidence[]> {
-	if (!LASTFM_API_KEY || !(await getLastfmConnection(userId)).connected) return [];
+	if (!LASTFM_API_KEY || !(await getListeningPreferences(userId)).useLastfmHistory) return [];
+	if (!(await getLastfmConnection(userId)).connected) return [];
 	try {
 		const specific = await tags(artist, track, fetch);
 		return specific.length ? specific : await tags(artist, undefined, fetch);
@@ -117,7 +119,7 @@ export async function readLastfmTastePrior(
 	userId: string,
 	ctx?: TidalRequestContext
 ): Promise<ListeningEvidence['lastfm'] | null> {
-	if (!LASTFM_API_KEY) return null;
+	if (!LASTFM_API_KEY || !(await getListeningPreferences(userId)).useLastfmHistory) return null;
 	const connection = await getLastfmConnection(userId);
 	if (!connection.connected || !connection.username) return null;
 	try {

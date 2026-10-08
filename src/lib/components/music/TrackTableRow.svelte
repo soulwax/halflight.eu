@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { contextActions, type ContextActionSource } from '#lib/context-menu/context-menu.svelte';
 	import type { Snippet } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { Disc, Play } from '@lucide/svelte';
@@ -14,7 +15,8 @@
 		compact = false,
 		isPlaying = false,
 		onActivate,
-		actions
+		actions,
+		contextActions: rowContextActions
 	}: {
 		track: TrackSummary;
 		columns: TrackColumn[];
@@ -22,6 +24,7 @@
 		isPlaying?: boolean;
 		onActivate: () => void;
 		actions?: Snippet;
+		contextActions?: ContextActionSource;
 	} = $props();
 
 	let failedCover = $state<string | null>(null);
@@ -42,7 +45,13 @@
 	);
 </script>
 
-<div class:tt-row-playing={isPlaying} class:compact class="tt-row" role="row">
+<div
+	class:tt-row-playing={isPlaying}
+	class:compact
+	class="tt-row"
+	role="row"
+	use:contextActions={rowContextActions}
+>
 	<span class="tt-art" role="cell">
 		{#if cover && cover !== failedCover}
 			<img

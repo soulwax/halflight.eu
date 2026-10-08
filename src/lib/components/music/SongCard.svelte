@@ -5,6 +5,8 @@
 	import type { TrackSummary } from '#lib/tidal/models';
 	import Badge from '#lib/components/ui/Badge.svelte';
 	import TrackActionMenu from './TrackActionMenu.svelte';
+	import { contextActions } from '#lib/context-menu/context-menu.svelte';
+	import { trackActions } from '#lib/context-menu/actions';
 	import { resolve } from '$app/paths';
 	import { Disc, Play } from '@lucide/svelte';
 
@@ -26,7 +28,11 @@
 	const releaseYear = $derived(formatReleaseDate(track.album?.releaseDate));
 </script>
 
-<article class="song-card" aria-label={track.title}>
+<article
+	class="song-card"
+	aria-label={track.title}
+	use:contextActions={() => trackActions(track, { contextTracks, contextIndex: index, provenance })}
+>
 	<div class="artwork-wrap">
 		{#if coverImage && !imageError}
 			<img

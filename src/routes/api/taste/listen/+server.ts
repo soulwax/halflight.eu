@@ -5,6 +5,7 @@ import { normaliseTrackDetail } from '#lib/server/tidal/normalise';
 import { applyQualifiedListen } from '#lib/taste/listening-profile';
 import { mutateListeningEvidence } from '#lib/server/taste/listening-store';
 import { genresForPlayedTrack } from '#lib/server/taste/lastfm-listening';
+import { getListeningPreferences } from '#lib/server/listening-preferences';
 export const POST: RequestHandler = async (event) => {
 	if (!event.locals.user || !event.locals.isListener) error(401, 'Unauthorized');
 	const body = await event.request.json().catch(() => null);
@@ -22,6 +23,12 @@ export const POST: RequestHandler = async (event) => {
 		body.observedAt > Date.now() + 60_000
 	)
 		error(400, 'Invalid qualified listen');
+	// Opted out: acknowledge without reading metadata or storing anything.
+	if (!(await getListeningPreferences(event.locals.user.id)).learnFromListening)
+		return json(
+			{ accepted: false, reason: 'learning_disabled' },
+			{ headers: { 'Cache-Control': 'private, no-store' } }
+		);
 	const track = normaliseTrackDetail(
 		await getTrack(
 			body.trackId,

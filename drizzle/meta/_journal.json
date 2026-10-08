@@ -211,6 +211,20 @@
       "when": 1791415570374,
       "tag": "0029_qualified_listening_evidence",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1791432808310,
+      "tag": "0030_listening_preferences",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1791434825100,
+      "tag": "0031_taste_playlist_analysis",
+      "breakpoints": true
     }
   ]
 }

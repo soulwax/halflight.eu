@@ -4,6 +4,7 @@
 	import ViewHeader from '#lib/components/ui/ViewHeader.svelte';
 	import { m } from '#lib/paraglide/messages';
 	import Notice from '#lib/components/ui/Notice.svelte';
+	import ListeningPreferencesForm from '#lib/components/settings/ListeningPreferencesForm.svelte';
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
 	import {
@@ -45,6 +46,13 @@
 	{#if form?.message}
 		<Notice tone="success">{form.message}</Notice>
 	{/if}
+
+	<ListeningPreferencesForm
+		preferences={data.listeningPreferences}
+		saved={Boolean(form?.listeningPreferencesSaved)}
+		failed={Boolean(form?.listeningPreferencesError)}
+		forgotten={Boolean(form?.listeningForgotten)}
+	/>
 
 	<!-- Plain Language Summary Card -->
 	<section

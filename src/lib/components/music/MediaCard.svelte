@@ -3,6 +3,8 @@
 	import { resolve } from '$app/paths';
 	import { Disc, ListMusic, Sparkles, User } from '@lucide/svelte';
 	import type { AlbumSummary, ArtistSummary, PlaylistSummary } from '#lib/tidal/models';
+	import { contextActions } from '#lib/context-menu/context-menu.svelte';
+	import { mediaActions } from '#lib/context-menu/actions';
 
 	type MediaItem =
 		| AlbumSummary
@@ -57,7 +59,13 @@
 	);
 </script>
 
-<a class="media-card" href={targetHref}>
+<a
+	class="media-card"
+	href={targetHref}
+	use:contextActions={itemKind === 'mix'
+		? undefined
+		: () => mediaActions(itemKind as 'album' | 'artist' | 'playlist', item.id, title, targetHref)}
+>
 	{#if item.imageUrl}
 		<img
 			class="media-card-cover"

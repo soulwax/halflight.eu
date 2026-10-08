@@ -16,6 +16,8 @@
 	import { fitText } from '#lib/player/fit-text';
 	import PlaybackStatus from '#lib/components/player/PlaybackStatus.svelte';
 	import TrackActionMenu from '#lib/components/music/TrackActionMenu.svelte';
+	import { contextActions } from '#lib/context-menu/context-menu.svelte';
+	import { nowPlayingActions } from '#lib/context-menu/actions';
 	import { MOBILE_PLAYER_NAVIGATION, type MobilePlayerNavigation } from '#lib/mobile/navigation';
 	import {
 		EDGE_DRAG_PX,
@@ -274,6 +276,7 @@
 	style:--sheet-y="{sheetY}px"
 	style:--sheet-progress={Math.min(1, sheetY / 240)}
 	aria-labelledby="now-title"
+	use:contextActions={track ? () => nowPlayingActions(track) : undefined}
 >
 	<h1 id="now-title" class="sr-only">{m.now_playing_heading()}</h1>
 
