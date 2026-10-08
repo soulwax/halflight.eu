@@ -15,7 +15,8 @@
 		trigger,
 		class: className = '',
 		contentClass = '',
-		showClose = true
+		showClose = true,
+		closeDisabled = false
 	}: {
 		open?: boolean;
 		onOpenChange?: (open: boolean) => void;
@@ -28,6 +29,7 @@
 		class?: string;
 		contentClass?: string;
 		showClose?: boolean;
+		closeDisabled?: boolean;
 	} = $props();
 	let returnFocus: HTMLElement | null = null;
 	$effect(() => {
@@ -59,7 +61,16 @@
 	{/if}
 	<BitsDialog.Portal>
 		<BitsDialog.Overlay class="dialog-overlay" />
-		<BitsDialog.Content class="dialog-content {contentClass}" onCloseAutoFocus={restoreFocus}>
+		<BitsDialog.Content
+			class="dialog-content {contentClass}"
+			onCloseAutoFocus={restoreFocus}
+			onEscapeKeydown={(event) => {
+				if (closeDisabled) event.preventDefault();
+			}}
+			onInteractOutside={(event) => {
+				if (closeDisabled) event.preventDefault();
+			}}
+		>
 			<header class="dialog-header">
 				<div class="dialog-header-text">
 					{#if titleSnippet}
@@ -75,7 +86,11 @@
 					{/if}
 				</div>
 				{#if showClose}
-					<BitsDialog.Close class="dialog-close-btn" aria-label={m.action_close()}>
+					<BitsDialog.Close
+						disabled={closeDisabled}
+						class="dialog-close-btn"
+						aria-label={m.action_close()}
+					>
 						<X size={18} />
 					</BitsDialog.Close>
 				{/if}

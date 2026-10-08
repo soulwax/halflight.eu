@@ -1,9 +1,10 @@
 import { createHash } from 'node:crypto';
-import { ADMIN_USERNAME } from '$app/env/private';
-import { eq, asc } from 'drizzle-orm';
+import { ADMIN_GITHUB_ID, ADMIN_USERNAME } from '$app/env/private';
+import { and, eq, asc } from 'drizzle-orm';
 import { db } from '#lib/server/db';
 import { administrator, userStatus } from '#lib/server/db/schema';
-import { user } from '#lib/server/db/auth.schema';
+import { account, user } from '#lib/server/db/auth.schema';
+import { log } from '#lib/server/log';
 
 const normalizedAdminUsername = normalizeUsername(ADMIN_USERNAME);
 
@@ -21,8 +22,85 @@ export function getAdministratorEmail(username = normalizedAdminUsername): strin
 	return `admin-${digest}@syn.invalid`;
 }
 
+/**
+ * Only for values GitHub itself vouches for (an OAuth profile `login`). A
+ * user's `name` is free text — from email sign-up, a GitHub display name or a
+ * TIDAL profile — and must never be compared with this.
+ */
 export function isConfiguredAdministratorUsername(username: string): boolean {
 	return normalizeUsername(username) === normalizedAdminUsername;
+}
+
+const GITHUB_ID_RETRY_MS = 5 * 60 * 1000;
+let resolvedGithubId: Promise<string | null> | undefined;
+let githubIdFailedAt = 0;
+
+/**
+ * The owner's immutable GitHub user id. `ADMIN_GITHUB_ID` pins it; otherwise
+ * `ADMIN_USERNAME` is resolved once per process through GitHub's public API
+ * (retried after a few minutes if that fails).
+ */
+export function getAdministratorGithubId(fetchImpl: typeof fetch = fetch): Promise<string | null> {
+	const pinned = ADMIN_GITHUB_ID?.trim();
+	if (pinned) return Promise.resolve(pinned);
+	if (!normalizedAdminUsername) return Promise.resolve(null);
+	if (resolvedGithubId && githubIdFailedAt && Date.now() - githubIdFailedAt > GITHUB_ID_RETRY_MS) {
+		resolvedGithubId = undefined;
+	}
+	resolvedGithubId ??= (async () => {
+		try {
+			const response = await fetchImpl(
+				`https://api.github.com/users/${encodeURIComponent(normalizedAdminUsername)}`,
+				{ headers: { accept: 'application/vnd.github+json', 'user-agent': 'halflight' } }
+			);
+			if (!response.ok) throw new Error(`GitHub responded ${response.status}`);
+			const body = (await response.json()) as { id?: number | string };
+			if (body.id == null) throw new Error('GitHub user has no id');
+			githubIdFailedAt = 0;
+			return String(body.id);
+		} catch (cause) {
+			githubIdFailedAt = Date.now();
+			log.warn('admin: could not resolve the administrator GitHub id', { cause });
+			return null;
+		}
+	})();
+	return resolvedGithubId;
+}
+
+/** Test-only: forget the resolved GitHub id. */
+export function resetAdministratorGithubId(): void {
+	resolvedGithubId = undefined;
+	githubIdFailedAt = 0;
+}
+
+/** Whether this user has signed in with the owner's GitHub account. */
+export async function ownsAdministratorGithubAccount(userId: string): Promise<boolean> {
+	const githubId = await getAdministratorGithubId();
+	if (!githubId) return false;
+	const rows = await db
+		.select({ id: account.id })
+		.from(account)
+		.where(
+			and(
+				eq(account.userId, userId),
+				eq(account.providerId, 'github'),
+				eq(account.accountId, githubId)
+			)
+		)
+		.limit(1);
+	return rows.length > 0;
+}
+
+/**
+ * Record the owner durably. Ownership then belongs to the Syn user, not to the
+ * GitHub session, so any sign-in method linked to that user (TIDAL included)
+ * carries it.
+ */
+export async function persistOwner(userId: string): Promise<void> {
+	await db
+		.insert(administrator)
+		.values({ userId, role: 'owner' })
+		.onConflictDoUpdate({ target: administrator.userId, set: { role: 'owner' } });
 }
 
 export async function getAdministratorRecord(userId: string) {
@@ -40,7 +118,6 @@ export async function isFirstAdministrator(
 	target: string | { id: string; name?: string | null; email?: string | null }
 ): Promise<boolean> {
 	if (typeof target !== 'string') {
-		if (target.name && isConfiguredAdministratorUsername(target.name)) return true;
 		if (target.email && target.email === getAdministratorEmail()) return true;
 		return isFirstAdministrator(target.id);
 	}
@@ -51,9 +128,12 @@ export async function isFirstAdministrator(
 		getAdministratorRecord(userId)
 	]);
 
-	if (userRecord?.name && isConfiguredAdministratorUsername(userRecord.name)) return true;
 	if (userRecord?.email && userRecord.email === getAdministratorEmail()) return true;
 	if (adminRecord?.role === 'owner') return true;
+	if (await ownsAdministratorGithubAccount(userId)) {
+		await persistOwner(userId);
+		return true;
+	}
 
 	const first = await db.query.administrator.findFirst({
 		orderBy: [asc(administrator.grantedAt), asc(administrator.id)]
@@ -222,7 +302,7 @@ export async function getAllUsersWithAdminStatus(): Promise<ManagedUser[]> {
 
 	let firstAdminUserId: string | null = null;
 	for (const u of allUsers) {
-		if (isConfiguredAdministratorUsername(u.name) || u.email === getAdministratorEmail()) {
+		if (u.email === getAdministratorEmail()) {
 			firstAdminUserId = u.id;
 			break;
 		}

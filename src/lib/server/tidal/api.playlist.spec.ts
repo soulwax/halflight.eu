@@ -329,3 +329,65 @@ describe('TIDAL playlist API wrappers', () => {
 		);
 	});
 });
+
+it('rejects malformed relationship pages instead of inventing an empty playlist', async () => {
+	vi.mocked(tidalJson)
+		.mockReset()
+		.mockResolvedValueOnce({
+			data: {
+				id: 'p1',
+				type: 'playlists',
+				attributes: { numberOfItems: 1 },
+				relationships: { items: { data: [] } }
+			}
+		})
+		.mockResolvedValueOnce({ data: null });
+	await expect(getFullPlaylist('p1')).rejects.toThrow('page was invalid');
+});
+it('detects a repeating pagination cursor before duplicating a playlist endlessly', async () => {
+	vi.mocked(tidalJson)
+		.mockReset()
+		.mockResolvedValueOnce({
+			data: {
+				id: 'p1',
+				type: 'playlists',
+				attributes: { numberOfItems: 3 },
+				relationships: { items: { data: [] } }
+			}
+		})
+		.mockResolvedValue({
+			data: [{ id: '1', type: 'tracks' }],
+			links: { next: '/playlists/p1/relationships/items?page%5Boffset%5D=1' }
+		});
+	await expect(getFullPlaylist('p1')).rejects.toThrow('repeated a page');
+	expect(tidalJson).toHaveBeenCalledTimes(3);
+});
+it('reads the full relationship when an inline include has no reliable count', async () => {
+	vi.mocked(tidalJson)
+		.mockReset()
+		.mockResolvedValueOnce({
+			data: {
+				id: 'p1',
+				type: 'playlists',
+				relationships: { items: { data: [{ id: '1', type: 'tracks' }] } }
+			}
+		})
+		.mockResolvedValueOnce({
+			data: [
+				{ id: '1', type: 'tracks' },
+				{ id: '2', type: 'tracks' }
+			]
+		});
+	expect((await getFullPlaylist('p1')).data.relationships?.items.data).toHaveLength(2);
+});
+it('enforces the playlist limit even when the provider omits its count', async () => {
+	vi.mocked(tidalJson)
+		.mockReset()
+		.mockResolvedValueOnce({
+			data: { id: 'p1', type: 'playlists', relationships: { items: { data: [] } } }
+		})
+		.mockResolvedValueOnce({
+			data: Array.from({ length: 5001 }, (_, index) => ({ id: String(index), type: 'tracks' }))
+		});
+	await expect(getFullPlaylist('p1')).rejects.toThrow('item count was invalid');
+});

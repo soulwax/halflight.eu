@@ -1,5 +1,5 @@
 import { error, json, type RequestHandler } from '@sveltejs/kit';
-import { listImportablePlaylists, pullPlaylist } from '#lib/server/playlists/sync';
+import { listImportablePlaylists, pullPlaylist, type SyncResult } from '#lib/server/playlists/sync';
 import { getConnectionStatus } from '#lib/server/tidal';
 import { playlistWorkResponse } from '#lib/server/playlists/response';
 
@@ -40,7 +40,10 @@ export const GET: RequestHandler = async (event) => {
 
 	const ctx = { userId: user.id, fetch: event.fetch, cookies: event.cookies };
 	const result = await listImportablePlaylists(ctx);
-	return json(result);
+	return json(result, {
+		status: result.error ? 503 : 200,
+		headers: { 'Cache-Control': 'private, no-store' }
+	});
 };
 
 /**
@@ -67,30 +70,48 @@ export const POST: RequestHandler = async (event) => {
 	if (
 		!Array.isArray(tidalPlaylistIds) ||
 		tidalPlaylistIds.length === 0 ||
+		tidalPlaylistIds.length > 100 ||
 		tidalPlaylistIds.some((id) => typeof id !== 'string' || !id.trim() || id.length > 128)
 	) {
 		return invalidImportSelection();
 	}
 
-	// A small batch bounds the work and keeps a failed source playlist isolated.
+	// Every accepted selection must be accounted for, including retries.
 	// De-duplicate only the request; duplicate tracks inside a playlist stay intact.
-	const ids = [...new Set(tidalPlaylistIds.map((id) => id.trim()))].slice(0, 10);
+	const ids = [...new Set(tidalPlaylistIds.map((id) => id.trim()))];
 	const ctx = {
 		userId: user.id,
 		fetch: event.fetch,
 		cookies: event.cookies
 	};
 	return playlistWorkResponse(async () => {
-		const imported = [];
+		const imported: SyncResult[] = [];
 		for (const tidalId of ids) {
-			const result = await pullPlaylist(tidalId, ctx);
-			imported.push(result);
+			try {
+				imported.push(await pullPlaylist(tidalId, ctx));
+			} catch {
+				imported.push({
+					playlistId: '',
+					tidalPlaylistId: tidalId,
+					status: 'error',
+					tracksAdded: 0,
+					tracksRemoved: 0,
+					tracksSkipped: 0,
+					tracksReplaced: 0,
+					streamValidation: 'deferred',
+					errorCode: 'upstream_unavailable'
+				});
+			}
 		}
 		return {
 			imported,
 			totalImported: imported.filter((r) => r.status === 'created' || r.status === 'synced').length,
-			totalErrors: imported.filter((r) => r.status === 'error').length,
+			totalErrors: imported.filter((r) => r.status !== 'created' && r.status !== 'synced').length,
 			totalTracksSkipped: imported.reduce((total, result) => total + result.tracksSkipped, 0),
+			totalTracksBestFit: imported.reduce(
+				(total, result) => total + (result.tracksBestFit ?? 0),
+				0
+			),
 			totalTracksReplaced: imported.reduce((total, result) => total + result.tracksReplaced, 0),
 			streamValidation: imported.every((result) => result.streamValidation === 'verified')
 				? 'verified'

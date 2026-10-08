@@ -22,7 +22,12 @@ export const variables = defineEnvVars({
 	},
 	ADMIN_USERNAME: {
 		description:
-			'Permanent Halflight administrator username. It must match the intended GitHub login exactly, except for letter case.'
+			'Permanent Halflight administrator username. It must match the intended GitHub login exactly, except for letter case. It is resolved to an immutable GitHub user id; display names never grant ownership.'
+	},
+	ADMIN_GITHUB_ID: {
+		schema: optional,
+		description:
+			'Optional numeric GitHub user id of the administrator. Pins ownership to that account and skips resolving `ADMIN_USERNAME` through the GitHub API.'
 	},
 	ADMIN_PASSWORD: {
 		description:

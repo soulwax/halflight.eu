@@ -56,6 +56,7 @@ export async function validatePlaylistPlayback(
 		: await getUnplayableTrackIds(tracks.map((track) => track.id));
 	const candidates = [...new Map(tracks.map((track) => [track.id, track])).values()];
 	for (const track of candidates) {
+		ctx.signal?.throwIfAborted();
 		if (unavailable.has(track.id)) continue;
 		const key = `${ownerId}:${quality}:${track.id}`;
 		if (!force && (verified.get(key) ?? 0) > Date.now()) continue;

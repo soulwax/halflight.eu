@@ -112,7 +112,7 @@ export async function verifyImportedRecordings(
 	sources = recordingVerificationSources,
 	preferred: Map<string, TrackSummary> = new Map()
 ): Promise<{ tracks: TrackSummary[]; replacements: number; bestFits: number; skipped: number }> {
-	const originals = await sources.validate(tracks, ownerId, ctx, quality);
+	const originals = await sources.validate(tracks, ownerId, ctx, quality, true);
 	const available = new Map(originals.map((track) => [track.id, track]));
 	const replacements = new Map<string, ReplacementCandidate>();
 	for (const source of new Map(tracks.map((track) => [track.id, track])).values()) {
@@ -121,7 +121,7 @@ export async function verifyImportedRecordings(
 		if (
 			confirmed &&
 			(score || confirmed.replacementForId === source.id) &&
-			(await sources.validate([confirmed], ownerId, ctx, quality)).length
+			(await sources.validate([confirmed], ownerId, ctx, quality, true)).length
 		) {
 			replacements.set(source.id, {
 				track: confirmed,

@@ -3,6 +3,7 @@ import { getConnectionStatus } from '#lib/server/tidal';
 import { getPlaybackState, type PlaybackState } from '#lib/server/playback-state';
 import { getStreamingSettings, type StreamingSettings } from '#lib/server/streaming-settings';
 import { getUnplayableTrackIds } from '#lib/server/tidal/track-playability';
+import { ensureTidalIdentityLinked } from '#lib/server/tidal/identity';
 
 export interface SessionShellData {
 	connection: { connected: boolean; configured: boolean; hasPlayback?: boolean };
@@ -21,6 +22,9 @@ export interface SessionShellData {
 export async function loadSessionShellData(event: RequestEvent): Promise<SessionShellData> {
 	const userId = event.locals.user?.id;
 	if (!userId) throw new Error('loadSessionShellData requires an authenticated request.');
+
+	// Off the render path: memoised per user, and it never throws.
+	void ensureTidalIdentityLinked(userId);
 
 	const [connection, streamingSettings, playbackState] = await Promise.all([
 		getConnectionStatus(),

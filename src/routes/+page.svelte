@@ -5,8 +5,15 @@
 	import { m } from '#lib/paraglide/messages.js';
 
 	onMount(() => {
-		const destination =
-			chooseSite(document.cookie, window.innerWidth) === 'mobile'
+		// A first TIDAL sign-in lands here with `welcome`: finish setup (TIDAL Link)
+		// on whichever shell this device uses.
+		const welcome = new URL(window.location.href).searchParams.has('welcome');
+		const mobile = chooseSite(document.cookie, window.innerWidth) === 'mobile';
+		const destination = welcome
+			? mobile
+				? resolve('/(mobile)/settings')
+				: `${resolve('/app/settings/tidal')}?welcome=1`
+			: mobile
 				? resolve('/(mobile)/home')
 				: resolve('/app');
 		window.location.replace(destination);

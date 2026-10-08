@@ -58,19 +58,33 @@ function playlistIncludes(include: string[] = []): string[] {
 	];
 }
 
-const MAX_PAGINATION_PAGES = 50;
+const MAX_PAGINATION_PAGES = 500;
 
 async function collectPages(
 	firstPage: Document<Resource[]>,
 	ctx: Ctx | undefined,
-	operation: string
+	operation: string,
+	firstPath: string
 ): Promise<{ items: Resource[]; included: Resource[] }> {
 	const items: Resource[] = [];
 	const included: Resource[] = [];
 	let page = firstPage;
+	const seen = new Set<string>();
+	let pageUrl = new URL(`${TIDAL_API_BASE}${firstPath}`);
 
 	for (let pageCount = 0; ; pageCount += 1) {
-		items.push(...(Array.isArray(page.data) ? page.data : [page.data]));
+		ctx?.signal?.throwIfAborted();
+		if (
+			!page ||
+			!Array.isArray(page.data) ||
+			page.data.some(
+				(item) => !item || typeof item.id !== 'string' || typeof item.type !== 'string'
+			)
+		)
+			throw new Error(`TIDAL ${operation} page was invalid.`);
+		items.push(...page.data);
+		if (operation === 'playlist item' && items.length > 5000)
+			throw new Error('TIDAL playlist item count was invalid.');
 		included.push(...(page.included ?? []));
 		const next = page.links?.next;
 		if (!next) return { items, included };
@@ -85,13 +99,22 @@ async function collectPages(
 		const base = new URL(TIDAL_API_BASE);
 		let nextUrl: URL;
 		try {
-			nextUrl = new URL(next, `${base.origin}/`);
+			nextUrl = new URL(next, pageUrl);
 		} catch {
 			throw new Error(`TIDAL ${operation} pagination link was invalid.`);
 		}
-		if (nextUrl.origin !== base.origin || nextUrl.protocol !== 'https:') {
+		if (
+			nextUrl.origin !== base.origin ||
+			nextUrl.protocol !== 'https:' ||
+			nextUrl.username ||
+			nextUrl.password
+		) {
 			throw new Error(`TIDAL ${operation} pagination link was unsafe.`);
 		}
+		if (seen.has(nextUrl.toString()))
+			throw new Error(`TIDAL ${operation} pagination repeated a page.`);
+		seen.add(nextUrl.toString());
+		pageUrl = nextUrl;
 		page = await tidalJson<Document<Resource[]>>(
 			nextUrl.origin === base.origin && next.startsWith('/')
 				? `${nextUrl.pathname}${nextUrl.search}`
@@ -129,7 +152,12 @@ export async function getFullCollection(
 	ctx?: Ctx,
 	opts: PageOptions = {}
 ): Promise<{ items: Resource[]; included: Resource[] }> {
-	return collectPages(await getCollectionPage(kind, opts, ctx), ctx, `${kind} collection`);
+	return collectPages(
+		await getCollectionPage(kind, opts, ctx),
+		ctx,
+		`${kind} collection`,
+		`/userCollection${kind[0].toUpperCase()}${kind.slice(1)}/me/relationships/items`
+	);
 }
 
 interface LegacyPlaylistPage {
@@ -252,7 +280,12 @@ export async function getFullPlaylistItems(
 	ctx?: Ctx,
 	opts: PageOptions = {}
 ): Promise<{ items: Resource[]; included: Resource[] }> {
-	return collectPages(await getPlaylistItems(id, opts, ctx), ctx, 'playlist item');
+	return collectPages(
+		await getPlaylistItems(id, opts, ctx),
+		ctx,
+		'playlist item',
+		`/playlists/${encodeURIComponent(id)}/relationships/items`
+	);
 }
 
 /**
@@ -266,13 +299,14 @@ export async function getFullPlaylist(
 ): Promise<Document<Resource>> {
 	const document = await getPlaylist(id, { ...opts, include: playlistIncludes(opts.include) }, ctx);
 	const data = document.data as Resource | undefined;
-	if (!data) return document;
+	if (!data || Array.isArray(data) || data.id !== id || data.type !== 'playlists')
+		throw new Error('TIDAL playlist identity was invalid.');
 
 	const relationships = (data.relationships ?? {}) as Record<
 		string,
 		{ data?: Resource | Resource[]; links?: { next?: string } }
 	>;
-	const itemsRel = relationships.items;
+	const itemsRel = relationships.items ?? relationships.tracks;
 	const initialItems = itemsRel?.data
 		? Array.isArray(itemsRel.data)
 			? itemsRel.data
@@ -290,8 +324,9 @@ export async function getFullPlaylist(
 	const hasNext = Boolean(itemsRel?.links?.next);
 
 	if (
+		expectedCount === undefined ||
 		hasNext ||
-		(expectedCount !== undefined && expectedCount > initialItems.length) ||
+		(expectedCount !== undefined && expectedCount !== initialItems.length) ||
 		initialItems.length === 0
 	) {
 		const fullItems = await getFullPlaylistItems(id, ctx, {

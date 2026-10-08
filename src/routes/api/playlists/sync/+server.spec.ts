@@ -77,9 +77,9 @@ describe('POST /api/playlists/sync', () => {
 		expect(json.error).toBe('not_connected');
 	});
 
-	it('returns 403 if write scopes are missing', async () => {
+	it('returns 403 for publishing if write scopes are missing', async () => {
 		mocks.getConnectionStatus.mockResolvedValue({ connected: true, hasWriteScopes: false });
-		const res = await POST(makeEvent({ action: 'pull_all' }));
+		const res = await POST(makeEvent({ action: 'push_all' }));
 		expect(res.status).toBe(403);
 		const json = await res.json();
 		expect(json.error).toBe('missing_write_scopes');
@@ -150,4 +150,11 @@ describe('POST /api/playlists/sync', () => {
 		const json = await res.json();
 		expect(json.totalSynced).toBe(2);
 	});
+});
+
+it.each(['pull', 'pull_all'])('allows %s refreshes with read-only TIDAL access', async (action) => {
+	mocks.getConnectionStatus.mockResolvedValue({ connected: true, hasWriteScopes: false });
+	mocks.pullPlaylist.mockResolvedValue({ status: 'synced' });
+	mocks.pullAllPlaylists.mockResolvedValue({ results: [], totalSynced: 0, totalErrors: 0 });
+	expect((await POST(makeEvent({ action, tidalPlaylistId: 'remote' }))).status).toBe(200);
 });

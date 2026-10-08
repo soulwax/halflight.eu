@@ -21,6 +21,12 @@
 
 		{#if form?.signInFailed || form?.signUpFailed}
 			<Notice tone="danger">{m.sign_in_error()}</Notice>
+		{:else if data.oauthError === 'cancelled'}
+			<Notice>{m.sign_in_oauth_cancelled()}</Notice>
+		{:else if data.oauthError === 'account_exists'}
+			<Notice tone="warning">{m.sign_in_oauth_account_exists()}</Notice>
+		{:else if data.oauthError}
+			<Notice tone="danger">{m.sign_in_error()}</Notice>
 		{/if}
 		{#if form?.verificationSent}
 			<Notice tone="success">{m.sign_up_verification_sent()}</Notice>

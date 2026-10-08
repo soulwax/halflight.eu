@@ -19,7 +19,15 @@ export async function resolveImportMetadata(
 	const ordered = (Array.isArray(linkages) ? linkages : linkages ? [linkages] : []).filter(
 		(item) => item.type === 'tracks'
 	);
-	if (!relationship && playlist.numberOfItems) throw new Error('Playlist order is missing');
+	if (!relationship) throw new Error('Playlist order is missing');
+	const count = document.data.attributes?.numberOfItems ?? document.data.attributes?.numberOfTracks;
+	if (
+		typeof count === 'number' &&
+		count !== (Array.isArray(linkages) ? linkages.length : linkages ? 1 : 0)
+	)
+		throw new Error('Playlist metadata is incomplete');
+	if (ordered.length !== (Array.isArray(linkages) ? linkages.length : linkages ? 1 : 0))
+		throw new Error('Playlist contains unsupported items');
 	if (ordered.some((item) => !/^\d+$/.test(item.id))) throw new Error('Invalid recording ID');
 
 	const ids = [...new Set(ordered.map((item) => item.id))];
@@ -27,6 +35,7 @@ export async function resolveImportMetadata(
 	const sourceTracks = new Map(playlist.items.map((track) => [track.id, track]));
 	// Bounded concurrency, no per-recording cache: reimport must repair stale metadata.
 	for (let offset = 0; offset < ids.length; offset += 3) {
+		ctx.signal?.throwIfAborted();
 		const batch = await Promise.all(
 			ids.slice(offset, offset + 3).map(async (id) => {
 				let detail;
@@ -44,7 +53,14 @@ export async function resolveImportMetadata(
 						(chosen ? { ...chosen, id, isrc: undefined, replacementForId: undefined } : null);
 				}
 				if (!detail || detail.id !== id) throw new Error('Recording metadata did not match its ID');
-				return { ...detail, kind: 'track' as const };
+				const source = sourceTracks.get(id);
+				return {
+					...detail,
+					artists: detail.artists.length ? detail.artists : (source?.artists ?? []),
+					album: detail.album ?? source?.album,
+					imageUrl: detail.imageUrl ?? source?.imageUrl,
+					kind: 'track' as const
+				};
 			})
 		);
 		for (const track of batch) resolved.set(track.id, track);

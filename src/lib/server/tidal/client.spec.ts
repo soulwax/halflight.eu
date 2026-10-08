@@ -221,3 +221,41 @@ describe('getPlaybackToken', () => {
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 	});
 });
+
+it.each(['primary', 'playback'] as const)(
+	'never shares a %s token refresh between different accounts',
+	async (slot) => {
+		const first = memoryStore();
+		const second = memoryStore();
+		const write = slot === 'primary' ? writeRecord : writePlaybackRecord;
+		await write(record({ refreshToken: 'account-one', expiresAt: Date.now() - 1 }), first);
+		await write(record({ refreshToken: 'account-two', expiresAt: Date.now() - 1 }), second);
+		const firstFetch = vi.fn(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 5));
+			return tokenJson({ access_token: 'one', refresh_token: 'next-one' });
+		});
+		const secondFetch = vi.fn(async () =>
+			tokenJson({ access_token: 'two', refresh_token: 'next-two' })
+		);
+		const get = slot === 'primary' ? getAccessToken : getPlaybackToken;
+		expect(
+			await Promise.all([
+				get({ store: first, fetch: firstFetch }),
+				get({ store: second, fetch: secondFetch })
+			])
+		).toEqual(['one', 'two']);
+		expect(firstFetch).toHaveBeenCalledOnce();
+		expect(secondFetch).toHaveBeenCalledOnce();
+	}
+);
+it('honours context cancellation before sending an authenticated provider request', async () => {
+	const store = memoryStore();
+	await writeRecord(record(), store);
+	const controller = new AbortController();
+	controller.abort();
+	const fetchMock = vi.fn();
+	await expect(
+		tidalFetch('/playlists/one', {}, { store, fetch: fetchMock, signal: controller.signal })
+	).rejects.toMatchObject({ name: 'AbortError' });
+	expect(fetchMock).not.toHaveBeenCalled();
+});

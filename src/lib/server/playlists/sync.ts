@@ -1,3 +1,6 @@
+import { createHash } from 'node:crypto';
+import type { Document, Resource } from '#lib/server/tidal/jsonapi';
+import { saveVerifiedImport } from './import-save';
 import { getConnectionStatus, type TidalRequestContext } from '#lib/server/tidal';
 import * as tidalApi from '#lib/server/tidal/api';
 import {
@@ -8,13 +11,17 @@ import {
 	updatePlaylist as updatePlaylistRemote
 } from '#lib/server/tidal/api';
 import { normalisePlaylistDetail } from '#lib/server/tidal/normalise';
-import { TidalApiError } from '#lib/server/tidal/errors';
+import {
+	TidalApiError,
+	TidalPlaybackNotLinkedError,
+	TidalAuthError
+} from '#lib/server/tidal/errors';
 import { log } from '#lib/server/log';
 import type { TokenRowStore } from '#lib/server/tidal/store';
 import type { PlaylistDetail } from '#lib/tidal/models';
 import type { Cookies } from '@sveltejs/kit';
 import type { SavedPlaylist } from './index';
-import { createUserPlaylist, getUserPlaylists, updateUserPlaylist } from './index';
+import { getUserPlaylists, updateUserPlaylist } from './index';
 import { getStreamingSettings } from '#lib/server/streaming-settings';
 import { resolveImportMetadata } from './import-metadata';
 import { verifyImportedRecordings } from './recording-verification';
@@ -39,6 +46,17 @@ export interface SyncResult {
 	tracksSkipped: number;
 	/** Unavailable source occurrences relinked to verified catalogue candidates. */
 	tracksReplaced: number;
+	/** Matched by full title/version and artist rather than an exact ISRC. */
+	tracksBestFit?: number;
+	errorCode?:
+		| 'local_changes'
+		| 'playlist_changed'
+		| 'source_changed'
+		| 'no_playable_tracks'
+		| 'playback_not_linked'
+		| 'reconnect_required'
+		| 'rate_limited'
+		| 'upstream_unavailable';
 	/** A pull is successful only after all source tracks have been checked. */
 	streamValidation: 'verified' | 'deferred';
 	error?: string;
@@ -63,19 +81,31 @@ export interface PlaylistDiff {
  * Pure function — no I/O.
  */
 export function diffPlaylistItems(localIds: string[], remoteIds: string[]): PlaylistDiff {
-	const localSet = new Set(localIds);
-	const remoteSet = new Set(remoteIds);
-
-	const added = localIds.filter((id) => !remoteSet.has(id));
-	const removed = remoteIds.filter((id) => !localSet.has(id));
-
-	// Check if the common tracks are in different order
-	const commonLocal = localIds.filter((id) => remoteSet.has(id));
-	const commonRemote = remoteIds.filter((id) => localSet.has(id));
-	const reordered =
-		commonLocal.length > 0 &&
-		commonLocal.length === commonRemote.length &&
-		commonLocal.some((id, i) => id !== commonRemote[i]);
+	const difference = (first: string[], second: string[]) => {
+		const counts = new Map<string, number>();
+		for (const id of second) counts.set(id, (counts.get(id) ?? 0) + 1);
+		return first.filter((id) => {
+			const count = counts.get(id) ?? 0;
+			if (!count) return true;
+			counts.set(id, count - 1);
+			return false;
+		});
+	};
+	const added = difference(localIds, remoteIds);
+	const removed = difference(remoteIds, localIds);
+	const common = (first: string[], second: string[]) => {
+		const counts = new Map<string, number>();
+		for (const id of second) counts.set(id, (counts.get(id) ?? 0) + 1);
+		return first.filter((id) => {
+			const count = counts.get(id) ?? 0;
+			if (!count) return false;
+			counts.set(id, count - 1);
+			return true;
+		});
+	};
+	const commonLocal = common(localIds, remoteIds);
+	const commonRemote = common(remoteIds, localIds);
+	const reordered = commonLocal.some((id, index) => id !== commonRemote[index]);
 
 	return { added, removed, reordered };
 }
@@ -87,9 +117,32 @@ export function diffPlaylistItems(localIds: string[], remoteIds: string[]): Play
  * If a local record already exists with this `tidalPlaylistId`, it is updated.
  * Otherwise a new local record is created with `source = 'tidal'`.
  */
+function sourceVersion(document: Document<Resource>): string {
+	const attributes = document.data.attributes ?? {};
+	const linkage =
+		document.data.relationships?.items?.data ?? document.data.relationships?.tracks?.data;
+	const items = Array.isArray(linkage) ? linkage : linkage ? [linkage] : [];
+	return createHash('sha256')
+		.update(
+			JSON.stringify([
+				document.data.id,
+				attributes.title ?? attributes.name,
+				attributes.description ?? '',
+				items.map(({ id, type }) => [type, id])
+			])
+		)
+		.digest('hex');
+}
+
 export async function pullPlaylist(tidalPlaylistId: string, ctx: SyncContext): Promise<SyncResult> {
 	const tidalCtx: TidalRequestContext = {
-		fetch: ctx.fetch,
+		fetch: (input, init = {}) => {
+			const timeout = AbortSignal.timeout(25_000);
+			return ctx.fetch(input, {
+				...init,
+				signal: init.signal ? AbortSignal.any([init.signal, timeout]) : timeout
+			});
+		},
 		cookies: ctx.cookies,
 		store: ctx.store
 	};
@@ -107,13 +160,21 @@ export async function pullPlaylist(tidalPlaylistId: string, ctx: SyncContext): P
 	try {
 		// Validate the source before saving its playable local copy.
 		// Unavailable IDs are relinked only after identity matching and playback checks.
+		const localPlaylists = await getUserPlaylists(ctx.userId);
+		const existing = localPlaylists.find((p) => p.tidalPlaylistId === tidalPlaylistId);
+		if (existing?.syncStatus === 'local_only' || existing?.syncStatus === 'pending_push') {
+			result.playlistId = existing.id;
+			result.status = 'conflict';
+			result.errorCode = 'local_changes';
+			result.error = 'This playlist has local edits. Your changes have been kept.';
+			return result;
+		}
 		const document = await tidalApi.getFullPlaylist(
 			tidalPlaylistId,
 			{ include: ['artists', 'albums'] },
 			tidalCtx
 		);
-		const localPlaylists = await getUserPlaylists(ctx.userId);
-		const existing = localPlaylists.find((p) => p.tidalPlaylistId === tidalPlaylistId);
+		if (document.data?.id !== tidalPlaylistId) throw new Error('Playlist identity did not match');
 		const preferred = new Map(
 			existing?.items
 				.filter((track) => track.replacementForId)
@@ -139,52 +200,52 @@ export async function pullPlaylist(tidalPlaylistId: string, ctx: SyncContext): P
 			undefined,
 			preferred
 		);
+		// A long validation must not commit pages from a source that changed meanwhile.
+		const freshSource = await tidalApi.getFullPlaylist(
+			tidalPlaylistId,
+			{ include: ['artists', 'albums'] },
+			tidalCtx
+		);
+		if (sourceVersion(document) !== sourceVersion(freshSource)) {
+			result.errorCode = 'source_changed';
+			result.error = 'The TIDAL playlist changed during verification. Please try again.';
+			return result;
+		}
 		const playable = verification.tracks;
+		if (detail.items.length && !playable.length) {
+			result.errorCode = 'no_playable_tracks';
+			result.error = 'No playable songs were found. Your existing playlist has been kept.';
+			return result;
+		}
 		result.tracksSkipped = verification.skipped;
 		result.tracksReplaced = verification.replacements;
+		result.tracksBestFit = verification.bestFits;
 		result.streamValidation = 'verified';
 
-		if (existing) {
-			// Update existing local record
-			const oldIds = existing.items.map((t) => t.id);
-			const newIds = playable.map((t) => t.id);
-			const diff = diffPlaylistItems(newIds, oldIds);
-
-			await updateUserPlaylist(ctx.userId, existing.id, {
-				title: detail.title,
-				description: detail.description,
-				items: playable,
-				syncStatus: 'synced',
-				lastSyncedAt: new Date(),
-				syncError: null
-			});
-
-			result.playlistId = existing.id;
-			result.status = 'synced';
-			result.tracksAdded = diff.added.length;
-			result.tracksRemoved = diff.removed.length;
-		} else {
-			// Create new local record
-			const created = await createUserPlaylist({
-				userId: ctx.userId,
-				title: detail.title,
-				description: detail.description,
-				items: playable,
-				tidalPlaylistId,
-				source: 'tidal',
-				syncStatus: 'synced'
-			});
-
-			// Mark as synced immediately
-			await updateUserPlaylist(ctx.userId, created.id, {
-				lastSyncedAt: new Date(),
-				syncStatus: 'synced'
-			});
-
-			result.playlistId = created.id;
-			result.status = 'created';
-			result.tracksAdded = playable.length;
+		const committed = await saveVerifiedImport({
+			userId: ctx.userId,
+			tidalPlaylistId,
+			title: detail.title,
+			description: detail.description,
+			items: playable,
+			expected: existing
+		});
+		result.playlistId = committed.id;
+		result.status = committed.status;
+		if (committed.status === 'conflict') {
+			result.tracksSkipped = 0;
+			result.tracksReplaced = 0;
+			result.tracksBestFit = 0;
+			result.errorCode = 'playlist_changed';
+			result.error = 'This playlist changed during import. Your current version has been kept.';
+			return result;
 		}
+		const diff = diffPlaylistItems(
+			playable.map((track) => track.id),
+			existing?.items.map((track) => track.id) ?? []
+		);
+		result.tracksAdded = diff.added.length;
+		result.tracksRemoved = diff.removed.length;
 	} catch (cause) {
 		// Provider errors may include request paths or raw response details. Keep
 		// those server-side, but preserve a safe diagnostic category for support.
@@ -193,6 +254,14 @@ export async function pullPlaylist(tidalPlaylistId: string, ctx: SyncContext): P
 			cause: cause instanceof Error ? cause.name : 'UnknownError',
 			...(cause instanceof TidalApiError ? { upstreamStatus: cause.status } : {})
 		});
+		result.errorCode =
+			cause instanceof TidalPlaybackNotLinkedError
+				? 'playback_not_linked'
+				: cause instanceof TidalAuthError
+					? 'reconnect_required'
+					: cause instanceof TidalApiError && cause.status === 429
+						? 'rate_limited'
+						: 'upstream_unavailable';
 		result.error = 'Unable to import this playlist from TIDAL. Please try again.';
 	}
 
@@ -325,7 +394,12 @@ export async function pushPlaylist(
 			const diff = diffPlaylistItems(localIds, remoteIds);
 
 			// Use replace if reordered or if there are both additions and removals
-			if (diff.reordered || (diff.added.length > 0 && diff.removed.length > 0)) {
+			if (
+				diff.reordered ||
+				(diff.added.length > 0 && diff.removed.length > 0) ||
+				new Set(localIds).size !== localIds.length ||
+				new Set(remoteIds).size !== remoteIds.length
+			) {
 				const allItems = localIds.map((id) => ({ id, type: 'tracks' as const }));
 				await replacePlaylistItems(tidalId, allItems, tidalCtx);
 			} else {
@@ -395,7 +469,7 @@ export async function pullAllPlaylists(ctx: SyncContext): Promise<SyncBatchResul
 	return {
 		results,
 		totalSynced: results.filter((r) => r.status === 'synced' || r.status === 'created').length,
-		totalErrors: results.filter((r) => r.status === 'error').length
+		totalErrors: results.filter((r) => r.status === 'error' || r.status === 'conflict').length
 	};
 }
 
@@ -421,7 +495,7 @@ export async function pushAllPlaylists(ctx: SyncContext): Promise<SyncBatchResul
 	return {
 		results,
 		totalSynced: results.filter((r) => r.status === 'synced' || r.status === 'created').length,
-		totalErrors: results.filter((r) => r.status === 'error').length
+		totalErrors: results.filter((r) => r.status === 'error' || r.status === 'conflict').length
 	};
 }
 
@@ -451,9 +525,7 @@ export async function listImportablePlaylists(ctx: SyncContext) {
 		// Get already-imported TIDAL IDs
 		const localPlaylists = await getUserPlaylists(ctx.userId);
 		const importedTidalIds = new Set(
-			localPlaylists
-				.filter((p) => p.tidalPlaylistId && p.syncStatus !== 'local_only')
-				.map((p) => p.tidalPlaylistId!)
+			localPlaylists.filter((p) => p.tidalPlaylistId).map((p) => p.tidalPlaylistId!)
 		);
 
 		const collectionPlaylists = (items as Array<{ id: string; type: string }>)
@@ -465,7 +537,9 @@ export async function listImportablePlaylists(ctx: SyncContext) {
 				return normalisePlaylist(resolved as never);
 			})
 			.filter((playlist): playlist is NonNullable<typeof playlist> => Boolean(playlist));
-		const playlists = collectionPlaylists
+		const playlists = [
+			...new Map(collectionPlaylists.map((playlist) => [playlist.id, playlist])).values()
+		]
 			.map((playlist) => ({ ...playlist, isImported: importedTidalIds.has(playlist.id) }))
 			.sort((a, b) => a.title.localeCompare(b.title));
 

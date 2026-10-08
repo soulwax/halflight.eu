@@ -47,6 +47,8 @@ export const auth = betterAuth({
 		sendOnSignIn: true,
 		autoSignInAfterVerification: true,
 		sendVerificationEmail: async ({ user, url }) => {
+			// Synthetic GitHub/TIDAL/admin placeholders are undeliverable by design.
+			if (user.email.endsWith('@syn.invalid')) return;
 			await sendVerificationEmail({ to: user.email, name: user.name, url });
 		}
 	},

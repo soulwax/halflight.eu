@@ -76,8 +76,17 @@ describe('mapTidalUser', () => {
 		expect(placeholderTidalEmail('7')).toMatch(/^tidal-[0-9a-f]{64}@syn\.invalid$/);
 	});
 
-	it('never reports an email TIDAL did not verify as verified', () => {
+	it('replaces an email TIDAL did not verify with the placeholder', () => {
 		const user = mapTidalUser({ data: { id: '7', attributes: { email: 'x@example.com' } } });
+		expect(user?.email).toBe(placeholderTidalEmail('7'));
+		expect(user?.emailVerified).toBe(false);
+	});
+
+	it("never accepts Halflight's synthetic owner addresses from TIDAL", () => {
+		const user = mapTidalUser({
+			data: { id: '7', attributes: { email: 'admin-abc@SYN.invalid', emailVerified: true } }
+		});
+		expect(user?.email).toBe(placeholderTidalEmail('7'));
 		expect(user?.emailVerified).toBe(false);
 	});
 
@@ -118,9 +127,10 @@ describe('accountToTokenRecord', () => {
 
 describe('bridgeTidalSignInTokens', () => {
 	it('stores the tokens for the owning user, then scrubs the auth row', async () => {
+		const current = vi.fn().mockResolvedValue(null);
 		const persist = vi.fn().mockResolvedValue(undefined);
 		const scrub = vi.fn().mockResolvedValue(undefined);
-		await bridgeTidalSignInTokens(tidalAccount(), { persist, scrub });
+		await bridgeTidalSignInTokens(tidalAccount(), { current, persist, scrub });
 
 		expect(persist).toHaveBeenCalledWith(
 			'syn-user',
@@ -133,8 +143,9 @@ describe('bridgeTidalSignInTokens', () => {
 	it('ignores other providers', async () => {
 		const persist = vi.fn();
 		const scrub = vi.fn();
-		await bridgeTidalSignInTokens(tidalAccount({ providerId: 'github' }), { persist, scrub });
-		await bridgeTidalSignInTokens(tidalAccount({ providerId: 'credential' }), { persist, scrub });
+		const deps = { current: vi.fn(), persist, scrub };
+		await bridgeTidalSignInTokens(tidalAccount({ providerId: 'github' }), deps);
+		await bridgeTidalSignInTokens(tidalAccount({ providerId: 'credential' }), deps);
 		expect(persist).not.toHaveBeenCalled();
 		expect(scrub).not.toHaveBeenCalled();
 	});
@@ -143,6 +154,7 @@ describe('bridgeTidalSignInTokens', () => {
 		const persist = vi.fn();
 		const scrub = vi.fn();
 		await bridgeTidalSignInTokens(tidalAccount({ accessToken: null, refreshToken: null }), {
+			current: vi.fn(),
 			persist,
 			scrub
 		});
@@ -153,8 +165,37 @@ describe('bridgeTidalSignInTokens', () => {
 		const persist = vi.fn().mockRejectedValue(new Error('db down'));
 		const scrub = vi.fn();
 		await expect(
-			bridgeTidalSignInTokens(tidalAccount(), { persist, scrub })
+			bridgeTidalSignInTokens(tidalAccount(), {
+				current: vi.fn().mockResolvedValue(null),
+				persist,
+				scrub
+			})
 		).resolves.toBeUndefined();
 		expect(scrub).not.toHaveBeenCalled();
+	});
+
+	it('refreshes the slot when it already holds the same TIDAL account', async () => {
+		const persist = vi.fn().mockResolvedValue(undefined);
+		const scrub = vi.fn().mockResolvedValue(undefined);
+		await bridgeTidalSignInTokens(tidalAccount(), {
+			current: vi.fn().mockResolvedValue('424242'),
+			persist,
+			scrub
+		});
+		expect(persist).toHaveBeenCalledOnce();
+	});
+
+	it('keeps a different (or unidentified) TIDAL account connected from settings', async () => {
+		for (const existing of ['999', undefined]) {
+			const persist = vi.fn();
+			const scrub = vi.fn().mockResolvedValue(undefined);
+			await bridgeTidalSignInTokens(tidalAccount(), {
+				current: vi.fn().mockResolvedValue(existing),
+				persist,
+				scrub
+			});
+			expect(persist).not.toHaveBeenCalled();
+			expect(scrub).toHaveBeenCalledWith('acct-row');
+		}
 	});
 });

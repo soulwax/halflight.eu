@@ -28,18 +28,19 @@ export const POST: RequestHandler = async (event) => {
 		return json({ error: 'not_connected' }, { status: 503 });
 	}
 
-	if (!connection.hasWriteScopes) {
+	const body = (await event.request.json().catch(() => null)) as {
+		action?: string;
+		playlistId?: string;
+		tidalPlaylistId?: string;
+	} | null;
+	if (!body || !['pull', 'push', 'pull_all', 'push_all'].includes(body.action ?? ''))
+		error(400, 'Invalid playlist action');
+	if ((body.action === 'push' || body.action === 'push_all') && !connection.hasWriteScopes) {
 		return json(
 			{ error: 'missing_write_scopes', message: 'Reconnect TIDAL with write scopes enabled' },
 			{ status: 403 }
 		);
 	}
-
-	const body = (await event.request.json()) as {
-		action?: string;
-		playlistId?: string;
-		tidalPlaylistId?: string;
-	};
 
 	const ctx = {
 		userId: user.id,

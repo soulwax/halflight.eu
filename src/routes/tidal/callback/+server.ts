@@ -1,5 +1,8 @@
 import { redirect } from '@sveltejs/kit';
 import { exchangeCode, writeRecord, TidalError } from '#lib/server/tidal';
+import { linkTidalIdentity } from '#lib/server/tidal/identity';
+import { fetchTidalUser } from '#lib/server/tidal/sign-in';
+import { log } from '#lib/server/log';
 import { clearOAuthCookie, readOAuthCookie, tidalReturnTo } from '../oauth-cookie';
 import type { RequestHandler } from './$types';
 
@@ -23,12 +26,23 @@ export const GET: RequestHandler = async (event) => {
 	if (state !== saved!.state) fail('state_mismatch');
 	if (saved!.userId !== event.locals.user.id) fail('account_mismatch');
 
+	let record: Awaited<ReturnType<typeof exchangeCode>>;
 	try {
-		const record = await exchangeCode({ code: code!, verifier: saved!.verifier }, event.fetch);
+		record = await exchangeCode({ code: code!, verifier: saved!.verifier }, event.fetch);
 		await writeRecord(record);
 	} catch (err) {
 		if (err instanceof TidalError) fail('connection_failed');
 		throw err;
+	}
+
+	// Let "Continue with TIDAL" find this Syn account from now on. Best effort:
+	// the browse token is already stored.
+	try {
+		const tidalUserId =
+			record!.userId ?? (await fetchTidalUser(record!.accessToken, event.fetch))?.id;
+		if (tidalUserId) await linkTidalIdentity(event.locals.user.id, tidalUserId);
+	} catch (cause) {
+		log.error('tidal: could not link sign-in identity', { cause });
 	}
 
 	redirect(303, `${returnTo}?connected=1`);

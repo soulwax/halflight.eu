@@ -3,13 +3,15 @@ import type { GenericOAuthConfig } from 'better-auth/plugins/generic-oauth';
 import { log } from '#lib/server/log';
 import { getTidalConfig, TIDAL_API_BASE, TIDAL_AUTHORIZE_URL, TIDAL_TOKEN_URL } from './config';
 import { TidalConfigError } from './errors';
-import { createDbTokenRowStore, writeRecord, type TidalTokenRecord } from './store';
+import { createDbTokenRowStore, readRecord, writeRecord, type TidalTokenRecord } from './store';
 
 /** Better Auth provider id; the OAuth callback is `${ORIGIN}/api/auth/callback/tidal`. */
 export const TIDAL_SIGN_IN_PROVIDER = 'tidal';
 
 /** Fallback lifetime when the token response carries no `expires_in`. */
 const DEFAULT_ACCESS_TOKEN_TTL_MS = 60 * 60 * 1000;
+
+const FALLBACK_NAME = 'TIDAL listener';
 
 interface TidalUserDocument {
 	data?: {
@@ -33,21 +35,41 @@ export function placeholderTidalEmail(tidalUserId: string): string {
 	return `tidal-${digest}@syn.invalid`;
 }
 
-/** Map a v2 `/users/me` document onto Better Auth's user-info shape. */
+/**
+ * Map a v2 `/users/me` document onto Better Auth's user-info shape.
+ *
+ * Only an address TIDAL itself verified is kept: an unverified one would let
+ * anyone claim someone else's email here (and later be linked into by them).
+ * Halflight's own synthetic `@syn.invalid` addresses (which identify the
+ * owner) are never accepted from TIDAL.
+ */
 export function mapTidalUser(document: TidalUserDocument) {
 	const id = document.data?.id;
 	if (id == null || id === '') return null;
 	const tidalUserId = String(id);
 	const attributes = document.data?.attributes ?? {};
 	const fullName = [attributes.firstName, attributes.lastName].filter(Boolean).join(' ').trim();
-	const email = attributes.email?.trim();
+	const name = fullName || attributes.username?.trim() || FALLBACK_NAME;
+	const verified = attributes.emailVerified ? attributes.email?.trim() : undefined;
+	const email = verified && !verified.toLowerCase().endsWith('@syn.invalid') ? verified : undefined;
 	return {
 		id: tidalUserId,
-		name: fullName || attributes.username?.trim() || 'TIDAL listener',
+		name,
 		email: email || placeholderTidalEmail(tidalUserId),
-		// Only an address TIDAL itself verified may auto-link to an existing account.
-		emailVerified: Boolean(email && attributes.emailVerified)
+		emailVerified: Boolean(email)
 	};
+}
+
+/** Fetch and map the TIDAL user an access token belongs to. */
+export async function fetchTidalUser(accessToken: string, fetchImpl: typeof fetch = fetch) {
+	const response = await fetchImpl(`${TIDAL_API_BASE}/users/me`, {
+		headers: { authorization: `Bearer ${accessToken}`, accept: 'application/vnd.api+json' }
+	});
+	if (!response.ok) {
+		log.error('tidal: profile request failed', { status: response.status });
+		return null;
+	}
+	return mapTidalUser((await response.json()) as TidalUserDocument);
 }
 
 /**
@@ -75,19 +97,7 @@ export function tidalSignInProvider(): GenericOAuthConfig | null {
 		authentication: 'post',
 		scopes: config.scopes,
 		pkce: true,
-		async getUserInfo(tokens) {
-			const response = await fetch(`${TIDAL_API_BASE}/users/me`, {
-				headers: {
-					authorization: `Bearer ${tokens.accessToken}`,
-					accept: 'application/vnd.api+json'
-				}
-			});
-			if (!response.ok) {
-				log.error('tidal: sign-in profile request failed', { status: response.status });
-				return null;
-			}
-			return mapTidalUser((await response.json()) as TidalUserDocument);
-		}
+		getUserInfo: async (tokens) => (tokens.accessToken ? fetchTidalUser(tokens.accessToken) : null)
 	};
 }
 
@@ -132,12 +142,18 @@ export function accountToTokenRecord(
 }
 
 export interface TokenBridgeDeps {
+	/** The TIDAL user id currently in the primary slot; `null` when empty, `undefined` when unknown. */
+	current(userId: string): Promise<string | null | undefined>;
 	persist(userId: string, record: TidalTokenRecord): Promise<void>;
 	/** Drop Better Auth's plaintext copy so `tidal_auth` stays the only source of truth. */
 	scrub(accountId: string): Promise<void>;
 }
 
 const defaultBridgeDeps: TokenBridgeDeps = {
+	async current(userId) {
+		const record = await readRecord(createDbTokenRowStore(userId));
+		return record ? record.userId : null;
+	},
 	persist: (userId, record) => writeRecord(record, createDbTokenRowStore(userId)),
 	async scrub(accountRowId) {
 		const [{ db }, { account }, { eq }] = await Promise.all([
@@ -156,8 +172,9 @@ const defaultBridgeDeps: TokenBridgeDeps = {
  * Better Auth `account` create/update hook: move the tokens of a TIDAL sign-in
  * into the encrypted per-user `tidal_auth` primary slot. TIDAL may rotate
  * refresh tokens, so two live copies would drift — the auth row is scrubbed.
- * A failure here never blocks sign-in; the user can still connect from
- * Settings → TIDAL.
+ * A browse token for a different TIDAL account (connected from settings) is
+ * left alone. A failure here never blocks sign-in; the user can still connect
+ * from Settings → TIDAL.
  */
 export async function bridgeTidalSignInTokens(
 	account: SignInAccount,
@@ -167,7 +184,10 @@ export async function bridgeTidalSignInTokens(
 	const record = accountToTokenRecord(account);
 	if (!record) return;
 	try {
-		await deps.persist(account.userId, record);
+		const current = await deps.current(account.userId);
+		if (current === null || current === account.accountId) {
+			await deps.persist(account.userId, record);
+		}
 		await deps.scrub(account.id);
 	} catch (cause) {
 		log.error('tidal: could not store sign-in tokens', { cause });

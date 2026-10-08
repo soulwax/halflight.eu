@@ -29,7 +29,7 @@
 
 	{#if data.notice.error}
 		<Notice tone="danger">{m.tidal_settings_connection_failed()}</Notice>
-	{:else if data.notice.welcome && !hasFullPlayback}
+	{:else if data.notice.welcome && status.connected && !hasFullPlayback}
 		<Notice tone="success">{m.tidal_settings_welcome_notice()}</Notice>
 	{:else if data.notice.connected}
 		<Notice tone="success">{m.tidal_settings_connected_notice()}</Notice>

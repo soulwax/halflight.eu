@@ -5,8 +5,11 @@ const dbMocks = vi.hoisted(() => ({
 	findFirstUser: vi.fn(),
 	insert: vi.fn(),
 	delete: vi.fn(),
-	select: vi.fn()
+	select: vi.fn(),
+	accountRows: vi.fn()
 }));
+
+vi.mock('$app/env/private', () => ({ ADMIN_USERNAME: 'soulwax', ADMIN_GITHUB_ID: '1001' }));
 
 vi.mock('#lib/server/db', () => ({
 	db: {
@@ -27,17 +30,36 @@ vi.mock('#lib/server/db', () => ({
 	}
 }));
 
+/** `db.select().from(account).where().limit()` → the matching GitHub account rows. */
+function githubAccountRows(rows: unknown[]) {
+	dbMocks.select.mockReturnValue({
+		from: () => ({ where: () => ({ limit: async () => rows }) })
+	});
+}
+
 import { canManageUser, isFirstAdministrator, removeAdministrator } from './admin';
 
 describe('Admin Role Hierarchy and Permissions', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		dbMocks.findFirstUser.mockReset();
+		dbMocks.findFirstAdmin.mockReset();
+		githubAccountRows([]);
 	});
 
-	it('identifies configured admin username as first administrator', async () => {
-		expect.assertions(1);
-		const res = await isFirstAdministrator({ id: 'u-1', name: 'soulwax' });
-		expect(res).toBe(true);
+	it('never treats a display name equal to ADMIN_USERNAME as the owner', async () => {
+		dbMocks.findFirstUser.mockResolvedValue({ id: 'u-1', name: 'soulwax' });
+		expect(await isFirstAdministrator({ id: 'u-1', name: 'soulwax' })).toBe(false);
+		expect(await isFirstAdministrator('u-1')).toBe(false);
+	});
+
+	it('identifies the owner by the configured GitHub account and records the role', async () => {
+		githubAccountRows([{ id: 'acct-gh' }]);
+		const onConflictDoUpdate = vi.fn().mockResolvedValue(undefined);
+		dbMocks.insert.mockReturnValue({ values: () => ({ onConflictDoUpdate }) });
+
+		expect(await isFirstAdministrator('u-owner')).toBe(true);
+		expect(onConflictDoUpdate).toHaveBeenCalledOnce();
 	});
 
 	it('identifies owner role in administrator table as first administrator', async () => {
@@ -63,10 +85,12 @@ describe('Admin Role Hierarchy and Permissions', () => {
 
 		it('allows first administrator to manage any other user', async () => {
 			expect.assertions(1);
-			// actor is first admin
-			dbMocks.findFirstUser.mockImplementation(async () => {
-				return { id: 'u-soulwax', name: 'soulwax' };
-			});
+			// actor is first admin (owner role on record)
+			dbMocks.findFirstAdmin.mockImplementation(async () => ({
+				id: 1,
+				userId: 'u-soulwax',
+				role: 'owner'
+			}));
 
 			const res = await canManageUser('u-soulwax', 'u-target', 'kick');
 			expect(res.allowed).toBe(true);
@@ -94,7 +118,7 @@ describe('Admin Role Hierarchy and Permissions', () => {
 
 		it('prevents demoting first administrator', async () => {
 			expect.assertions(1);
-			dbMocks.findFirstUser.mockResolvedValue({ id: 'u-owner', name: 'soulwax' });
+			dbMocks.findFirstAdmin.mockResolvedValue({ id: 1, userId: 'u-owner', role: 'owner' });
 
 			const res = await removeAdministrator('u-owner');
 			expect(res).toBe(false);

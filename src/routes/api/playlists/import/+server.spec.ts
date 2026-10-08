@@ -21,6 +21,7 @@ import type { Cookies } from '@sveltejs/kit';
 import { GET, POST } from './+server';
 
 const fetchMock = vi.fn();
+beforeEach(() => vi.clearAllMocks());
 
 function makeEvent(
 	body: unknown = {},
@@ -166,5 +167,54 @@ describe('API /api/playlists/import', () => {
 			expect(res.status).toBe(200);
 			expect(await res.json()).toMatchObject({ totalImported: 0, totalErrors: 1 });
 		});
+	});
+});
+
+it('accounts for every selected playlist beyond the old ten-playlist cutoff', async () => {
+	mocks.getConnectionStatus.mockResolvedValue({ connected: true });
+	mocks.pullPlaylist.mockImplementation(async (tidalPlaylistId: string) => ({
+		tidalPlaylistId,
+		status: 'created',
+		tracksSkipped: 0,
+		tracksReplaced: 0,
+		streamValidation: 'verified'
+	}));
+	const ids = Array.from({ length: 12 }, (_, index) => `remote-${index}`);
+	const response = await POST(makeEvent({ tidalPlaylistIds: [...ids, ids[0]] }));
+	expect(await response.json()).toMatchObject({ totalImported: 12 });
+	expect(mocks.pullPlaylist).toHaveBeenCalledTimes(12);
+});
+it('isolates an unexpected playlist failure and still imports the next selection', async () => {
+	mocks.getConnectionStatus.mockResolvedValue({ connected: true });
+	mocks.pullPlaylist.mockRejectedValueOnce(new Error('Unexpected outage')).mockResolvedValueOnce({
+		tidalPlaylistId: 'second',
+		status: 'created',
+		tracksSkipped: 0,
+		tracksReplaced: 0,
+		streamValidation: 'verified'
+	});
+	expect(
+		await (await POST(makeEvent({ tidalPlaylistIds: ['first', 'second'] }))).json()
+	).toMatchObject({
+		totalImported: 1,
+		totalErrors: 1,
+		imported: [
+			{ tidalPlaylistId: 'first', status: 'error' },
+			{ tidalPlaylistId: 'second', status: 'created' }
+		]
+	});
+});
+it('counts conflicts as unsuccessful imports rather than silently claiming completion', async () => {
+	mocks.getConnectionStatus.mockResolvedValue({ connected: true });
+	mocks.pullPlaylist.mockResolvedValue({
+		tidalPlaylistId: 'remote',
+		status: 'conflict',
+		tracksSkipped: 0,
+		tracksReplaced: 0,
+		streamValidation: 'deferred'
+	});
+	expect(await (await POST(makeEvent({ tidalPlaylistIds: ['remote'] }))).json()).toMatchObject({
+		totalImported: 0,
+		totalErrors: 1
 	});
 });

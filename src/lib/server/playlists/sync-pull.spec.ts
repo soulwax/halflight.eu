@@ -9,7 +9,8 @@ const mocks = vi.hoisted(() => ({
 	settings: vi.fn(),
 	list: vi.fn(),
 	create: vi.fn(),
-	update: vi.fn()
+	update: vi.fn(),
+	save: vi.fn()
 }));
 vi.mock('#lib/server/tidal/api', async (importOriginal) => ({
 	...(await importOriginal<object>()),
@@ -34,6 +35,7 @@ vi.mock('./index', () => ({
 	createUserPlaylist: mocks.create,
 	updateUserPlaylist: mocks.update
 }));
+vi.mock('./import-save', () => ({ saveVerifiedImport: mocks.save }));
 import { pullPlaylist, pushAllPlaylists } from './sync';
 
 const good: TrackSummary = { kind: 'track', id: '1', title: 'Playable', artists: [] };
@@ -42,13 +44,17 @@ const items = [good, bad, good];
 const ctx = { userId: 'owner', fetch, cookies: {} as Cookies };
 
 beforeEach(() => {
-	mocks.fetch.mockReset().mockResolvedValue({});
+	mocks.fetch.mockReset().mockResolvedValue({ data: { id: 'remote' } });
 	mocks.normalise.mockReset().mockReturnValue({ id: 'remote', title: 'Playlist', items });
 	mocks.validate.mockReset().mockResolvedValue([good, good]);
 	mocks.settings.mockReset().mockResolvedValue({ preferredQuality: 'HIGH' });
 	mocks.list.mockReset().mockResolvedValue([]);
 	mocks.create.mockReset().mockResolvedValue({ id: 'local' });
 	mocks.update.mockReset().mockResolvedValue(null);
+	mocks.save.mockReset().mockImplementation(async (input) => ({
+		id: input.expected?.id ?? 'local',
+		status: input.expected ? 'synced' : 'created'
+	}));
 });
 
 describe('playlist import playback boundary', () => {
@@ -74,7 +80,7 @@ describe('playlist import playback boundary', () => {
 		);
 		const pending = pullPlaylist('remote', ctx);
 		await vi.waitFor(() => expect(mocks.validate).toHaveBeenCalledOnce());
-		expect(mocks.create).not.toHaveBeenCalled();
+		expect(mocks.save).not.toHaveBeenCalled();
 		complete([good, good]);
 		expect(await pending).toMatchObject({
 			status: 'created',
@@ -82,7 +88,7 @@ describe('playlist import playback boundary', () => {
 			tracksSkipped: 1,
 			tracksReplaced: 0
 		});
-		expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ items: [good, good] }));
+		expect(mocks.save).toHaveBeenCalledWith(expect.objectContaining({ items: [good, good] }));
 	});
 	it('does not create or overwrite a playlist after an inconclusive playback check', async () => {
 		mocks.validate.mockRejectedValue(new Error('temporary playback failure'));
@@ -91,7 +97,7 @@ describe('playlist import playback boundary', () => {
 			streamValidation: 'deferred',
 			tracksSkipped: 0
 		});
-		expect(mocks.create).not.toHaveBeenCalled();
+		expect(mocks.save).not.toHaveBeenCalled();
 		expect(mocks.update).not.toHaveBeenCalled();
 	});
 });
@@ -100,9 +106,62 @@ it('removes rejected entries durably when reimporting an existing local copy', a
 	mocks.list.mockResolvedValue([{ id: 'local', tidalPlaylistId: 'remote', items }]);
 	const result = await pullPlaylist('remote', ctx);
 	expect(result).toMatchObject({ status: 'synced', tracksSkipped: 1, tracksRemoved: 1 });
-	expect(mocks.update).toHaveBeenCalledWith(
-		'owner',
-		'local',
-		expect.objectContaining({ items: [good, good], syncStatus: 'synced' })
+	expect(mocks.save).toHaveBeenCalledWith(
+		expect.objectContaining({
+			userId: 'owner',
+			items: [good, good],
+			expected: expect.objectContaining({ id: 'local' })
+		})
 	);
+});
+
+it.each(['local_only', 'pending_push'])(
+	'protects %s playlists before any provider work',
+	async (syncStatus) => {
+		mocks.list.mockResolvedValue([{ id: 'local', tidalPlaylistId: 'remote', syncStatus, items }]);
+		expect(await pullPlaylist('remote', ctx)).toMatchObject({
+			status: 'conflict',
+			errorCode: 'local_changes'
+		});
+		expect(mocks.fetch).not.toHaveBeenCalled();
+		expect(mocks.save).not.toHaveBeenCalled();
+	}
+);
+it('reports a commit conflict without claiming tracks were removed or replaced', async () => {
+	mocks.save.mockResolvedValue({ id: 'local', status: 'conflict' });
+	expect(await pullPlaylist('remote', ctx)).toMatchObject({
+		status: 'conflict',
+		tracksSkipped: 0,
+		tracksReplaced: 0,
+		errorCode: 'playlist_changed'
+	});
+});
+it('rejects a response for the wrong source playlist', async () => {
+	mocks.fetch.mockResolvedValue({ data: { id: 'another' } });
+	expect(await pullPlaylist('remote', ctx)).toMatchObject({ status: 'error' });
+	expect(mocks.save).not.toHaveBeenCalled();
+});
+it('does not save a mixed or outdated source snapshot if TIDAL changes during verification', async () => {
+	mocks.fetch
+		.mockResolvedValueOnce({ data: { id: 'remote', attributes: { title: 'Before' } } })
+		.mockResolvedValueOnce({ data: { id: 'remote', attributes: { title: 'After' } } });
+	expect(await pullPlaylist('remote', ctx)).toMatchObject({
+		status: 'error',
+		errorCode: 'source_changed'
+	});
+	expect(mocks.save).not.toHaveBeenCalled();
+});
+it('keeps a nonempty existing playlist if no playable source songs can be verified', async () => {
+	mocks.validate.mockResolvedValue([]);
+	expect(await pullPlaylist('remote', ctx)).toMatchObject({
+		status: 'error',
+		errorCode: 'no_playable_tracks'
+	});
+	expect(mocks.save).not.toHaveBeenCalled();
+});
+it('allows a genuinely empty source playlist after complete verification', async () => {
+	mocks.normalise.mockReturnValue({ id: 'remote', title: 'Empty', items: [] });
+	mocks.validate.mockResolvedValue([]);
+	expect(await pullPlaylist('remote', ctx)).toMatchObject({ status: 'created', tracksSkipped: 0 });
+	expect(mocks.save).toHaveBeenCalledWith(expect.objectContaining({ items: [] }));
 });

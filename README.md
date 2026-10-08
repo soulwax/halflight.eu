@@ -23,7 +23,8 @@ product; every route exists to feed it. _Syn_ is the code name, so the package, 
 - **Synced lyrics** — the active line follows the playhead, with the next line shown as a smaller caption.
 - **Verified imports** — TIDAL imports resolve recording metadata by ID and check playback before saving.
   Unavailable IDs are matched to playback-checked catalogue candidates, preferring the same ISRC and
-  allowing compatible best fits after checking title, artist, edition and duration. Source order and repeated playable songs are preserved. Refreshing an unchanged TIDAL import pulls updates without publishing the filtered copy.
+  allowing compatible best fits after checking title, artist, edition and duration. Source order and repeated playable songs are preserved. Imports show progress per playlist, keep failed selections for retry, and can stop safely after the current playlist.
+  Incomplete pages, a changed source, inconclusive playback checks, and imports with no playable songs cannot replace a saved playlist. Verified copies commit in one transaction with source locks and revision checks, protecting local edits, deletions, and simultaneous imports. Refreshing an unchanged TIDAL import pulls updates without publishing the filtered copy.
 - **Interactive recording repair** — when a song cannot play, choose a verified alternative in the mobile or
   desktop player. Preview the match, update a selected local playlist, or play without changing it. Confirmed
   replacements survive later imports; the TIDAL source playlist stays unchanged.
@@ -56,8 +57,11 @@ pnpm db:migrate
 pnpm dev                 # port per ORIGIN in .env, default :3000
 ```
 
-Sign-up is open. Today the account matching `ADMIN_USERNAME` becomes the owner, and only administrators can use
-the product routes; opening them to every signed-in listener is the planned change.
+Sign-up is open. The owner is whoever signs in with the GitHub account named by `ADMIN_USERNAME`, matched on its
+immutable GitHub user id (set `ADMIN_GITHUB_ID` to pin it without a GitHub API lookup). Display names never grant
+ownership. Once recorded, ownership belongs to that Halflight user, so a TIDAL sign-in linked to the same user is
+equivalent to the GitHub one. Only administrators can use the product routes; opening them to every signed-in
+listener is the planned change.
 
 ### Commands
 

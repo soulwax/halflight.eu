@@ -65,3 +65,14 @@ describe('diffPlaylistItems', () => {
 		expect(diff.reordered).toBe(true);
 	});
 });
+
+it('counts deliberate duplicate occurrences in additions and removals', () => {
+	expect(diffPlaylistItems(['a', 'a', 'b'], ['a', 'b'])).toMatchObject({
+		added: ['a'],
+		removed: []
+	});
+	expect(diffPlaylistItems(['a', 'b'], ['a', 'a', 'b'])).toMatchObject({
+		added: [],
+		removed: ['a']
+	});
+});

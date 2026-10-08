@@ -61,7 +61,10 @@ describe('PlaylistImportModal.svelte', () => {
 		const checkboxes = page.getByRole('checkbox');
 		expect(checkboxes).toHaveLength(3);
 		expect((checkboxes.nth(1).element() as HTMLInputElement).disabled).toBe(true);
-		expect(fetchMock).toHaveBeenCalledWith('/api/playlists/import');
+		expect(fetchMock).toHaveBeenCalledWith(
+			'/api/playlists/import',
+			expect.objectContaining({ signal: expect.any(AbortSignal) })
+		);
 	});
 
 	it('selects only unimported playlists and posts their IDs, then refreshes the store', async () => {
@@ -74,7 +77,29 @@ describe('PlaylistImportModal.svelte', () => {
 					totalErrors: 0,
 					totalTracksSkipped: 0,
 					totalTracksReplaced: 0,
-					streamValidation: 'deferred'
+					streamValidation: 'verified',
+					imported: [
+						{
+							tidalPlaylistId: 'remote-1',
+							status: 'created',
+							streamValidation: 'verified',
+							tracksSkipped: 0,
+							tracksReplaced: 0
+						}
+					]
+				})
+			)
+			.mockResolvedValueOnce(
+				jsonResponse({
+					imported: [
+						{
+							tidalPlaylistId: 'remote-3',
+							status: 'created',
+							streamValidation: 'verified',
+							tracksSkipped: 0,
+							tracksReplaced: 0
+						}
+					]
 				})
 			)
 			.mockResolvedValueOnce(jsonResponse({ playlists }));
@@ -97,7 +122,8 @@ describe('PlaylistImportModal.svelte', () => {
 		expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/playlists/import', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ tidalPlaylistIds: ['remote-1', 'remote-3'] })
+			body: JSON.stringify({ tidalPlaylistIds: ['remote-1'] }),
+			signal: expect.any(AbortSignal)
 		});
 		expect(syncWithServer).toHaveBeenCalledOnce();
 	});
@@ -145,7 +171,9 @@ describe('PlaylistImportModal.svelte', () => {
 		await expect.element(importButton).toBeEnabled();
 		(importButton.element() as HTMLButtonElement).click();
 
-		await expect.element(page.getByText('Night Drive')).toBeInTheDocument();
+		await expect
+			.element(page.getByRole('button', { name: `${m.playlist_import()} (1)` }))
+			.toBeEnabled();
 		await expect
 			.element(page.getByText(m.playlist_import_some_failed({ count: 1 })))
 			.toBeInTheDocument();
@@ -157,4 +185,164 @@ describe('PlaylistImportModal.svelte', () => {
 		await expect.element(page.getByText(m.playlist_import_load_failed())).toBeInTheDocument();
 		await expect.element(page.getByRole('button', { name: m.track_retry() })).toBeInTheDocument();
 	});
+});
+
+it('continues after one failed playlist and retries only the failed selection', async () => {
+	const result = (id: string, status: string) =>
+		jsonResponse({
+			imported: [
+				{
+					tidalPlaylistId: id,
+					status,
+					streamValidation: status === 'created' ? 'verified' : 'deferred',
+					tracksSkipped: 0,
+					tracksReplaced: 0
+				}
+			]
+		});
+	const fetchMock = vi.fn().mockImplementation(async (_url, options) => {
+		if (!options?.method) return jsonResponse({ playlists });
+		const id = JSON.parse(options.body).tidalPlaylistIds[0];
+		return result(id, id === 'remote-1' ? 'error' : 'created');
+	});
+	vi.stubGlobal('fetch', fetchMock);
+	vi.spyOn(customPlaylists, 'syncWithServer').mockResolvedValue(undefined);
+	render(PlaylistImportModal);
+	await expect.element(page.getByText('Night Drive')).toBeInTheDocument();
+	(
+		page.getByRole('button', { name: 'Select all unimported' }).element() as HTMLButtonElement
+	).click();
+	await expect
+		.element(page.getByRole('button', { name: `${m.playlist_import()} (2)` }))
+		.toBeEnabled();
+	(
+		page.getByRole('button', { name: `${m.playlist_import()} (2)` }).element() as HTMLButtonElement
+	).click();
+	await expect
+		.element(page.getByText(m.playlist_import_some_failed({ count: 1 })))
+		.toBeInTheDocument();
+	await expect
+		.element(page.getByRole('button', { name: `${m.playlist_import()} (1)` }))
+		.toBeEnabled();
+	const posts = () =>
+		fetchMock.mock.calls
+			.filter(([, options]) => options?.method === 'POST')
+			.map(([, options]) => JSON.parse(options.body).tidalPlaylistIds);
+	expect(posts()).toEqual([['remote-1'], ['remote-3']]);
+	await expect
+		.element(page.getByRole('button', { name: `${m.playlist_import()} (1)` }))
+		.toBeEnabled();
+	(
+		page.getByRole('button', { name: `${m.playlist_import()} (1)` }).element() as HTMLButtonElement
+	).click();
+	await vi.waitFor(() => expect(posts()).toEqual([['remote-1'], ['remote-3'], ['remote-1']]));
+});
+it('keeps the dialog open during verification and never treats aggregate counts as verified success', async () => {
+	let finish!: (value: Response) => void;
+	const fetchMock = vi.fn().mockImplementation(async (_url, options) => {
+		if (!options?.method) return jsonResponse({ playlists });
+		return new Promise<Response>((resolve) => {
+			finish = resolve;
+		});
+	});
+	vi.stubGlobal('fetch', fetchMock);
+	render(PlaylistImportModal);
+	await expect.element(page.getByText('Night Drive')).toBeInTheDocument();
+	(page.getByRole('checkbox').nth(0).element() as HTMLInputElement).click();
+	await expect
+		.element(page.getByRole('button', { name: `${m.playlist_import()} (1)` }))
+		.toBeEnabled();
+	(
+		page.getByRole('button', { name: `${m.playlist_import()} (1)` }).element() as HTMLButtonElement
+	).click();
+	await expect.element(page.getByRole('button', { name: m.action_close() })).toBeDisabled();
+	document.dispatchEvent(
+		new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+	);
+	await expect.element(page.getByRole('dialog')).toBeInTheDocument();
+	finish(jsonResponse({ totalImported: 1, totalErrors: 0 }));
+	await expect
+		.element(page.getByText(m.playlist_import_some_failed({ count: 1 })))
+		.toBeInTheDocument();
+	await expect
+		.element(page.getByText(m.playlist_import_done(), { exact: false }))
+		.not.toBeInTheDocument();
+});
+it('reconciles a lost final response with the saved copy instead of reimporting it', async () => {
+	let posted = false;
+	vi.stubGlobal(
+		'fetch',
+		vi.fn().mockImplementation(async (_url, options) => {
+			if (options?.method) {
+				posted = true;
+				throw new Error('Connection lost after commit');
+			}
+			return jsonResponse({
+				playlists: playlists.map((playlist) => ({
+					...playlist,
+					isImported: playlist.isImported || (posted && playlist.id === 'remote-1')
+				}))
+			});
+		})
+	);
+	render(PlaylistImportModal);
+	await expect.element(page.getByText('Night Drive')).toBeInTheDocument();
+	(page.getByRole('checkbox').nth(0).element() as HTMLInputElement).click();
+	await expect
+		.element(page.getByRole('button', { name: `${m.playlist_import()} (1)` }))
+		.toBeEnabled();
+	(
+		page.getByRole('button', { name: `${m.playlist_import()} (1)` }).element() as HTMLButtonElement
+	).click();
+	await expect.element(page.getByText(m.playlist_import_saved_found())).toBeInTheDocument();
+	await expect
+		.element(page.getByRole('button', { name: `${m.playlist_import()} (0)` }))
+		.toBeDisabled();
+	await expect
+		.element(page.getByText(m.playlist_import_some_failed({ count: 1 })))
+		.not.toBeInTheDocument();
+});
+it('stops a batch after the current verified playlist and keeps remaining selections', async () => {
+	let finish!: (value: Response) => void;
+	const fetchMock = vi.fn().mockImplementation(async (_url, options) => {
+		if (!options?.method) return jsonResponse({ playlists });
+		return new Promise<Response>((resolve) => {
+			finish = resolve;
+		});
+	});
+	vi.stubGlobal('fetch', fetchMock);
+	vi.spyOn(customPlaylists, 'syncWithServer').mockResolvedValue(undefined);
+	render(PlaylistImportModal);
+	await expect.element(page.getByText('Night Drive')).toBeInTheDocument();
+	(
+		page.getByRole('button', { name: 'Select all unimported' }).element() as HTMLButtonElement
+	).click();
+	await expect
+		.element(page.getByRole('button', { name: `${m.playlist_import()} (2)` }))
+		.toBeEnabled();
+	(
+		page.getByRole('button', { name: `${m.playlist_import()} (2)` }).element() as HTMLButtonElement
+	).click();
+	await expect.element(page.getByRole('button', { name: m.playlist_import_stop() })).toBeEnabled();
+	(
+		page.getByRole('button', { name: m.playlist_import_stop() }).element() as HTMLButtonElement
+	).click();
+	finish(
+		jsonResponse({
+			imported: [
+				{
+					tidalPlaylistId: 'remote-1',
+					status: 'created',
+					streamValidation: 'verified',
+					tracksSkipped: 0,
+					tracksReplaced: 0
+				}
+			]
+		})
+	);
+	await expect.element(page.getByText(m.playlist_import_stopped())).toBeInTheDocument();
+	await expect
+		.element(page.getByRole('button', { name: `${m.playlist_import()} (1)` }))
+		.toBeEnabled();
+	expect(fetchMock.mock.calls.filter(([, options]) => options?.method === 'POST')).toHaveLength(1);
 });

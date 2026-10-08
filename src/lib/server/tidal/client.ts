@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { TIDAL_API_BASE } from './config';
 import {
 	TidalApiError,
@@ -37,7 +38,10 @@ export interface TidalRequestContext {
  * expired token share one refresh round-trip instead of racing (and possibly
  * invalidating each other's rotated refresh token).
  */
-let inFlightRefresh: Promise<TidalTokenRecord> | null = null;
+const inFlightRefresh = new Map<string, Promise<TidalTokenRecord>>();
+function refreshKey(record: TidalTokenRecord): string {
+	return createHash('sha256').update(record.refreshToken).digest('hex');
+}
 
 async function loadRecord(store?: TokenRowStore): Promise<TidalTokenRecord> {
 	const record = await readRecord(store);
@@ -49,8 +53,10 @@ async function refreshAndPersist(
 	record: TidalTokenRecord,
 	ctx: TidalRequestContext
 ): Promise<TidalTokenRecord> {
-	if (!inFlightRefresh) {
-		inFlightRefresh = (async () => {
+	const key = refreshKey(record);
+	let request = inFlightRefresh.get(key);
+	if (!request) {
+		request = (async () => {
 			const next = await refreshTokens(
 				record.refreshToken,
 				ctx.fetch ?? fetch,
@@ -60,10 +66,11 @@ async function refreshAndPersist(
 			await writeRecord(next, ctx.store);
 			return next;
 		})().finally(() => {
-			inFlightRefresh = null;
+			inFlightRefresh.delete(key);
 		});
+		inFlightRefresh.set(key, request);
 	}
-	const next = await inFlightRefresh;
+	const next = await request;
 	return next;
 }
 
@@ -87,7 +94,7 @@ export async function getAccessToken(ctx: TidalRequestContext = {}): Promise<str
 }
 
 /** Single-flight guard for the device (playback) token refresh. */
-let inFlightPlaybackRefresh: Promise<TidalTokenRecord> | null = null;
+const inFlightPlaybackRefresh = new Map<string, Promise<TidalTokenRecord>>();
 
 /**
  * Return a valid TIDAL Link (device-authorization) access token for the legacy
@@ -110,8 +117,10 @@ export async function getPlaybackTokenDetails(
 	if (!isExpired(record))
 		return { accessToken: record.accessToken, countryCode: record.countryCode };
 
-	if (!inFlightPlaybackRefresh) {
-		inFlightPlaybackRefresh = (async () => {
+	const key = refreshKey(record);
+	let request = inFlightPlaybackRefresh.get(key);
+	if (!request) {
+		request = (async () => {
 			const next = await refreshDeviceToken(
 				record.refreshToken,
 				ctx.fetch ?? fetch,
@@ -120,10 +129,11 @@ export async function getPlaybackTokenDetails(
 			await writePlaybackRecord(next, ctx.store);
 			return next;
 		})().finally(() => {
-			inFlightPlaybackRefresh = null;
+			inFlightPlaybackRefresh.delete(key);
 		});
+		inFlightPlaybackRefresh.set(key, request);
 	}
-	const next = await inFlightPlaybackRefresh;
+	const next = await request;
 	return { accessToken: next.accessToken, countryCode: next.countryCode };
 }
 
@@ -156,10 +166,16 @@ export async function tidalFetch(
 ): Promise<Response> {
 	const f = ctx.fetch ?? fetch;
 	const url = resolveUrl(path);
+	const signal =
+		init.signal && ctx.signal
+			? AbortSignal.any([init.signal, ctx.signal])
+			: (init.signal ?? ctx.signal);
+	signal?.throwIfAborted();
 
 	const send = (token: string) =>
 		f(url, {
 			...init,
+			...(signal ? { signal } : {}),
 			headers: {
 				accept: 'application/vnd.api+json',
 				...init.headers,
@@ -170,7 +186,7 @@ export async function tidalFetch(
 	const sendWithTransientRetry = (token: string): Promise<Response> =>
 		withTransientRetry(() => send(token), {
 			retries: isSafeRead(init) ? MAX_TRANSIENT_READ_RETRIES : 0,
-			signal: init.signal
+			signal
 		});
 
 	let response = await sendWithTransientRetry(await getAccessToken(ctx));
@@ -208,6 +224,6 @@ export async function tidalJson<T = unknown>(
 
 /** Test-only: clear the single-flight refresh guards between cases. */
 export function resetRefreshGuard(): void {
-	inFlightRefresh = null;
-	inFlightPlaybackRefresh = null;
+	inFlightRefresh.clear();
+	inFlightPlaybackRefresh.clear();
 }

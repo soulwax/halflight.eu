@@ -9,8 +9,20 @@ import type { Actions, PageServerLoad } from './$types';
 export const load: PageServerLoad = (event) => {
 	const returnTo = safeProductReturn(event.url.searchParams.get('returnTo')) ?? '/';
 	if (event.locals.user && event.locals.isListener) redirect(302, returnTo);
-	return { returnTo, tidalSignIn: isTidalSignInAvailable() };
+	return {
+		returnTo,
+		tidalSignIn: isTidalSignInAvailable(),
+		oauthError: oauthErrorKind(event.url.searchParams.get('error'))
+	};
 };
+
+/** Better Auth sends OAuth failures back here as `?error=<code>`. */
+function oauthErrorKind(code: string | null): 'cancelled' | 'account_exists' | 'failed' | null {
+	if (!code) return null;
+	if (code === 'access_denied') return 'cancelled';
+	if (code === 'account_not_linked') return 'account_exists';
+	return 'failed';
+}
 
 /** Each social provider's consent origin, which SvelteKit 3 must allow explicitly. */
 const SOCIAL_ORIGINS = {
@@ -27,11 +39,13 @@ function isSocialProvider(value: unknown): value is SocialProvider {
 /**
  * A brand-new TIDAL listener has browse access but not full playback yet, so
  * land them on the one remaining step (TIDAL Link) instead of the app shell.
+ * From the site root the shell is only chosen client-side, so the root page
+ * carries the `welcome` flag on to the right settings page.
  */
 function newTidalListenerLanding(returnTo: string): string {
-	return isMobileRoute(new URL(returnTo, 'https://halflight.invalid').pathname)
-		? '/settings'
-		: '/app/settings/tidal?welcome=1';
+	const path = new URL(returnTo, 'https://halflight.invalid').pathname;
+	if (path === '/') return '/?welcome=1';
+	return isMobileRoute(path) ? '/settings' : '/app/settings/tidal?welcome=1';
 }
 
 export const actions: Actions = {
@@ -83,7 +97,7 @@ export const actions: Actions = {
 					callbackURL: returnTo,
 					newUserCallbackURL:
 						provider === TIDAL_SIGN_IN_PROVIDER ? newTidalListenerLanding(returnTo) : undefined,
-					errorCallbackURL: '/sign-in'
+					errorCallbackURL: `/sign-in?returnTo=${encodeURIComponent(returnTo)}`
 				}
 			});
 			authorizeUrl = result.url;
