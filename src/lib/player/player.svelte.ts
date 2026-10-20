@@ -337,6 +337,8 @@ export class PlayerState {
 	private trackStartedAt = 0;
 	private lastObservedPlaybackTime = 0;
 	private listenedSeconds = 0;
+	/** At least one source-backed track has crossed the qualified-listen threshold. */
+	hasQualifiedListen = $state(false);
 	private tasteListen = new EngagedListenTracker();
 	private tasteEventId: string | null = null;
 	private tasteSubmitted = false;
@@ -359,6 +361,7 @@ export class PlayerState {
 			this.isPlaying && !this.isBuffering,
 			sourceMatches
 		);
+		if (track && seconds > 30 && sourceMatches) this.hasQualifiedListen = true;
 		if (!track || seconds <= 30 || this.tasteSubmitted || !sourceMatches) return;
 		this.tasteEventId ??= crypto.randomUUID();
 		this.tasteSubmitted = true;

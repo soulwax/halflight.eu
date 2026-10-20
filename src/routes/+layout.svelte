@@ -8,6 +8,7 @@
 	import type { Snippet } from 'svelte';
 	import { onMount } from 'svelte';
 	import { searchHistory } from '#lib/search/history.svelte';
+	import { captureInstallPrompt, installPromptState } from '#lib/mobile/install-prompt.svelte';
 	import PlaylistImportModal from '#lib/components/music/PlaylistImportModal.svelte';
 	import { invalidateAll } from '$app/navigation';
 	import TrackReplacementDialog from '#lib/components/player/TrackReplacementDialog.svelte';
@@ -35,11 +36,18 @@
 	};
 
 	onMount(() => {
+		const clearInstallPrompt = () => (installPromptState.event = null);
+		window.addEventListener('beforeinstallprompt', captureInstallPrompt);
+		window.addEventListener('appinstalled', clearInstallPrompt);
 		if ('serviceWorker' in navigator && !import.meta.env.DEV) {
 			navigator.serviceWorker.register('/service-worker.js').catch(() => {
 				// Best-effort service worker registration
 			});
 		}
+		return () => {
+			window.removeEventListener('beforeinstallprompt', captureInstallPrompt);
+			window.removeEventListener('appinstalled', clearInstallPrompt);
+		};
 	});
 
 	// `app.html` already bakes the right theme into the first response via

@@ -3,6 +3,7 @@ import {
 	buildPrecacheAssets,
 	isNavigationRequest,
 	isPrecacheCandidate,
+	offlineFallbackUrlFor,
 	shouldBypassServiceWorker
 } from './service-worker-policy.js';
 
@@ -11,9 +12,15 @@ describe('service-worker-policy.ts', () => {
 		expect(
 			buildPrecacheAssets([
 				{ path: '_app/immutable/entry/app.hash.js' },
-				{ path: '_app/immutable/assets/layout.hash.css' },
+				{ path: '_app/immutable/assets/0.hash.css' },
+				{ path: '_app/immutable/assets/OfflineRecovery.hash.css' },
+				{ path: '_app/immutable/assets/25.hash.css' },
 				{ path: 'icons/halflight-192.png' },
 				{ path: '/icons/halflight-192.png' },
+				{ path: 'icons/halflight-512.png' },
+				{ path: 'icons/halflight-maskable-512.png' },
+				{ path: 'icons/halflight-aurora-dawn.png' },
+				{ path: 'icons/emily-the-strange-music-halo-512.png' },
 				{ path: 'manifest.webmanifest' },
 				{ path: '_app/immutable/__data.json' },
 				{ path: 'api/tracks/123/audio' },
@@ -21,11 +28,14 @@ describe('service-worker-policy.ts', () => {
 				{ path: 'sign-in' }
 			])
 		).toEqual([
-			'/_app/immutable/entry/app.hash.js',
-			'/_app/immutable/assets/layout.hash.css',
+			'/_app/immutable/assets/0.hash.css',
+			'/_app/immutable/assets/OfflineRecovery.hash.css',
 			'/icons/halflight-192.png',
+			'/icons/halflight-512.png',
+			'/icons/halflight-maskable-512.png',
 			'/manifest.webmanifest',
-			'/offline'
+			'/offline',
+			'/de-de/offline'
 		]);
 	});
 	it('bypasses audio streams and manifests', () => {
@@ -84,16 +94,29 @@ describe('service-worker-policy.ts', () => {
 	it('identifies precache candidates accurately', () => {
 		expect(isPrecacheCandidate('/offline')).toBe(true);
 		expect(isPrecacheCandidate('/offline/')).toBe(true);
+		expect(isPrecacheCandidate('/de-de/offline')).toBe(true);
 		expect(isPrecacheCandidate('/manifest.webmanifest')).toBe(true);
 		expect(isPrecacheCandidate('/icons/halflight-192.png')).toBe(true);
-		expect(isPrecacheCandidate('/_app/immutable/chunks/bundle.js')).toBe(true);
-		expect(isPrecacheCandidate('/_app/immutable/assets/layout.css')).toBe(true);
+		expect(isPrecacheCandidate('/icons/halflight-maskable-512.png')).toBe(true);
+		expect(isPrecacheCandidate('/icons/halflight-aurora-dawn.png')).toBe(false);
+		expect(isPrecacheCandidate('/icons/emily-the-strange-music-halo-512.png')).toBe(false);
+		expect(isPrecacheCandidate('/_app/immutable/entry/app.js')).toBe(false);
+		expect(isPrecacheCandidate('/_app/immutable/chunks/bundle.js')).toBe(false);
+		expect(isPrecacheCandidate('/_app/immutable/assets/OfflineRecovery.css')).toBe(true);
+		expect(isPrecacheCandidate('/_app/immutable/assets/25.hash.css')).toBe(false);
 
 		// Excludes private data json payloads
 		expect(isPrecacheCandidate('/_app/immutable/__data.json')).toBe(false);
 		// Excludes arbitrary routes or provider audio
 		expect(isPrecacheCandidate('/api/tracks/123/audio')).toBe(false);
 		expect(isPrecacheCandidate('/home')).toBe(false);
+	});
+
+	it('keeps the offline recovery page in the selected route locale', () => {
+		expect(offlineFallbackUrlFor(new URL('https://m.halflight.eu/search'))).toBe('/offline');
+		expect(offlineFallbackUrlFor(new URL('https://m.halflight.eu/de-de/search'))).toBe(
+			'/de-de/offline'
+		);
 	});
 
 	it('identifies HTML navigation requests', () => {

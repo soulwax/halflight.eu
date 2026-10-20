@@ -75,10 +75,13 @@ describe('mobile settings install flow', () => {
 		expect(action.element().getAttribute('aria-busy')).toBe('true');
 
 		resolveChoice!({ outcome: 'accepted' });
-		await expect.element(action).not.toBeDisabled();
+		await expect.element(action).not.toBeInTheDocument();
 		await expect
 			.element(page.getByText(m.mobile_install_installed(), { exact: true }))
 			.not.toBeInTheDocument();
+		await expect
+			.element(page.getByText(m.mobile_install_help_title(), { exact: true }))
+			.toBeInTheDocument();
 
 		window.dispatchEvent(new Event('appinstalled'));
 		await expect

@@ -9,6 +9,7 @@
 	import TidalPlaybackSetup from '#lib/components/tidal/TidalPlaybackSetup.svelte';
 	import { getThemeLabel, type Theme } from '#lib/theme.js';
 	import { rememberSiteChoice } from '#lib/mobile/site-entry';
+	import { captureInstallPrompt, installPromptState } from '#lib/mobile/install-prompt.svelte';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form?: ActionData } = $props();
@@ -19,14 +20,10 @@
 		document.documentElement.dataset.theme = theme;
 	}
 
-	type InstallPromptEvent = Event & {
-		prompt(): Promise<void>;
-		userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
-	};
-
-	let installPrompt = $state<InstallPromptEvent | null>(null);
+	const installPrompt = $derived(installPromptState.event);
 	let isPromptingInstall = $state(false);
 	let isInstalled = $state(false);
+	let installHelpDescription = $state(m.mobile_install_help_description());
 	const mobileQuality = $derived(
 		data.streamingSettings.preferredQuality === 'LOW'
 			? 'LOW'
@@ -45,13 +42,25 @@
 	$effect(() => {
 		const displayMode = window.matchMedia('(display-mode: standalone)');
 		const syncInstalled = () => (isInstalled = isStandalone());
-		const captureInstallPrompt = (event: Event) => {
-			event.preventDefault();
-			installPrompt = event as InstallPromptEvent;
-		};
+		const userAgent = navigator.userAgent;
+		const isAppleMobile =
+			/ iPhone|iPad|iPod/i.test(` ${userAgent}`) ||
+			(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+		if (isAppleMobile) {
+			installHelpDescription =
+				/Safari/i.test(userAgent) && !/(CriOS|FxiOS|EdgiOS|OPiOS)/i.test(userAgent)
+					? m.mobile_install_help_ios_safari()
+					: m.mobile_install_help_ios_other();
+		} else if (/Android/i.test(userAgent)) {
+			installHelpDescription = /Chrome/i.test(userAgent)
+				? m.mobile_install_help_android_chrome()
+				: m.mobile_install_help_android_other();
+		} else if (/Chrome|Edg/i.test(userAgent)) {
+			installHelpDescription = m.mobile_install_help_desktop_chrome();
+		}
 		const markInstalled = () => {
 			isInstalled = true;
-			installPrompt = null;
+			installPromptState.event = null;
 		};
 
 		syncInstalled();
@@ -66,11 +75,13 @@
 	});
 
 	async function install(): Promise<void> {
-		if (!installPrompt || isPromptingInstall) return;
+		const prompt = installPromptState.event;
+		if (!prompt || isPromptingInstall) return;
 		isPromptingInstall = true;
+		installPromptState.event = null;
 		try {
-			await installPrompt.prompt();
-			await installPrompt.userChoice;
+			await prompt.prompt();
+			await prompt.userChoice;
 		} finally {
 			isPromptingInstall = false;
 		}
@@ -285,7 +296,7 @@
 			<p class="notice success" role="status">
 				<CircleCheck size={18} aria-hidden="true" />{m.mobile_install_installed()}
 			</p>
-		{:else if installPrompt}
+		{:else if installPrompt || isPromptingInstall}
 			<button
 				type="button"
 				disabled={isPromptingInstall}
@@ -297,7 +308,7 @@
 		{:else}
 			<details class="install-help">
 				<summary>{m.mobile_install_help_title()}</summary>
-				<p>{m.mobile_install_help_description()}</p>
+				<p>{installHelpDescription}</p>
 			</details>
 		{/if}
 	</section>

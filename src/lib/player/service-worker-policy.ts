@@ -3,16 +3,46 @@
  * Strict rules adhering to MASTERPLAN.md (lines 1204-1214):
  * - Audio streams and Range requests explicitly bypass the worker.
  * - Authenticated HTML and SvelteKit data requests are network-only.
- * - Public app shell and neutral /offline page are precached.
+ * - The neutral /offline page, its CSS, manifest, and install icons are precached.
  * - Sign-in, verification, OAuth, and mutations are never cached or replayed.
  */
 
 export const OFFLINE_FALLBACK_URL = '/offline';
+export const OFFLINE_FALLBACK_URLS = [OFFLINE_FALLBACK_URL, '/de-de/offline'] as const;
+
+// Only cache the icons declared for Halflight Now and the browser tab icon.
+// `static/icons` also contains theme artwork and source variants that are not
+// install assets and would waste the deliberately small app-shell budget.
+const PRECACHE_ICON_PATHS = new Set([
+	'/icons/halflight-32.png',
+	'/icons/halflight-180.png',
+	'/icons/halflight-192.png',
+	'/icons/halflight-512.png',
+	'/icons/halflight-maskable-512.png'
+]);
+
+// These are the stylesheets linked by the root layout and the offline page.
+// Keep route-specific client styles out of the recovery-shell cache.
+const PRECACHE_STYLESHEET_PREFIXES = [
+	'/_app/immutable/assets/0.',
+	'/_app/immutable/assets/AppHeader.',
+	'/_app/immutable/assets/Dialog.',
+	'/_app/immutable/assets/Notice.',
+	'/_app/immutable/assets/OfflineRecovery.',
+	'/_app/immutable/assets/SearchField.'
+];
 
 /** SvelteKit's manifest contains relative path records, not URL strings. */
 export function buildPrecacheAssets(entries: ReadonlyArray<{ path: string }>): string[] {
 	const paths = entries.map(({ path }) => (path.startsWith('/') ? path : `/${path}`));
-	return [...new Set([...paths.filter(isPrecacheCandidate), OFFLINE_FALLBACK_URL])];
+	return [...new Set([...paths.filter(isPrecacheCandidate), ...OFFLINE_FALLBACK_URLS])];
+}
+
+/** Keep the neutral recovery copy in the language selected by the route URL. */
+export function offlineFallbackUrlFor(url: URL): (typeof OFFLINE_FALLBACK_URLS)[number] {
+	return url.pathname === '/de-de' || url.pathname.startsWith('/de-de/')
+		? '/de-de/offline'
+		: OFFLINE_FALLBACK_URL;
 }
 
 /**
@@ -68,12 +98,14 @@ export function shouldBypassServiceWorker(url: URL, request: Request): boolean {
 }
 
 /**
- * Validates whether a file path qualifies for precaching in the revisioned app-shell cache.
- * Restricts assets to approved public build chunks, owned icons/fonts, and the neutral offline route.
+ * Validates whether a file path qualifies for precaching in the revisioned recovery-shell cache.
+ * Restricts persistent content to the neutral offline pages, their CSS, manifest, and owned icons.
  */
 export function isPrecacheCandidate(pathname: string): boolean {
 	// Neutral offline fallback route
-	if (pathname === OFFLINE_FALLBACK_URL || pathname === `${OFFLINE_FALLBACK_URL}/`) {
+	if (
+		OFFLINE_FALLBACK_URLS.some((fallback) => pathname === fallback || pathname === `${fallback}/`)
+	) {
 		return true;
 	}
 
@@ -83,17 +115,14 @@ export function isPrecacheCandidate(pathname: string): boolean {
 	}
 
 	// Owned raster icons and favicon
-	if (pathname.startsWith('/icons/') || pathname === '/favicon.png') {
+	if (PRECACHE_ICON_PATHS.has(pathname) || pathname === '/favicon.png') {
 		return true;
 	}
 
-	// Immutable content-hashed SvelteKit client bundles and CSS
-	if (pathname.startsWith('/_app/immutable/')) {
-		// Exclude prerendered private data payloads
-		if (pathname.endsWith('.json') && pathname.includes('__data')) {
-			return false;
-		}
-		return true;
+	// Cache the CSS needed to display the server-rendered offline page. Do not
+	// cache route JS: the offline shell has no client runtime and no offline app.
+	if (pathname.endsWith('.css')) {
+		return PRECACHE_STYLESHEET_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 	}
 
 	return false;
