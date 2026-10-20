@@ -9,6 +9,7 @@
 	import { onMount } from 'svelte';
 	import { searchHistory } from '#lib/search/history.svelte';
 	import { captureInstallPrompt, installPromptState } from '#lib/mobile/install-prompt.svelte';
+	import PwaUpdateNotice from '#lib/components/mobile/PwaUpdateNotice.svelte';
 	import PlaylistImportModal from '#lib/components/music/PlaylistImportModal.svelte';
 	import { invalidateAll } from '$app/navigation';
 	import TrackReplacementDialog from '#lib/components/player/TrackReplacementDialog.svelte';
@@ -19,10 +20,9 @@
 	let { data, children }: { data: LayoutData; children: Snippet } = $props();
 	$effect(() => searchHistory.setOwner(data.user?.id ?? null));
 
-	// The mobile browser/OS chrome colour cannot be a CSS custom property — it
-	// needs a literal string at head-render time — so this is the one place
-	// each theme's `--paper` is deliberately restated outside `layout.css`.
-	const MOBILE_CHROME_COLOR: Record<LayoutData['theme'], string> = {
+	// Browser/OS chrome colours need literal strings at head-render time, so
+	// each theme's canvas colour is restated here outside `layout.css`.
+	const CHROME_COLOR: Record<LayoutData['theme'], string> = {
 		dark: '#0b0d10',
 		light: '#ffffff',
 		'warm-night': '#1a1512',
@@ -69,6 +69,7 @@
 			deLocalizeHref(page.url.pathname) === '/app' ||
 			deLocalizeHref(page.url.pathname).startsWith('/app/')
 	);
+	let isDesktopRecovery = $derived(deLocalizeHref(page.url.pathname) === '/desktop-offline');
 </script>
 
 <svelte:head>
@@ -76,7 +77,7 @@
 	<link rel="icon" type="image/png" sizes="192x192" href="/icons/halflight-192.png" />
 	{#if isMobile}
 		<link rel="manifest" href="/manifest.webmanifest" />
-		<meta name="theme-color" content={MOBILE_CHROME_COLOR[data.theme]} />
+		<meta name="theme-color" content={CHROME_COLOR[data.theme]} />
 		<meta name="mobile-web-app-capable" content="yes" />
 		<meta name="apple-mobile-web-app-capable" content="yes" />
 		<!-- Opaque, not black-translucent: affected iOS versions (WebKit bug 301994,
@@ -90,9 +91,12 @@
 		/>
 		<meta name="apple-mobile-web-app-title" content="Halflight" />
 		<link rel="apple-touch-icon" sizes="180x180" href="/icons/halflight-180.png" />
+	{:else if isListeningRoom || deLocalizeHref(page.url.pathname) === '/sign-in'}
+		<link rel="manifest" href="/manifest-desktop.webmanifest" />
+		<meta name="theme-color" content={CHROME_COLOR[data.theme]} />
 	{/if}
 </svelte:head>
-{#if isMobile || isListeningRoom || deLocalizeHref(page.url.pathname) === '/sign-in'}
+{#if isMobile || isListeningRoom || isDesktopRecovery || deLocalizeHref(page.url.pathname) === '/sign-in'}
 	{@render children()}
 {:else}
 	<div class="flex min-h-dvh flex-col">
@@ -103,6 +107,10 @@
 		<Footer />
 	</div>
 {/if}
+
+<!-- Every same-origin tab must be able to answer the worker's update-readiness
+     check, including desktop pages and sign-in after an expired session. -->
+<PwaUpdateNotice desktop={!isMobile} />
 
 <div style="display:none">
 	{#each locales as locale (locale)}

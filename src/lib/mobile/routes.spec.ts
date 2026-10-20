@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { errorRecoveryPath, isMobileRoute, isPublicMobileRoute } from './routes';
+import {
+	errorRecoveryPath,
+	isMobileRoute,
+	isPublicMobileRoute,
+	isPublicRecoveryRoute
+} from './routes';
 
 describe('isMobileRoute', () => {
 	it('matches an exact mobile root path', () => {
@@ -42,6 +47,14 @@ describe('isMobileRoute', () => {
 		expect(isPublicMobileRoute('/de-de/offline')).toBe(true);
 		expect(isPublicMobileRoute('/home')).toBe(false);
 		expect(isPublicMobileRoute('/app')).toBe(false);
+	});
+
+	it('keeps both mobile and desktop offline documents public', () => {
+		expect(isPublicRecoveryRoute('/offline')).toBe(true);
+		expect(isPublicRecoveryRoute('/de-de/offline')).toBe(true);
+		expect(isPublicRecoveryRoute('/desktop-offline')).toBe(true);
+		expect(isPublicRecoveryRoute('/de-de/desktop-offline')).toBe(true);
+		expect(isPublicRecoveryRoute('/app')).toBe(false);
 	});
 });
 

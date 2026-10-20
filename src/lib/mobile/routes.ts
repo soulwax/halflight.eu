@@ -27,6 +27,7 @@ export const MOBILE_ROOT_PATHS = [
  * They can be precached without carrying a listening session or account data.
  */
 export const PUBLIC_MOBILE_ROOT_PATHS = ['/offline'] as const;
+export const PUBLIC_RECOVERY_ROOT_PATHS = ['/offline', '/desktop-offline'] as const;
 
 export function isMobileRoute(pathname: string): boolean {
 	const deLocalizedPathname = deLocalizeUrl(pathname).pathname;
@@ -38,6 +39,14 @@ export function isMobileRoute(pathname: string): boolean {
 export function isPublicMobileRoute(pathname: string): boolean {
 	const deLocalizedPathname = deLocalizeUrl(pathname).pathname;
 	return PUBLIC_MOBILE_ROOT_PATHS.some(
+		(path) => deLocalizedPathname === path || deLocalizedPathname.startsWith(`${path}/`)
+	);
+}
+
+/** Public recovery documents contain no authenticated layout or session data. */
+export function isPublicRecoveryRoute(pathname: string): boolean {
+	const deLocalizedPathname = deLocalizeUrl(pathname).pathname;
+	return PUBLIC_RECOVERY_ROOT_PATHS.some(
 		(path) => deLocalizedPathname === path || deLocalizedPathname.startsWith(`${path}/`)
 	);
 }

@@ -52,16 +52,18 @@ self.addEventListener('install', (event) => {
 	// As specified in MASTERPLAN.md, we do not call skipWaiting() automatically
 	// to avoid interrupting active playback in open tabs.
 	event.waitUntil(
-		// `addAll` rejects when any required shell asset is unavailable. Let the
-		// install fail in that case so a partial worker never replaces a usable
-		// release while claiming to provide offline recovery.
-		caches
-			.open(CACHE)
-			.then((cache) => cache.addAll(ASSETS))
-			.catch(async (error: unknown) => {
-				await caches.delete(CACHE);
+		(async () => {
+			// `addAll` rejects when any required shell asset is unavailable. Preserve
+			// an existing cache: a failed update can share this cache name with the
+			// currently active worker, which still needs its complete offline shell.
+			const cacheAlreadyExists = (await caches.keys()).includes(CACHE);
+			try {
+				await (await caches.open(CACHE)).addAll(ASSETS);
+			} catch (error) {
+				if (!cacheAlreadyExists) await caches.delete(CACHE);
 				throw error;
-			})
+			}
+		})()
 	);
 });
 
@@ -144,8 +146,18 @@ self.addEventListener('fetch', (event) => {
 	if (isNavigationRequest(event.request)) {
 		event.respondWith(
 			fetch(event.request).catch(async () => {
-				const cache = await caches.open(CACHE);
-				const offlineFallback = await cache.match(offlineFallbackUrlFor(url));
+				const fallbackUrl = new URL(offlineFallbackUrlFor(url), self.location.origin);
+				let offlineFallback = await (await caches.open(CACHE)).match(fallbackUrl.href);
+				// A navigation can still be controlled by the previous worker while a new
+				// worker activates and prunes its cache. Check the current shell cache too.
+				if (!offlineFallback) {
+					const cacheNames = await caches.keys();
+					for (const cacheName of cacheNames) {
+						if (!cacheName.startsWith('syn-cache-') || cacheName === CACHE) continue;
+						offlineFallback = await (await caches.open(cacheName)).match(fallbackUrl.href);
+						if (offlineFallback) break;
+					}
+				}
 				if (offlineFallback) return offlineFallback;
 				return new Response('Network unavailable', {
 					status: 503,

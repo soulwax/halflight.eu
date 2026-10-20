@@ -13,7 +13,6 @@
 	import MobileNavigationMenu from '#lib/components/mobile/MobileNavigationMenu.svelte';
 	import NowTabBar from '#lib/components/mobile/NowTabBar.svelte';
 	import MobileRecovery from '#lib/components/mobile/MobileRecovery.svelte';
-	import PwaUpdateNotice from '#lib/components/mobile/PwaUpdateNotice.svelte';
 	import PwaInstallInvitation from '#lib/components/mobile/PwaInstallInvitation.svelte';
 	import PlaylistDialog from '#lib/components/music/PlaylistDialog.svelte';
 	import { MobileSearchSession, MOBILE_SEARCH_SESSION } from '#lib/mobile/search-session.svelte.js';
@@ -201,7 +200,6 @@
 </div>
 
 <PlaylistDialog />
-<PwaUpdateNotice />
 <PwaInstallInvitation />
 
 <style>

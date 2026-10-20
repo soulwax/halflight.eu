@@ -1,4 +1,4 @@
-import { isPublicMobileRoute } from '#lib/mobile/routes';
+import { isPublicRecoveryRoute } from '#lib/mobile/routes';
 import type { LayoutServerLoad } from './$types';
 
 export const load: LayoutServerLoad = (event) => {
@@ -7,7 +7,7 @@ export const load: LayoutServerLoad = (event) => {
 	// any listening-session data into the response. The theme still applies —
 	// hooks.server.ts already resolved it from the cookie — so offline doesn't
 	// flash back to the default palette.
-	if (isPublicMobileRoute(event.url.pathname)) {
+	if (isPublicRecoveryRoute(event.url.pathname)) {
 		return { user: null, theme: event.locals.theme };
 	}
 

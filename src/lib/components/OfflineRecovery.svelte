@@ -3,12 +3,16 @@
 	import { localizeHref, type Locale } from '#lib/paraglide/runtime';
 	import { m } from '#lib/paraglide/messages.js';
 
-	let { locale }: { locale: Locale } = $props();
+	let { locale, app = 'mobile' }: { locale: Locale; app?: 'mobile' | 'desktop' } = $props();
 	const title = $derived(m.offline_title({}, { locale }));
 	const brand = $derived(m.brand_name({}, { locale }));
-	const description = $derived(m.offline_description({}, { locale }));
+	const description = $derived(
+		app === 'desktop'
+			? m.desktop_offline_description({}, { locale })
+			: m.offline_description({}, { locale })
+	);
 	const retryLabel = $derived(m.offline_retry({}, { locale }));
-	const retryHref = $derived(localizeHref('/home', { locale }));
+	const retryHref = $derived(localizeHref(app === 'desktop' ? '/app' : '/home', { locale }));
 </script>
 
 <svelte:head>

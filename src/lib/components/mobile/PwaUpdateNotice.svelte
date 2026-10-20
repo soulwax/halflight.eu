@@ -3,6 +3,7 @@
 	import { player } from '#lib/player/player.svelte.js';
 	import { m } from '#lib/paraglide/messages.js';
 
+	let { desktop = false }: { desktop?: boolean } = $props();
 	let waitingWorker = $state<ServiceWorker | null>(null);
 	let applying = $state(false);
 	let blockedByOtherWindow = $state(false);
@@ -86,7 +87,7 @@
 </script>
 
 {#if waitingWorker}
-	<aside class="update-notice" aria-live="polite" aria-label={m.pwa_update_title()}>
+	<aside class="update-notice" class:desktop aria-live="polite" aria-label={m.pwa_update_title()}>
 		<div class="copy">
 			<strong>{m.pwa_update_title()}</strong>
 			<p>
@@ -126,6 +127,12 @@
 		background: var(--surface-raised);
 		color: var(--text-primary);
 		box-shadow: 0 8px 28px rgb(0 0 0 / 24%);
+	}
+	.update-notice.desktop {
+		inset-inline: auto 1rem;
+		top: 5rem;
+		bottom: auto;
+		width: min(42rem, calc(100vw - 2rem));
 	}
 	.copy {
 		min-width: 0;

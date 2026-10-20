@@ -1,5 +1,5 @@
 <script lang="ts">
-	import OfflineRecovery from '#lib/components/mobile/OfflineRecovery.svelte';
+	import OfflineRecovery from '#lib/components/OfflineRecovery.svelte';
 </script>
 
 <OfflineRecovery locale="de-de" />

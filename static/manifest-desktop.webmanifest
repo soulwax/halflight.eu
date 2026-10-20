@@ -1,0 +1,52 @@
+{
+  "id": "/halflight-desktop",
+  "name": "Halflight Listening Room",
+  "short_name": "Halflight",
+  "description": "Your private listening room for TIDAL.",
+  "lang": "en",
+  "dir": "ltr",
+  "start_url": "/app",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#14171c",
+  "theme_color": "#0b0d10",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/icons/halflight-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/halflight-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/halflight-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Listening Room",
+      "url": "/app"
+    },
+    {
+      "name": "Search",
+      "url": "/app/search"
+    },
+    {
+      "name": "Library",
+      "url": "/app/library"
+    },
+    {
+      "name": "Generate a Mix",
+      "url": "/app/generate"
+    }
+  ]
+}

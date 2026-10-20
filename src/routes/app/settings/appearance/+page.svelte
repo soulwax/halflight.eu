@@ -6,6 +6,7 @@
 	import Button from '#lib/components/ui/Button.svelte';
 	import ViewHeader from '#lib/components/ui/ViewHeader.svelte';
 	import Notice from '#lib/components/ui/Notice.svelte';
+	import PwaDesktopInstallCard from '#lib/components/PwaDesktopInstallCard.svelte';
 	import { getThemeLabel, type Theme } from '#lib/theme.js';
 	import { rememberSiteChoice } from '#lib/mobile/site-entry';
 	import { resolve } from '$app/paths';
@@ -106,6 +107,7 @@
 			>{m.site_mobile_view()}</Button
 		>
 	</section>
+	<PwaDesktopInstallCard />
 </section>
 
 <style>

@@ -8,7 +8,26 @@
  */
 
 export const OFFLINE_FALLBACK_URL = '/offline';
-export const OFFLINE_FALLBACK_URLS = [OFFLINE_FALLBACK_URL, '/de-de/offline'] as const;
+export const OFFLINE_FALLBACK_URLS = [
+	OFFLINE_FALLBACK_URL,
+	'/de-de/offline',
+	'/desktop-offline',
+	'/de-de/desktop-offline'
+] as const;
+
+const MOBILE_ROUTE_ROOTS = [
+	'/now',
+	'/home',
+	'/search',
+	'/library',
+	'/generate',
+	'/settings',
+	'/albums',
+	'/playlists',
+	'/artists',
+	'/tracks',
+	'/offline'
+];
 
 // Only cache the icons declared for Halflight Now and the browser tab icon.
 // `static/icons` also contains theme artwork and source variants that are not
@@ -38,11 +57,15 @@ export function buildPrecacheAssets(entries: ReadonlyArray<{ path: string }>): s
 	return [...new Set([...paths.filter(isPrecacheCandidate), ...OFFLINE_FALLBACK_URLS])];
 }
 
-/** Keep the neutral recovery copy in the language selected by the route URL. */
+/** Keep the recovery page in the route's app surface and language. */
 export function offlineFallbackUrlFor(url: URL): (typeof OFFLINE_FALLBACK_URLS)[number] {
-	return url.pathname === '/de-de' || url.pathname.startsWith('/de-de/')
-		? '/de-de/offline'
-		: OFFLINE_FALLBACK_URL;
+	const german = url.pathname === '/de-de' || url.pathname.startsWith('/de-de/');
+	const pathname = german ? url.pathname.slice('/de-de'.length) || '/' : url.pathname;
+	const mobile = MOBILE_ROUTE_ROOTS.some(
+		(root) => pathname === root || pathname.startsWith(`${root}/`)
+	);
+	if (mobile) return german ? '/de-de/offline' : OFFLINE_FALLBACK_URL;
+	return german ? '/de-de/desktop-offline' : '/desktop-offline';
 }
 
 /**
@@ -110,7 +133,7 @@ export function isPrecacheCandidate(pathname: string): boolean {
 	}
 
 	// Manifest
-	if (pathname === '/manifest.webmanifest') {
+	if (pathname === '/manifest.webmanifest' || pathname === '/manifest-desktop.webmanifest') {
 		return true;
 	}
 
@@ -132,9 +155,5 @@ export function isPrecacheCandidate(pathname: string): boolean {
  * Identifies full-page HTML navigation requests that qualify for the /offline fallback.
  */
 export function isNavigationRequest(request: Request): boolean {
-	return (
-		request.mode === 'navigate' ||
-		request.destination === 'document' ||
-		Boolean(request.headers.get('accept')?.includes('text/html'))
-	);
+	return request.mode === 'navigate' || request.destination === 'document';
 }

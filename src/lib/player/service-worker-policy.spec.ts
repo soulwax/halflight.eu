@@ -22,6 +22,7 @@ describe('service-worker-policy.ts', () => {
 				{ path: 'icons/halflight-aurora-dawn.png' },
 				{ path: 'icons/emily-the-strange-music-halo-512.png' },
 				{ path: 'manifest.webmanifest' },
+				{ path: 'manifest-desktop.webmanifest' },
 				{ path: '_app/immutable/__data.json' },
 				{ path: 'api/tracks/123/audio' },
 				{ path: 'home' },
@@ -34,8 +35,11 @@ describe('service-worker-policy.ts', () => {
 			'/icons/halflight-512.png',
 			'/icons/halflight-maskable-512.png',
 			'/manifest.webmanifest',
+			'/manifest-desktop.webmanifest',
 			'/offline',
-			'/de-de/offline'
+			'/de-de/offline',
+			'/desktop-offline',
+			'/de-de/desktop-offline'
 		]);
 	});
 	it('bypasses audio streams and manifests', () => {
@@ -95,7 +99,10 @@ describe('service-worker-policy.ts', () => {
 		expect(isPrecacheCandidate('/offline')).toBe(true);
 		expect(isPrecacheCandidate('/offline/')).toBe(true);
 		expect(isPrecacheCandidate('/de-de/offline')).toBe(true);
+		expect(isPrecacheCandidate('/desktop-offline')).toBe(true);
+		expect(isPrecacheCandidate('/de-de/desktop-offline')).toBe(true);
 		expect(isPrecacheCandidate('/manifest.webmanifest')).toBe(true);
+		expect(isPrecacheCandidate('/manifest-desktop.webmanifest')).toBe(true);
 		expect(isPrecacheCandidate('/icons/halflight-192.png')).toBe(true);
 		expect(isPrecacheCandidate('/icons/halflight-maskable-512.png')).toBe(true);
 		expect(isPrecacheCandidate('/icons/halflight-aurora-dawn.png')).toBe(false);
@@ -117,13 +124,19 @@ describe('service-worker-policy.ts', () => {
 		expect(offlineFallbackUrlFor(new URL('https://m.halflight.eu/de-de/search'))).toBe(
 			'/de-de/offline'
 		);
+		expect(offlineFallbackUrlFor(new URL('https://halflight.eu/app/search'))).toBe(
+			'/desktop-offline'
+		);
+		expect(offlineFallbackUrlFor(new URL('https://halflight.eu/de-de/app/search'))).toBe(
+			'/de-de/desktop-offline'
+		);
 	});
 
-	it('identifies HTML navigation requests', () => {
+	it('identifies document navigations without treating HTML fetches as navigations', () => {
 		const htmlReq = new Request('https://m.halflight.eu/home', {
 			headers: { accept: 'text/html,application/xhtml+xml' }
 		});
-		expect(isNavigationRequest(htmlReq)).toBe(true);
+		expect(isNavigationRequest(htmlReq)).toBe(false);
 
 		const navMock = {
 			mode: 'navigate',

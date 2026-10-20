@@ -1167,14 +1167,15 @@ Do not convert the production service to a static SPA in anticipation of Tauri.
 
 ## The installed PWA
 
-The PWA is **Halflight Now installed from `m.halflight.eu`**. It improves launching, full-window
-presentation, system integration where supported, and recovery when the network is unavailable.
-It does not add an offline catalogue, downloadable music, or a second session store. Installation
-is optional and never gates listening in the website.
+The installed web apps are **Halflight Now from `m.halflight.eu`** and **Halflight Listening Room
+from `halflight.eu`**. Each uses the routes and session of its own site origin, with a distinct
+manifest identity. Both improve launching, full-window presentation, and recovery when the network
+is unavailable. Neither adds an offline catalogue, downloadable music, or a second session store.
+Installation is optional and never gates listening in either website.
 
 ### Manifest, identity, and installation
 
-Proposed manifest contract; validate the final artwork and browser behaviour in the PWA slice:
+The mobile manifest contract; validate artwork and browser behaviour in the PWA slice:
 
 | Field / asset         | Choice                                                                                   |
 | --------------------- | ---------------------------------------------------------------------------------------- |
@@ -1187,6 +1188,13 @@ Proposed manifest contract; validate the final artwork and browser behaviour in 
 | Icons                 | Owned 192px/512px raster icons, a separately checked maskable icon, and Apple touch icon |
 | Shortcuts             | Home, Now Playing, Search; each opens a route without starting playback                  |
 | Orientation           | Unrestricted; landscape and rotation are supported                                       |
+
+The desktop Listening Room has a separate `/manifest-desktop.webmanifest` linked from `/app` and
+its sign-in return path. Use stable ID `/halflight-desktop`, name `Halflight Listening Room`,
+`start_url: /app`, `scope: /` on `halflight.eu`, `display: standalone`, owned Halflight icons, and
+shortcuts to Listening Room, Search, Library, and Generate. The `/` scope keeps sign-in and OAuth
+return routes in the same installed window. It is confined to `halflight.eu`; it cannot include
+`m.halflight.eu`. The existing mobile manifest and identity remain unchanged.
 
 Do not use provider album artwork for the app icon or cache private screenshots as install assets.
 Treat manifest data as public. Use one stable installation identity across locale changes and
@@ -1202,12 +1210,12 @@ browser. [PWA installation](https://developer.mozilla.org/en-US/docs/Web/Progres
 
 ### Service-worker implementation and dependency choice
 
-Evaluate **`@vite-pwa/sveltekit` with `injectManifest`** in the mobile build. Use Workbox for precache
-revisioning and explicit route handling; Halflight supplies the small cache policy and update UI.
-Use a single registration path, and disable duplicate SvelteKit registration when the integration
-owns it. Prove compatibility with this repository's SvelteKit `next`/Vite configuration before
-adoption. Keep worker generation and registration out of unit/Storybook development by default;
-test the built worker in a dedicated production-preview suite.
+Evaluate **`@vite-pwa/sveltekit` with `injectManifest`** for the installed web apps. Use Workbox for
+precache revisioning and explicit route handling; Halflight supplies the small cache policy and
+update UI. Use one registration path per origin, and disable duplicate SvelteKit registration when
+the integration owns it. Prove compatibility with this repository's SvelteKit `next`/Vite
+configuration before adoption. Keep worker generation and registration out of unit/Storybook
+development by default; test the built worker in a dedicated production-preview suite.
 [SvelteKit PWA integration](https://vite-pwa-org.netlify.app/frameworks/sveltekit)
 
 **Compatibility gate (checked 2026-09-06):** the published `@vite-pwa/sveltekit` 1.1.0 peer range
@@ -1233,7 +1241,7 @@ library is required for this scope. Workbox handles the cache mechanics; keep th
 | Request / data                                                 | Strategy                                                   | Offline behaviour                                                           |
 | -------------------------------------------------------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------- |
 | Allowlisted content-hashed JS/CSS, owned font/icon files       | Revisioned public precache with an explicit size budget    | Available after a successful prior install/load                             |
-| Neutral offline page with EN/DE recovery copy                  | Public precache, no authenticated loader or account data   | Explain connection requirements and offer Retry                             |
+| Mobile and desktop offline pages with EN/DE recovery copy      | Public precache, no authenticated loader or account data   | Explain connection requirements and retry `/home` or `/app` respectively    |
 | Authenticated HTML and SvelteKit data requests                 | Network only; no SW or HTTP storage of private responses   | A failed page navigation may show the neutral fallback                      |
 | Product JSON, queue/profile state, generation streams          | Network only; server `private, no-store` where appropriate | Existing in-memory view may remain; cold launch has no cached personal data |
 | Audio, stream manifests, Range/206 requests                    | Explicit worker bypass before cache routing                | Only the media element's existing buffer may continue                       |
@@ -2438,23 +2446,26 @@ afterthought.
 Exit: the owner can leave the desk, open Halflight Now, and continue the exact moment of listening
 without thinking about the technology underneath it.
 
-### Launch track 3 — Installed Halflight Now PWA
+### Launch track 3 — Installed Halflight PWAs
 
-Depends on M1 mobile website acceptance. Installation uses the same mobile build and routes.
+Depends on M1 mobile and desktop website acceptance. Halflight Now and the Listening Room install
+separately from their own origins and retain their own route, sign-in, and manifest identities.
 
 - [ ] Adopt the tested SvelteKit PWA integration and Workbox policy; declare exactly one worker
       registration path and inspect the generated public precache list. (M)
-- [ ] Add the stable manifest, owned icons, Settings installation/help flow, and neutral EN/DE
-      offline navigation fallback; test actual iOS/Android installation. (M)
+- [ ] Add the stable mobile and desktop manifests, owned icons, Settings installation/help flows,
+      and neutral EN/DE offline navigation fallbacks; test actual iOS, Android, and desktop install
+      flows in supported browsers. (M)
 - [ ] Implement waiting-worker updates, cross-window readiness, save-before-reload, paused restore,
       previous-client API compatibility, and a worker rollback/recovery procedure. (L)
 - [ ] Verify all authenticated data, provider assets, audio/Range, OAuth, and mutations bypass
       persistent worker caches; no offline write queue or fake offline music. (M)
 - [ ] Complete P0/P1 release gates: cache inspection, network loss, auth/logout, real-device media
-      controls, and v1→v2 update while music plays. (M)
+      controls, desktop standalone sizing, and v1→v2 update across mobile and desktop windows while
+      music plays. (M)
 
-Exit: the owner installs and uses Halflight Now daily, can defer an update safely, and understands
-what works offline without losing accepted session state.
+Exit: the owner can install either Halflight app, use the Listening Room in a desktop app window,
+defer updates safely, and understand offline limits without losing accepted session state.
 
 ### Launch track 4 — Tauri after the PWA
 
